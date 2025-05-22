@@ -1,0 +1,38 @@
+.container-fluid{
+    font-family: 'Poppins', sans-serif;
+
+}
+.form-control{
+  background-color: white;
+  border: 1px solid #005197;
+  border-radius: 8px;
+  height: 50px;
+  font-size: 16px;
+  width: 70%;
+  padding-left: 10px;
+  padding-top: 20px;
+ 
+}
+.form-control:focus{
+    outline: none;;
+    background-color: white;
+    border: 1px solid #005197;
+}
+.login-section{
+    background-color: #005197CC;
+}
+.custom-btn{
+  background-color: #005197;
+  width: 100%;
+  color: white;
+  height: 50px;
+  border-color: white;
+  border-radius: 5px;
+  font-size: 16px;
+  font-weight: 600;
+}
+a{
+  text-decoration: none;
+  color: black;
+  
+}
