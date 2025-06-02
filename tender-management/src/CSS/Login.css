@@ -90,6 +90,15 @@
   .login-section-text-2 {
     font-size: 18px;
   }
+  .eye-icon {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  margin-top: -13%;
+  margin-right: 2%;
+  position: inherit;
+}
 }
 
 @media (max-width: 576px) {
@@ -112,5 +121,14 @@
   .login-section-text-2 {
     font-size: 14px;
   }
+  .eye-icon {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  margin-top: -19%;
+  margin-right: 2%;
+  position: inherit;
+}
 }
 
