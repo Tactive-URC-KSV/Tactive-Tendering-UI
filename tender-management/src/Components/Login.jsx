@@ -11,11 +11,26 @@ function Login() {
     const [visible, setVisible] = useState(false);
     const handleLogin = async (e) => {
       e.preventDefault();
-        if (!username && !password) {
+      if (!username && !password) {
         setError('Invalid Credentials');
       }
-    }
-    
+      try{
+        const response=await axios.post('',{
+        username: username,
+        password: password
+      });
+      if(response.status === 200) {
+        sessionStorage.setItem('token', response.data.token); 
+      }
+      }
+      catch (error) {
+        if (error.response && error.response.status === 401) {
+          setError('Invalid Credentials');
+        } else {
+          setError('An error occurred. Please try again later.');
+        }
+      }
+    };
   return (
     <div className="container-fluid">
       <div className="row justify-content-center align-items-center g-20" style={{ height: '100vh' }}>
