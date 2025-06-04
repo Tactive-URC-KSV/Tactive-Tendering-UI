@@ -75,7 +75,7 @@
   justify-content: end;
   margin-top: -8%;
   margin-right: 2%;
-   margin-bottom: 5%;
+  margin-bottom: 5%;
   position: inherit;
 }
 @media (max-width: 992px) {
@@ -99,7 +99,7 @@
   justify-content: end;
   margin-top: -13%;
   margin-right: 2%;
-   margin-bottom: 1%;
+  margin-bottom: 5%;
   position: inherit;
 }
 }
@@ -131,7 +131,7 @@
   justify-content: end;
   margin-top: -19%;
   margin-right: 2%;
-  margin-bottom: 1%;
+  margin-bottom: 5%;
   position: inherit;
 }
 }
