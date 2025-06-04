@@ -9,6 +9,7 @@
   border-radius: 8px;
   height: 50px;
   font-size: 16px;
+  font-weight: 500;
   width: 100%;
   padding-left: 10px;
   
@@ -19,7 +20,7 @@
     border: 1px solid #005197;
 }
 .login-section{
-    background-color: #005197CC;
+    background-color: #005197;
 }
 .custom-btn{
   background-color: #005197;
@@ -74,6 +75,7 @@
   justify-content: end;
   margin-top: -8%;
   margin-right: 2%;
+   margin-bottom: 5%;
   position: inherit;
 }
 @media (max-width: 992px) {
@@ -97,6 +99,7 @@
   justify-content: end;
   margin-top: -13%;
   margin-right: 2%;
+   margin-bottom: 1%;
   position: inherit;
 }
 }
@@ -128,6 +131,7 @@
   justify-content: end;
   margin-top: -19%;
   margin-right: 2%;
+  margin-bottom: 1%;
   position: inherit;
 }
 }

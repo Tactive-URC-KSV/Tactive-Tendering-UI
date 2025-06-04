@@ -12,7 +12,7 @@ function Login() {
     const handleLogin = async (e) => {
       e.preventDefault();
       if (!username && !password) {
-        setError('Invalid Credentials');
+        setError('Login credentials missing');
       }
       try{
         const response=await axios.post('',{
@@ -26,9 +26,7 @@ function Login() {
       catch (error) {
         if (error.response && error.response.status === 401) {
           setError('Invalid Credentials');
-        } else {
-          setError('An error occurred. Please try again later.');
-        }
+        } 
       }
     };
   return (
@@ -44,11 +42,11 @@ function Login() {
                   Login to your Account
                 </div>
                 {error && <p className="error mb-4">{error}</p>}
-                <div className='fw-bold mb-4 mt-2'>
+                <div className=' mb-4 mt-2'>
                     <label htmlFor="username">Username <span style={{color:"red"}}>*</span></label>
                     <input type="text" className='login-form-control' id='username' value={username} onChange={(e) => setUsername(e.target.value)} placeholder='Enter your Username' required/>
                 </div>
-                <div className='fw-bold mb-2'>
+                <div className=' mb-2'>
                     <label htmlFor="password">Password <span style={{color:"red"}}>*</span></label>
                     <input type={visible? "text":"password"} className='login-form-control' id='password' value={password} onChange={(e) => setPassword(e.target.value)} placeholder='**********' required/>
                     <span className="eye-icon" onClick={() => setVisible(!visible)}>
@@ -56,7 +54,7 @@ function Login() {
                     </span>
                 </div>
                 <div className='d-flex justify-content-end mb-4'>
-                  <a href="#" style={{textDecoration:'none',color:'black', fontSize:'17px'}}>Forgot password ?</a>
+                  <a href="#" style={{textDecoration:'none',color:'red', fontSize:'17px'}}>Forgot password ?</a>
                 </div>
                 <div> 
                   <button className='custom-btn' onClick={handleLogin}>Login</button>
