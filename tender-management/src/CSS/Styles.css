@@ -104,11 +104,11 @@
 
 .value {
   color: #005197;
-  font-size: 18px;
+  font-size: 17px;
 }
 
 .report-feild {
-  font-size: 15px;
+  font-size: 14px;
 }
 
 /* Form Inputs */
@@ -222,7 +222,11 @@ label {
   color: white;
 }
 .btn.action-button:hover{
-  background-color: #005197;
+  background-color: #005197CC;
   color: white;
   transform: scale(0.93);
+}
+.estimation-container{
+  background-color: #0051970A;
+  border-radius: 10px;
 }

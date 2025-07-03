@@ -1,26 +1,38 @@
 .container-fluid{
     font-family: 'Poppins ', sans-serif;
     overflow-x: hidden;
-
 }
 .login-form-control{
+  
   background-color: white;
   border: 1px solid #005197;
   border-radius: 8px;
-  height: 50px;
-  font-size: 16px;
-  font-weight: 500;
+  height: 40px;
+  font-size: 14px;
+  font-weight: 400;
   width: 100%;
   padding-left: 10px;
   
 }
+
 .login-form-control:focus{
-    outline: none;;
+    outline: none;
     background-color: white;
     border: 1px solid #005197;
 }
 .login-section{
     background-color: #005197;
+}
+.login-username,
+.login-password{
+  position: absolute;
+  background-color: white;
+  margin-left: 19px;
+  margin-top: -10px;
+  padding-left: 6px;
+  padding-right: 5px;
+  font-size: 14px;
+  font-weight: 600;
 }
 .custom-btn{
   background-color: #005197;
@@ -29,7 +41,7 @@
   height: 50px;
   border: none;
   border-radius: 5px;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 500;
 }
 .custom-btn:hover{
@@ -45,7 +57,7 @@
 
 .logo-text{
     font-weight: bold;
-    font-size: 23px;
+    font-size: 20px;
     margin-left: 20px;
     color: rgb(133, 130, 130);
 }
@@ -65,7 +77,7 @@
 }
 .error{
   color: red;
-  font-size: 20px;
+  font-size: 19px;
   text-align: center;
 }
 .eye-icon {
@@ -73,12 +85,13 @@
   display: flex;
   align-items: center;
   justify-content: end;
-  margin-top: -8%;
+  margin-top: -7%;
   margin-right: 2%;
-  margin-bottom: 5%;
   position: inherit;
 }
+
 @media (max-width: 992px) {
+  
   .logo-text {
     font-size: 18px;
     text-align: center;
@@ -105,6 +118,7 @@
 }
 
 @media (max-width: 576px) {
+   
   .logo-text {
     font-size: 16px;
   }
@@ -134,5 +148,8 @@
   margin-bottom: 5%;
   position: inherit;
 }
+.login-container {
+   margin-left: 125px;
+  }
 }
 
