@@ -182,7 +182,7 @@ function ProjectWorklist() {
                 </div>
             </div>
 
-            <div className='row mt-5 align-items-center rounded'>
+            <div className='row mt-5 align-items-center bg-white pt-4 rounded'>
                 <div className='col-lg-3 col-md-6 col-sm-12 mb-4'>
                     <label className='projectform-select  text-start d-block ms-3 me-1'>Search</label>
                     <input type="text" value={projectName} className='form-input w-100' onChange={searchProjects} placeholder='Search by Project Name' />
