@@ -350,7 +350,7 @@ function ProjectCreation() {
             </div>
             <div className="d-flex justify-content-end">
                 {viewMode ? (<button className="btn action-button mt-2 me-4" onClick={() => setViewMode(false)}>Edit Details</button>) :
-                    (<><button className="btn action-button mt-2 me-4 bg-secondary" onClick={() => { window.location.reload() }}>Cancel</button>
+                    (<><button className="btn action-button mt-2 me-4 text-black bg-white" onClick={() => { window.location.reload() }}>Cancel</button>
                         <button className="btn action-button mt-2 me-4" onClick={handleSubmit}>Submit</button></>)
                 }
             </div>
