@@ -120,7 +120,7 @@
   height: 45px;
   font-size: 14px;
   padding-left: 6px;
-  color: grey;
+  color: black;
 
 }
 
@@ -132,17 +132,18 @@
   margin-top: -10px;
   padding-left: 6px;
   padding-right: 5px;
-  font-size: 12px;
+  font-size: 13px;
+  color: #005197;
   z-index: 1;
 }
 
 .select__control {
   border-radius: 8px !important;
   border: 1px solid #005197CC !important;
-  height: 40px;
+  height: 45px;
   font-size: 14px;
   padding-left: 6px;
-  color: grey;
+  color: black !important;
   box-shadow: none;
   text-align: left !important;
 }
@@ -151,6 +152,7 @@
   border: 1px solid #005197 !important;
   outline: none !important;
   box-shadow: none !important;
+  color: black !important;
 }
 
 .select__placeholder {
@@ -173,7 +175,7 @@
 
 .select__option--is-selected {
   background-color: #005197 !important;
-  color: white !important;
+  color: black !important;
 }
 
 label {

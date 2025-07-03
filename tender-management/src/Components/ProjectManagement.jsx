@@ -240,6 +240,7 @@ function ProjectCreation() {
                             value={regionOptions.find((option) => option.value === region)}
                             onChange={(option) => setRegion(option ? option.value : null)}
                             isDisabled={viewMode}
+                            menuPlacement="top"
                         />
                         </div>
 
@@ -249,6 +250,7 @@ function ProjectCreation() {
                             value={sectorOptions.find((option) => option.value === sector)}
                             onChange={(option) => setSector(option ? option.value : null)}
                             isDisabled={viewMode}
+                            menuPlacement="top"
                         />
                     </div>
                 </div>
@@ -261,6 +263,7 @@ function ProjectCreation() {
                                 setScopePack(option ? option.map(o => o.value) : [])
                             }
                             isDisabled={viewMode}
+                            menuPlacement="top"
                         />
                     </div>
                 </div>
