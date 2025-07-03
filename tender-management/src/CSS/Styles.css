@@ -135,6 +135,7 @@
   font-size: 13px;
   color: #005197;
   z-index: 1;
+  font-weight: 600;
 }
 
 .select__control {
