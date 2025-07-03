@@ -153,3 +153,27 @@
   }
 }
 
+.projectform{
+  position: absolute;
+  background-color: white;
+  margin-left: 19px;
+  margin-top: -10px;
+  padding-left: 6px;
+  padding-right: 5px;
+  font-size: 14px;
+  
+}
+
+/* Floating label */
+.projectform-select {
+  position: absolute;
+  background-color: white;
+  margin-left: 19px;
+  margin-top: -10px;
+  padding-left: 6px;
+  padding-right: 5px;
+  font-size: 14px;
+  z-index: 1;
+}
+
+
