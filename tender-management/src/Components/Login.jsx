@@ -56,7 +56,7 @@ function Login() {
                     </span>
                 </div>
                 <div className='d-flex justify-content-end mb-5'>
-                  <a href="/Projectworklist" style={{textDecoration:'none',color:'red', fontSize:'15px'}}>Forgot password ?</a>
+                  <a href="/Dashboard" style={{textDecoration:'none',color:'red', fontSize:'15px'}}>Forgot password ?</a>
                 </div>
                 <div> 
                   <button className='custom-btn' onClick={handleLogin}>Login</button>
