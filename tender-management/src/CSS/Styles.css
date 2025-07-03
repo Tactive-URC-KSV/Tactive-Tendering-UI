@@ -117,11 +117,23 @@
   outline: none;
   border-radius: 8px;
   border: 1px solid #005197CC;
-  height: 40px;
+  height: 45px;
   font-size: 14px;
   padding-left: 6px;
   color: grey;
 
+}
+
+.projectform-select,
+.projectform {
+  position: absolute;
+  background-color: white;
+  margin-left: 19px;
+  margin-top: -10px;
+  padding-left: 6px;
+  padding-right: 5px;
+  font-size: 12px;
+  z-index: 1;
 }
 
 .select__control {

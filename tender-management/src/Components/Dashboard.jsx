@@ -182,21 +182,21 @@ function ProjectWorklist() {
                 </div>
             </div>
 
-            <div className='row mt-3 align-items-center rounded bg-white p-3'>
-                <div className='col-lg-3 col-md-6 col-sm-12'>
-                    <label className='projectform-select form-label text-start d-block ms-1'>Search</label>
+            <div className='row mt-5 align-items-center rounded'>
+                <div className='col-lg-3 col-md-6 col-sm-12 mb-4'>
+                    <label className='projectform-select  text-start d-block ms-3 me-1'>Search</label>
                     <input type="text" value={projectName} className='form-input w-100' onChange={searchProjects} placeholder='Search by Project Name' />
                 </div>
-                <div className='col-lg-3 col-md-6 col-sm-12'>
-                    <label className='projectform-select form-label text-start d-block ms-1'>Sector</label>
+                <div className='col-lg-3 col-md-6 col-sm-12 mb-4'>
+                    <label className='projectform-select text-start d-block ms-3 me-1'>Sector</label>
                     <Select options={sectorOptions} placeholder="Filter by Sector" onChange={handleSectorChange} className="w-100" classNamePrefix="select"/>
                 </div>
-                <div className='col-lg-3 col-md-6 col-sm-12'>
-                    <label className='projectform-select form-label text-start d-block ms-1'>Status</label>
+                <div className='col-lg-3 col-md-6 col-sm-12 mb-4'>
+                    <label className='projectform-select text-start d-block ms-3 me-1'>Status</label>
                     <Select options={statusOptions} onChange={handleStatusChange} placeholder="Filter by Status" isClearable className="w-100" classNamePrefix="select" />
                 </div>
-                <div className='col-lg-3 col-md-6 col-sm-12'>
-                    <label className='projectform-select form-label text-start d-block ms-1'>Region</label>
+                <div className='col-lg-3 col-md-6 col-sm-12 mb-4'>
+                    <label className='projectform-select text-start d-block ms-3 me-1'>Region</label>
                     <Select options={regionOptions} placeholder="Filter by Region" onChange={handleRegionChange} className="w-100" classNamePrefix="select" />
                 </div>
             </div>
