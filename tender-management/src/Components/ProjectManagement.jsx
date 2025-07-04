@@ -20,6 +20,8 @@ import "flatpickr/dist/flatpickr.min.css";
 import '../CSS/custom-flatpickr.css';
 
 function ProjectCreation() {
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
     const { projectId } = useParams();
     const [project, setProject] = useState({
         projectCode: "",
@@ -107,15 +109,20 @@ function ProjectCreation() {
     }, [projectId]);
 
     function handleSubmit() {
+        setLoading(true);
         project.otherAmenities = Array.isArray(project.otherAmenities) ? project.otherAmenities : project.otherAmenities.split(',').map(a => a.trim());
         project.projectStatus = 'UNDER_REVISION';
         const projectJson = project;
         const params = new URLSearchParams();
-        if (region) params.append('regionId', region);
-        if (sector) params.append('sectorId', sector);
-        if (uom) params.append('uomId', uom);
-        scopePack.forEach(id => params.append('scopePackagesIds', id));
-
+        region ? params.append('regionId', region) : setError('Region is required');
+        sector ? params.append('sectorId', sector) : setError('Sector is required');
+        uom ? params.append('uomId', uom) : setError('UOM is required');
+        scopePack ? scopePack.forEach(id => params.append('scopePackagesIds', id)) : setError('Scope of Packages is required');
+        if(error) {
+            toast.error(error, {duration: 2000});
+            setLoading(false);
+            return;
+        }
         axios.post(`http://localhost:8080/tactive/project/createProject?${params.toString()}`, projectJson)
             .then(res => {
                 if (res.status === 201) {
@@ -131,6 +138,7 @@ function ProjectCreation() {
                     toast.error("Conflict: Project already exists or violates unique constraints.");
                 }
             });
+            setLoading(false);
     }
 
     const renderProjectInfo = () => (
@@ -357,8 +365,8 @@ function ProjectCreation() {
                 </div>
             </div>
             <div className="d-flex justify-content-end">
-                <button className="btn action-button mt-2 me-4 text-black bg-white" onClick={() => { window.location.reload() }}>Cancel</button>
-                <button className="btn action-button mt-2 me-4" onClick={handleSubmit}>Next</button>
+                <button className="btn action-button mt-2 me-4 text-black bg-white" onClick={() => {window.location.reload(); }} disabled={loading}>Cancel</button>
+                <button className="btn action-button mt-2 me-4" onClick={handleSubmit}>{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>):'Next'}</button>
             </div>
         </div>
     );
