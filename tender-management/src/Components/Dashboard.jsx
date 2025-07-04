@@ -189,15 +189,15 @@ function ProjectWorklist() {
                 </div>
                 <div className='col-lg-3 col-md-6 col-sm-12 mb-4'>
                     <label className='projectform-select text-start d-block ms-3 me-1'>Sector</label>
-                    <Select options={sectorOptions} placeholder="Filter by Sector" onChange={handleSectorChange} className="w-100" classNamePrefix="select"/>
+                    <Select options={sectorOptions} placeholder="Filter by Sector" onChange={handleSectorChange} className="w-100" classNamePrefix="select" isClearable/>
                 </div>
                 <div className='col-lg-3 col-md-6 col-sm-12 mb-4'>
                     <label className='projectform-select text-start d-block ms-3 me-1'>Status</label>
-                    <Select options={statusOptions} onChange={handleStatusChange} placeholder="Filter by Status" isClearable className="w-100" classNamePrefix="select" />
+                    <Select options={statusOptions} onChange={handleStatusChange} placeholder="Filter by Status" className="w-100" classNamePrefix="select" isClearable/>
                 </div>
                 <div className='col-lg-3 col-md-6 col-sm-12 mb-4'>
                     <label className='projectform-select text-start d-block ms-3 me-1'>Region</label>
-                    <Select options={regionOptions} placeholder="Filter by Region" onChange={handleRegionChange} className="w-100" classNamePrefix="select" />
+                    <Select options={regionOptions} placeholder="Filter by Region" onChange={handleRegionChange} className="w-100" classNamePrefix="select" isClearable/>
                 </div>
             </div>
 
