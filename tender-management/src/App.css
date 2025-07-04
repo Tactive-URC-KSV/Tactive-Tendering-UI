@@ -6,7 +6,17 @@
   height: 40vmin;
   pointer-events: none;
 }
-
+.Toastify__slide-enter {
+  animation-duration: 0.9s !important;
+}
+.Toastify__slide-exit {
+  animation-duration: 0.9s !important;
+}
+.Toastify__toast {
+  font-size: 13px !important; 
+  min-height: 35px !important;
+  font-family: 'Poppins', sans-serif !important;
+}
 @media (prefers-reduced-motion: no-preference) {
   .App-logo {
     animation: App-logo-spin infinite 20s linear;
