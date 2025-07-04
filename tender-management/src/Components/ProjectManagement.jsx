@@ -5,10 +5,16 @@ import Select from 'react-select';
 import { toast } from 'react-toastify';
 import { useParams } from 'react-router-dom';
 import { FaInfoCircle, FaCheckCircle, FaFileAlt, FaPlus } from "react-icons/fa";
+import { ArrowLeft } from 'lucide-react';
 import { useRegions } from "../Context/RegionsContext";
 import { useSectors } from "../Context/SectorsContext";
 import { useScope } from "../Context/ScopeContext";
 import { useUom } from "../Context/UomContext";
+import { ReactComponent as Floors } from '../assest/Floors.svg';
+import { ReactComponent as Area } from '../assest/Area.svg';
+import { ReactComponent as Cost } from '../assest/Cost.svg';
+import { ReactComponent as TotalCost } from '../assest/TotalCost.svg';
+import { ReactComponent as Amenities } from '../assest/Amenities.svg';
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/flatpickr.min.css";
 import '../CSS/custom-flatpickr.css';
@@ -113,8 +119,10 @@ function ProjectCreation() {
         axios.post(`http://localhost:8080/tactive/project/createProject?${params.toString()}`, projectJson)
             .then(res => {
                 if (res.status === 201) {
-                    toast.success("Project saved successfully!");
-                    window.location.href = `/ProjectManagement/project/${res.data.id}`
+                    toast.success("Project saved successfully!", { duration: 3000 });
+                    setTimeout(() => {
+                        window.location.href = `/ProjectManagement/project/${res.data.id}`;
+                    }, 3000);
                 }
             })
             .catch(err => {
@@ -242,7 +250,7 @@ function ProjectCreation() {
                             isDisabled={viewMode}
                             menuPlacement="top"
                         />
-                        </div>
+                    </div>
 
                     <div className="col-md-6 mt-3 mb-4">
                         <label className="projectform-select   text-start d-block">Sector</label>
@@ -349,10 +357,8 @@ function ProjectCreation() {
                 </div>
             </div>
             <div className="d-flex justify-content-end">
-                {viewMode ? (<button className="btn action-button mt-2 me-4" onClick={() => setViewMode(false)}>Edit Details</button>) :
-                    (<><button className="btn action-button mt-2 me-4 text-black bg-white" onClick={() => { window.location.reload() }}>Cancel</button>
-                        <button className="btn action-button mt-2 me-4" onClick={handleSubmit}>Submit</button></>)
-                }
+                <button className="btn action-button mt-2 me-4 text-black bg-white" onClick={() => { window.location.reload() }}>Cancel</button>
+                <button className="btn action-button mt-2 me-4" onClick={handleSubmit}>Next</button>
             </div>
         </div>
     );
@@ -368,14 +374,14 @@ function ProjectCreation() {
                 <div className="row d-flex justify-content-around ms-4 me-4 mt-3 mb-3">
                     <div className="col-12 col-md-6 col-lg-6">
                         <div className="estimation-container text-start w-100 p-1 px-1">
-                            <p className='report-feild fw-bold mb-2 mt-2'>Number 0f Floors</p><br />
-                            <p className='value fw-bold fs-5'>{project.numberOfFloors}</p>
+                            <p className='report-feild fw-bold mb-2 mt-2 ms-2'><span className="me-2"><Floors /></span>Number 0f Floors</p><br />
+                            <p className='value fw-bold fs-6 ms-2'>{project.numberOfFloors}</p>
                         </div>
                     </div>
                     <div className="col-12 col-md-6 col-lg-6">
                         <div className="estimation-container text-start w-100 p-1 px-1">
-                            <p className='report-feild fw-bold mb-2 mt-2'>Total Building Area</p><br />
-                            <p className='value fw-bold fs-5'>{project.buildingArea}</p>
+                            <p className='report-feild fw-bold mb-2 mt-2 ms-2'><span className="me-2"><Area /></span>Total Building Area</p><br />
+                            <p className='value fw-bold fs-6 ms-2'>{project.buildingArea}</p>
                         </div>
                     </div>
 
@@ -383,29 +389,106 @@ function ProjectCreation() {
                 <div className="row d-flex justify-content-around ms-4 me-4 mb-3">
                     <div className="col-12 col-md-6 col-lg-6">
                         <div className="estimation-container text-start w-100 p-1 px-1">
-                            <p className='report-feild fw-bold mb-2 mt-2'>Number 0f Floors</p><br />
-                            <p className='value fw-bold fs-5'>{project.numberOfFloors}</p>
+                            <p className='report-feild fw-bold mb-2 mt-2 ms-2'><span className="me-2"><Cost /></span>Rate per Units</p><br />
+                            <p className='value fw-bold fs-6 ms-2'>{project.ratePerUnit}</p>
                         </div>
                     </div>
                     <div className="col-12 col-md-6 col-lg-6">
                         <div className="estimation-container text-start w-100 p-1 px-1">
-                            <p className='report-feild fw-bold mb-2 mt-2'>Total Building Area</p><br />
-                            <p className='value fw-bold fs-5'>{project.buildingArea}</p>
+                            <p className='report-feild fw-bold mb-2 mt-2 ms-2'><span className="me-2"><TotalCost /></span>Estimated Cost</p><br />
+                            <p className='value fw-bold fs-6 ms-2'>$ {project.estimatedValue}</p>
                         </div>
                     </div>
                 </div>
                 <div className="row d-flex justify-content-around ms-4 me-4 mb-3">
                     <div className="col-12">
                         <div className="estimation-container text-start w-100 p-1 px-1">
-                            <p className='report-feild fw-bold mb-2 mt-2'>Other Amenities</p><br />
-                            <p className='value fw-bold fs-5'>{Array.isArray(project.otherAmenities) ? project.otherAmenities.join(', ') : project.otherAmenities}</p>
+                            <p className='report-feild fw-bold mb-2 mt-2 ms-2'><span className="me-2"><Amenities /></span>Other Amenities</p><br />
+                            <p className='value fw-bold fs-6 ms-2'>{Array.isArray(project.otherAmenities) ? project.otherAmenities.join(', ') : project.otherAmenities}</p>
                         </div>
                     </div>
                 </div>
             </div>
-
-
-
+            <div className="mb-3 pb-5 bg-white">
+                <div className="row px-3 mt-3 mb-5" style={{ height: '33px' }}>
+                    <div className="tab-info col-12 h-100 pt-1">Technical Feasibility</div>
+                </div>
+                <div className="row align-items-center ms-4 me-4">
+                    <div className="col-12 mt-3 mb-4">
+                        <label className="projectform-select   text-start d-block">List of Approvals</label>
+                        <Select options={uomOptions} placeholder="Select Unit of Measurements" className="w-100" classNamePrefix="select" isClearable
+                            menuPlacement="top"
+                            isDisabled={viewMode}
+                        />
+                    </div>
+                </div>
+                <div className="row align-items-center ms-4 me-4">
+                    <div className="col-12 mt-3 mb-3">
+                        <label className="projectform-select   text-start d-block">Execution Capabilities</label>
+                        <Select options={uomOptions} placeholder="Select Unit of Measurements" className="w-100" classNamePrefix="select" isClearable
+                            menuPlacement="top"
+                            isDisabled={viewMode}
+                        />
+                    </div>
+                </div>
+            </div>
+            <div className="mb-3 pb-5 bg-white">
+                <div className="row px-3 mt-3 mb-5" style={{ height: '33px' }}>
+                    <div className="tab-info col-12 h-100 pt-1">Financial Feasibility</div>
+                </div>
+                <div className="row align-items-center ms-4 me-4">
+                    <div className="col-12 mt-3 mb-4">
+                        <label className="projectform-select   text-start d-block">Market Availability</label>
+                        <input type="text" className="form-input w-100" placeholder="Enter Market Availability"
+                            disabled={viewMode}
+                        />
+                    </div>
+                </div>
+                <div className="row align-items-center ms-4 me-4">
+                    <div className="col-12 mt-3 mb-4">
+                        <label className="projectform-select   text-start d-block">Financial Backup</label>
+                        <input type="text" className="form-input w-100" placeholder="Enter Financial Backup"
+                            disabled={viewMode}
+                        />
+                    </div>
+                </div>
+                <div className="row">
+                    <span className="text-start fs-6 fw-bold mb-3" style={{ marginLeft: '40px' }}>
+                        Return of Investment (ROI)
+                    </span>
+                </div>
+                <div className="row align-items-center ms-4 me-4">
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform  text-start d-block">Selling Cost</label>
+                        <input type="text" className="form-input w-100" placeholder="Enter Selling Cost"
+                            disabled={viewMode}
+                        />
+                    </div>
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform   text-start d-block">Rental Cost</label>
+                        <input type="text" className="form-input w-100" placeholder="Enter Rental Cost"
+                            disabled={viewMode}
+                        />
+                    </div>
+                </div>
+                <div className="row align-items-center ms-4 me-4">
+                    <div className="col-md-6 mt-3 mb-3">
+                        <label className="projectform  text-start d-block">ROI in Years</label>
+                        <input type="text" className="form-input w-100" placeholder="Years"
+                        />
+                    </div>
+                    <div className="col-md-6 mt-3 mb-3">
+                        <label className="projectform   text-start d-block">Estimated Profit Percentage</label>
+                        <input type="text" className="form-input w-100" placeholder="%"
+                            disabled={viewMode}
+                        />
+                    </div>
+                </div>
+            </div>
+            <div className="d-flex justify-content-between">
+                <button className="btn action-button mt-2 ms-4 text-black bg-white" onClick={() => { setActiveTab('info') }}><span className="me-2"><ArrowLeft size={18} /></span>Previous</button>
+                <button className="btn action-button mt-2 me-4" onClick={handleSubmit}>Submit</button>
+            </div>
         </div>
 
 
