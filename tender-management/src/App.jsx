@@ -1,22 +1,29 @@
 import Login from './Components/Login';
 import Sidebar from './Components/Sidebar';
+import { Routes, Route } from 'react-router-dom';
+import { ToastContainer , Slide  } from 'react-toastify';
 import { RegionsProvider } from './Context/RegionsContext';
 import { SectorsProvider } from './Context/SectorsContext';
 import { ScopeProvider } from './Context/ScopeContext';
-import { Routes, Route } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
+import { UomProvider } from './Context/UomContext';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import "@fontsource/poppins";
 import "@fontsource/poppins/500.css";
 import "@fontsource/poppins/600.css";
-import { UomProvider } from './Context/UomContext';
+
 function App() {
 
   return (
     <div className="App">
-      <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer
+        transition={Slide}
+        autoClose={3000}
+        closeButton={false}
+        transitionDuration={600}
+        position="top-right" />
+
       {!sessionStorage.getItem('token') ? (
         <Routes>
           <Route path="/" element={<Login />} />
@@ -24,14 +31,14 @@ function App() {
         </Routes>
       ) : (
         <RegionsProvider>
-          <SectorsProvider>
-            <ScopeProvider>
-              <UomProvider>
-                <Sidebar />
-              </UomProvider>
-            </ScopeProvider>
-          </SectorsProvider>
-        </RegionsProvider>
+            <SectorsProvider>
+              <ScopeProvider>
+                <UomProvider>
+                  <Sidebar />
+                </UomProvider>
+              </ScopeProvider>
+            </SectorsProvider>
+          </RegionsProvider>
       )}
     </div>
 
