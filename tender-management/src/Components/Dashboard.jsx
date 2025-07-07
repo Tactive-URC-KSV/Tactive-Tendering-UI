@@ -236,7 +236,7 @@ function ProjectWorklist() {
                                         <td>{project.endDate}</td>
                                         <td>{project.sector.sectorName}</td>
                                         <td>{statusList.find(status => status.name === project.projectStatus)?.label}</td>
-                                        <td><Link to={`/ProjectManagement/project/${project.id}`} className='text-decoration-none small'><FaEye /></Link></td>
+                                        <td><Link to={`project/${project.id}`} className='text-decoration-none small'><FaEye /></Link></td>
                                     </tr>
                                 ))}
                             </tbody>
