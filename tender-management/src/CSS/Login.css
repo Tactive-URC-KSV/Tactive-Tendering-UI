@@ -44,6 +44,11 @@
   font-size: 18px;
   font-weight: 500;
 }
+.custom-btn:disabled{
+  background-color: #005197CC;
+  color: white;
+  cursor: not-allowed;
+}
 .custom-btn:hover{
   background-color: #005197CC;
   color: white;

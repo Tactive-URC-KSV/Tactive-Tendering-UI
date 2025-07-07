@@ -9,7 +9,7 @@ export const SectorsProvider = ({ children }) => {
     const [sectors, setSectors] = useState([]);
 
     useEffect(() => {
-        axios.get('http://192.168.68.109:8080/tactive/sectors')
+        axios.get('http://localhost:8080/tactive/sectors')
             .then(response => {
                 setSectors(response.data);
             })
