@@ -9,6 +9,7 @@ import '../CSS/Styles.css';
 import { Routes, Route } from 'react-router-dom';
 import Dashboard from './Dashboard';
 import ProjectManagement from './ProjectManagement';
+import ProjectDetails from './ProjectDetails';
 function Sidebar() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
@@ -74,6 +75,7 @@ function Sidebar() {
           <Routes>
             <Route path="/Dashboard" element={<Dashboard />} />
             <Route path="/ProjectManagement" element={<ProjectManagement />} />
+            <Route path="/Dashboard/project/:projectId" element={<ProjectDetails />} />
             <Route path="/ProjectManagement/project/:projectId" element={<ProjectManagement />} />
             <Route path="/BOQdefinition" element={<h1>BOQ Definition</h1>} />
             <Route path="/CostCodeMapping" element={<h1>Cost Code Mapping</h1>} />
