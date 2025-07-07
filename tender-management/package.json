@@ -2,6 +2,7 @@
   "name": "tender-management",
   "version": "0.1.0",
   "private": true,
+  "proxy": "http://localhost:8080",
   "dependencies": {
     "@fontsource/poppins": "^5.2.6",
     "@testing-library/dom": "^10.4.0",
@@ -24,6 +25,7 @@
     "react-scrollspy": "^3.4.3",
     "react-select": "^5.10.1",
     "react-toastify": "^11.0.5",
+    "use-debounce": "^10.0.5",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
