@@ -250,3 +250,42 @@
   background-color: #0051970A;
   border-radius: 10px;
 }
+
+.card-dual-tone {
+  border-radius: 8px; /* Matches the border-radius from your JSX */
+  color: #fff; /* Text color inside the card */
+  padding: 15px;
+  background: linear-gradient(to right, #0056b3, #007bff);
+  /* Fallback background color for older browsers (optional but good practice) */
+  background-color: #007bff;
+}
+
+/* You might also want to style the button and text within that card for consistency */
+.card-dual-tone .btn-warning {
+  border-radius: 20px;
+  padding: 5px 15px;
+  font-size: 0.85rem;
+  /* Ensure the button text is dark as in your image */
+  color: #212529 !important; /* Bootstrap's text-dark equivalent */
+}
+
+.card-dual-tone p {
+  margin: 5px 0 0;
+  font-size: 0.9rem; /* For Project Code */
+}
+
+.card-dual-tone .text-end p {
+  font-size: 0.8rem; /* For Created at text */
+  opacity: 0.8; /* Slightly faded as in your image */
+}
+
+.card-header1{
+  border-bottom: 0.5px solid grey;
+
+}
+
+.card-lower1{
+  border-top: 0.5px solid grey;
+  padding: 10px;
+
+}
