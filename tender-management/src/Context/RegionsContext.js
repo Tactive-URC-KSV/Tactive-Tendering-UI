@@ -9,7 +9,7 @@ export const RegionsProvider = ({ children }) => {
   const [regions, setRegions] = useState([]);
 
   useEffect(() => {
-    axios.get('http://localhost:8080/tactive/regions') 
+    axios.get(`${process.env.REACT_APP_API_BASE_URL}regions`) 
       .then(response => {
         setRegions(response.data); 
       })

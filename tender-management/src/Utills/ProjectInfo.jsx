@@ -2,7 +2,35 @@ import Select from 'react-select';
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/flatpickr.min.css";
 import '../CSS/custom-flatpickr.css';
-function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOptions, region, scopeOptions, scopePack, sectorOptions, sector, setProject, setRegion, setSector, setScopePack, setUom, uom, loading }) {
+import { useRegions } from "../Context/RegionsContext";
+import { useSectors } from "../Context/SectorsContext";
+import { useScope } from "../Context/ScopeContext";
+import { useUom } from "../Context/UomContext";
+import { useNavigate } from 'react-router-dom';
+
+
+function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProject, setRegion, setSector, setScopePack, setUom, uom, loading }) {
+
+    const navigate = useNavigate();
+
+    const regionOptions = useRegions().map(region => ({
+        value: region.id,
+        label: region.country
+    }));
+    const uomOptions = useUom().map(uom => ({
+        value: uom.id,
+        label: uom.uomName
+    }));
+    const sectorOptions = useSectors().map(sector => ({
+        value: sector.id,
+        label: sector.sectorName,
+    }));
+    const scopeOptions = useScope().map(scopes => ({
+        value: scopes.id,
+        label: scopes.scope,
+    }));
+
+    
     return (
         <div className="project-info-input">
             <div className="mt-3 mb-4 pb-5 bg-white">
@@ -17,7 +45,7 @@ function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOption
                         <input type="text" className="form-input w-100" placeholder="Enter Project Code"
                             value={project.projectName}
                             onChange={(e) => setProject({ ...project, projectName: e.target.value })}
-                            disabled={viewMode}
+                             
                         />
                     </div>
                 </div>
@@ -29,7 +57,7 @@ function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOption
                         <input type="text" className="form-input w-100" placeholder="Enter Project Code"
                             value={project.projectCode}
                             onChange={(e) => setProject({ ...project, projectCode: e.target.value })}
-                            disabled={viewMode}
+                             
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
@@ -39,7 +67,7 @@ function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOption
                         <input type="text" className="form-input w-100" placeholder="Enter Short Name"
                             value={project.shortName}
                             onChange={(e) => setProject({ ...project, shortName: e.target.value })}
-                            disabled={viewMode}
+                             
                         />
                     </div>
                 </div>
@@ -52,7 +80,7 @@ function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOption
                             options={{ dateFormat: "d-m-Y" }}
                             value={project.agreementDate}
                             onChange={([date]) => setProject({ ...project, agreementDate: date })}
-                            disabled={viewMode}
+                             
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
@@ -60,7 +88,7 @@ function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOption
                         <input type="text" className="form-input w-100" placeholder="Enter Agreement number"
                             value={project.agreementNumber}
                             onChange={(e) => setProject({ ...project, agreementNumber: e.target.value })}
-                            disabled={viewMode}
+                             
                         />
                     </div>
                 </div>
@@ -73,7 +101,7 @@ function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOption
                             options={{ dateFormat: "d-m-Y" }}
                             value={project.startDate}
                             onChange={([date]) => setProject({ ...project, startDate: date })}
-                            disabled={viewMode}
+                             
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
@@ -84,7 +112,7 @@ function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOption
                             options={{ dateFormat: "d-m-Y" }}
                             value={project.endDate}
                             onChange={([date]) => setProject({ ...project, endDate: date })}
-                            disabled={viewMode}
+                             
                         />
                     </div>
                 </div>
@@ -94,7 +122,7 @@ function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOption
                         <input type="text" className="form-input w-100" placeholder="Enter City"
                             value={project.city}
                             onChange={(e) => setProject({ ...project, city: e.target.value })}
-                            disabled={viewMode}
+                             
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
@@ -102,7 +130,7 @@ function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOption
                         <input type="text" className="form-input w-100" placeholder="Enter Address"
                             value={project.address}
                             onChange={(e) => setProject({ ...project, address: e.target.value })}
-                            disabled={viewMode}
+                             
                         />
                     </div>
                 </div>
@@ -119,7 +147,7 @@ function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOption
                             isClearable
                             value={regionOptions.find((option) => option.value === region)}
                             onChange={(option) => setRegion(option ? option.value : null)}
-                            isDisabled={viewMode}
+                             
                             menuPlacement="top"
                         />
                     </div>
@@ -131,7 +159,7 @@ function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOption
                         <Select options={sectorOptions} placeholder="Select Sector" className="w-100" classNamePrefix="select"
                             value={sectorOptions.find((option) => option.value === sector)}
                             onChange={(option) => setSector(option ? option.value : null)}
-                            isDisabled={viewMode}
+                             
                             menuPlacement="top"
                         />
                     </div>
@@ -146,7 +174,7 @@ function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOption
                             onChange={(option) =>
                                 setScopePack(option ? option.map(o => o.value) : [])
                             }
-                            isDisabled={viewMode}
+                             
                             menuPlacement="top"
                         />
                     </div>
@@ -162,7 +190,7 @@ function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOption
                         <input type="text" className="form-input w-100" placeholder="Enter Number of Floors"
                             value={project.numberOfFloors}
                             onChange={(e) => setProject({ ...project, numberOfFloors: parseInt(e.target.value) })}
-                            disabled={viewMode}
+                             
                         />
                     </div>
                     <div className="col-md-6 mb-4">
@@ -170,7 +198,7 @@ function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOption
                         <input type="text" className="form-input w-100" placeholder="Enter Car Parking Floors"
                             value={project.carParkingFloors}
                             onChange={(e) => setProject({ ...project, carParkingFloors: parseInt(e.target.value) })}
-                            disabled={viewMode}
+                             
                         />
                     </div>
                 </div>
@@ -180,7 +208,7 @@ function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOption
                         <input type="text" className="form-input w-100" placeholder="Enter Above Ground"
                             value={project.numberOfAboveGround}
                             onChange={(e) => setProject({ ...project, numberOfAboveGround: parseInt(e.target.value) })}
-                            disabled={viewMode}
+                             
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
@@ -188,7 +216,7 @@ function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOption
                         <input type="text" className="form-input w-100" placeholder="Enter Below Ground"
                             value={project.numberOfBelowGround}
                             onChange={(e) => setProject({ ...project, numberOfBelowGround: parseInt(e.target.value) })}
-                            disabled={viewMode}
+                             
                         />
                     </div>
                 </div>
@@ -201,42 +229,42 @@ function ProjectInfo({ project, uomOptions, viewMode, handleSubmit, regionOption
                             value={uomOptions.find((option) => option.value === uom)}
                             onChange={(option) => setUom(option ? option.value : null)}
                             menuPlacement="top"
-                            isDisabled={viewMode}
+                             
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
                         <label className="projectform   text-start d-block">Total Area</label>
-                        <input type="text" className="form-input w-100" placeholder="Enter Total Area"
+                        <input type="number" step="any" className="form-input w-100" placeholder="Enter Total Area"
                             value={project.buildingArea}
                             onChange={(e) => setProject({ ...project, buildingArea: parseFloat(e.target.value) })}
-                            disabled={viewMode}
+                             
                         />
                     </div>
                 </div>
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-md-6 mt-3 mb-4">
                         <label className="projectform   text-start d-block">Other Amenities</label>
-                        <input type="text" className="form-input w-100" placeholder="Enter Other Amenities"
+                        <input type="text"  className="form-input w-100" placeholder="Enter Other Amenities"
                             value={
                                 Array.isArray(project.otherAmenities) ? project.otherAmenities.join(', ') : project.otherAmenities
                             }
                             onChange={(e) => setProject({ ...project, otherAmenities: e.target.value })}
-                            disabled={viewMode}
+                             
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
                         <label className="projectform   text-start d-block">Rate Per Units</label>
-                        <input type="text" className="form-input w-100" placeholder="Enter Rate Per Units"
+                        <input type="number" step="any" className="form-input w-100" placeholder="Enter Rate Per Units"
                             value={project.ratePerUnit}
                             onChange={(e) => setProject({ ...project, ratePerUnit: parseFloat(e.target.value) })}
-                            disabled={viewMode}
+                             
                         />
                     </div>
                 </div>
             </div>
             <div className="d-flex justify-content-end">
-                <button className="btn action-button mt-2 me-4 text-black bg-white" onClick={() => { window.location.reload(); }} disabled={loading}>Cancel</button>
-                <button className="btn action-button mt-2 me-4" onClick={handleSubmit} >{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : 'Next'}</button>
+                <button className="btn action-button mt-2 me-4 text-black bg-white" onClick={() => { window.location.reload(); navigate(-1);}} disabled={loading}>Cancel</button>
+                <button className="btn action-button mt-2 me-4" onClick={handleSubmit} >{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : 'Submit'}</button>
             </div>
         </div>
     );

@@ -9,7 +9,7 @@ export const UomProvider = ({ children }) => {
     const [Uom, setUom] = useState([]);
 
     useEffect(() => {
-        axios.get('http://localhost:8080/tactive/uoms')
+        axios.get(`${process.env.REACT_APP_API_BASE_URL}uoms`)
             .then(response => {
                 setUom(response.data);
             })

@@ -9,7 +9,7 @@ export const ScopeProvider = ({ children }) => {
     const [Scope, setScope] = useState([]);
 
     useEffect(() => {
-        axios.get('http://localhost:8080/tactive/scopes')
+        axios.get(`${process.env.REACT_APP_API_BASE_URL}scopes`)
             .then(response => {
                 setScope(response.data);
             })

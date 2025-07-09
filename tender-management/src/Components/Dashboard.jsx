@@ -53,7 +53,7 @@ function ProjectWorklist() {
     };
 
     useEffect(() => {
-        axios.get('http://localhost:8080/tactive/project-status')
+        axios.get(`${process.env.REACT_APP_API_BASE_URL}project-status`)
             .then(response => {
                 setStatusList(response.data);
             })
@@ -62,7 +62,7 @@ function ProjectWorklist() {
             });
     }, []);
     useEffect(() => {
-        axios.get('http://localhost:8080/tactive/project/allProjects')
+        axios.get(`${process.env.REACT_APP_API_BASE_URL}project/allProjects`)
             .then(response => {
                 if (response.status === 200) {
                     setProjects(response.data);
@@ -97,7 +97,7 @@ function ProjectWorklist() {
         setFilteredProjects(projects.filter((project) => {
             return (project.sector === selectedSector || selectedSector === "" || selectedSector === "All") &&
                 (project.projectStatus === selectedStatus || selectedStatus === "All" || selectedStatus === "") &&
-                (selectedRegion === "All" || selectedRegion === "" || project.region.country === selectedRegion);
+                (selectedRegion === "All" || selectedRegion === "" || project.country === selectedRegion);
         }));
     }
     const filterByStatus = (selectedStatus) => {
@@ -189,20 +189,20 @@ function ProjectWorklist() {
                 </div>
                 <div className='col-lg-3 col-md-6 col-sm-12 mb-4'>
                     <label className='projectform-select text-start d-block ms-3 me-1'>Sector</label>
-                    <Select options={sectorOptions} placeholder="Filter by Sector" onChange={handleSectorChange} className="w-100" classNamePrefix="select" isClearable/>
+                    <Select options={sectorOptions} placeholder="Filter by Sector" onChange={handleSectorChange} className="w-100" classNamePrefix="select" isClearable />
                 </div>
                 <div className='col-lg-3 col-md-6 col-sm-12 mb-4'>
                     <label className='projectform-select text-start d-block ms-3 me-1'>Status</label>
-                    <Select options={statusOptions} onChange={handleStatusChange} placeholder="Filter by Status" className="w-100" classNamePrefix="select" isClearable/>
+                    <Select options={statusOptions} onChange={handleStatusChange} placeholder="Filter by Status" className="w-100" classNamePrefix="select" isClearable />
                 </div>
                 <div className='col-lg-3 col-md-6 col-sm-12 mb-4'>
                     <label className='projectform-select text-start d-block ms-3 me-1'>Region</label>
-                    <Select options={regionOptions} placeholder="Filter by Region" onChange={handleRegionChange} className="w-100" classNamePrefix="select" isClearable/>
+                    <Select options={regionOptions} placeholder="Filter by Region" onChange={handleRegionChange} className="w-100" classNamePrefix="select" isClearable />
                 </div>
             </div>
 
             <div className='row mt-2'>
-                <div className='col-12 d-flex flex-row justify-content-end'>
+                <div className='col-12 d-flex flex-row justify-content-end me-1 mt-1 mb-1'>
                     <button className={`change-view ${isListView ? 'active' : ''}`} onClick={() => { setIsListView(true) }}><FaList /></button>
                     <button className={`change-view ${!isListView ? 'active' : ''}`} onClick={() => { setIsListView(false) }}><FaThLarge /></button>
                 </div>
@@ -234,9 +234,9 @@ function ProjectWorklist() {
                                         <td>$ {project.estimatedValue}</td>
                                         <td>{project.startDate}</td>
                                         <td>{project.endDate}</td>
-                                        <td>{project.sector.sectorName}</td>
-                                        <td>{statusList.find(status => status.name === project.projectStatus)?.label}</td>
-                                        <td><Link to={`project/${project.id}`} className='text-decoration-none small'><FaEye /></Link></td>
+                                        <td>{project.sectorName}</td>
+                                        <td>{statusList.find(status => status.name === project.status)?.label}</td>
+                                        <td><Link to={`project/${project.projectId}`} className='text-decoration-none small'><FaEye /></Link></td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -251,7 +251,7 @@ function ProjectWorklist() {
                                     <div className="d-flex justify-content-between align-items-center mb-2">
                                         <span className="project-code fw-bold text-primary">{project.projectCode}</span>
                                         <span className="project-status badge text-light" style={{ backgroundColor: '#005197CC' }}>
-                                            {statusList.find(status => status.name === project.projectStatus)?.label}
+                                            {statusList.find(status => status.name === project.status)?.label}
                                         </span>
                                     </div>
 
@@ -259,19 +259,19 @@ function ProjectWorklist() {
                                         <p className="project-name fw-bold">{project.projectName}</p>
                                     </div>
 
-                                    <div className="d-flex justify-content-between mt-2 small text-muted">
+                                    <div className="d-flex justify-content-between mt-2 small">
                                         <span>Start date:</span>
                                         <span>{project.startDate && new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</span>
                                     </div>
 
-                                    <div className="d-flex justify-content-between mt-1 small text-muted">
+                                    <div className="d-flex justify-content-between mt-1 small">
                                         <span>End date:</span>
                                         <span>{project.endDate && new Date(project.endDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</span>
                                     </div>
 
                                     <div className="d-flex justify-content-between mt-1 small">
                                         <span>Sector:</span>
-                                        <span>{project.sector.sectorName}</span>
+                                        <span>{project.sectorName}</span>
                                     </div>
 
                                     <div className="d-flex justify-content-between mt-1 small">
@@ -285,7 +285,7 @@ function ProjectWorklist() {
 
                                     <div className="d-flex justify-content-between align-items-center mt-3">
                                         <span className="small text-muted">{remainingDaysCalc(project.endDate)} days remaining</span>
-                                        <Link to={`/ProjectManagement/project/${project.id}`} className='text-decoration-none small'><FaEye /> View details</Link>
+                                        <Link to={`/ProjectManagement/project/${project.projectId}`} className='text-decoration-none small'><FaEye /> View details</Link>
                                     </div>
 
                                 </div>
