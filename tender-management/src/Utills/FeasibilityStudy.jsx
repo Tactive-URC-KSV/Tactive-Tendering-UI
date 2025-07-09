@@ -6,7 +6,7 @@ import { ReactComponent as Cost } from '../assest/Cost.svg';
 import { ReactComponent as TotalCost } from '../assest/TotalCost.svg';
 import { ReactComponent as Amenities } from '../assest/Amenities.svg';
 
-function FeasibilityStudy({ project, uomOptions, viewMode, setActiveTab, handleSubmit }) {
+function FeasibilityStudy({ project, setActiveTab, handleSubmit }) {
     return (
         <div className="project-feasibility">
             <div className="mt-3 mb-4 bg-white pb-4 rounded">
@@ -60,18 +60,18 @@ function FeasibilityStudy({ project, uomOptions, viewMode, setActiveTab, handleS
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-12 mt-3 mb-4">
                         <label className="projectform-select   text-start d-block">List of Approvals</label>
-                        <Select options={uomOptions} placeholder="Select Unit of Measurements" className="w-100" classNamePrefix="select" isClearable
+                        <Select options={project} placeholder="Select Unit of Measurements" className="w-100" classNamePrefix="select" isClearable
                             menuPlacement="top"
-                            isDisabled={viewMode}
+                             
                         />
                     </div>
                 </div>
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-12 mt-3 mb-3">
                         <label className="projectform-select   text-start d-block">Execution Capabilities</label>
-                        <Select options={uomOptions} placeholder="Select Unit of Measurements" className="w-100" classNamePrefix="select" isClearable
+                        <Select options={project} placeholder="Select Unit of Measurements" className="w-100" classNamePrefix="select" isClearable
                             menuPlacement="top"
-                            isDisabled={viewMode}
+                             
                         />
                     </div>
                 </div>
@@ -84,7 +84,7 @@ function FeasibilityStudy({ project, uomOptions, viewMode, setActiveTab, handleS
                     <div className="col-12 mt-3 mb-4">
                         <label className="projectform-select   text-start d-block">Market Availability</label>
                         <input type="text" className="form-input w-100" placeholder="Enter Market Availability"
-                            disabled={viewMode}
+                             
                         />
                     </div>
                 </div>
@@ -92,7 +92,7 @@ function FeasibilityStudy({ project, uomOptions, viewMode, setActiveTab, handleS
                     <div className="col-12 mt-3 mb-4">
                         <label className="projectform-select   text-start d-block">Financial Backup</label>
                         <input type="text" className="form-input w-100" placeholder="Enter Financial Backup"
-                            disabled={viewMode}
+                             
                         />
                     </div>
                 </div>
@@ -105,13 +105,13 @@ function FeasibilityStudy({ project, uomOptions, viewMode, setActiveTab, handleS
                     <div className="col-md-6 mt-3 mb-4">
                         <label className="projectform  text-start d-block">Selling Cost</label>
                         <input type="text" className="form-input w-100" placeholder="Enter Selling Cost"
-                            disabled={viewMode}
+                             
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
                         <label className="projectform   text-start d-block">Rental Cost</label>
                         <input type="text" className="form-input w-100" placeholder="Enter Rental Cost"
-                            disabled={viewMode}
+                             
                         />
                     </div>
                 </div>
@@ -124,7 +124,7 @@ function FeasibilityStudy({ project, uomOptions, viewMode, setActiveTab, handleS
                     <div className="col-md-6 mt-3 mb-3">
                         <label className="projectform   text-start d-block">Estimated Profit Percentage</label>
                         <input type="text" className="form-input w-100" placeholder="%"
-                            disabled={viewMode}
+                             
                         />
                     </div>
                 </div>
