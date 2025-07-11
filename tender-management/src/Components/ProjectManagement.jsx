@@ -3,7 +3,7 @@ import '../CSS/Styles.css';
 import axios from "axios";
 import { toast } from 'react-toastify';
 import { useParams } from 'react-router-dom';
-import { FaInfoCircle, FaCheckCircle, FaFileAlt, FaPlus } from "react-icons/fa";
+import { FaInfoCircle, FaCheckCircle, FaFileAlt } from "react-icons/fa";
 import ProjectInfo from "../Utills/ProjectInfo";
 import FeasibilityStudy from "../Utills/FeasibilityStudy";
 function ProjectCreation() {
@@ -86,8 +86,6 @@ function ProjectCreation() {
             project.otherAmenities = Array.isArray(project.otherAmenities)
                 ? project.otherAmenities
                 : project.otherAmenities.split(',').map(a => a.trim());
-            project.projectStatus = 'UNDER_REVISION';
-
             const projectJson = project;
             const params = new URLSearchParams();
             params.append('regionId', region);
@@ -107,7 +105,7 @@ function ProjectCreation() {
                 .catch(err => {
                     console.error('Error creating project:', err);
                     if (err.response?.status === 409) {
-                        toast.error("Project already exists or violates unique constraints.");
+                        toast.error("Project already exists");
                     } else {
                         toast.error("Something went wrong while creating the project.");
                     }
@@ -132,14 +130,7 @@ function ProjectCreation() {
             <div className="row align-items-center mb-4">
                 <div className="col-auto">
                     {projectId ? (<h5 className="fw-bold mb-0 ms-2">{project.projectName}</h5>) : (<h5 className="fw-bold mb-0 ms-2">Project Creation</h5>)}
-
                 </div>
-                {projectId &&
-                    <div className="col-auto ms-auto">
-                        <button className="btn action-button me-1" onClick={() => window.location.href = '/ProjectManagement'}><FaPlus /><span className="ms-3">New Project</span></button>
-                    </div>
-                }
-
             </div>
             <div className="row d-flex justify-content-around mb-4 ms-2 me-2 bg-white rounded ">
                 <div className="col-lg-4 col-md-4">
