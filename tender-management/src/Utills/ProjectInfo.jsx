@@ -130,6 +130,24 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         <span className='calender-icon' onClick={() => openCalendar('endDate')}><FaCalendarAlt size={18} color='#005197' /></span>
                     </div>
                 </div>
+                 <div className="row align-items-center ms-4 me-4">
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform  text-start d-block"> Phone no </label>
+                        <input type="text" className="form-input w-100" placeholder="Enter Phone Number"
+                            value={project.phoneNo}
+                            onChange={(e) => setProject({ ...project, phoneNo: e.target.value })}
+
+                        />
+                    </div>
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform  text-start d-block">E-mail</label>
+                        <input type="text" className="form-input w-100" placeholder="Enter email address"
+                            value={project.email}
+                            onChange={(e) => setProject({ ...project, email: e.target.value })}
+
+                        />
+                    </div>
+                </div>
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-md-6 mt-3 mb-4">
                         <label className="projectform   text-start d-block"> City </label>

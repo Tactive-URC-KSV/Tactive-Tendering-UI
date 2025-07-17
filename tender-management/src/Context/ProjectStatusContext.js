@@ -10,7 +10,11 @@ export const ProjectStatusProvider = ({ children }) => {
 
   useEffect(() => {
     axios
-      .get(`${process.env.REACT_APP_API_BASE_URL}project-status`)
+      .get(`${process.env.REACT_APP_API_BASE_URL}/project-status` , {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+        },
+      })
       .then((response) => {
         setProjectStatus(response.data);
       })

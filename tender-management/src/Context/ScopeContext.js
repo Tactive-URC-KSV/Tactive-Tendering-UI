@@ -9,7 +9,11 @@ export const ScopeProvider = ({ children }) => {
     const [Scope, setScope] = useState([]);
 
     useEffect(() => {
-        axios.get(`${process.env.REACT_APP_API_BASE_URL}scopes`)
+        axios.get(`${process.env.REACT_APP_API_BASE_URL}/scopes`, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+            },
+        })
             .then(response => {
                 setScope(response.data);
             })

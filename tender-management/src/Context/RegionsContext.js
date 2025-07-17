@@ -9,7 +9,11 @@ export const RegionsProvider = ({ children }) => {
   const [regions, setRegions] = useState([]);
 
   useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_BASE_URL}regions`) 
+    axios.get(`${process.env.REACT_APP_API_BASE_URL}/regions`, {
+      headers: {
+        'Authorization' : `Bearer ${sessionStorage.getItem("token")}`,
+      },
+    }) 
       .then(response => {
         setRegions(response.data); 
       })

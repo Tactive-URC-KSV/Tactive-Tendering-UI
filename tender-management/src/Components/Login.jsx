@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import logo from '../assest/logo.svg';
 import login from '../assest/login.svg';
-// import axios from 'axios';
+import axios from 'axios';
 import { Eye, EyeOff } from 'lucide-react';
 import '../CSS/Login.css';
 function Login() {
@@ -11,25 +11,25 @@ function Login() {
   const [visible, setVisible] = useState(false);
   const handleLogin = async (e) => {
     setLoading(true);
-    sessionStorage.setItem('token', 'sampleToken');
-    setTimeout(() => {
-      window.location.href = '/Dashboard';
-    }, 1000);
     e.preventDefault();
-    // try{
-    //   const response=await axios.post('',{
-    //   username: username,
-    //   password: password
-    // });
-    // if(response.status === 200) {
-    //   sessionStorage.setItem('token', response.data.token); 
-    // }
-    // }
-    // catch (error) {
-    //   if (error.response && error.response.status === 401) {
-    //     setError('Invalid Credentials');
-    //   } 
-    // }
+    try {
+      const param = new URLSearchParams();
+      param.append('username', username);
+      param.append('password', password);
+      const response = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/login?${param.toString()}`);
+      if (response.status === 200) {
+        sessionStorage.setItem('token', response.data.token);
+        setTimeout(() => {
+          window.location.href = '/Dashboard';
+        }, 1000);
+      }
+    }
+    catch (error) {
+      console.log(error);
+    }
+    finally {
+      setLoading(false);
+    }
   };
   return (
     <div className="container-fluid overflow-hidden">
@@ -58,7 +58,7 @@ function Login() {
               <a href="/Dashboard" style={{ textDecoration: 'none', color: 'red', fontSize: '15px' }}>Forgot password ?</a>
             </div>
             <div>
-              <button className='custom-btn' onClick={handleLogin} disabled={!username || !password}>{loading ? (<span className="spinner-border text-white"></span>):'Login'}</button>
+              <button className='custom-btn' onClick={handleLogin} disabled={!username || !password}>{loading ? (<span className="spinner-border text-white"></span>) : 'Login'}</button>
             </div>
           </div>
         </div>

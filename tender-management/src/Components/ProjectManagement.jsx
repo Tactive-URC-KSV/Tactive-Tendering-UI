@@ -19,6 +19,8 @@ function ProjectCreation() {
         startDate: "",
         endDate: "",
         buildingArea: "",
+        phoneNo: "",
+        email: "",
         numberOfFloors: "",
         numberOfAboveGround: "",
         numberOfBelowGround: "",
@@ -49,7 +51,7 @@ function ProjectCreation() {
         } else if (projectId) {
             setEnabledTabs(['info', 'feasibility']);
         } else {
-            setEnabledTabs(['info']);
+            setEnabledTabs(['info', 'feasibility', 'document']);
             setActiveTab('info');
         }
     }, [projectId, project.projectStatus]);
@@ -58,7 +60,12 @@ function ProjectCreation() {
     useEffect(() => {
         if (projectId) {
             axios
-                .get(`${process.env.REACT_APP_API_BASE_URL}project/viewProjectInfo/${projectId}`)
+                .get(`${process.env.REACT_APP_API_BASE_URL}/project/viewProjectInfo/${projectId}` ,{
+                    headers: {
+                        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                        'Content-Type': 'application/json',
+                    },
+                })
                 .then((res) => {
                     if (res.status === 200) {
                         setProject(res.data);
@@ -93,7 +100,12 @@ function ProjectCreation() {
             params.append('uomId', uom);
             scopePack.forEach(id => params.append('scopePackagesIds', id));
 
-            axios.post(`${process.env.REACT_APP_API_BASE_URL}project/createProject?${params.toString()}`, projectJson)
+            axios.post(`${process.env.REACT_APP_API_BASE_URL}/project/createProject?${params.toString()},`, projectJson,{
+                 headers: {
+                        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                        'Content-Type': 'application/json',
+                    },
+            })
                 .then(res => {
                     if (res.status === 201) {
                         toast.success("Project saved successfully!", { duration: 3000 });

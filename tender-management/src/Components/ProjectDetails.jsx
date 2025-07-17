@@ -23,7 +23,13 @@ function ProjectDetails() {
         if (projectId) {
             axios
                 .get(
-                    `${process.env.REACT_APP_API_BASE_URL}project/viewProjectInfo/${projectId}`
+                    `${process.env.REACT_APP_API_BASE_URL}/project/viewProjectInfo/${projectId}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+                            "Content-Type": "application/json",
+                        },
+                    }
                 )
                 .then((res) => {
                     if (res.status === 200) {
