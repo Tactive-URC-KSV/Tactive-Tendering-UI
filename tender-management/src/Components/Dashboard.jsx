@@ -53,7 +53,14 @@ function ProjectWorklist() {
     };
 
     useEffect(() => {
-        axios.get(`${process.env.REACT_APP_API_BASE_URL}project-status`)
+        axios.get(`${process.env.REACT_APP_API_BASE_URL}/project-status`,
+            {
+                headers: {
+                    Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                    'Content-Type': 'application/json',
+                },
+            }
+        )
             .then(response => {
                 setStatusList(response.data);
             })
@@ -62,7 +69,12 @@ function ProjectWorklist() {
             });
     }, []);
     useEffect(() => {
-        axios.get(`${process.env.REACT_APP_API_BASE_URL}project/allProjects`)
+        axios.get(`${process.env.REACT_APP_API_BASE_URL}/project/allProjects`, {
+            headers: {
+                    Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                    'Content-Type': 'application/json',
+                },
+        })
             .then(response => {
                 if (response.status === 200) {
                     setProjects(response.data);

@@ -133,7 +133,7 @@
   border: 1px solid #005197CC;
   height: 45px;
   font-size: 14px;
-  padding-left: 6px;
+  padding-left: 15px;
   color: black;
 
 }
@@ -141,7 +141,12 @@
   background-color: white !important;
 }
 
-.projectform-select,
+.form-input::-webkit-inner-spin-button,
+.form-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .projectform {
   position: absolute;
   background-color: white;
@@ -151,16 +156,35 @@
   padding-right: 5px;
   font-size: 13px;
   color: #005197;
-  z-index: 1;
   font-weight: 600;
 }
-
+.projectform-select{
+  position: absolute;
+  background-color: white;
+  margin-left: 19px;
+  margin-top: -10px;
+  padding-left: 6px;
+  padding-right: 5px;
+  font-size: 13px;
+  color: #005197;
+  font-weight: 600;
+  z-index: 1;
+}
+.calender-icon{
+  position: absolute;
+  margin-top: 10px;
+  margin-left: -35px;
+  cursor: pointer;
+}
+.select__menu{
+  z-index: 9999 !important;
+}
 .select__control {
   border-radius: 8px !important;
   border: 1px solid #005197CC !important;
   height: 45px;
   font-size: 14px;
-  padding-left: 6px;
+  padding-left: 15px;
   color: black !important;
   box-shadow: none;
   text-align: left !important;
@@ -169,6 +193,9 @@
   background-color: white !important;
   opacity: 1 !important;
   cursor: not-allowed;
+}
+.select__indicator-separator {
+  display: none !important;
 }
 .select__control--is-focused {
   border: 1px solid #005197 !important;
@@ -248,6 +275,7 @@
 .tab-info {
   background-color: #005197;
   color: white;
+  padding: 9px ;
 }
 .btn.action-button {
   background-color: #005197;
@@ -264,14 +292,13 @@
   border-radius: 10px;
 }
 
-
+/* Project detail */
 .project-title-header {
   border-radius: 8px; 
   color: #fff; 
   padding: 15px;
   background: linear-gradient(to right, #0056b3, #007bff);
 }
-
 
 .project-title-header p {
   margin: 5px 0 0;

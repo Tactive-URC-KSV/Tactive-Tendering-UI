@@ -9,7 +9,11 @@ export const UomProvider = ({ children }) => {
     const [Uom, setUom] = useState([]);
 
     useEffect(() => {
-        axios.get(`${process.env.REACT_APP_API_BASE_URL}uoms`)
+        axios.get(`${process.env.REACT_APP_API_BASE_URL}/uoms`, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+            },
+        })
             .then(response => {
                 setUom(response.data);
             })
