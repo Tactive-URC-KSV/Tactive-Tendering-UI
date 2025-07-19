@@ -4,6 +4,7 @@ import login from '../assest/login.svg';
 import axios from 'axios';
 import { Eye, EyeOff } from 'lucide-react';
 import '../CSS/Login.css';
+import { toast } from 'react-toastify';
 function Login() {
   const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState('');
@@ -18,6 +19,7 @@ function Login() {
       param.append('password', password);
       const response = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/login?${param.toString()}`);
       if (response.status === 200) {
+        toast.success("Logged in successfully!", { duration: 3000 });
         sessionStorage.setItem('token', response.data.token);
         setTimeout(() => {
           window.location.href = '/Dashboard';

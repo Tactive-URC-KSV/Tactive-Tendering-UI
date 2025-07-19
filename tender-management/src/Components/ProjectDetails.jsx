@@ -112,20 +112,20 @@ function ProjectDetails() {
                 </div>
             </div>
             <div className="row mb-4">
-                <div className="col-lg-8 col-md-8  me-2 bg-white rounded-3 p-3">
+                <div className="col-lg-12 col-md-12 me-2 bg-white rounded-3 p-3">
                     <div className="project-info-header d-flex justify-content-between align-items-center p-2">
-                        <p className="fs-5 fw-bold">Project Information</p>
+                        <p className="fs-5 fw-bold ms-3">Project Information</p>
                         <Link to={`/ProjectManagement/project/${project.id}`} className='text-decoration-none small'><EditBlue /></Link>
                     </div>
                     <div className="text-start d-flex align-items-center p-2">
-                        <div className="mt-2">
+                        <div className="mt-2 ms-3">
                             <p className="fs-6 fw-bold"><GeneralInfo /> General Information</p>
                         </div>
                     </div>
-                    <div className="mt-2 ms-2 text-start">
+                    <div className="mt-2 ms-4 text-start">
                         <div className="row">
                             {generalInfo.map((item, index) => (
-                                <div className="col-md-6 mb-3" key={index} style={{ fontSize: '14px' }}>
+                                <div className="col-md-4 mb-3" key={index} style={{ fontSize: '14px' }}>
                                     <div className="text-muted">{item.label}</div>
                                     <div className="fw-bold mt-1">{item.value}</div>
                                 </div>
@@ -141,7 +141,7 @@ function ProjectDetails() {
                     <div className="mt-2 ms-2 text-start">
                         <div className="row">
                             {technicalInfo.map((item, index) => (
-                                <div className="col-md-6 mb-3" key={index} style={{ fontSize: '14px' }}>
+                                <div className="col-md-4 mb-3" key={index} style={{ fontSize: '14px' }}>
                                     <div className="text-muted">{item.label}</div>
                                     <div className="fw-bold mt-1">{item.value}</div>
                                 </div>
