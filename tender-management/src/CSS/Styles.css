@@ -111,6 +111,20 @@
   font-size: 14px;
 }
 
+.table-container thead tr th{
+  font-size: 14px;
+  padding: 8px;
+}
+
+.table-container tbody tr td{
+  background-color: white;
+  color: black;
+  font-size: 14px;
+  align-items: center;
+}
+.progress-bar {
+  background-color: #005197 !important;
+}
 /* Form Inputs */
 .form-input,
 .form-input:focus {
@@ -118,8 +132,8 @@
   border-radius: 8px;
   border: 1px solid #005197CC;
   height: 45px;
-  font-size: 13px;
-  padding-left: 6px;
+  font-size: 14px;
+  padding-left: 15px;
   color: black;
 
 }
@@ -127,7 +141,12 @@
   background-color: white !important;
 }
 
-.projectform-select,
+.form-input::-webkit-inner-spin-button,
+.form-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .projectform {
   position: absolute;
   background-color: white;
@@ -137,16 +156,35 @@
   padding-right: 5px;
   font-size: 13px;
   color: #005197;
-  z-index: 1;
   font-weight: 600;
 }
-
+.projectform-select{
+  position: absolute;
+  background-color: white;
+  margin-left: 19px;
+  margin-top: -10px;
+  padding-left: 6px;
+  padding-right: 5px;
+  font-size: 13px;
+  color: #005197;
+  font-weight: 600;
+  z-index: 1;
+}
+.calender-icon{
+  position: absolute;
+  margin-top: 10px;
+  margin-left: -35px;
+  cursor: pointer;
+}
+.select__menu{
+  z-index: 9999 !important;
+}
 .select__control {
   border-radius: 8px !important;
   border: 1px solid #005197CC !important;
   height: 45px;
   font-size: 14px;
-  padding-left: 6px;
+  padding-left: 15px;
   color: black !important;
   box-shadow: none;
   text-align: left !important;
@@ -155,6 +193,9 @@
   background-color: white !important;
   opacity: 1 !important;
   cursor: not-allowed;
+}
+.select__indicator-separator {
+  display: none !important;
 }
 .select__control--is-focused {
   border: 1px solid #005197 !important;
@@ -165,14 +206,14 @@
 
 .select__placeholder {
   color: grey !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
 }
 
 .select__option {
   cursor: pointer !important;
   text-align: start !important;
   color: #005197b7 !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
   height: 35px !important;
 }
 
@@ -187,7 +228,7 @@
 }
 
 .project-detail {
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .change-view {
@@ -234,11 +275,11 @@
 .tab-info {
   background-color: #005197;
   color: white;
+  padding: 9px ;
 }
 .btn.action-button {
   background-color: #005197;
   color: white;
-  border: 1px solid #005197;
   min-width: 100px !important;
 }
 .btn.action-button:hover{
@@ -251,41 +292,24 @@
   border-radius: 10px;
 }
 
-.card-dual-tone {
-  border-radius: 8px; /* Matches the border-radius from your JSX */
-  color: #fff; /* Text color inside the card */
+/* Project detail */
+.project-title-header {
+  border-radius: 8px; 
+  color: #fff; 
   padding: 15px;
   background: linear-gradient(to right, #0056b3, #007bff);
-  /* Fallback background color for older browsers (optional but good practice) */
-  background-color: #007bff;
 }
 
-/* You might also want to style the button and text within that card for consistency */
-.card-dual-tone .btn-warning {
-  border-radius: 20px;
-  padding: 5px 15px;
-  font-size: 0.85rem;
-  /* Ensure the button text is dark as in your image */
-  color: #212529 !important; /* Bootstrap's text-dark equivalent */
-}
-
-.card-dual-tone p {
+.project-title-header p {
   margin: 5px 0 0;
-  font-size: 0.9rem; /* For Project Code */
+  font-size: 0.9rem; 
 }
 
-.card-dual-tone .text-end p {
-  font-size: 0.8rem; /* For Created at text */
-  opacity: 0.8; /* Slightly faded as in your image */
+.project-title-header .text-end p {
+  font-size: 0.8rem; 
+  opacity: 0.8; 
 }
 
-.card-header1{
+.project-info-header{
   border-bottom: 0.5px solid grey;
-
-}
-
-.card-lower1{
-  border-top: 0.5px solid grey;
-  padding: 10px;
-
 }

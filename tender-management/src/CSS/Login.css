@@ -7,11 +7,11 @@
   background-color: white;
   border: 1px solid #005197;
   border-radius: 8px;
-  height: 40px;
+  height: 45px;
   font-size: 14px;
   font-weight: 400;
   width: 100%;
-  padding-left: 10px;
+  padding-left: 20px;
   
 }
 
@@ -90,7 +90,7 @@
   display: flex;
   align-items: center;
   justify-content: end;
-  margin-top: -7%;
+  margin-top: -8%;
   margin-right: 2%;
   position: inherit;
 }

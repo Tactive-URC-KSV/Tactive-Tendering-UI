@@ -9,7 +9,11 @@ export const SectorsProvider = ({ children }) => {
     const [sectors, setSectors] = useState([]);
 
     useEffect(() => {
-        axios.get('http://localhost:8080/tactive/sectors')
+        axios.get(`${process.env.REACT_APP_API_BASE_URL}/sectors`, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+            },
+        })
             .then(response => {
                 setSectors(response.data);
             })

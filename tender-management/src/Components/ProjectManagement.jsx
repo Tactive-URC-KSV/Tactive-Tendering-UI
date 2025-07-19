@@ -3,17 +3,14 @@ import '../CSS/Styles.css';
 import axios from "axios";
 import { toast } from 'react-toastify';
 import { useParams } from 'react-router-dom';
-import { FaInfoCircle, FaCheckCircle, FaFileAlt, FaPlus } from "react-icons/fa";
-import { useRegions } from "../Context/RegionsContext";
-import { useSectors } from "../Context/SectorsContext";
-import { useScope } from "../Context/ScopeContext";
-import { useUom } from "../Context/UomContext";
+import { FaInfoCircle, FaCheckCircle, FaFileAlt } from "react-icons/fa";
 import ProjectInfo from "../Utills/ProjectInfo";
 import FeasibilityStudy from "../Utills/FeasibilityStudy";
 function ProjectCreation() {
     const [loading, setLoading] = useState(false);
     const { projectId } = useParams();
     const [project, setProject] = useState({
+        projectId:"",
         projectCode: "",
         projectName: "",
         shortName: "",
@@ -22,6 +19,8 @@ function ProjectCreation() {
         startDate: "",
         endDate: "",
         buildingArea: "",
+        phoneNo: "",
+        email: "",
         numberOfFloors: "",
         numberOfAboveGround: "",
         numberOfBelowGround: "",
@@ -38,38 +37,6 @@ function ProjectCreation() {
     const [scopePack, setScopePack] = useState([]);
     const [activeTab, setActiveTab] = useState('');
     const [enabledTabs, setEnabledTabs] = useState([]);
-    const [viewMode, setViewMode] = useState(false);
-
-    useEffect(() => {
-        if (projectId && project.projectStatus === 'PLANNING') {
-            setEnabledTabs(['info', 'feasibility', 'document']);
-            setViewMode(true);
-        } else if (projectId) {
-            setEnabledTabs(['info', 'feasibility']);
-            setViewMode(true);
-        } else {
-            setEnabledTabs(['info']);
-            setActiveTab('info');
-        }
-    }, [projectId, project.projectStatus]);
-
-    const regionOptions = useRegions().map(region => ({
-        value: region.id,
-        label: region.country
-    }));
-    const uomOptions = useUom().map(uom => ({
-        value: uom.id,
-        label: uom.uomName
-    }));
-    const sectorOptions = useSectors().map(sector => ({
-        value: sector.id,
-        label: sector.sectorName,
-    }));
-    const scopeOptions = useScope().map(scopes => ({
-        value: scopes.id,
-        label: scopes.scope,
-    }));
-
 
     const handleTabs = (tab) => {
         if (enabledTabs.includes(tab)) {
@@ -79,9 +46,26 @@ function ProjectCreation() {
 
 
     useEffect(() => {
+        if (projectId && project.projectStatus === 'PLANNING') {
+            setEnabledTabs(['info', 'feasibility', 'document']);
+        } else if (projectId) {
+            setEnabledTabs(['info', 'feasibility']);
+        } else {
+            setEnabledTabs(['info', 'feasibility', 'document']);
+            setActiveTab('info');
+        }
+    }, [projectId, project.projectStatus]);
+
+
+    useEffect(() => {
         if (projectId) {
             axios
-                .get(`http://localhost:8080/tactive/project/viewProjectInfo/${projectId}`)
+                .get(`${process.env.REACT_APP_API_BASE_URL}/project/viewProjectInfo/${projectId}` ,{
+                    headers: {
+                        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                        'Content-Type': 'application/json',
+                    },
+                })
                 .then((res) => {
                     if (res.status === 200) {
                         setProject(res.data);
@@ -105,12 +89,10 @@ function ProjectCreation() {
             if (!region) throw new Error('Region is required');
             if (!sector) throw new Error('Sector is required');
             if (!uom) throw new Error('UOM is required');
-
+            if (!scopePack.length) throw new Error('Scope of Packages is required');
             project.otherAmenities = Array.isArray(project.otherAmenities)
                 ? project.otherAmenities
                 : project.otherAmenities.split(',').map(a => a.trim());
-            project.projectStatus = 'UNDER_REVISION';
-
             const projectJson = project;
             const params = new URLSearchParams();
             params.append('regionId', region);
@@ -118,20 +100,24 @@ function ProjectCreation() {
             params.append('uomId', uom);
             scopePack.forEach(id => params.append('scopePackagesIds', id));
 
-
-            axios.post(`http://localhost:8080/tactive/project/createProject?${params.toString()}`, projectJson)
+            axios.post(`${process.env.REACT_APP_API_BASE_URL}/project/createProject?${params.toString()},`, projectJson,{
+                 headers: {
+                        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                        'Content-Type': 'application/json',
+                    },
+            })
                 .then(res => {
                     if (res.status === 201) {
                         toast.success("Project saved successfully!", { duration: 3000 });
                         setTimeout(() => {
-                            window.location.href = `/ProjectManagement/project/${res.data.id}`;
+                            window.location.href = `/Dashboard/project/${res.data.id}`;
                         }, 3000);
                     }
                 })
                 .catch(err => {
                     console.error('Error creating project:', err);
                     if (err.response?.status === 409) {
-                        toast.error("Conflict: Project already exists or violates unique constraints.");
+                        toast.error("Project already exists");
                     } else {
                         toast.error("Something went wrong while creating the project.");
                     }
@@ -156,14 +142,7 @@ function ProjectCreation() {
             <div className="row align-items-center mb-4">
                 <div className="col-auto">
                     {projectId ? (<h5 className="fw-bold mb-0 ms-2">{project.projectName}</h5>) : (<h5 className="fw-bold mb-0 ms-2">Project Creation</h5>)}
-
                 </div>
-                {projectId &&
-                    <div className="col-auto ms-auto">
-                        <button className="btn action-button me-1" onClick={() => window.location.href = '/ProjectManagement'}><FaPlus /><span className="ms-3">New Project</span></button>
-                    </div>
-                }
-
             </div>
             <div className="row d-flex justify-content-around mb-4 ms-2 me-2 bg-white rounded ">
                 <div className="col-lg-4 col-md-4">
@@ -186,15 +165,10 @@ function ProjectCreation() {
                 {activeTab === 'info' && 
                 <ProjectInfo
                     project={project}
-                    uomOptions={uomOptions}
-                    regionOptions={regionOptions}
-                    scopeOptions={scopeOptions}
-                    sectorOptions={sectorOptions}
                     region={region}
                     sector={sector}
                     scopePack={scopePack}
                     uom={uom}
-                    viewMode={viewMode}
                     loading={loading}
                     setProject={setProject}
                     setRegion={setRegion}
@@ -206,8 +180,6 @@ function ProjectCreation() {
                 {activeTab === 'feasibility' &&
                     <FeasibilityStudy
                         project={project}
-                        uomOptions={uomOptions}
-                        viewMode={viewMode}
                         setActiveTab={setActiveTab}
                         handleSubmit={handleSubmit}
                     />}
