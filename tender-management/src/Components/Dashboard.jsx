@@ -216,8 +216,8 @@ function ProjectWorklist() {
   </div>
 </div>
 
-        <div className="col-12">
-          <div className="project-overview d-flex justify-content-between align-items-center p-3 h-100 mb-3">
+        
+          <div className="row project-overview d-flex justify-content-between align-items-center p-3 h-100 mb-3 mt-3">
             <div className="text-start">
               <div className="row mb-3 mt-4">
                 <div className="col-12">
@@ -245,9 +245,8 @@ function ProjectWorklist() {
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="row mt-5 align-items-center pt-4 rounded">
+        <div className="row mt-3 align-items-center pt-4 rounded">
           <div className="col-lg-3 col-md-6 col-sm-12 mb-4">
             <label className="text-start d-block ms-3 me-1">
               Status
