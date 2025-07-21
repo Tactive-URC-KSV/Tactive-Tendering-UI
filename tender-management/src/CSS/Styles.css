@@ -95,7 +95,15 @@
 .project-counts {
   border-radius: 5px;
   background-color: white;
+  width: 85%;
   box-shadow: 0px 10px 10px 0px #00519726;
+}
+
+.project-overview {
+  border-radius: 5px;
+  background-color: white;
+  border: 1px solid #00519726;
+  border-radius: 10px;
 }
 
 .icon {
@@ -163,6 +171,7 @@
   color: #005197;
   font-weight: 600;
 }
+
 .projectform-select{
   position: absolute;
   background-color: white;
