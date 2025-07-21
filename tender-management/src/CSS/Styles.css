@@ -131,10 +131,15 @@
   outline: none;
   border-radius: 8px;
   border: 1px solid #005197CC;
-  height: 45px;
+  height: 48px;
   font-size: 14px;
-  padding-left: 15px;
+  padding-left: 20px;
   color: black;
+
+}
+.form-input::placeholder {
+  color: #00519780;
+  font-size: 13px;
 
 }
 .form-input:disabled{
@@ -197,6 +202,10 @@
 .select__indicator-separator {
   display: none !important;
 }
+.select__placeholder {
+  color: #00519780 !important;
+  font-size: 13px !important;
+}
 .select__control--is-focused {
   border: 1px solid #005197 !important;
   outline: none !important;
@@ -205,8 +214,8 @@
 }
 
 .select__placeholder {
-  color: grey !important;
-  font-size: 14px !important;
+  color: #00519780 !important;
+  font-size: 13px !important;
 }
 
 .select__option {

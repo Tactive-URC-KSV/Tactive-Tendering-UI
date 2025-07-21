@@ -15,7 +15,9 @@ export const RegionsProvider = ({ children }) => {
       },
     }) 
       .then(response => {
-        setRegions(response.data); 
+        if(response.status === 200){
+          setRegions(response.data); 
+        }
       })
       .catch(error => {
         console.error('Error fetching sectors:', error);
