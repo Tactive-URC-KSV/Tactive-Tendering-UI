@@ -12,6 +12,16 @@ import { ReactComponent as InProgress } from '../assest/In_prog.svg';
 import { ReactComponent as Completed } from '../assest/Tot_com.svg';
 import { useSectors } from '../Context/SectorsContext';
 
+
+    const overviewStatusConfig = [
+        { name: 'FEASIBILITY_STUDY', label: 'Feasibility Study', bgColor: '#EFF6FF', textColor: '#2563EB' },
+        { name: 'INTERNAL_ESTIMATION', label: 'Internal Estimation', bgColor: '#FAF5FF', textColor: '#9333EA' },
+        { name: 'TENDER_FLOATING', label: 'Tender Floating', bgColor: '#FEFCE8', textColor: '#CA8A04' },
+        { name: 'OFFER_RECEIVED', label: 'Offer Received', bgColor: '#EEF2FF', textColor: '#4F46E5' },
+        { name: 'NEGOTIATION', label: 'Negotiation', bgColor: '#FFF7ED', textColor: '#EA580C' },
+        { name: 'PROJECT_AWARDED', label: 'Project Awarded', bgColor: '#F0FDF4', textColor: '#2BA95A' },
+    ];
+
 function ProjectWorklist() {
     const [isListView, setIsListView] = useState(true);
     const [error, setError] = useState('');
@@ -149,165 +159,303 @@ function ProjectWorklist() {
         return Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
     };
     return (
-        <div className='container-fluid mt-3 min-vh-100'>
-            <div className='row align-items-center'>
-                <div className='col-lg-3 col-md-6 col-sm-12'>
-                    <div className='project-counts d-flex justify-content-between align-items-center p-3 h-100 mb-3'>
-                        <div className='text-start'>
-                            <p className='report-feild fw-bold mb-2 mt-2'>Total Projects</p>
-                            <p className='value fw-bold fs-4'>{projects.length}</p>
-                        </div>
-                        <div className='icon'><Total /></div>
-                    </div>
-                </div>
+      <div className="container-fluid mt-3 min-vh-100">
+<div className="row align-items-center justify-content-between mb-3 mt-3">
+  <div className="col-lg-4 col-md-4 col-sm-12 justify-content-center">
+    <div className="project-counts d-flex justify-content-between align-items-center p-3 h-100 mb-3"> 
+      <div className="text-start">
+        <p className="report-feild fw-bold mb-2 mt-2">Total Projects</p>
+        <p className="value fw-bold fs-4">{projects.length}</p>
+      </div>
+      <div className="icon">
+        <Total />
+      </div>
+    </div>
+  </div>
 
-                <div className='col-lg-3 col-md-6 col-sm-12'>
-                    <div className='project-counts d-flex justify-content-between align-items-center p-3 h-100 mb-3'>
-                        <div className='text-start'>
-                            <p className='report-feild fw-bold mb-2 mt-2'>Under Construction</p>
-                            <p className='value fw-bold fs-4'>{projects.filter(project => project.projectStatus === 'UNDER_CONSTRUCTION').length}</p>
-                        </div>
-                        <div className='icon'><ToatalValue /></div>
-                    </div>
-                </div>
+  <div className="col-lg-4 col-md-4 col-sm-12">
+    <div className="project-counts d-flex justify-content-between align-items-center p-3 h-100 mb-3">
+      <div className="text-start">
+        <p className="report-feild fw-bold mb-2 mt-2">Total Value</p>
+        <p className="value fw-bold fs-4">
+          $
+          {
+            projects.filter(
+              (project) =>
+                project.projectStatus === "UNDER_CONSTRUCTION"
+            ).length
+          }
+        </p>
+      </div>
+      <div className="icon">
+        <ToatalValue />
+      </div>
+    </div>
+  </div>
 
-                <div className='col-lg-3 col-md-6 col-sm-12'>
-                    <div className='project-counts d-flex justify-content-between align-items-center p-3 h-100 mb-3'>
-                        <div className='text-start'>
-                            <p className='report-feild fw-bold mb-2 mt-2'>Pre Construction</p>
-                            <p className='value fw-bold fs-4'>{projects.filter(project => project.projectStatus !== 'COMPLETED'
-                                && project.projectStatus !== 'UNDER_CONSTRUCTION'
-                            ).length}</p>
-                        </div>
-                        <div className='icon'><InProgress /></div>
-                    </div>
-                </div>
+  <div className="col-lg-4 col-md-4 col-sm-12">
+    <div className="project-counts d-flex justify-content-between align-items-center p-3 h-100 mb-3">
+      <div className="text-start">
+        <p className="report-feild fw-bold mb-2 mt-2">
+          Active Projects
+        </p>
+        <p className="value fw-bold fs-4">
+          {
+            projects.filter(
+              (project) =>
+                project.projectStatus !== "COMPLETED" &&
+                project.projectStatus !== "UNDER_CONSTRUCTION"
+            ).length
+          }
+        </p>
+      </div>
+      <div className="icon">
+        <InProgress />
+      </div>
+    </div>
+  </div>
+</div>
 
-                <div className='col-lg-3 col-md-6 col-sm-12'>
-                    <div className='project-counts d-flex justify-content-between align-items-center p-3 h-100 mb-3'>
-                        <div className='text-start'>
-                            <p className='report-feild fw-bold mb-2 mt-2'>Completed</p>
-                            <p className='value fw-bold fs-4'>{projects.filter(project => project.projectStatus === 'COMPLETED').length}</p>
-                        </div>
-                        <div className='icon'><Completed /></div>
-                    </div>
+        
+          <div className="row project-overview d-flex justify-content-between align-items-center p-3 h-100 mb-3 mt-3">
+            <div className="text-start">
+              <div className="row mb-3 mt-4">
+                <div className="col-12">
+                  <h5 className="fw-bold mb-3">Project Status Overview</h5>
                 </div>
+                {overviewStatusConfig.map((config, index) => (
+                  <div className="col-lg-2 col-md-4 col-sm-6 mb-3" key={index}>
+                    <div
+                      className="project-status-card p-3 text-center rounded"
+                      style={{
+                        backgroundColor: config.bgColor,
+                        color: config.textColor,
+                      }}
+                    >
+                      <p className="status-count fw-bold fs-5 mb-1">0</p>
+                      <p
+                        className="status-label mb-0"
+                        style={{ color: "black" }}
+                      >
+                        {config.label}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
+          </div>
 
-            <div className='row mt-5 align-items-center bg-white pt-4 rounded'>
-                <div className='col-lg-3 col-md-6 col-sm-12 mb-4'>
-                    <label className='projectform-select  text-start d-block ms-3 me-1'>Search</label>
-                    <input type="text" value={projectName} className='form-input w-100' onChange={searchProjects} placeholder='Search by Project Name' />
-                </div>
-                <div className='col-lg-3 col-md-6 col-sm-12 mb-4'>
-                    <label className='projectform-select text-start d-block ms-3 me-1'>Sector</label>
-                    <Select options={sectorOptions} placeholder="Filter by Sector" onChange={handleSectorChange} className="w-100" classNamePrefix="select" isClearable />
-                </div>
-                <div className='col-lg-3 col-md-6 col-sm-12 mb-4'>
-                    <label className='projectform-select text-start d-block ms-3 me-1'>Status</label>
-                    <Select options={statusOptions} onChange={handleStatusChange} placeholder="Filter by Status" className="w-100" classNamePrefix="select" isClearable />
-                </div>
-                <div className='col-lg-3 col-md-6 col-sm-12 mb-4'>
-                    <label className='projectform-select text-start d-block ms-3 me-1'>Region</label>
-                    <Select options={regionOptions} placeholder="Filter by Region" onChange={handleRegionChange} className="w-100" classNamePrefix="select" isClearable />
-                </div>
-            </div>
-
-            <div className='row mt-2'>
-                <div className='col-12 d-flex flex-row justify-content-end me-1 mt-1 mb-1'>
-                    <button className={`change-view ${isListView ? 'active' : ''}`} onClick={() => { setIsListView(true) }}><FaList /></button>
-                    <button className={`change-view ${!isListView ? 'active' : ''}`} onClick={() => { setIsListView(false) }}><FaThLarge /></button>
-                </div>
-            </div>
-
-            <div className="row mt-2">
-                <div className='col-12'>{error}</div>
-                {filteredProjects.length !== 0 &&
-                    isListView ? (
-                    <div className="table-responsive">
-                        <table className='table-container table rounded'>
-                            <thead>
-                                <tr>
-                                    <th>Project No</th>
-                                    <th>Project Name</th>
-                                    <th>Value of Project</th>
-                                    <th>Start Date</th>
-                                    <th>End Date</th>
-                                    <th>Sector</th>
-                                    <th>Status</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredProjects.map((project, index) => (
-                                    <tr key={index}>
-                                        <td>{project.projectCode}</td>
-                                        <td>{project.projectName}</td>
-                                        <td>$ {project.estimatedValue}</td>
-                                        <td>{project.startDate}</td>
-                                        <td>{project.endDate}</td>
-                                        <td>{project.sectorName}</td>
-                                        <td>{statusList.find(status => status.name === project.status)?.label}</td>
-                                        <td><Link to={`project/${project.projectId}`} className='text-decoration-none small'><FaEye /></Link></td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    filteredProjects.map((project, index) => (
-                        <div className="col-lg-4 col-md-6 col-sm-12 mb-4" key={index}>
-                            <div className="card h-100 shadow-sm border-0">
-                                <div className="card-body d-flex flex-column justify-content-between">
-
-                                    <div className="d-flex justify-content-between align-items-center mb-2">
-                                        <span className="project-code fw-bold text-primary">{project.projectCode}</span>
-                                        <span className="project-status badge text-light" style={{ backgroundColor: '#005197CC' }}>
-                                            {statusList.find(status => status.name === project.status)?.label}
-                                        </span>
-                                    </div>
-
-                                    <div className="mb-2 text-start">
-                                        <p className="project-name fw-bold">{project.projectName}</p>
-                                    </div>
-
-                                    <div className="d-flex justify-content-between mt-2 small">
-                                        <span>Start date:</span>
-                                        <span>{project.startDate && new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</span>
-                                    </div>
-
-                                    <div className="d-flex justify-content-between mt-1 small">
-                                        <span>End date:</span>
-                                        <span>{project.endDate && new Date(project.endDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</span>
-                                    </div>
-
-                                    <div className="d-flex justify-content-between mt-1 small">
-                                        <span>Sector:</span>
-                                        <span>{project.sectorName}</span>
-                                    </div>
-
-                                    <div className="d-flex justify-content-between mt-1 small">
-                                        <span>Value:</span>
-                                        <span>${project.estimatedValue}</span>
-                                    </div>
-
-                                    <div className="progress mt-3" style={{ height: '10px' }}>
-                                        <div className="progress-bar" style={{ width: `${calculateProgress(project.startDate, project.endDate)}%` }}></div>
-                                    </div>
-
-                                    <div className="d-flex justify-content-between align-items-center mt-3">
-                                        <span className="small text-muted">{remainingDaysCalc(project.endDate)} days remaining</span>
-                                        <Link to={`/ProjectManagement/project/${project.projectId}`} className='text-decoration-none small'><FaEye /> View details</Link>
-                                    </div>
-
-                                </div>
-                            </div>
-                        </div>
-                    ))
-                )}
-            </div>
+        <div className="row mt-3 align-items-center pt-4 rounded">
+          <div className="col-lg-3 col-md-6 col-sm-12 mb-4">
+            <label className="text-start d-block ms-3 me-1">
+              Status
+            </label>
+            <Select
+              options={statusOptions}
+              onChange={handleStatusChange}
+              placeholder="Filter by Status"
+              className="w-100"
+              classNamePrefix="select"
+              isClearable
+            />
+          </div>
+          <div className="col-lg-3 col-md-6 col-sm-12 mb-4">
+            <label className="text-start d-block ms-3 me-1">
+              Region
+            </label>
+            <Select
+              options={regionOptions}
+              placeholder="Filter by Region"
+              onChange={handleRegionChange}
+              className="w-100"
+              classNamePrefix="select"
+              isClearable
+            />
+          </div>
+                    <div className="col-lg-3 col-md-6 col-sm-12 mb-4">
+            <label className="text-start d-block ms-3 me-1">
+              Company
+            </label>
+            <Select
+              options={regionOptions}
+              placeholder="Filter by Region"
+              onChange={handleRegionChange}
+              className="w-100"
+              classNamePrefix="select"
+              isClearable
+            />
+          </div>
+          <div className="col-lg-3 col-md-6 col-sm-12 mb-4">
+            <label className="text-start d-block ms-3 me-1">
+              Search
+            </label>
+            <input
+              type="text"
+              value={projectName}
+              className="form-input w-100"
+              onChange={searchProjects}
+              placeholder="Search by Project Name"
+            />
+          </div>
         </div>
 
+        <div className="row mt-2">
+          <div className="col-12 d-flex flex-row justify-content-end me-1 mt-1 mb-1">
+            <button
+              className={`change-view ${isListView ? "active" : ""}`}
+              onClick={() => {
+                setIsListView(true);
+              }}
+            >
+              <FaList />
+            </button>
+            <button
+              className={`change-view ${!isListView ? "active" : ""}`}
+              onClick={() => {
+                setIsListView(false);
+              }}
+            >
+              <FaThLarge />
+            </button>
+          </div>
+        </div>
+
+        <div className="row mt-2">
+          <div className="col-12">{error}</div>
+          {filteredProjects.length !== 0 && isListView ? (
+            <div className="table-responsive">
+              <table className="table-container table rounded">
+                <thead>
+                  <tr>
+                    <th>Project No</th>
+                    <th>Project Name</th>
+                    <th>Value of Project</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Sector</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredProjects.map((project, index) => (
+                    <tr key={index}>
+                      <td>{project.projectCode}</td>
+                      <td>{project.projectName}</td>
+                      <td>$ {project.estimatedValue}</td>
+                      <td>{project.startDate}</td>
+                      <td>{project.endDate}</td>
+                      <td>{project.sectorName}</td>
+                      <td>
+                        {
+                          statusList.find(
+                            (status) => status.name === project.status
+                          )?.label
+                        }
+                      </td>
+                      <td>
+                        <Link
+                          to={`project/${project.id}`}
+                          className="text-decoration-none small"
+                        >
+                          <FaEye />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            filteredProjects.map((project, index) => (
+              <div className="col-lg-4 col-md-6 col-sm-12 mb-4" key={index}>
+                <div className="card h-100 shadow-sm border-0">
+                  <div className="card-body d-flex flex-column justify-content-between">
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <span className="project-code fw-bold text-primary">
+                        {project.projectCode}
+                      </span>
+                      <span
+                        className="project-status badge text-light"
+                        style={{ backgroundColor: "#005197CC" }}
+                      >
+                        {
+                          statusList.find(
+                            (status) => status.name === project.status
+                          )?.label
+                        }
+                      </span>
+                    </div>
+
+                    <div className="mb-2 text-start">
+                      <p className="project-name fw-bold">
+                        {project.projectName}
+                      </p>
+                    </div>
+
+                    <div className="d-flex justify-content-between mt-2 small">
+                      <span>Start date:</span>
+                      <span>
+                        {project.startDate &&
+                          new Date(project.startDate).toLocaleDateString(
+                            "en-US",
+                            { month: "short", day: "2-digit", year: "numeric" }
+                          )}
+                      </span>
+                    </div>
+
+                    <div className="d-flex justify-content-between mt-1 small">
+                      <span>End date:</span>
+                      <span>
+                        {project.endDate &&
+                          new Date(project.endDate).toLocaleDateString(
+                            "en-US",
+                            { month: "short", day: "2-digit", year: "numeric" }
+                          )}
+                      </span>
+                    </div>
+
+                    <div className="d-flex justify-content-between mt-1 small">
+                      <span>Sector:</span>
+                      <span>{project.sectorName}</span>
+                    </div>
+
+                    <div className="d-flex justify-content-between mt-1 small">
+                      <span>Value:</span>
+                      <span>${project.estimatedValue}</span>
+                    </div>
+
+                    <div className="progress mt-3" style={{ height: "10px" }}>
+                      <div
+                        className="progress-bar"
+                        style={{
+                          width: `${calculateProgress(
+                            project.startDate,
+                            project.endDate
+                          )}%`,
+                        }}
+                      ></div>
+                    </div>
+
+                    <div className="d-flex justify-content-between align-items-center mt-3">
+                      <span className="small text-muted">
+                        {remainingDaysCalc(project.endDate)} days remaining
+                      </span>
+                      <Link
+                        to={`/ProjectManagement/project/${project.projectId}`}
+                        className="text-decoration-none small"
+                      >
+                        <FaEye /> View details
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     );
 }
 export default ProjectWorklist;
