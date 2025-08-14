@@ -7,7 +7,7 @@ import { RegionsProvider } from './Context/RegionsContext';
 import { SectorsProvider } from './Context/SectorsContext';
 import { ScopeProvider } from './Context/ScopeContext';
 import { UomProvider } from './Context/UomContext';
-import  Logo from './assest/logo.svg';
+import  Logo from './assest/logo.svg?react';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
