@@ -1,0 +1,165 @@
+.container-fluid{
+    font-family: 'Poppins ', sans-serif;
+    overflow-x: hidden;
+}
+.login-form-control{
+  
+  background-color: white;
+  border: 1px solid #005197;
+  border-radius: 8px;
+  height: 45px;
+  font-size: 14px;
+  font-weight: 400;
+  width: 100%;
+  padding-left: 20px;
+  
+}
+
+.login-form-control:focus{
+    outline: none;
+    background-color: white;
+    border: 1px solid #005197;
+}
+.login-section{
+    background-color: #005197;
+}
+.login-username,
+.login-password{
+  position: absolute;
+  background-color: white;
+  margin-left: 19px;
+  margin-top: -10px;
+  padding-left: 6px;
+  padding-right: 5px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.custom-btn{
+  background-color: #005197;
+  width: 100%;
+  color: white;
+  height: 50px;
+  border: none;
+  border-radius: 5px;
+  font-size: 18px;
+  font-weight: 500;
+}
+.custom-btn:disabled{
+  background-color: #005197CC;
+  color: white;
+  cursor: not-allowed;
+}
+.custom-btn:hover{
+  background-color: #005197CC;
+  color: white;
+}
+.login-title{
+    font-weight: bold;
+    color: black;
+    text-align: center;
+    font-size: 20px;
+}
+
+.logo-text{
+    font-weight: bold;
+    font-size: 20px;
+    margin-left: 20px;
+    color: rgb(133, 130, 130);
+}
+.login-section-text-1{
+  color: white;
+  text-align: center;
+  font-size: 25px;
+  font-weight: 500;
+  
+}
+.login-section-text-2{
+  color: rgb(219, 217, 217);
+  text-align: center;
+  font-size: 20px;
+  font-weight: 500;
+  
+}
+.error{
+  color: red;
+  font-size: 19px;
+  text-align: center;
+}
+.eye-icon {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  margin-top: -8%;
+  margin-right: 2%;
+  position: inherit;
+}
+
+@media (max-width: 992px) {
+  
+  .logo-text {
+    font-size: 18px;
+    text-align: center;
+  }
+
+  .w-50 {
+    width: 90% !important;
+  }
+
+  .login-section-text-1,
+  .login-section-text-2 {
+    font-size: 18px;
+  }
+  .eye-icon {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  margin-top: -13%;
+  margin-right: 2%;
+  margin-bottom: 5%;
+  position: inherit;
+}
+}
+
+@media (max-width: 576px) {
+   
+  .logo-text {
+    font-size: 16px;
+  }
+
+  .login-title {
+    font-size: 18px;
+  }
+
+  .custom-btn {
+    font-size: 16px;
+  }
+
+  .login-section-text-1 {
+    font-size: 16px;
+  }
+
+  .login-section-text-2 {
+    font-size: 14px;
+  }
+  .eye-icon {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  margin-top: -19%;
+  margin-right: 2%;
+  margin-bottom: 5%;
+  position: inherit;
+}
+.login-container {
+   margin-left: 125px;
+  }
+}
+
+
+
+
+
+
