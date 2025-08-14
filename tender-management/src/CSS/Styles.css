@@ -485,3 +485,11 @@ label {
   background-color: #EFF6FF ;
   border: 1px solid #0051973D;
 }
+.boq-table{
+  .boq-header {
+    color: #005197;
+}
+  .boq-data {
+    color: rgba(0, 0, 0, 0.80);
+  }
+}
