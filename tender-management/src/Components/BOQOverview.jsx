@@ -4,7 +4,7 @@ import BOQUpload from "./BOQUpload";
 import axios from "axios";
 import  Import   from '../assest/Import.svg?react';
 import  Export   from '../assest/Export.svg?react';
-import  ExpandIcon  from '../assest/Expand.?react';
+import  ExpandIcon  from '../assest/Expand.svg?react';
 import  CollapseIcon  from '../assest/Collapse.svg?react';
 import  DropDown  from '../assest/DropDown.svg?react';
 import  DeleteIcon  from '../assest/DeleteIcon.svg?react';

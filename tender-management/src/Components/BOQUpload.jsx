@@ -11,7 +11,7 @@ import  ColumnIcon  from '../assest/columns.svg?react';
 import  InternalIcon  from '../assest/Internal_Fields.svg?react';
 import  Drag  from '../assest/Drag.svg?react';
 import  Template  from '../assest/Template.svg?react';
-import  Mapping  from '../assest/Mapping.?react';
+import  Mapping  from '../assest/Mapping.svg?react';
 import { toast } from 'react-toastify';
 
 const autoScrollWhileDragging = (e) => {

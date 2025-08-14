@@ -1,4 +1,4 @@
-import SelectIcon  from '../assest/Select.?react';
+import SelectIcon  from '../assest/Select.svg?react';
 import { useEffect, useState } from 'react';
 import Select from 'react-select';
 import '../CSS/Styles.css';
