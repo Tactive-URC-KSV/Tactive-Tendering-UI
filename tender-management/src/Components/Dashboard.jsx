@@ -1,17 +1,17 @@
-import { useState, useEffect } from 'react';
-import { useRegions } from '../Context/RegionsContext';
 import axios from 'axios';
-import Select from 'react-select';
-import { Link } from 'react-router-dom';
-import { FaList, FaThLarge } from 'react-icons/fa';
-import '../CSS/Styles.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
-import  Total  from '../assest/Tot.svg?react';
-import  ToatalValue  from '../assest/Tot_val.svg?react';
-import  InProgress  from '../assest/In_prog.svg?react';
-import  Action   from '../assest/Action.svg?react';
-import { useSectors } from '../Context/SectorsContext';
+import { useEffect, useState } from 'react';
+import { FaList, FaThLarge } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
+import Select from 'react-select';
+import Action from '../assest/Action.svg?react';
+import InProgress from '../assest/In_prog.svg?react';
+import Total from '../assest/Tot.svg?react';
+import ToatalValue from '../assest/Tot_val.svg?react';
 import { useProjectStatus } from '../Context/ProjectStatusContext';
+import { useRegions } from '../Context/RegionsContext';
+import { useSectors } from '../Context/SectorsContext';
+import '../CSS/Styles.css';
 
 
 
@@ -20,13 +20,16 @@ function ProjectWorklist() {
     const [isListView, setIsListView] = useState(true);
     const [error, setError] = useState('');
     const [projectName, setProjectName] = useState('');
-    const [sector, setSector] = useState('');
+    // const [sector, setSector] = useState('');
     const [filteredProjects, setFilteredProjects] = useState([]);
     const [projects, setProjects] = useState([]);
-    const [region, setRegion] = useState('');
+    // const [region, setRegion] = useState('');
     const regionList = useRegions();
     const sectorList = useSectors();
     const projectStatus = useProjectStatus();
+    const [selectedSector, setSelectedSector] = useState(null);
+    const [selectedRegion, setSelectedRegion] = useState(null);
+    const [selectedStatus, setSelectedStatus] = useState(null);
 
     const statusOptions = projectStatus.map(status => ({
         value: status.id,
@@ -34,7 +37,18 @@ function ProjectWorklist() {
     }));
 
     const handleStatusChange = (selectedOption) => {
-        filterByStatus(selectedOption?.value || '');
+        setSelectedStatus(selectedOption);
+        applyFilters(selectedRegion, selectedSector, selectedOption);
+    };
+
+    const handleRegionChange = (selectedOption) => {
+        setSelectedRegion(selectedOption);
+        applyFilters(selectedOption, selectedSector, selectedStatus);
+    };
+
+    const handleSectorChange = (selectedOption) => {
+        setSelectedSector(selectedOption);
+        applyFilters(selectedRegion, selectedOption, selectedStatus);
     };
 
     const regionOptions = regionList.map(region => ({
@@ -42,18 +56,11 @@ function ProjectWorklist() {
         label: region.regionName
     }));
 
-    const handleRegionChange = (selectedOption) => {
-        filterByRegion(selectedOption?.value || '');
-    };
 
     const sectorOptions = sectorList.map(sector => ({
         value: sector.id,
         label: sector.sectorName
     }));
-
-    const handleSectorChange = (selectedOption) => {
-        filterBySector(selectedOption?.value || '');
-    };
 
     useEffect(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/allProjects`, {
@@ -75,16 +82,21 @@ function ProjectWorklist() {
                 console.error('Error fetching projects:', error);
             });
     }, []);
+
     const searchProjects = (e) => {
-        e.preventDefault();
-        setProjectName(e.target.value);
         const searchTerm = e.target.value.toLowerCase();
-        setFilteredProjects(projects.filter((project) => {
-            return project.projectName.toLowerCase().includes(searchTerm)
-        }));
-        if (searchTerm === '') {
-            setFilteredProjects(projects);
-        }
+        setProjectName(searchTerm);
+
+        const filtered = projects.filter(project => {
+            const matchesSearch = project.projectName.toLowerCase().includes(searchTerm);
+            const matchesRegion = !selectedRegion || project.regionName === selectedRegion.label;
+            const matchesSector = !selectedSector || project.sectorId === selectedSector.value;
+            const matchesStatus = !selectedStatus || project.status === selectedStatus.label;
+
+            return matchesSearch && matchesRegion && matchesSector && matchesStatus;
+        });
+
+        setFilteredProjects(filtered);
     }
 
     const projectCounts = projects.reduce((acc, project) => {
@@ -92,31 +104,22 @@ function ProjectWorklist() {
         return acc;
     }, {});
 
-    const filterBySector = (selectedSector) => {
-        setSector(selectedSector);
-        const selectedStatus = projectStatus;
-        const selectedRegion = region;
-        filterProject(selectedSector, selectedStatus, selectedRegion);
-    }
-    const filterProject = (selectedSector, selectedStatus, selectedRegion) => {
-        setFilteredProjects(projects.filter((project) => {
-            return (project.sector === selectedSector || selectedSector === "" || selectedSector === "All") &&
-                (project.projectStatus === selectedStatus || selectedStatus === "All" || selectedStatus === "") &&
-                (selectedRegion === "All" || selectedRegion === "" || project.country === selectedRegion);
-        }));
-    }
-    const filterByStatus = (selectedStatus) => {
-        const selectedSector = sector;
-        const selectedRegion = region;
-        filterProject(selectedSector, selectedStatus, selectedRegion);
+
+    const applyFilters = (region, sector, status) => {
+        const filtered = projects.filter(project => {
+            const matchesRegion = !region || project.regionName === region.label;
+            console.log(project.regionName);
+            const matchesSector = !sector || project.sectorId === sector.value;
+            const matchesStatus = !status || project.status === status.label;
+            const matchesSearch = project.projectName.toLowerCase().includes(projectName.toLowerCase());
+
+            return matchesRegion && matchesSector && matchesStatus && matchesSearch;
+        });
+
+        setFilteredProjects(filtered);
     }
 
-    const filterByRegion = (selectedRegion) => {
-        setRegion(selectedRegion);
-        const selectedSector = sector;
-        const selectedStatus = projectStatus;
-        filterProject(selectedSector, selectedStatus, selectedRegion);
-    }
+
     const calculateProgress = (start, end) => {
         if (!start || !end) return 0;
 
@@ -426,3 +429,5 @@ function ProjectWorklist() {
     );
 }
 export default ProjectWorklist;
+
+
