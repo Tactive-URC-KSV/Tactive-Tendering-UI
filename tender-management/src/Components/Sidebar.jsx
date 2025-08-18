@@ -1,21 +1,17 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useLocation, useNavigate, Routes, Route } from 'react-router-dom';
-
 import Logo from '../assest/logo.svg?react';
 import LogoutIcon from '../assest/Logout.svg?react';
 import UserIcon from '../assest/User.svg?react';
 import NotifyIcon from '../assest/Notify.svg?react';
-
 import {
   FaClipboardList, FaPlus, FaListAlt, FaMapSigns, FaCalculator,
   FaPaperPlane, FaSearch, FaInbox, FaChartBar, FaUserPlus
 } from 'react-icons/fa';
-
 import '../CSS/Styles.css';
-
 import Dashboard from './Dashboard';
 import ProjectManagement from './ProjectManagement';
-import ProjectInfo from './ProjectInfo';
+import ProjectInfo from './ProjectOverview';
 import BOQDefinition from './BOQDefinition';
 
 function Sidebar() {

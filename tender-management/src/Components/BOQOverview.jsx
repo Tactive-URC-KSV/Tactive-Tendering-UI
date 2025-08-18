@@ -13,21 +13,21 @@ import  DeleteIcon  from '../assest/DeleteIcon.svg?react';
 const BOQContext = createContext();
 
 function BOQNode({ boq, level = 0 }) {
-    const { expanded, toggleExpanded } = useContext(BOQContext); // Ensure this works
+    const { expanded, toggleExpanded } = useContext(BOQContext); 
     const isExpanded = expanded.has(boq.boqCode);
     const hasChildren = boq.children && boq.children.length > 0;
     const total = boq.calculatedTotal || 0;
-    const isLeaf = !hasChildren; // or boq.lastLevel if available
+    const isLeaf = !hasChildren; 
 
     if (isLeaf) {
         return (
             <tr>
                 <td><input type="checkbox" className="form-check-input" style={{borderColor: '#005197'}} /></td>
-                <td className="boq-data">{boq.boqName || 'No Name'}</td>
-                <td className="boq-data">{boq.uom?.uomCode || 'Cum'}</td>
-                <td className="boq-data">{boq.quantity || 0}</td>
-                <td className="boq-data">{boq.totalRate || 0}</td>
-                <td className="boq-data">{boq.totalAmount || 0}</td>
+                <td className="boq-data">{boq.boqName || '-'}</td>
+                <td className="boq-data">{boq.uom?.uomCode || '-'}</td>
+                <td className="boq-data">{boq.quantity.toFixed(3) || 0}</td>
+                <td className="boq-data">{boq.totalRate.toFixed(2) || 0}</td>
+                <td className="boq-data">{boq.totalAmount.toFixed(2) || 0}</td>
             </tr>
         );
     }
@@ -89,9 +89,9 @@ function BOQNode({ boq, level = 0 }) {
                                             <td><input type="checkbox" className="form-check-input" style={{borderColor: '#005197'}} checked={rowSelected[index]} onChange={handleRowChange(index)} /></td>
                                             <td className="boq-data">{child.boqName || 'No Name'}</td>
                                             <td className="boq-data">{child.uom?.uomCode || 'Cum'}</td>
-                                            <td className="boq-data">{child.quantity || 0}</td>
-                                            <td className="boq-data">{child.totalRate || 0}</td>
-                                            <td className="boq-data">{child.totalAmount || 0}</td>
+                                            <td className="boq-data">{child.quantity.toFixed(3) || 0}</td>
+                                            <td className="boq-data">{child.totalRate.toFixed(2) || 0}</td>
+                                            <td className="boq-data">{child.totalAmount.toFixed(2) || 0}</td>
                                         </tr>
                                     )) : <tr><td colSpan="6">No data available</td></tr>}
                                 </tbody>
