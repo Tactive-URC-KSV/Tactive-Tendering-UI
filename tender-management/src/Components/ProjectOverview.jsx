@@ -15,7 +15,7 @@ import "../CSS/Styles.css";
 import { useProjectStatus } from "../Context/ProjectStatusContext";
 import { toast } from "react-toastify";
 
-function ProjectDetails() {
+function ProjectOverview() {
     const { projectId } = useParams();
     const [project, setProject] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -333,4 +333,4 @@ function ProjectDetails() {
     );
 }
 
-export default ProjectDetails;
+export default ProjectOverview;
