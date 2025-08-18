@@ -63,10 +63,10 @@ function BOQNode({ boq, level = 0 }) {
                     )}
                     <span className="fw-bold ms-2">{boq.boqName || 'Unnamed BOQ'}</span>
                 </div>
-                <div className="d-flex align-items-center">
+                {boq.level === 1 && <div className="d-flex align-items-center">
                     <span className="fw-bold me-3" style={{ color: '#005197' }}>{`$ ${total.toFixed(2)}`}</span>
                     <DeleteIcon style={{ cursor: 'pointer' }} />
-                </div>
+                </div> }
             </div>
             {isExpanded && hasChildren && (
                 <div className="mt-3">
@@ -93,7 +93,7 @@ function BOQNode({ boq, level = 0 }) {
                                             <td className="boq-data">{child.totalRate || 0}</td>
                                             <td className="boq-data">{child.totalAmount || 0}</td>
                                         </tr>
-                                    )) : <tr><td colSpan="6">No child data available</td></tr>}
+                                    )) : <tr><td colSpan="6">No data available</td></tr>}
                                 </tbody>
                             </table>
                         </div>

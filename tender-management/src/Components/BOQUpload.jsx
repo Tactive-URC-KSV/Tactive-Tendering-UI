@@ -6,12 +6,12 @@ import axios from 'axios';
 import { FaCloudUploadAlt } from 'react-icons/fa';
 import Select from 'react-select';
 import { throttle } from 'lodash';
-import  FileIcon  from '../assest/BoqFile.svg?react';
-import  ColumnIcon  from '../assest/columns.svg?react';
-import  InternalIcon  from '../assest/Internal_Fields.svg?react';
-import  Drag  from '../assest/Drag.svg?react';
-import  Template  from '../assest/Template.svg?react';
-import  Mapping  from '../assest/Mapping.svg?react';
+import FileIcon from '../assest/BoqFile.svg?react';
+import ColumnIcon from '../assest/columns.svg?react';
+import InternalIcon from '../assest/Internal_Fields.svg?react';
+import Drag from '../assest/Drag.svg?react';
+import Template from '../assest/Template.svg?react';
+import Mapping from '../assest/Mapping.svg?react';
 import { toast } from 'react-toastify';
 
 const autoScrollWhileDragging = (e) => {
@@ -45,6 +45,8 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    });
    const [templateList, setTemplateList] = useState([]);
    const [selectedTemplate, setSelectedTemplate] = useState(null);
+   const [fileType, setFileType] = useState('')
+
    const [internalFields, setInternalFields] = useState([
       { fields: 'boqCode', mappingFields: '', importance: 'Required', label: 'BOQ Code' },
       { fields: 'boqName', mappingFields: '', importance: 'Required', label: 'BOQ Name' },
@@ -112,18 +114,32 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const getExcelSheets = (event) => {
       const file = event.target.files[0];
       setBOQfile(file);
+
+      const fileName = file.name;
+      const ext = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
+      setFileType(ext);
+
       const formData = new FormData();
       formData.append('file', file);
-      axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/excel/getSheets`, formData,
-         {
-            headers: {
-               Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-            }
+
+      axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/excel/getSheets`, formData, {
+         headers: {
+            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
          }
-      ).then(res => {
+      }).then(res => {
          if (res.status === 200) {
-            const excelSheets = res.data;
-            setSheetOption(excelSheets.map(name => ({ label: name, value: name })));
+            const response = res.data;
+            switch (ext) {
+               case 'pdf':
+                  setColumns(response);
+                  break;
+               case 'xlsx':
+               case 'xls':
+                  setSheetOption(response.map(name => ({ label: name, value: name })));
+                  break;
+               default:
+                  toast.error(`Unsupported file type: ${ext}`);
+            }
          }
       }).catch(err => {
          console.log(err);
@@ -202,7 +218,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          { type: 'application/json' }
       );
       formData.append('columnMapping', mappingBlob);
-      axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/uploadBOQ/${selectedSheet}/${projectId}`, formData,
+      axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/mapBOQ/${selectedSheet ? selectedSheet : 'null'}/${projectId}`, formData,
          {
             headers: {
                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
@@ -226,7 +242,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             sheetOption.length === 1 && (setTimeout(() => {
                window.location.href = `/BOQdefinition/${projectId}`;
             }, 3000));
-            
+
          }
       }
       ).catch(err => {
@@ -348,6 +364,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                     loadSheetColumn(sheetValue);
                                  }
                               }}
+                              isDisabled={fileType === 'pdf'}
                            />
                         </div>
                      </div>
@@ -375,7 +392,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                         />
                      </div>
                   </div>
-                  {selectedSheet && (<div className='mt-5'>
+                  {(selectedSheet || columns) && (<div className='mt-5'>
                      <h5 className='mb-3'>Map the Fields</h5>
                      <div className='row d-flex justify-content-between'>
                         <div className='col-lg-6 col-md-6 col-sm-12'>

@@ -20,10 +20,8 @@ function ProjectWorklist() {
     const [isListView, setIsListView] = useState(true);
     const [error, setError] = useState('');
     const [projectName, setProjectName] = useState('');
-    // const [sector, setSector] = useState('');
     const [filteredProjects, setFilteredProjects] = useState([]);
     const [projects, setProjects] = useState([]);
-    // const [region, setRegion] = useState('');
     const regionList = useRegions();
     const companyList = useSectors();
     const projectStatus = useProjectStatus();
@@ -256,6 +254,7 @@ function ProjectWorklist() {
                     </label>
                     <Select
                         placeholder="Filter by Company Name"
+                        options={companyOptions}
                         onChange={handleCompanyChange}
                         className="w-100"
                         classNamePrefix="select"
