@@ -1,19 +1,18 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { ArrowLeft, Check, X } from "lucide-react";
-import Edit  from "../assest/Edit.svg?react";
-import  GeneralInfo  from "../assest/GeneralInfo.svg?react";
-import  TechnicalInfo  from "../assest/TechDetails.svg?react";
-import  FinOverview  from "../assest/Financial_Overview.svg?react";
-import  Overview  from "../assest/overview.svg?react";
-import  Archive  from "../assest/Archive.svg?react";
-import  DocSuc  from "../assest/DocSuc.svg?react";
-import  DocFail  from "../assest/DocRej.svg?react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 import "../CSS/Styles.css";
 import { useProjectStatus } from "../Context/ProjectStatusContext";
-import { toast } from "react-toastify";
+import Archive from "../assest/Archive.svg?react";
+import DocFail from "../assest/DocRej.svg?react";
+import DocSuc from "../assest/DocSuc.svg?react";
+import Edit from "../assest/Edit.svg?react";
+import FinOverview from "../assest/Financial_Overview.svg?react";
+import GeneralInfo from "../assest/GeneralInfo.svg?react";
+import TechnicalInfo from "../assest/TechDetails.svg?react";
+import Overview from "../assest/overview.svg?react";
 
 function ProjectDetails() {
     const { projectId } = useParams();
@@ -29,6 +28,10 @@ function ProjectDetails() {
 
     const editDetails = () => {
         navigate(`/ProjectManagement/project/${project.id}`);
+    };
+
+    const handleAddFeasibility = () => {
+        navigate(`/ProjectManagement/project/${project.id}#feasibility`);
     };
 
     useEffect(() => {
@@ -168,7 +171,7 @@ function ProjectDetails() {
                 setTimeout(() => {
                     window.location.reload();
                 }, 2000)
-                
+
             }
         }).catch(err => {
             toast.error(err.message);
@@ -325,7 +328,12 @@ function ProjectDetails() {
                     : (
                         <div className="d-flex justify-content-between align-items-center p-3">
                             <span className="fw-bold ms-2 " style={{ fontSize: '17px' }}>Feasibility Study</span>
-                            <Link to={`/ProjectManagement/project/${project.id}`} className='text-decoration-none small'><button className="btn action-button me-1 ">Add Feasibility</button></Link>
+                            <button
+                                onClick={handleAddFeasibility}
+                                className="btn action-button me-1"
+                            >
+                                Add Feasibility
+                            </button>
                         </div>)}
             </div>
         </div>
