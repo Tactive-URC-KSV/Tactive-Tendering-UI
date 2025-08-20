@@ -13,6 +13,8 @@ import Dashboard from './Dashboard';
 import ProjectManagement from './ProjectManagement';
 import ProjectInfo from './ProjectOverview';
 import BOQDefinition from './BOQDefinition';
+import CostCodeMapping from './CostCodeMapping';
+import CCMOverview from './CCMOverview';
 
 function Sidebar() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -100,7 +102,8 @@ function Sidebar() {
             <Route path="/ProjectManagement/project/:projectId" element={<ProjectManagement />} />
             <Route path="/BOQdefinition" element={<BOQDefinition />} />
             <Route path="/BOQdefinition/:projectId" element={<BOQDefinition />} />
-            <Route path="/CostCodeMapping" element={<h1>Cost Code Mapping</h1>} />
+            <Route path="/CostCodeMapping" element={<CostCodeMapping/>} />
+            <Route path="/CostCodeMapping/:projectId" element={<CCMOverview />} />
             <Route path="/TenderEstimation" element={<h1>Tender Estimation</h1>} />
             <Route path="/TenderFloating" element={<h1>Tender Floating</h1>} />
             <Route path="/TenderTracking" element={<h1>Tender Tracking</h1>} />
