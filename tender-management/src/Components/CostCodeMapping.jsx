@@ -1,16 +1,16 @@
 import { useParams } from 'react-router-dom';
 import '../CSS/Styles.css';
 import ProjectSelection from './BOQProjectInfo';
-import BOQOverview from './BOQOverview';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import CCMOverview from './CCMOverview';
 
-function BOQDefinition() {
+function CostCodeMapping() {
     const projectId = useParams().projectId;
     const [projects, setProjects] = useState([]);
 
     useEffect(() => {
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/approved/projects`, {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllBoqUploadedProject`, {
             headers: {
                 Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                 'Content-Type': 'application/json',
@@ -19,6 +19,7 @@ function BOQDefinition() {
             .then(res => {
                 if (res.status === 200) {
                     setProjects(res.data);
+                    console.log(res.data);
                 }
             })
             .catch(err => {
@@ -30,16 +31,18 @@ function BOQDefinition() {
         <div className="container-fluid">
             {!projectId && (
                 <>
-                    <div className="text-start fw-bold ms-1 mt-1 mb-3">BOQ Definition</div>
+                    <div className="text-start fw-bold ms-1 mt-1 mb-3">Cost Code Mapping</div>
                     <ProjectSelection 
                         projects={projects} 
-                        continueRoute="/BOQdefinition" 
+                        continueRoute="/CostCodeMapping" 
                     />
                 </>
             )}
-            {projectId && <BOQOverview projectId={projectId} />}
+            {projectId && <CCMOverview projectId={projectId} />}  
+                      
+    
         </div>
     );
 }
 
-export default BOQDefinition;
+export default CostCodeMapping;

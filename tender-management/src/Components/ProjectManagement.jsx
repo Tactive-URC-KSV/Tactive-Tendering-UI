@@ -1,12 +1,12 @@
-import { useEffect, useState, useRef } from "react";
-import '../CSS/Styles.css';
 import axios from "axios";
-import { toast } from 'react-toastify';
+import { useEffect, useRef, useState } from "react";
+import { FaCheckCircle, FaFileAlt, FaInfoCircle } from "react-icons/fa";
 import { useParams } from 'react-router-dom';
-import { FaInfoCircle, FaCheckCircle, FaFileAlt } from "react-icons/fa";
-import ProjectDetails from "../Utills/ProjectDetails";
-import FeasibilityStudy from "../Utills/FeasibilityStudy";
+import { toast } from 'react-toastify';
+import '../CSS/Styles.css';
 import Documents from "../Utills/Documents";
+import FeasibilityStudy from "../Utills/FeasibilityStudy";
+import ProjectDetails from "../Utills/ProjectDetails";
 function ProjectCreation() {
     const [loading, setLoading] = useState(false);
     const { projectId } = useParams();
@@ -59,6 +59,12 @@ function ProjectCreation() {
         }
     }, [projectId, project.projectStatus]);
 
+    useEffect(() => {
+        const hash = window.location.hash.substring(1);
+        if (hash === 'feasibility') {
+            setActiveTab('feasibility');
+        }
+    }, []);
 
     useEffect(() => {
         if (projectId) {
@@ -77,7 +83,7 @@ function ProjectCreation() {
                         setSector(res.data.sector.id);
                         setUom(res.data.uom.id);
                         setActiveTab('feasibility');
-                        
+
                     }
                 })
                 .catch((err) => {
@@ -85,7 +91,6 @@ function ProjectCreation() {
                 });
         }
     }, [projectId]);
-
 
     const handleSubmit = async () => {
         try {
@@ -101,63 +106,50 @@ function ProjectCreation() {
                 uomId: uom,
                 scopeOfPackageIds: scopePack,
             };
-            console.log(projectJson);
 
-            const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/createProject`, projectJson, {
-                headers: {
-                    Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                    'Content-Type': 'application/json'
+            const res = await axios.post(
+                `${import.meta.env.VITE_API_BASE_URL}/project/createProject`,
+                projectJson,
+                {
+                    headers: {
+                        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                    }
                 }
-            });
+            );
 
             if (res.status === 201) {
-                setProject(prev => ({ ...prev, projectId: res.data.id }));
+                const newProjectId = res.data.id || res.data.projectId;
+                setProject(prev => ({ ...prev, id: newProjectId, projectId: newProjectId }));
+
                 if (uploadedFiles.length > 0) {
                     const formData = new FormData();
                     uploadedFiles.forEach(file => formData.append('files', file));
 
-                    await axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/saveProjectFiles/${res.data.id}`, formData, {
-                        headers: {
-                            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                            'Content-Type': 'multipart/form-data'
-                        }
-                    })
-                        .then((res) => {
-                            if (res.status === 201) {
-                                toast.success(`Project saved successfully!`, { duration: 3000 });
-                                setTimeout(() => {
-                                    window.location.href = `/Dashboard/project/${project.projectId}`;
-                                }, 3000);
+                    await axios.post(
+                        `${import.meta.env.VITE_API_BASE_URL}/project/saveProjectFiles/${newProjectId}`,
+                        formData,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                                'Content-Type': 'multipart/form-data'
                             }
-                        })
-                        .catch((err) => {
-                            console.log(err);
-                            console.error("Failed to save project files");
-                        })
+                        }
+                    );
                 }
 
-                else {
-                    toast.success("Project created successfully!");
-                    setTimeout(() => {
-                        window.location.href = `/Dashboard/project/${project.projectId}`;
-                    }, 3000);
-                }
-
-
+                toast.success("Project created successfully!");
+                setTimeout(() => {
+                    window.location.href = `/Dashboard/project/${newProjectId}`;
+                }, 3000);
             }
-
         } catch (error) {
             console.error('Error creating project:', error);
-            if (error.response?.status === 409) {
-                toast.error(error.message);
-            } else {
-                toast.error(error.message);
-            }
+            toast.error(error.response?.data?.message || error.message);
         } finally {
             setLoading(false);
         }
     };
-
     return (
         <div className="container-fluid">
             <div className="row align-items-center mb-4">
