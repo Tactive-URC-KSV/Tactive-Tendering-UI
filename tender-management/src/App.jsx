@@ -11,6 +11,7 @@ import  Logo from './assest/logo.svg?react';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import "@fontsource/poppins";
 import "@fontsource/poppins/500.css";
 import "@fontsource/poppins/600.css";
