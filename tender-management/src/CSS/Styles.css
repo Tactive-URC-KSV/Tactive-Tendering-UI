@@ -336,7 +336,6 @@ label {
   border-top-left-radius: 6px;
   border-top-right-radius: 6px;
 }
-
 .btn.action-button {
   background-color: #005197;
   color: white;
@@ -345,12 +344,18 @@ label {
   font-size: 14px !important;
 }
 
-.btn.action-button:hover {
+.btn.action-button:hover,
+.btn.export-button:hover {
   background-color: #005197 !important;
   color: white !important;
-  
 }
-
+.btn.export-button{
+  background-color: #005197;
+  color: white;
+  min-width: 105px !important;
+  border-radius: 8px;
+  font-size: 14px !important;
+}
 .btn.archive-button {
   background-color: #FEF2F2;
   color: #DC2626;

@@ -1,28 +1,28 @@
-import { useEffect, useState, createContext, useContext } from "react";
+import { useEffect, useState, createContext, useContext, useRef } from "react";
 import { ArrowLeft } from 'lucide-react';
 import BOQUpload from "./BOQUpload";
 import axios from "axios";
-import  Import   from '../assest/Import.svg?react';
-import  Export   from '../assest/Export.svg?react';
-import  ExpandIcon  from '../assest/Expand.svg?react';
-import  CollapseIcon  from '../assest/Collapse.svg?react';
-import  DropDown  from '../assest/DropDown.svg?react';
-import  DeleteIcon  from '../assest/DeleteIcon.svg?react';
+import Import from '../assest/Import.svg?react';
+import Export from '../assest/Export.svg?react';
+import ExpandIcon from '../assest/Expand.svg?react';
+import CollapseIcon from '../assest/Collapse.svg?react';
+import DropDown from '../assest/DropDown.svg?react';
+import DeleteIcon from '../assest/DeleteIcon.svg?react';
 
 
 const BOQContext = createContext();
 
 function BOQNode({ boq, level = 0 }) {
-    const { expanded, toggleExpanded } = useContext(BOQContext); 
+    const { expanded, toggleExpanded } = useContext(BOQContext);
     const isExpanded = expanded.has(boq.boqCode);
     const hasChildren = boq.children && boq.children.length > 0;
     const total = boq.calculatedTotal || 0;
-    const isLeaf = !hasChildren; 
+    const isLeaf = !hasChildren;
 
     if (isLeaf) {
         return (
             <tr>
-                <td><input type="checkbox" className="form-check-input" style={{borderColor: '#005197'}} /></td>
+                <td><input type="checkbox" className="form-check-input" style={{ borderColor: '#005197' }} /></td>
                 <td className="boq-data">{boq.boqName || '-'}</td>
                 <td className="boq-data">{boq.uom?.uomCode || '-'}</td>
                 <td className="boq-data">{boq.quantity.toFixed(3) || 0}</td>
@@ -66,16 +66,16 @@ function BOQNode({ boq, level = 0 }) {
                 {boq.level === 1 && <div className="d-flex align-items-center">
                     <span className="fw-bold me-3" style={{ color: '#005197' }}>{`$ ${total.toFixed(2)}`}</span>
                     <DeleteIcon style={{ cursor: 'pointer' }} />
-                </div> }
+                </div>}
             </div>
             {isExpanded && hasChildren && (
                 <div className="mt-3">
                     {boq.children.every(child => !child.children || child.children.length === 0) ? (
-                        <div className="table-responsive boq-table" style={{background: 'white', borderRadius: 9}}>
+                        <div className="table-responsive boq-table" style={{ background: 'white', borderRadius: 9 }}>
                             <table className="table table-borderless">
                                 <thead>
-                                    <tr style={{borderBottom: '1px solid rgba(0, 81, 151, 0.24)'}}>
-                                        <th><input type="checkbox" className="form-check-input" style={{borderColor: '#005197'}} checked={allSelected} onChange={handleAllChange} /></th>
+                                    <tr style={{ borderBottom: '1px solid rgba(0, 81, 151, 0.24)' }}>
+                                        <th><input type="checkbox" className="form-check-input" style={{ borderColor: '#005197' }} checked={allSelected} onChange={handleAllChange} /></th>
                                         <th className="boq-header">BOQ Name</th>
                                         <th className="boq-header">UOM</th>
                                         <th className="boq-header">Quantity</th>
@@ -85,8 +85,8 @@ function BOQNode({ boq, level = 0 }) {
                                 </thead>
                                 <tbody>
                                     {boq.children.length > 0 ? boq.children.map((child, index) => (
-                                        <tr key={index} style={{borderBottom: index === boq.children.length - 1 ? 'none' : '1px solid rgba(0, 81, 151, 0.24)'}}>
-                                            <td><input type="checkbox" className="form-check-input" style={{borderColor: '#005197'}} checked={rowSelected[index]} onChange={handleRowChange(index)} /></td>
+                                        <tr key={index} style={{ borderBottom: index === boq.children.length - 1 ? 'none' : '1px solid rgba(0, 81, 151, 0.24)' }}>
+                                            <td><input type="checkbox" className="form-check-input" style={{ borderColor: '#005197' }} checked={rowSelected[index]} onChange={handleRowChange(index)} /></td>
                                             <td className="boq-data">{child.boqName || 'No Name'}</td>
                                             <td className="boq-data">{child.uom?.uomCode || 'Cum'}</td>
                                             <td className="boq-data">{child.quantity.toFixed(3) || 0}</td>
@@ -117,6 +117,7 @@ function BOQOverview({ projectId }) {
     const [expanded, setExpanded] = useState(new Set());
     const [nonLeafCodes, setNonLeafCodes] = useState(new Set());
     const [isAllExpanded, setIsAllExpanded] = useState(false);
+    const [showPopover, setShowPopover] = useState(false);
 
     const toggleExpanded = (code) => {
         setExpanded(prev => {
@@ -243,6 +244,62 @@ function BOQOverview({ projectId }) {
         }
         setIsAllExpanded(!isAllExpanded);
     };
+    const exportExcel = async () => {
+        try {
+            const response = await axios.get(
+                `${import.meta.env.VITE_API_BASE_URL}/project/Boq/excel/${projectId}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+                        "Content-Type": "application/json",
+                    },
+                    responseType: "blob", 
+                }
+            );
+
+            const blob = new Blob([response.data], {
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `BOQ_${project.projectName}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error("Error exporting Excel:", err);
+        }
+    };
+
+    const exportPdf = async () => {
+        try {
+            const response = await axios.get(
+                `${import.meta.env.VITE_API_BASE_URL}/project/Boq/pdf/${projectId}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+                        "Content-Type": "application/json",
+                    },
+                    responseType: "blob",
+                }
+            );
+
+            const blob = new Blob([response.data], { type: "application/pdf" });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `BOQ_${project.projectName}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error("Error exporting PDF:", err);
+        }
+    };
+
 
     return (
         uploadScreen ? (
@@ -253,8 +310,16 @@ function BOQOverview({ projectId }) {
                     <ArrowLeft size={20} onClick={() => window.history.back()} /><span className='ms-2'>BOQ Definition</span>
                 </div>
                 <div className="me-3">
-                    <button className="btn import-button me-2" onClick={() => setUploadScreen(true)}><span className="me-2" ><Import /></span>Import File</button>
-                    <button className="btn action-button ms-2"><span className="me-2"><Export /></span>Export File</button>
+                    <button className="btn export-button me-2" onMouseEnter={() => setShowPopover(!showPopover)} ><span className="me-2"><Export /></span>Export File</button>
+                    <button className="btn import-button ms-2" onClick={() => setUploadScreen(true)}><span className="me-2" ><Import /></span>Import File</button>
+                    {showPopover && (
+                        <div className="popover bs-popover-bottom show position-absolute mt-1" onMouseLeave={() => setShowPopover(!showPopover)} >
+                            <div className="popover-body d-flex flex-column">
+                                <button className="btn action-button mb-2" onClick={exportPdf}>PDF</button>
+                                <button className="btn action-button" onClick={exportExcel}>Excel</button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
             <div className="bg-white rounded-3 ms-3 me-3 mt-2 p-2" style={{ border: '0.5px solid #0051973D' }}>
