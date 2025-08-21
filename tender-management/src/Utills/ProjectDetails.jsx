@@ -1,14 +1,16 @@
-import Select from 'react-select';
+import "flatpickr/dist/flatpickr.min.css";
 import { useRef } from 'react';
 import Flatpickr from "react-flatpickr";
-import "flatpickr/dist/flatpickr.min.css";
+import { FaCalendarAlt, FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+import Select from 'react-select';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import '../CSS/custom-flatpickr.css';
 import { useRegions } from "../Context/RegionsContext";
-import { useSectors } from "../Context/SectorsContext";
 import { useScope } from "../Context/ScopeContext";
+import { useSectors } from "../Context/SectorsContext";
 import { useUom } from "../Context/UomContext";
-import { useNavigate } from 'react-router-dom';
-import { FaCalendarAlt, FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
 
 function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProject, setRegion, setSector, setScopePack, setUom, uom, loading, fileInputRef, uploadedFiles, setUploadedFiles }) {
 
@@ -43,8 +45,48 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
         setUploadedFiles(prev => [...prev, ...files]);
     };
 
+    const validateAndSubmit = () => {
+        if (!project.projectName || !project.shortName) {
+            if (!project.projectName) {
+                toast.error('Project Name is required!', {
+                    position: "top-right",
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                });
+            }
+
+            if (!project.shortName) {
+                toast.error('Short Name is required!', {
+                    position: "top-right",
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                });
+            }
+
+            return;
+        }
+        handleSubmit();
+    };
+
     return (
         <div className="project-info-input">
+            <ToastContainer
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+            />
             <div className="mt-3 mb-4 pb-5 bg-white rounded-3" style={{ border: '0.5px solid #0051973D' }}>
                 <div className="row ms-auto me-auto mb-4">
                     <span className="tab-info col-12 h-100">General Information</span>
@@ -161,7 +203,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-md-6 position-relative mt-3 mb-4">
                         <label className="projectform-select   text-start d-block">
-                            Region 
+                            Region
                         </label>
                         <Select
                             options={regionOptions}
@@ -176,7 +218,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
 
                     <div className="col-md-6 mt-3 mb-4">
                         <label className="projectform-select   text-start d-block">
-                            Sector 
+                            Sector
                         </label>
                         <Select options={sectorOptions} placeholder="Select Sector" className="w-100" classNamePrefix="select"
                             value={sectorOptions.find((option) => option.value === sector)}
@@ -187,7 +229,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-12 mt-3">
                         <label className="projectform-select text-start d-block">
-                            Scope of Packages 
+                            Scope of Packages
                         </label>
                         <Select options={scopeOptions} placeholder="Select Scope of Packages" isMulti className="w-100" classNamePrefix="select"
                             value={scopeOptions.filter(opt => scopePack.includes(opt.value))}
@@ -320,7 +362,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
             </div>
             <div className="d-flex justify-content-end">
                 <button className="btn cancel-button mt-2 me-4" onClick={() => { window.location.reload(); navigate(-1); }} disabled={loading}>Cancel</button>
-                <button className="btn action-button mt-2 me-4" onClick={handleSubmit} >{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : 'Submit'}</button>
+                <button className="btn action-button mt-2 me-4" onClick={validateAndSubmit} >{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : 'Submit'}</button>
             </div>
         </div>
     );
