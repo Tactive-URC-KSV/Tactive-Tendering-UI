@@ -143,9 +143,9 @@ function ProjectWorklist() {
     };
     return (
         <div className="container-fluid mt-3 min-vh-100">
-            <div className="row align-items-center mb-3 mt-3 ms-3">
+            <div className="row align-items-center mb-3 mt-3 ms-lg-3 ps-lg-2 ms-md-1">
                 <div className='d-flex justify-content-between'>
-                    <div className="col-lg-4 col-md-4 col-sm-12">
+                    <div className="col-lg-4 col-md-4 col-sm-12 ms-3">
                         <div className="project-counts d-flex justify-content-between align-items-center p-3 h-100 mb-3">
                             <div className="text-start">
                                 <p className="report-feild fw-bold mb-2 mt-2">Total Projects</p>
@@ -193,7 +193,7 @@ function ProjectWorklist() {
                     </div>
                 </div>
             </div>
-            <div className="row project-overview d-flex justify-content-center align-items-center py-3 h-100 mb-3 mt-3">
+            <div className="row project-overview d-flex justify-content-center align-items-center py-3 h-100 mb-3 mt-3 mx-lg-5 mx-md-3 ms-md-4">
                 <div className="text-start w-100">
                     <div className="row justify-content-center mb-3 mt-3">
                         <div className="col-12 text-start">
@@ -219,7 +219,7 @@ function ProjectWorklist() {
                 </div>
             </div>
 
-            <div className="row mt-3 align-items-center pt-4 rounded">
+            <div className="row mt-3 align-items-center pt-4 rounded mx-5 px-3">
                 <div className="col-lg-3 col-md-6 col-sm-12 mb-4">
                     <label className="text-start d-block me-1">
                         Status
@@ -270,7 +270,7 @@ function ProjectWorklist() {
                 </div>
             </div>
 
-            <div className="row mt-2">
+            <div className="row mt-2 mx-lg-4 pe-lg-2 mx-md-2 pe-md-1">
                 <div className="col-12 d-flex flex-row justify-content-end me-1 mt-1 mb-1">
                     <button className={`change-view ${isListView ? "active" : ""}`} onClick={() => { setIsListView(true); }}>
                         <FaList />
@@ -281,7 +281,7 @@ function ProjectWorklist() {
                 </div>
             </div>
 
-            <div className="row mt-2">
+            <div className="row mt-2 mx-lg-4 mx-md-2">
                 <div className="col-12">{error}</div>
                 {filteredProjects.length !== 0 && isListView ? (
                     <div className="table-responsive">
