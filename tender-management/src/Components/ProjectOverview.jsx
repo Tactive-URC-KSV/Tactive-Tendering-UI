@@ -180,7 +180,7 @@ function ProjectOverview() {
 
     return (
         <div className="container-fluid" style={{ fontSize: '14px' }}>
-            <div className="row align-items-center mb-4">
+            <div className="row align-items-center mb-4 ">
                 <div className="col-auto fw-bold" style={{ fontSize: '18px' }}>
                     <span onClick={() => navigate(-1)} className="text-decoration-none small cursor-pointer me-2">
                         <ArrowLeft size={24} />
@@ -193,7 +193,7 @@ function ProjectOverview() {
 
                 </div>
             </div>
-            <div className="row mb-4">
+            <div className="row mb-4 mx-5">
                 <div className="col-md-12 ms-auto me-3 rounded-3 project-title-header d-flex justify-content-between p-3">
                     <div className="text-start">
                         <h5>{project.projectName}</h5>
@@ -211,7 +211,7 @@ function ProjectOverview() {
                     </div>
                 </div>
             </div>
-            <div className="row mb-4 rounded-3" style={{ border: '0.5px solid #0051973D' }}>
+            <div className="row mb-4 rounded-3 mx-5" style={{ border: '0.5px solid #0051973D' }}>
                 <div className="col-lg-12 col-md-12 me-2 bg-white rounded-3 p-3">
                     <div className="project-info-header d-flex justify-content-between align-items-center p-1 mb-1">
                         <span className="fw-bold ms-3 mb-2" style={{ fontSize: '17px' }}>Project Information</span>
@@ -249,7 +249,7 @@ function ProjectOverview() {
                     </div>
                 </div>
             </div>
-            <div className="row mb-4 mt-2 rounded-3 bg-white" style={{ border: '0.5px solid #0051973D' }}>
+            <div className="row mb-4 mt-2 rounded-3 bg-white mx-5" style={{ border: '0.5px solid #0051973D' }}>
                 {feasbilityStudy ? (<div className="col-md-12">
                     <div className="project-info-header d-flex justify-content-between align-items-center p-3">
                         <span className="fw-bold ms-2 " style={{ fontSize: '17px' }}>Feasibility Study</span>
