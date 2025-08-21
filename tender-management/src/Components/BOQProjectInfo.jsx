@@ -80,7 +80,7 @@ function BOQProjectInfo({ projects, continueRoute }) {
             </div>
             <div className='d-flex justify-content-end mt-3'>
                 <button className='btn action-button me-2 mt-2 fs-6' onClick={handleContinue}>
-                    <span className='me-2'>Continue to upload</span>
+                    <span className='me-2'>Continue</span>
                     <ArrowRight size={18} />
                 </button>
             </div>
