@@ -2,16 +2,13 @@ import axios from "axios";
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import SaveMappingIcon from '../assest/SaveMapping.svg?react';
 
 const CCMOverview = () => {
     const [project, setProject] = useState();
     const { projectId } = useParams();
 
     const [selectedMappingType, setSelectedMappingType] = useState("1 : M");
-    const [expandedSections, setExpandedSections] = useState({
-        boq: true,
-        activities: true
-    });
 
 
     const mappingTypes = [
@@ -76,13 +73,6 @@ const CCMOverview = () => {
             console.error('Error fetching project info:', err);
         });
     }, [projectId]);
-
-    const toggleSection = (section) => {
-        setExpandedSections(prev => ({
-            ...prev,
-            [section]: !prev[section]
-        }));
-    };
 
     const handleSaveMapping = () => {
         alert("Mapping saved successfully!");
@@ -191,11 +181,6 @@ const CCMOverview = () => {
                         <div className="card-header d-flex justify-content-between align-items-center border-0 bg-transparent">
                             <h5 className="mb-0">BOQ Details</h5>
                         </div>
-                        {expandedSections.boq && (
-                            <div className="card-body">
-                                {renderBOQTree(boqData)}
-                            </div>
-                        )}
                     </div>
                 </div>
 
@@ -255,8 +240,7 @@ const CCMOverview = () => {
                                 <button className="bg-transparent border-0" style={{ color: "#3273AB" }} onClick={handleReset}>
                                     Reset
                                 </button>
-                                <button className="btn btn-primary" onClick={handleSaveMapping}>
-                                    Save Mapping
+                                <button className = "border-0 text-white p-2 rounded" style={{backgroundColor:"#3273AB"}} onClick={handleSaveMapping}><SaveMappingIcon className="ms-2"/><span className="ps-2">Save Mapping</span>  
                                 </button>
                             </div>
                         </div>
