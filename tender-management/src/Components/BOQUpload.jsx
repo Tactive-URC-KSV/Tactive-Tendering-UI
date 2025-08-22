@@ -242,7 +242,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             sheetOption.length === 1 && (setTimeout(() => {
                window.location.href = `/BOQdefinition/${projectId}`;
             }, 3000));
-            if(fileType === pdf){
+            if(fileType === 'pdf'){
                (setTimeout(() => {
                window.location.href = `/BOQdefinition/${projectId}`;
             }, 3000))

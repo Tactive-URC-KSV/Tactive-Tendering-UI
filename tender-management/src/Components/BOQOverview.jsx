@@ -13,11 +13,58 @@ import BOQUpload from "./BOQUpload";
 const BOQContext = createContext();
 
 function BOQNode({ boq, level = 0 }) {
-    const { expanded, toggleExpanded } = useContext(BOQContext);
+    const { expanded, toggleExpanded, deleteBoqs, projectId } = useContext(BOQContext);
     const isExpanded = expanded.has(boq.boqCode);
-    const hasChildren = boq.children && boq.children.length > 0;
+    const hasChildren = Array.isArray(boq.children) && boq.children.length > 0;
     const total = boq.calculatedTotal || 0;
     const isLeaf = !hasChildren;
+
+    const [allSelected, setAllSelected] = useState(false);
+    const [rowSelected, setRowSelected] = useState(hasChildren ? new Array(boq.children.length).fill(false) : []);
+
+    useEffect(() => {
+        if (hasChildren && Array.isArray(boq.children)) {
+            setRowSelected(new Array(boq.children.length).fill(false));
+            setAllSelected(false);
+        } else {
+            setRowSelected([]);
+            setAllSelected(false);
+        }
+    }, [boq.children, hasChildren]);
+
+    const handleAllChange = (e) => {
+        if (!hasChildren || !Array.isArray(boq.children)) return;
+        const checked = e.target.checked;
+        console.log(checked);
+        setAllSelected(checked);
+        setRowSelected(new Array(boq.children.length).fill(checked));
+    };
+
+    const handleRowChange = (index) => (e) => {
+        if (!hasChildren || !Array.isArray(boq.children) || index >= boq.children.length) return;
+        const newRow = [...rowSelected];
+        newRow[index] = e.target.checked;
+        setRowSelected(newRow);
+        setAllSelected(newRow.every(s => s));
+    };
+
+    const handleDelete = async () => {
+        if (!hasChildren || !Array.isArray(boq.children) || boq.children.length === 0) {
+            toast.warn("No children to delete");
+            return;
+        }
+
+        const selectedBoqCodes = boq.children
+            .filter((child, index) => rowSelected[index] && child.boqCode)
+            .map(child => child.boqCode);
+
+        if (selectedBoqCodes.length === 0) {
+            toast.warn("No BOQ items selected for deletion");
+            return;
+        }
+
+        await deleteBoqs(projectId, selectedBoqCodes);
+    };
 
     if (isLeaf) {
         return (
@@ -25,35 +72,19 @@ function BOQNode({ boq, level = 0 }) {
                 <td><input type="checkbox" className="form-check-input" style={{ borderColor: '#005197' }} /></td>
                 <td className="boq-data">{boq.boqName || '-'}</td>
                 <td className="boq-data">{boq.uom?.uomCode || '-'}</td>
-                <td className="boq-data">{boq.quantity.toFixed(3) || 0}</td>
-                <td className="boq-data">{boq.totalRate.toFixed(2) || 0}</td>
-                <td className="boq-data">{boq.totalAmount.toFixed(2) || 0}</td>
+                <td className="boq-data">{boq.quantity?.toFixed(3) || 0}</td>
+                <td className="boq-data">{boq.totalRate?.toFixed(2) || 0}</td>
+                <td className="boq-data">{boq.totalAmount?.toFixed(2) || 0}</td>
             </tr>
         );
     }
-
-    const [allSelected, setAllSelected] = useState(false);
-    const [rowSelected, setRowSelected] = useState(hasChildren ? new Array(boq.children.length).fill(false) : []);
-
-    const handleAllChange = (e) => {
-        const checked = e.target.checked;
-        setAllSelected(checked);
-        setRowSelected(new Array(boq.children.length).fill(checked));
-    };
-
-    const handleRowChange = (index) => (e) => {
-        const newRow = [...rowSelected];
-        newRow[index] = e.target.checked;
-        setRowSelected(newRow);
-        setAllSelected(newRow.every(s => s));
-    };
 
     if (!boq) {
         return <div>Error: BOQ data is missing</div>;
     }
 
     return (
-        <div className={`boq-node p-3 rounded-4 mb-3 text-start ${level === 0 ? 'bg-light-blue' : 'bg-light-blue'}`} style={{ marginLeft: level * 20, border: level === 0 ? '0.5px solid #0051973D' : 'none', background: 'rgba(239, 246, 255, 1)' }}>
+        <div className={`boq-node p-2 rounded-4 mb-2 text-start ${level === 1 ? 'bg-light-blue' : 'bg-light-blue'}`} style={{ marginLeft: level * 20, border: level === 0 ? '0.5px solid #0051973D' : 'none', background: 'rgba(239, 246, 255, 1)' }}>
             <div className="d-flex justify-content-between align-items-center">
                 <div className="d-flex align-items-center">
                     {hasChildren && (
@@ -63,13 +94,15 @@ function BOQNode({ boq, level = 0 }) {
                     )}
                     <span className="fw-bold ms-2">{boq.boqName || 'Unnamed BOQ'}</span>
                 </div>
-                {boq.level === 1 && <div className="d-flex align-items-center">
-                    <span className="fw-bold me-3" style={{ color: '#005197' }}>{`$ ${total.toFixed(2)}`}</span>
-                    <DeleteIcon style={{ cursor: 'pointer' }} />
-                </div>}
+                {boq.level === 1 && (
+                    <div className="d-flex align-items-center">
+                        <span className="fw-bold me-3" style={{ color: '#005197' }}>{`$ ${total.toFixed(2)}`}</span>
+                        <DeleteIcon style={{ cursor: 'pointer' }} onClick={handleDelete} />
+                    </div>
+                )}
             </div>
             {isExpanded && hasChildren && (
-                <div className="mt-3">
+                <div className="mt-2">
                     {boq.children.every(child => !child.children || child.children.length === 0) ? (
                         <div className="table-responsive boq-table" style={{ background: 'white', borderRadius: 9 }}>
                             <table className="table table-borderless">
@@ -86,12 +119,12 @@ function BOQNode({ boq, level = 0 }) {
                                 <tbody>
                                     {boq.children.length > 0 ? boq.children.map((child, index) => (
                                         <tr key={index} style={{ borderBottom: index === boq.children.length - 1 ? 'none' : '1px solid rgba(0, 81, 151, 0.24)' }}>
-                                            <td><input type="checkbox" className="form-check-input" style={{ borderColor: '#005197' }} checked={rowSelected[index]} onChange={handleRowChange(index)} /></td>
+                                            <td><input type="checkbox" className="form-check-input" style={{ borderColor: '#005197' }} checked={rowSelected[index] || false} onChange={handleRowChange(index)} /></td>
                                             <td className="boq-data">{child.boqName || 'No Name'}</td>
                                             <td className="boq-data">{child.uom?.uomCode || 'Cum'}</td>
-                                            <td className="boq-data">{child.quantity.toFixed(3) || 0}</td>
-                                            <td className="boq-data">{child.totalRate.toFixed(2) || 0}</td>
-                                            <td className="boq-data">{child.totalAmount.toFixed(2) || 0}</td>
+                                            <td className="boq-data">{child.quantity?.toFixed(3) || 0}</td>
+                                            <td className="boq-data">{child.totalRate?.toFixed(2) || 0}</td>
+                                            <td className="boq-data">{child.totalAmount?.toFixed(2) || 0}</td>
                                         </tr>
                                     )) : <tr><td colSpan="6">No data available</td></tr>}
                                 </tbody>
@@ -131,11 +164,43 @@ function BOQOverview({ projectId }) {
         });
     };
 
-    const BOQStats = ([
+    const deleteBoqs = async (projectId, selectedCodes) => {
+        try {
+            await axios.delete(
+                `${import.meta.env.VITE_API_BASE_URL}/project/deleteBOQ/${projectId}`,
+                {
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` },
+                    data: selectedCodes
+                }
+            );
+            toast.success("Selected BOQs deleted successfully");
+            axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllBOQ/${projectId}`, {
+                headers: {
+                    Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                    'Content-Type': 'application/json'
+                }
+            }).then(res => {
+                if (res.status === 200) {
+                    setAllBOQ(res.data || []);
+                } else {
+                    console.error('Failed to fetch BOQ data:', res.status);
+                    setAllBOQ([]);
+                }
+            }).catch(err => {
+                console.error('Error fetching BOQ data:', err);
+                setAllBOQ([]);
+            });
+        } catch (err) {
+            console.error("Failed to delete BOQs", err);
+            toast.error("Failed to delete BOQs");
+        }
+    };
+
+    const BOQStats = [
         { label: 'Parent BOQ', value: boqTree.length, bgColor: '#EFF6FF', color: '#2563EB' },
         { label: 'Total BOQ', value: allBOQ.length, bgColor: '#F0FDF4', color: '#2BA95A' },
-        { label: 'Total Value', value: `$ ${(totalAmount / 1000000).toFixed(2)} M` || 'N/A', bgColor: '#FFF7ED', color: '#EA580C' },
-    ]);
+        { label: 'Total Value', value: `$ ${(totalAmount / 1000000)?.toFixed(2)} M` || 'N/A', bgColor: '#FFF7ED', color: '#EA580C' },
+    ];
 
     useEffect(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${projectId}`, {
@@ -174,12 +239,16 @@ function BOQOverview({ projectId }) {
     }, [projectId]);
 
     useEffect(() => {
-        if (allBOQ.length > 0) {
+        if (Array.isArray(allBOQ) && allBOQ.length > 0) {
             const codeToBOQ = new Map();
-            allBOQ.forEach(b => codeToBOQ.set(b.boqCode, { ...b, children: [] }));
+            allBOQ.forEach(b => {
+                if (b && b.boqCode) {
+                    codeToBOQ.set(b.boqCode, { ...b, children: [] });
+                }
+            });
 
             allBOQ.forEach(b => {
-                if (b.parentBOQ && b.parentBOQ.boqCode) {
+                if (b && b.parentBOQ && b.parentBOQ.boqCode) {
                     const parent = codeToBOQ.get(b.parentBOQ.boqCode);
                     if (parent) {
                         parent.children.push(codeToBOQ.get(b.boqCode));
@@ -187,10 +256,11 @@ function BOQOverview({ projectId }) {
                 }
             });
 
-            const roots = allBOQ.filter(b => !b.parentBOQ).map(b => codeToBOQ.get(b.boqCode));
+            const roots = allBOQ.filter(b => !b.parentBOQ && b.boqCode).map(b => codeToBOQ.get(b.boqCode));
 
             const calculateTotals = (node) => {
-                if (node.children.length === 0) {
+                if (!node) return 0;
+                if (!node.children || node.children.length === 0) {
                     node.calculatedTotal = node.totalAmount || 0;
                 } else {
                     node.calculatedTotal = node.children.reduce((sum, child) => sum + calculateTotals(child), 0);
@@ -201,7 +271,7 @@ function BOQOverview({ projectId }) {
             roots.forEach(calculateTotals);
 
             const collectNonLeaves = (node, set) => {
-                if (node.children.length > 0) {
+                if (node && node.children && node.children.length > 0) {
                     set.add(node.boqCode);
                     node.children.forEach(child => collectNonLeaves(child, set));
                 }
@@ -211,7 +281,7 @@ function BOQOverview({ projectId }) {
             roots.forEach(root => collectNonLeaves(root, nonLeaves));
             setNonLeafCodes(nonLeaves);
 
-            setBoqTree(roots);
+            setBoqTree(roots.filter(Boolean));
         } else {
             setBoqTree([]);
         }
@@ -244,6 +314,7 @@ function BOQOverview({ projectId }) {
         }
         setIsAllExpanded(!isAllExpanded);
     };
+
     const exportExcel = async () => {
         try {
             const response = await axios.get(
@@ -263,7 +334,7 @@ function BOQOverview({ projectId }) {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `BOQ_${project.projectName}.xlsx`;
+            a.download = `BOQ_${project?.projectName || 'project'}.xlsx`;
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -290,7 +361,7 @@ function BOQOverview({ projectId }) {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `BOQ_${project.projectName}.pdf`;
+            a.download = `BOQ_${project?.projectName || 'project'}.pdf`;
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -300,63 +371,78 @@ function BOQOverview({ projectId }) {
         }
     };
 
-
     return (
         uploadScreen ? (
             <BOQUpload projectId={projectId} projectName={project?.projectName + '(' + project?.projectCode + ')'} setUploadScreen={setUploadScreen} />
-        ) : (<>
-            <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-1 mt-1 mb-3">
-                <div className="ms-3">
-                    <ArrowLeft size={20} onClick={() => window.history.back()} /><span className='ms-2'>BOQ Definition</span>
-                </div>
-                <div className="me-3">
-                    <button className="btn export-button me-2" onMouseEnter={() => setShowPopover(!showPopover)} ><span className="me-2"><Export /></span>Export File</button>
-                    <button className="btn import-button ms-2" onClick={() => setUploadScreen(true)}><span className="me-2" ><Import /></span>Import File</button>
-                    {showPopover && (
-                        <div className="popover bs-popover-bottom show position-absolute mt-1" onMouseLeave={() => setShowPopover(!showPopover)} >
-                            <div className="popover-body d-flex flex-column">
-                                <button className="btn action-button mb-2" onClick={exportPdf}>PDF</button>
-                                <button className="btn action-button" onClick={exportExcel}>Excel</button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-            <div className="bg-white rounded-3 ms-3 me-3 mt-2 p-2" style={{ border: '0.5px solid #0051973D' }}>
-                <p className="fw-bold text-start mt-2 ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</p>
-                <div className="row justify-content-between ms-3">
-                    {BOQStats.map((stats, index) => (
-                        <div className="col-lg-4 col-md-4 col-sm-12" key={index}>
-                            <div className="p-2 rounded-3 mb-3" style={{ backgroundColor: stats.bgColor, color: stats.color, width: '90%' }}>
-                                <p className="fw-bold text-start ms-2 mt-1">{stats.label}</p>
-                                <p className="mt-2 fw-bold text-start text-black ms-2">{stats.value}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-            <div className="bg-white rounded-3 ms-3 me-3 mt-4 p-2" style={{ border: '0.5px solid #0051973D' }}>
-                <div className="d-flex justify-content-between mb-3">
-                    <div className="fw-bold text-start mt-2 ms-1">
-                        <span>BOQ Structure</span>
+        ) : (
+            <>
+                <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-1 mt-1 mb-3">
+                    <div className="ms-3">
+                        <ArrowLeft size={20} onClick={() => window.history.back()} />
+                        <span className='ms-2'>BOQ Definition</span>
                     </div>
-                    <div className=" me-1">
-                        <button className="btn" style={{ cursor: 'pointer', color: '#005197' }} onClick={toggleAll}>
-                            {isAllExpanded ? <><CollapseIcon /><span>Collapse All</span></> : <><ExpandIcon /><span>Expand All</span></>}
+                    <div className="me-3">
+                        <button className="btn export-button me-2" onMouseEnter={() => setShowPopover(!showPopover)}>
+                            <span className="me-2"><Export /></span>Export File
                         </button>
+                        <button className="btn import-button ms-2" onClick={() => setUploadScreen(true)}>
+                            <span className="me-2"><Import /></span>Import File
+                        </button>
+                        {showPopover && (
+                            <div className="popover bs-popover-bottom show position-absolute mt-1" onMouseLeave={() => setShowPopover(!showPopover)}>
+                                <div className="popover-body d-flex flex-column">
+                                    <button className="btn action-button mb-2" onClick={exportPdf}>PDF</button>
+                                    <button className="btn action-button" onClick={exportExcel}>Excel</button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
-                <BOQContext.Provider value={{ expanded, toggleExpanded }}>
-                    {boqTree.length > 0 ? (
-                        boqTree.map((boq, index) => (
-                            <BOQNode key={index} boq={boq} />
-                        ))
-                    ) : (
-                        <div>No BOQ data available</div>
-                    )}
-                </BOQContext.Provider>
-            </div>
-        </>)
+                <div className="bg-white rounded-3 ms-3 me-3 mt-2 p-2" style={{ border: '0.5px solid #0051973D' }}>
+                    <p className="fw-bold text-start mt-2 ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</p>
+                    <div className="row justify-content-between ms-3">
+                        {BOQStats.map((stats, index) => (
+                            <div className="col-lg-4 col-md-4 col-sm-12" key={index}>
+                                <div className="p-2 rounded-3 mb-3" style={{ backgroundColor: stats.bgColor, color: stats.color, width: '90%' }}>
+                                    <p className="fw-bold text-start ms-2 mt-1">{stats.label}</p>
+                                    <p className="mt-2 fw-bold text-start text-black ms-2">{stats.value}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div className="bg-white rounded-3 ms-3 me-3 mt-4 p-2" style={{ border: '0.5px solid #0051973D' }}>
+                    <div className="d-flex justify-content-between mb-3">
+                        <div className="fw-bold text-start mt-2 ms-1">
+                            <span>BOQ Structure</span>
+                        </div>
+                        <div className="me-1">
+                            <button className="btn" style={{ cursor: 'pointer', color: '#005197' }} onClick={toggleAll}>
+                                {isAllExpanded ? (
+                                    <>
+                                        <CollapseIcon /><span>Collapse All</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <ExpandIcon /><span>Expand All</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                    <BOQContext.Provider value={{ expanded, toggleExpanded, deleteBoqs, projectId }}>
+                        {boqTree.length > 0 ? (
+                            boqTree.map((boq, index) => (
+                                <BOQNode key={index} boq={boq} />
+                            ))
+                        ) : (
+                            <div>No BOQ data available</div>
+                        )}
+                    </BOQContext.Provider>
+                </div>
+            </>
+        )
     );
 }
+
 export default BOQOverview;
