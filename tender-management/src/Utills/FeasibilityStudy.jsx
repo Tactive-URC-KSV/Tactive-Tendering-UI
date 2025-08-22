@@ -1,5 +1,6 @@
 import Select from 'react-select';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { FaTimes } from 'react-icons/fa';
 import  Floors  from '../assest/Floors.svg?react';
@@ -26,7 +27,8 @@ function FeasibilityStudy({ project, setActiveTab }) {
     const [technicalData, setTechnicalData] = useState({
         executionCapabilities: '',
     });
-
+    
+    const navigate = useNavigate();
 
     useEffect(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/listOfApprovals`)
@@ -117,11 +119,6 @@ function FeasibilityStudy({ project, setActiveTab }) {
                 }
             });
 
-
-            for (let [key, value] of formData.entries()) {
-                console.log("KEY:", key, "VALUE:", value instanceof File ? value.name : value);
-            }
-
             const response = await axios.post(
                 `${import.meta.env.VITE_API_BASE_URL}/feasibility/add/${project.id}`,
                 formData,
@@ -134,6 +131,9 @@ function FeasibilityStudy({ project, setActiveTab }) {
 
             if (response.status === 200) {
                 toast.success(response.data);
+                setTimeout(()=>{
+                    navigate(`/Dashboard/project/${project.id}`),2000
+                })
                 
             }
         } catch (error) {
