@@ -8,69 +8,93 @@ import ExpandIcon from '../assest/Expand.svg?react';
 import Export from '../assest/Export.svg?react';
 import Import from '../assest/Import.svg?react';
 import BOQUpload from "./BOQUpload";
-import { toast } from "react-toastify";
-
 
 const BOQContext = createContext();
 
+function ConfirmationDialog({ isOpen, onClose, onConfirm, message }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1050 }}>
+      <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title">Confirm Deletion</h5>
+          </div>
+          <div className="modal-body">
+            <p>{message}</p>
+          </div>
+          <div className="modal-footer">
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="button" className="btn btn-danger" onClick={onConfirm}>
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BOQNode({ boq, level = 0 }) {
-    const { expanded, toggleExpanded, deleteBoqs, projectId } = useContext(BOQContext);
+    const { expanded, toggleExpanded, projectId, refreshBOQData, selectedNodes, setSelectedNodes } = useContext(BOQContext);
     const isExpanded = expanded.has(boq.boqCode);
     const hasChildren = Array.isArray(boq.children) && boq.children.length > 0;
     const total = boq.calculatedTotal || 0;
     const isLeaf = !hasChildren;
 
-    const [allSelected, setAllSelected] = useState(false);
-    const [rowSelected, setRowSelected] = useState(hasChildren ? new Array(boq.children.length).fill(false) : []);
+    const hasTableChildren = hasChildren && boq.children.every(child => 
+        !child.children || child.children.length === 0
+    );
 
-    useEffect(() => {
-        if (hasChildren && Array.isArray(boq.children)) {
-            setRowSelected(new Array(boq.children.length).fill(false));
-            setAllSelected(false);
-        } else {
-            setRowSelected([]);
-            setAllSelected(false);
-        }
-    }, [boq.children, hasChildren]);
-
-    const handleAllChange = (e) => {
-        if (!hasChildren || !Array.isArray(boq.children)) return;
-        const checked = e.target.checked;
-        console.log(checked);
-        setAllSelected(checked);
-        setRowSelected(new Array(boq.children.length).fill(checked));
+    const toggleSelection = (boqCode) => {
+        setSelectedNodes(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(boqCode)) {
+                newSet.delete(boqCode);
+            } else {
+                newSet.add(boqCode);
+            }
+            return newSet;
+        });
     };
 
-    const handleRowChange = (index) => (e) => {
-        if (!hasChildren || !Array.isArray(boq.children) || index >= boq.children.length) return;
-        const newRow = [...rowSelected];
-        newRow[index] = e.target.checked;
-        setRowSelected(newRow);
-        setAllSelected(newRow.every(s => s));
-    };
-
-    const handleDelete = async () => {
-        if (!hasChildren || !Array.isArray(boq.children) || boq.children.length === 0) {
-            toast.warn("No children to delete");
-            return;
-        }
-
-        const selectedBoqCodes = boq.children
-            .filter((child, index) => rowSelected[index] && child.boqCode)
-            .map(child => child.boqCode);
-
-        if (selectedBoqCodes.length === 0) {
-            toast.warn("No BOQ items selected for deletion");
-            return;
-        }
-
-        await deleteBoqs(projectId, selectedBoqCodes);
+    const toggleAllSelection = () => {
+        if (!hasChildren) return;
+        
+        const allChildrenSelected = boq.children.every(child => selectedNodes.has(child.boqCode));
+        
+        setSelectedNodes(prev => {
+            const newSet = new Set(prev);
+            
+            if (allChildrenSelected) {
+                boq.children.forEach(child => {
+                    newSet.delete(child.boqCode);
+                });
+            } else {
+                boq.children.forEach(child => {
+                    newSet.add(child.boqCode);
+                });
+            }
+            
+            return newSet;
+        });
     };
 
     if (isLeaf) {
         return (
             <tr>
-                <td><input type="checkbox" className="form-check-input" style={{ borderColor: '#005197' }} /></td>
+                <td>
+                    <input 
+                        type="checkbox" 
+                        className="form-check-input" 
+                        style={{ borderColor: '#005197' }} 
+                        checked={selectedNodes.has(boq.boqCode)}
+                        onChange={() => toggleSelection(boq.boqCode)}
+                    />
+                </td>
                 <td className="boq-data">{boq.boqName || '-'}</td>
                 <td className="boq-data">{boq.uom?.uomCode || '-'}</td>
                 <td className="boq-data">{boq.quantity?.toFixed(3) || 0}</td>
@@ -85,60 +109,75 @@ function BOQNode({ boq, level = 0 }) {
     }
 
     return (
-        <div className={`boq-node p-2 rounded-4 mb-2 text-start ${level === 1 ? 'bg-light-blue' : 'bg-light-blue'}`} style={{ marginLeft: level * 20, border: level === 0 ? '0.5px solid #0051973D' : 'none', background: 'rgba(239, 246, 255, 1)' }}>
-            <div className="d-flex justify-content-between align-items-center">
-                <div className="d-flex align-items-center">
-                    {hasChildren && (
-                        <span style={{ cursor: 'pointer' }} onClick={() => toggleExpanded(boq.boqCode)}>
-                            <DropDown />
-                        </span>
-                    )}
-                    <span className="fw-bold ms-2">{boq.boqName || 'Unnamed BOQ'}</span>
-                </div>
-                {boq.level === 1 && (
+        <>
+            <div className={`boq-node p-2 rounded-4 mb-2 text-start ${level === 0 ? 'bg-light-blue' : 'bg-light-blue'}`} style={{ marginLeft: level * 20, border: level === 0 ? '0.5px solid #0051973D' : 'none', background: 'rgba(239, 246, 255, 1)' }}>
+                <div className="d-flex justify-content-between align-items-center">
+                    <div className="d-flex align-items-center">
+                        {hasChildren && (
+                            <span style={{ cursor: 'pointer' }} onClick={() => toggleExpanded(boq.boqCode)}>
+                                <DropDown />
+                            </span>
+                        )}
+                        <span className="fw-bold ms-2">{boq.boqName || 'Unnamed BOQ'}</span>
+                    </div>
                     <div className="d-flex align-items-center">
                         <span className="fw-bold me-3" style={{ color: '#005197' }}>{`$ ${total.toFixed(2)}`}</span>
-                        <DeleteIcon style={{ cursor: 'pointer' }} onClick={handleDelete} />
+                    </div>
+                </div>
+                {isExpanded && hasChildren && (
+                    <div className="mt-2">
+                        {hasTableChildren ? (
+                            <div className="table-responsive boq-table" style={{ background: 'white', borderRadius: 9 }}>
+                                <table className="table table-borderless">
+                                    <thead>
+                                        <tr style={{ borderBottom: '1px solid rgba(0, 81, 151, 0.24)' }}>
+                                            <th>
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="form-check-input" 
+                                                    style={{ borderColor: '#005197' }} 
+                                                    checked={boq.children.every(child => selectedNodes.has(child.boqCode))}
+                                                    onChange={toggleAllSelection}
+                                                />
+                                            </th>
+                                            <th className="boq-header">BOQ Name</th>
+                                            <th className="boq-header">UOM</th>
+                                            <th className="boq-header">Quantity</th>
+                                            <th className="boq-header">Rate</th>
+                                            <th className="boq-header">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {boq.children.length > 0 ? boq.children.map((child, index) => (
+                                            <tr key={index} style={{ borderBottom: index === boq.children.length - 1 ? 'none' : '1px solid rgba(0, 81, 151, 0.24)' }}>
+                                                <td>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="form-check-input" 
+                                                        style={{ borderColor: '#005197' }} 
+                                                        checked={selectedNodes.has(child.boqCode)}
+                                                        onChange={() => toggleSelection(child.boqCode)}
+                                                    />
+                                                </td>
+                                                <td className="boq-data">{child.boqName || 'No Name'}</td>
+                                                <td className="boq-data">{child.uom?.uomCode || 'Cum'}</td>
+                                                <td className="boq-data">{child.quantity?.toFixed(3) || 0}</td>
+                                                <td className="boq-data">{child.totalRate?.toFixed(2) || 0}</td>
+                                                <td className="boq-data">{child.totalAmount?.toFixed(2) || 0}</td>
+                                            </tr>
+                                        )) : <tr><td colSpan="6">No data available</td></tr>}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            boq.children.map((child, index) => (
+                                <BOQNode key={index} boq={child} level={level + 1} />
+                            ))
+                        )}
                     </div>
                 )}
             </div>
-            {isExpanded && hasChildren && (
-                <div className="mt-2">
-                    {boq.children.every(child => !child.children || child.children.length === 0) ? (
-                        <div className="table-responsive boq-table" style={{ background: 'white', borderRadius: 9 }}>
-                            <table className="table table-borderless">
-                                <thead>
-                                    <tr style={{ borderBottom: '1px solid rgba(0, 81, 151, 0.24)' }}>
-                                        <th><input type="checkbox" className="form-check-input" style={{ borderColor: '#005197' }} checked={allSelected} onChange={handleAllChange} /></th>
-                                        <th className="boq-header">BOQ Name</th>
-                                        <th className="boq-header">UOM</th>
-                                        <th className="boq-header">Quantity</th>
-                                        <th className="boq-header">Rate</th>
-                                        <th className="boq-header">Amount</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {boq.children.length > 0 ? boq.children.map((child, index) => (
-                                        <tr key={index} style={{ borderBottom: index === boq.children.length - 1 ? 'none' : '1px solid rgba(0, 81, 151, 0.24)' }}>
-                                            <td><input type="checkbox" className="form-check-input" style={{ borderColor: '#005197' }} checked={rowSelected[index] || false} onChange={handleRowChange(index)} /></td>
-                                            <td className="boq-data">{child.boqName || 'No Name'}</td>
-                                            <td className="boq-data">{child.uom?.uomCode || 'Cum'}</td>
-                                            <td className="boq-data">{child.quantity?.toFixed(3) || 0}</td>
-                                            <td className="boq-data">{child.totalRate?.toFixed(2) || 0}</td>
-                                            <td className="boq-data">{child.totalAmount?.toFixed(2) || 0}</td>
-                                        </tr>
-                                    )) : <tr><td colSpan="6">No data available</td></tr>}
-                                </tbody>
-                            </table>
-                        </div>
-                    ) : (
-                        boq.children.map((child, index) => (
-                            <BOQNode key={index} boq={child} level={level + 1} />
-                        ))
-                    )}
-                </div>
-            )}
-        </div>
+        </>
     );
 }
 
@@ -152,6 +191,8 @@ function BOQOverview({ projectId }) {
     const [nonLeafCodes, setNonLeafCodes] = useState(new Set());
     const [isAllExpanded, setIsAllExpanded] = useState(false);
     const [showPopover, setShowPopover] = useState(false);
+    const [selectedNodes, setSelectedNodes] = useState(new Set());
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
     const toggleExpanded = (code) => {
         setExpanded(prev => {
@@ -165,7 +206,27 @@ function BOQOverview({ projectId }) {
         });
     };
 
+    const refreshBOQData = () => {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllBOQ/${projectId}`, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        }).then(res => {
+            if (res.status === 200) {
+                setAllBOQ(res.data || []);
+            } else {
+                console.error('Failed to fetch BOQ data:', res.status);
+                setAllBOQ([]);
+            }
+        }).catch(err => {
+            console.error('Error fetching BOQ data:', err);
+            setAllBOQ([]);
+        });
+    };
+
     const deleteBoqs = async (projectId, selectedCodes) => {
+        console.log(selectedCodes);
         try {
             await axios.delete(
                 `${import.meta.env.VITE_API_BASE_URL}/project/deleteBOQ/${projectId}`,
@@ -174,22 +235,26 @@ function BOQOverview({ projectId }) {
                     data: selectedCodes
                 }
             );
+            
             toast.success("Selected BOQs deleted successfully");
-            axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllBOQ/${projectId}`, {
+            
+            refreshBOQData();
+            
+            axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getBoqTotalValue/${projectId}`, {
                 headers: {
                     Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                     'Content-Type': 'application/json'
                 }
             }).then(res => {
                 if (res.status === 200) {
-                    setAllBOQ(res.data || []);
+                    setTotalAmount(res.data);
                 } else {
-                    console.error('Failed to fetch BOQ data:', res.status);
-                    setAllBOQ([]);
+                    console.error('Failed to fetch total value:', res.status);
+                    setTotalAmount(0);
                 }
             }).catch(err => {
-                console.error('Error fetching BOQ data:', err);
-                setAllBOQ([]);
+                console.error('Error fetching total value:', err);
+                setTotalAmount(0);
             });
         } catch (err) {
             console.error("Failed to delete BOQs", err);
@@ -197,6 +262,38 @@ function BOQOverview({ projectId }) {
         }
     };
 
+    const handleDeleteClick = () => {
+        if (selectedNodes.size === 0) {
+            toast.warn("No BOQ items selected for deletion");
+            return;
+        }
+
+        setShowConfirmDialog(true);
+    };
+
+    const confirmDelete = async () => {
+        setShowConfirmDialog(false);
+        
+        const selectedCodes = Array.from(selectedNodes);
+        
+        await deleteBoqs(projectId, selectedCodes);
+        setSelectedNodes(new Set());
+    };
+
+    const cancelDelete = () => {
+        setShowConfirmDialog(false);
+    };
+
+    const contextValue = {
+        expanded,
+        toggleExpanded,
+        projectId,
+        refreshBOQData,
+        selectedNodes,
+        setSelectedNodes
+    };
+
+    
     const BOQStats = [
         { label: 'Parent BOQ', value: boqTree.length, bgColor: '#EFF6FF', color: '#2563EB' },
         { label: 'Total BOQ', value: allBOQ.length, bgColor: '#F0FDF4', color: '#2BA95A' },
@@ -423,7 +520,7 @@ function BOQOverview({ projectId }) {
                         <div className="fw-bold text-start mt-2 ms-1">
                             <span>BOQ Structure</span>
                         </div>
-                        <div className="me-1">
+                        <div className="me-1 d-flex align-items-center">
                             <button className="btn" style={{ cursor: 'pointer', color: '#005197' }} onClick={toggleAll}>
                                 {isAllExpanded ? (
                                     <>
@@ -435,9 +532,14 @@ function BOQOverview({ projectId }) {
                                     </>
                                 )}
                             </button>
+                            <DeleteIcon 
+                                style={{ cursor: 'pointer', marginLeft: '15px' }} 
+                                onClick={handleDeleteClick}
+                                title="Delete selected items"
+                            />
                         </div>
                     </div>
-                    <BOQContext.Provider value={{ expanded, toggleExpanded, deleteBoqs, projectId }}>
+                    <BOQContext.Provider value={contextValue}>
                         {boqTree.length > 0 ? (
                             boqTree.map((boq, index) => (
                                 <BOQNode key={index} boq={boq} />
@@ -447,6 +549,13 @@ function BOQOverview({ projectId }) {
                         )}
                     </BOQContext.Provider>
                 </div>
+                
+                <ConfirmationDialog
+                    isOpen={showConfirmDialog}
+                    onClose={cancelDelete}
+                    onConfirm={confirmDelete}
+                    message={`Are you sure you want to delete ${selectedNodes.size} selected BOQ item(s)? This action cannot be undone.`}
+                />
             </>
         )
     );
