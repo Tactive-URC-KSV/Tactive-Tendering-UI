@@ -411,12 +411,10 @@ function ProjectWorklist() {
                                         <span className="small text-muted">
                                             {remainingDaysCalc(project.endDate)} days remaining
                                         </span>
-                                        <Link
-                                            to={`/ProjectManagement/project/${project.projectId}`}
-                                            className="text-decoration-none small"
-                                        >
-                                            <Action /><span className='ms-1' style={{ color: '#005197' }}>View details</span>
+                                       <Link to={`project/${project.projectId}`} className="text-decoration-none small">
+                                               <Action /><span className='ms-1' style={{ color: '#005197' }}>View details</span>
                                         </Link>
+                                            
                                     </div>
                                 </div>
                             </div>
