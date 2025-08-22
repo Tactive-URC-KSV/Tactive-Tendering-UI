@@ -8,6 +8,7 @@ import ExpandIcon from '../assest/Expand.svg?react';
 import Export from '../assest/Export.svg?react';
 import Import from '../assest/Import.svg?react';
 import BOQUpload from "./BOQUpload";
+import { toast } from "react-toastify";
 
 
 const BOQContext = createContext();
@@ -327,10 +328,15 @@ function BOQOverview({ projectId }) {
                     responseType: "blob",
                 }
             );
+             if(response.status === 204){
+                toast.warn(response.data);
+                return;
+            }
 
             const blob = new Blob([response.data], {
                 type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             });
+           
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -340,7 +346,7 @@ function BOQOverview({ projectId }) {
             a.remove();
             window.URL.revokeObjectURL(url);
         } catch (err) {
-            console.error("Error exporting Excel:", err);
+            console.log(err);
         }
     };
 
@@ -367,7 +373,8 @@ function BOQOverview({ projectId }) {
             a.remove();
             window.URL.revokeObjectURL(url);
         } catch (err) {
-            console.error("Error exporting PDF:", err);
+           toast.error(err.message);
+            console.error(err.message);
         }
     };
 
