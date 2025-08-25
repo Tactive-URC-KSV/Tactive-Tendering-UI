@@ -155,6 +155,23 @@ function ProjectOverview() {
         { label: 'Rental cost', value: `$ ${(feasbilityStudy?.financialFeasibility?.rentalCost / 1000000).toFixed(2)} M` || 'N/A' },
         { label: 'ROI', value: feasbilityStudy?.financialFeasibility?.profitPercentage + ' % IRR in ' + feasbilityStudy?.financialFeasibility?.roiYear + ' years' || 'N/A' },
     ]
+    const handleArchieve = () =>{
+        axios.delete(`${import.meta.env.VITE_API_BASE_URL}/project/deleteProject/${projectId}`, {
+            headers:{
+                Authorization : `Bearer ${sessionStorage.getItem('token')}`,
+                'Content-Type' : 'application/json'
+            }
+        }).then(res => {
+            if(res.status === 200){
+                toast.success(res.data);
+                setTimeout(() => {
+                    navigate('/Dashboard');
+                }, 2000);
+            }
+        }).catch(err => {
+            toast.error(err.message);
+        })
+    }
 
     function feasibilityApprove(status) {
         const encodedComments = encodeURIComponent(comments);
@@ -188,7 +205,7 @@ function ProjectOverview() {
                     Project Details
                 </div>
                 <div className="col-auto ms-auto">
-                    <button className="btn archive-button me-3" onClick={editDetails}> <Archive /> <span className="ms-2">Archive Project</span></button>
+                    <button className="btn archive-button me-3" onClick={handleArchieve}> <Archive /> <span className="ms-2">Archive Project</span></button>
                     <button className="btn action-button me-1 ms-2" onClick={editDetails}> <Edit /> <span className="ms-2">Edit Project</span></button>
 
                 </div>
