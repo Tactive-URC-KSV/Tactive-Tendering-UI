@@ -7,7 +7,12 @@ import '../CSS/Styles.css';
 import Documents from "../Utills/Documents";
 import FeasibilityStudy from "../Utills/FeasibilityStudy";
 import ProjectDetails from "../Utills/ProjectDetails";
+import { useNavigate } from "react-router-dom";
+
 function ProjectCreation() {
+
+    const navigate = useNavigate();
+    const [feasbilityStudy, setFeasbilityStudy] = useState({});
     const [loading, setLoading] = useState(false);
     const { projectId } = useParams();
     const [project, setProject] = useState({
@@ -36,7 +41,7 @@ function ProjectCreation() {
     const [sector, setSector] = useState('');
     const [uom, setUom] = useState('')
     const [scopePack, setScopePack] = useState([]);
-    const [activeTab, setActiveTab] = useState('');
+    const [activeTab, setActiveTab] = useState('info');
     const [enabledTabs, setEnabledTabs] = useState([]);
     const fileInputRef = useRef(null);
     const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -49,20 +54,19 @@ function ProjectCreation() {
 
 
     useEffect(() => {
-        if (projectId && project.projectStatus === 'Internal Estimation') {
+        if (projectId && feasbilityStudy.feasibilityApproved) {
             setEnabledTabs(['info', 'feasibility', 'document']);
         } else if (projectId) {
             setEnabledTabs(['info', 'feasibility']);
         } else {
             setEnabledTabs(['info']);
-            setActiveTab('info');
         }
-    }, [projectId, project.projectStatus]);
+    }, [projectId]);
 
     useEffect(() => {
         const hash = window.location.hash.substring(1);
-        if (hash === 'feasibility') {
-            setActiveTab('feasibility');
+        if(hash){
+            setActiveTab(hash);
         }
     }, []);
 
@@ -82,19 +86,39 @@ function ProjectCreation() {
                         setRegion(res.data.region.id);
                         setSector(res.data.sector.id);
                         setUom(res.data.uom.id);
-                        setActiveTab('feasibility');
-
                     }
                 })
                 .catch((err) => {
                     console.error("Failed to fetch project:", err);
                 });
+
+                axios.get(`${import.meta.env.VITE_API_BASE_URL}/feasibility/${projectId}`, {
+                headers: {
+                    Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+            ).then(res => {
+                if (res.status === 200) {
+                    setFeasbilityStudy(res.data);
+                }
+            }).catch(err => {
+                console.log(err);
+            })
         }
     }, [projectId]);
 
     const handleSubmit = async () => {
         try {
             setLoading(true);
+            if(!project.projectName){
+                toast.error("Project name is required");
+                return;
+            }
+            if(!project.shortName){
+                toast.error("Short name is required");
+                return;
+            }
             project.otherAmenities = Array.isArray(project.otherAmenities)
                 ? project.otherAmenities
                 : project.otherAmenities.split(',').map(a => a.trim());
@@ -137,11 +161,10 @@ function ProjectCreation() {
                         }
                     );
                 }
-
                 toast.success("Project created successfully!");
-                setTimeout(() => {
-                    window.location.href = `/Dashboard/project/${newProjectId}`;
-                }, 3000);
+                setTimeout(()=>{
+                    navigate(`/ProjectManagement/project/${newProjectId}#feasibility`);
+                })
             }
         } catch (error) {
             console.error('Error creating project:', error);

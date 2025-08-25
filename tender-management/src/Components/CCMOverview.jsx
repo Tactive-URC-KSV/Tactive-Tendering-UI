@@ -190,13 +190,13 @@ const CCMOverview = () => {
                             <span className="flex-start fw-bold ms-2 text-nowrap" style={{ maxWidth: '400px' }}>{boq.boqName}</span>
                         </div>
                         {!boq.parentBOQ && (
-                            <span className="text-nowrap ms-2 pb-2 text-secondary" style={{ minWidth: '100px' }}>
+                            <span className="text-nowrap ms-1 pb-2 text-secondary" style={{ minWidth: '100px' }}>
                                 $ {total.toLocaleString()}
                             </span>
                         )}
                     </div>
                     {isExpanded && (
-                        <div className="ms-4 mt-2">
+                        <div className="ms-3 mt-2">
                             {boq.children.map((child, index) => (
                                 <BOQNode key={index} boq={child} level={level + 1} />
                             ))}

@@ -27,7 +27,7 @@ function ProjectOverview() {
     const [approvalDoc, setApprovalDoc] = useState();
 
     const editDetails = () => {
-        navigate(`/ProjectManagement/project/${project.id}`);
+        navigate(`/ProjectManagement/project/${project.id}#info`);
     };
 
     const handleAddFeasibility = () => {
@@ -108,6 +108,7 @@ function ProjectOverview() {
 
         })
     }, [project])
+    
 
     if (loading) return <div>Loading...</div>;
     if (error) return <div>{error}</div>;
@@ -169,9 +170,8 @@ function ProjectOverview() {
             if (res.status === 200) {
                 toast.success(res.data);
                 setTimeout(() => {
-                    window.location.reload();
-                }, 2000)
-
+                    status === 'approve' ? navigate(`/ProjectManagement/project/${project.id}#document`) : window.location.reload();
+                }, 2000);
             }
         }).catch(err => {
             toast.error(err.message);
@@ -308,7 +308,7 @@ function ProjectOverview() {
                         <span className="text-muted">Financial Backup</span>
                         <p className="fw-bold mt-1">{feasbilityStudy?.financialFeasibility?.financialBackup?.join(", ") || "N/A"}</p>
                     </div>
-                    {feasbilityStudy?.reviewedBy === null && (
+                    {feasbilityStudy?.reviewedBy === null ? (
                         <div className=" ms-3 text-start mt-4 me-3">
                             <span className="text-muted">Feasibility analysis</span>
                             <p className="fw-bold mt-1">Review and approve or reject the feasibility study based on the analysis</p>
@@ -322,7 +322,10 @@ function ProjectOverview() {
                             </div>
                         </div>
 
-                    )}
+                    ): (<div className=" ms-3 text-start mt-4 me-3 mb-3">
+                            <span className="text-muted mb-1">Comments</span><br />
+                            <span className="fw-bold">{feasbilityStudy.comments}</span>
+                        </div>)}
 
                 </div>)
                     : (

@@ -44,7 +44,7 @@ function BOQProjectInfo({ projects, continueRoute }) {
                                 draggable={true}>
                                 <div className='card-body'>
                                     <div className='d-flex justify-content-between text-start'>
-                                        <span className='mb-3 fw-bold' style={{ color: '#005197' }}>{prj.projectName}</span>
+                                        <span className='mb-3 fw-bold text-nowrap' style={{ color: '#005197' }}>{prj.projectName}</span>
                                         {projectStatus.map((state) =>
                                             state.status === prj.status && (
                                                 <span key={state.status} className="badge rounded-pill mb-3"
