@@ -498,3 +498,35 @@ label {
     color: rgba(0, 0, 0, 0.80);
   }
 }
+
+/* CCMOverview */
+
+.search::placeholder {
+  color: #00519780;
+  font-size: 13px;}
+
+/* Custom scrollbar for BOQ Details */
+.boq-scroll-container::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+.boq-scroll-container::-webkit-scrollbar-track {
+    background: #ffffffff;
+    border-radius: 8px;
+    
+}
+
+.boq-scroll-container::-webkit-scrollbar-thumb {
+    background: #00519780;
+    border-radius: 10px;    
+}
+
+.boq-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: #00519780;
+}
+
+.boq-scroll-container {
+    scrollbar-width: thin;
+    scrollbar-color: #00519780 #e8e7e7;
+}
