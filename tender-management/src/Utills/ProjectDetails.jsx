@@ -1,5 +1,5 @@
 import "flatpickr/dist/flatpickr.min.css";
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import Flatpickr from "react-flatpickr";
 import { FaCalendarAlt, FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
@@ -43,6 +43,11 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
         const files = Array.from(e.target.files);
         setUploadedFiles(prev => [...prev, ...files]);
     };
+
+    useEffect(()=>{
+        console.log(project.id?project.id:"NO id");
+        
+    })
     return (
         <div className="project-info-input">
            
