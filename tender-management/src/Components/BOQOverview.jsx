@@ -8,6 +8,7 @@ import ExpandIcon from '../assest/Expand.svg?react';
 import Export from '../assest/Export.svg?react';
 import Import from '../assest/Import.svg?react';
 import BOQUpload from "./BOQUpload";
+import { toast } from 'react-toastify';
 
 const BOQContext = createContext();
 
@@ -121,7 +122,7 @@ function BOQNode({ boq, level = 0 }) {
                         <span className="fw-bold ms-2">{boq.boqName || 'Unnamed BOQ'}</span>
                     </div>
                     <div className="d-flex align-items-center">
-                        <span className="fw-bold me-3" style={{ color: '#005197' }}>{`$ ${total.toFixed(2)}`}</span>
+                       {boq.level === 1 && <span className="fw-bold me-3" style={{ color: '#005197' }}>{`$ ${total.toFixed(2)}`}</span>}
                     </div>
                 </div>
                 {isExpanded && hasChildren && (
@@ -234,9 +235,10 @@ function BOQOverview({ projectId }) {
                     headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` },
                     data: selectedCodes
                 }
-            );
-            
-            toast.success("Selected BOQs deleted successfully");
+            ).then(res => {
+                if(res.status === 200 )
+                    toast.success("Selected BOQs deleted successfully");
+            });
             
             refreshBOQData();
             
@@ -554,7 +556,7 @@ function BOQOverview({ projectId }) {
                     isOpen={showConfirmDialog}
                     onClose={cancelDelete}
                     onConfirm={confirmDelete}
-                    message={`Are you sure you want to delete ${selectedNodes.size} selected BOQ item(s)? This action cannot be undone.`}
+                    message={`Are you sure you want to delete ${selectedNodes.size} selected BOQ item(s)?`}
                 />
             </>
         )
