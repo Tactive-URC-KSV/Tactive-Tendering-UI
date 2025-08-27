@@ -52,7 +52,6 @@ function ProjectCreation() {
         }
     }
 
-
     useEffect(() => {
         if (projectId && feasbilityStudy.feasibilityApproved) {
             setEnabledTabs(['info', 'feasibility', 'document']);
@@ -61,7 +60,7 @@ function ProjectCreation() {
         } else {
             setEnabledTabs(['info']);
         }
-    }, [projectId]);
+    }, [projectId, feasbilityStudy]);
 
     useEffect(() => {
         const hash = window.location.hash.substring(1);
@@ -92,13 +91,12 @@ function ProjectCreation() {
                     console.error("Failed to fetch project:", err);
                 });
 
-                axios.get(`${import.meta.env.VITE_API_BASE_URL}/feasibility/${projectId}`, {
+            axios.get(`${import.meta.env.VITE_API_BASE_URL}/feasibility/${projectId}`, {
                 headers: {
                     Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                     'Content-Type': 'application/json'
                 }
-            }
-            ).then(res => {
+            }).then(res => {
                 if (res.status === 200) {
                     setFeasbilityStudy(res.data);
                 }
@@ -111,6 +109,7 @@ function ProjectCreation() {
     const handleSubmit = async () => {
         try {
             setLoading(true);
+            
             if(!project.projectName){
                 toast.error("Project name is required");
                 return;
@@ -119,6 +118,7 @@ function ProjectCreation() {
                 toast.error("Short name is required");
                 return;
             }
+            
             project.otherAmenities = Array.isArray(project.otherAmenities)
                 ? project.otherAmenities
                 : project.otherAmenities.split(',').map(a => a.trim());
@@ -131,48 +131,74 @@ function ProjectCreation() {
                 scopeOfPackageIds: scopePack,
             };
 
-            const res = await axios.post(
-                `${import.meta.env.VITE_API_BASE_URL}/project/createProject`,
-                projectJson,
-                {
-                    headers: {
-                        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
+            let response;
+            let currentProjectId = projectId || project.id;
 
-            if (res.status === 201) {
-                const newProjectId = res.data.id || res.data.projectId;
-                setProject(prev => ({ ...prev, id: newProjectId, projectId: newProjectId }));
-
-                if (uploadedFiles.length > 0) {
-                    const formData = new FormData();
-                    uploadedFiles.forEach(file => formData.append('files', file));
-
-                    await axios.post(
-                        `${import.meta.env.VITE_API_BASE_URL}/project/saveProjectFiles/${newProjectId}`,
-                        formData,
-                        {
-                            headers: {
-                                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                                'Content-Type': 'multipart/form-data'
-                            }
+            if (currentProjectId) {
+                response = await axios.put(
+                    `${import.meta.env.VITE_API_BASE_URL}/project/updateProject/${currentProjectId}`,
+                    projectJson,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                            'Content-Type': 'application/json'
                         }
-                    );
+                    }
+                );
+
+                if (response.status === 200) {
+                    toast.success("Project updated successfully!");
                 }
-                toast.success("Project created successfully!");
-                setTimeout(()=>{
-                    navigate(`/ProjectManagement/project/${newProjectId}#feasibility`);
-                })
+            } else {
+                response = await axios.post(
+                    `${import.meta.env.VITE_API_BASE_URL}/project/createProject`,
+                    projectJson,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+
+                if (response.status === 201) {
+                    const newProjectId = response.data.id || response.data.projectId;
+                    setProject(prev => ({ ...prev, id: newProjectId, projectId: newProjectId }));
+                    currentProjectId = newProjectId;
+                    toast.success("Project created successfully!");
+                    
+                    setTimeout(() => {
+                        navigate(`/ProjectManagement/project/${newProjectId}#feasibility`);
+                    }, 1000);
+                }
             }
+
+            if (uploadedFiles.length > 0 && currentProjectId) {
+                const formData = new FormData();
+                uploadedFiles.forEach(file => formData.append('files', file));
+
+                await axios.post(
+                    `${import.meta.env.VITE_API_BASE_URL}/project/saveProjectFiles/${currentProjectId}`,
+                    formData,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                            'Content-Type': 'multipart/form-data'
+                        }
+                    }
+                );
+                
+                setUploadedFiles([]);
+            }
+
         } catch (error) {
-            console.error('Error creating project:', error);
+            console.error('Error saving project:', error);
             toast.error(error.response?.data?.message || error.message);
         } finally {
             setLoading(false);
         }
     };
+
     return (
         <div className="container-fluid">
             <div className="row align-items-center mb-4">
