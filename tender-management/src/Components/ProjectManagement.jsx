@@ -123,6 +123,8 @@ function ProjectCreation() {
                 ? project.otherAmenities
                 : project.otherAmenities.split(',').map(a => a.trim());
 
+            project.estimatedValue = project.buildingArea * project.ratePerUnit;
+
             const projectJson = {
                 project,
                 regionId: region,
