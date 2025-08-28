@@ -1,11 +1,15 @@
 import axios from "axios";
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, FileText, Search } from 'lucide-react';
-import { useEffect, useState } from "react";
+import { ArrowLeft, ArrowRight, FileText } from 'lucide-react';
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
+import ClosedList from '../assest/ClosedList.svg?react';
+import DropDown from '../assest/DropDown.svg?react';
 import LargeFolder from '../assest/LargeFolder.svg?react';
 import MediumFolder from '../assest/MediumFolder.svg?react';
 import SaveMappingIcon from '../assest/SaveMapping.svg?react';
+import Search from '../assest/Search.svg?react';
 import SmallFolder from '../assest/SmallFolder.svg?react';
+import '../CSS/Styles.css';
 
 const CCMOverview = () => {
     const [project, setProject] = useState();
@@ -15,6 +19,20 @@ const CCMOverview = () => {
     const [selectedMappingType, setSelectedMappingType] = useState("1 : M");
     const [searchQuery, setSearchQuery] = useState("");
     const [expandedFolders, setExpandedFolders] = useState(new Set());
+    const [activitySearchQuery, setActivitySearchQuery] = useState("");
+    const [expandedActivityFolders, setExpandedActivityFolders] = useState(new Set());
+    const [costCodeTypes, setCostCodeTypes] = useState([]);
+    const [activities, setActivities] = useState([]);
+    const [loading, setLoading] = useState({
+        costCodes: true,
+        activities: true
+    });
+    const [showAddActivityForm, setShowAddActivityForm] = useState(false);
+    const [newActivity, setNewActivity] = useState({
+        costCodeTypeId: "",
+        activityCode: "",
+        activityName: ""
+    });
 
     const mappingTypes = [
         {
@@ -37,11 +55,6 @@ const CCMOverview = () => {
         },
     ];
 
-    const activityData = [
-        { id: "direct", name: "Object Cost" },
-        { id: "indirect", name: "In-direct Cost" }
-    ];
-
     useEffect(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${projectId}`, {
             headers: {
@@ -59,6 +72,8 @@ const CCMOverview = () => {
         });
 
         fetchBOQData();
+        fetchCostCodeTypes();
+        fetchActivities();
     }, [projectId]);
 
     const fetchBOQData = () => {
@@ -76,6 +91,88 @@ const CCMOverview = () => {
             }
         }).catch(err => {
             console.error('Error fetching BOQ data:', err);
+        });
+    };
+
+    const fetchCostCodeTypes = () => {
+        setLoading(prev => ({ ...prev, costCodes: true }));
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/costCodeTypes`, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        }).then(res => {
+            if (res.status === 200) {
+                setCostCodeTypes(res.data || []);
+            } else {
+                console.error('Failed to fetch cost code types:', res.status);
+            }
+        }).catch(err => {
+            console.error('Error fetching cost code types:', err);
+        }).finally(() => {
+            setLoading(prev => ({ ...prev, costCodes: false }));
+        });
+    };
+
+    const fetchActivities = () => {
+        setLoading(prev => ({ ...prev, activities: true }));
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/activities`, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        }).then(res => {
+            if (res.status === 200) {
+                setActivities(res.data || []);
+            } else {
+                console.error('Failed to fetch activities:', res.status);
+            }
+        }).catch(err => {
+            console.error('Error fetching activities:', err);
+        }).finally(() => {
+            setLoading(prev => ({ ...prev, activities: false }));
+        });
+    };
+
+    const addActivity = () => {
+        if (!newActivity.costCodeTypeId || !newActivity.activityCode || !newActivity.activityName) {
+            alert("Please fill all fields");
+            return;
+        }
+
+        axios.post(`${import.meta.env.VITE_API_BASE_URL}/activity/add`, {
+            ...newActivity,
+            projectId: projectId
+        }, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        }).then(res => {
+            if (res.status === 200) {
+                setNewActivity({
+                    costCodeTypeId: "",
+                    activityCode: "",
+                    activityName: ""
+                });
+                setShowAddActivityForm(false);
+                fetchActivities();
+            } else {
+                console.error('Failed to add activity:', res.status);
+                alert('Failed to add activity');
+            }
+        }).catch(err => {
+            console.error('Error adding activity:', err);
+            alert('Error adding activity');
+        });
+    };
+
+    const handleCancelAddActivity = () => {
+        setShowAddActivityForm(false);
+        setNewActivity({
+            costCodeTypeId: "",
+            activityCode: "",
+            activityName: ""
         });
     };
 
@@ -132,6 +229,18 @@ const CCMOverview = () => {
         });
     };
 
+    const toggleActivityFolder = (folderId) => {
+        setExpandedActivityFolders(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(folderId)) {
+                newSet.delete(folderId);
+            } else {
+                newSet.add(folderId);
+            }
+            return newSet;
+        });
+    };
+
     const handleSaveMapping = () => {
         alert(`Mapping saved successfully for ${selectedBOQs.size} BOQ items!`);
     };
@@ -141,7 +250,107 @@ const CCMOverview = () => {
         setSelectedBOQs(new Set());
         setSearchQuery("");
         setExpandedFolders(new Set());
+        setActivitySearchQuery("");
+        setExpandedActivityFolders(new Set());
     };
+
+    const expandParentFolders = (node, codeToBOQ, newExpandedFolders) => {
+        if (node.parentBOQ && node.parentBOQ.boqCode) {
+            const parentCode = node.parentBOQ.boqCode;
+            newExpandedFolders.add(parentCode);
+            const parent = codeToBOQ.get(parentCode);
+            if (parent) {
+                expandParentFolders(parent, codeToBOQ, newExpandedFolders);
+            }
+        }
+    };
+
+    const filteredBOQTree = useMemo(() => {
+        if (!searchQuery.trim()) {
+            return boqTree;
+        }
+
+        const query = searchQuery.toLowerCase().trim();
+        const codeToBOQ = new Map();
+
+        const flattenBOQ = (nodes) => {
+            nodes.forEach(node => {
+                codeToBOQ.set(node.boqCode, node);
+                if (node.children && node.children.length > 0) {
+                    flattenBOQ(node.children);
+                }
+            });
+        };
+
+        flattenBOQ(boqTree);
+
+        const matchingCodes = new Set();
+        codeToBOQ.forEach((node, code) => {
+            if (
+                code.toLowerCase().includes(query) ||
+                (node.boqName && node.boqName.toLowerCase().includes(query))
+            ) {
+                matchingCodes.add(code);
+            }
+        });
+
+        const newExpandedFolders = new Set(expandedFolders);
+        matchingCodes.forEach(code => {
+            const node = codeToBOQ.get(code);
+            if (node) {
+                expandParentFolders(node, codeToBOQ, newExpandedFolders);
+            }
+        });
+        setExpandedFolders(newExpandedFolders);
+
+        const filterTree = (nodes) => {
+            return nodes
+                .map(node => ({ ...node }))
+                .filter(node => {
+                    if (matchingCodes.has(node.boqCode)) {
+                        return true;
+                    }
+
+                    if (node.children && node.children.length > 0) {
+                        const filteredChildren = filterTree(node.children);
+                        node.children = filteredChildren;
+                        return filteredChildren.length > 0;
+                    }
+
+                    return false;
+                });
+        };
+
+        return filterTree(boqTree);
+    }, [boqTree, searchQuery]);
+
+    const filteredActivityData = useMemo(() => {
+        if (!activitySearchQuery.trim()) {
+            return costCodeTypes;
+        }
+
+        const query = activitySearchQuery.toLowerCase().trim();
+
+        const filterActivities = (items) => {
+            return items
+                .map(item => ({ ...item }))
+                .filter(item => {
+                    if (item.costCodeName && item.costCodeName.toLowerCase().includes(query)) {
+                        return true;
+                    }
+
+                    if (item.activities && item.activities.length > 0) {
+                        const filteredChildren = filterActivities(item.activities);
+                        item.activities = filteredChildren;
+                        return filteredChildren.length > 0;
+                    }
+
+                    return false;
+                });
+        };
+
+        return filterActivities(costCodeTypes);
+    }, [costCodeTypes, activitySearchQuery]);
 
     const BOQNode = ({ boq, level = 0 }) => {
         const hasChildren = boq.children && boq.children.length > 0;
@@ -174,7 +383,10 @@ const CCMOverview = () => {
 
         if (hasChildren) {
             return (
-                <div className="mb-3">
+                <div
+                    className={`mb-3 ${level === 0 ? " " : "border-start"} border-1 ps-3 py-3 pe-3 w-100`}
+                    style={{ borderColor: '#0051973D' }}
+                >
                     <div
                         className="d-flex justify-content-between align-items-center cursor-pointer"
                         onClick={handleFolderToggle}
@@ -182,16 +394,17 @@ const CCMOverview = () => {
                     >
                         <div className="d-flex align-items-center mb-2">
                             <span className="me-2">
-                                {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                {isExpanded ? <DropDown /> : <ClosedList />}
                             </span>
                             <span>{getIcon()}</span>
                             <span className="fw-bold me-md-2 ms-2 text-nowrap" style={{ maxWidth: '80px' }}>{boq.boqCode}</span>
                             <span>-</span>
                             <span className="flex-start fw-bold ms-2 text-nowrap" style={{ maxWidth: '400px' }}>{boq.boqName}</span>
+
                         </div>
                         {!boq.parentBOQ && (
-                            <span className="text-nowrap ms-1 pb-2 text-secondary" style={{ minWidth: '100px' }}>
-                                $ {total.toLocaleString()}
+                            <span className="text-nowrap text-secondary ms-auto mb-2" style={{ minWidth: '100px' }}>
+                                $ {total.toFixed(2).toLocaleString()}
                             </span>
                         )}
                     </div>
@@ -224,6 +437,43 @@ const CCMOverview = () => {
                             <span>-</span>
                             <span className="ms-2 text-nowrap">{boq.boqName}</span>
                         </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const ActivityNode = ({ activity, level = 0, costCodeTypeId }) => {
+        const isExpanded = expandedActivityFolders.has(activity.id);
+
+        const handleFolderToggle = (e) => {
+            e.stopPropagation();
+            toggleActivityFolder(activity.id);
+        };
+
+        const getIcon = () => {
+            if (level === 0) {
+                return <LargeFolder />;
+            } else if (level === 1) {
+                return <MediumFolder />;
+            } else {
+                return <SmallFolder />;
+            }
+        };
+
+        return (
+            <div className="d-flex align-items-center py-2 ms-3">
+                <input
+                    type="checkbox"
+                    className="form-check-input flex-shrink-0 me-2"
+                    style={{ borderColor: '#0051973D', width: '18px', height: '18px' }}
+                />
+                <SmallFolder style={{ minWidth: '16px' }} />
+                <div className="d-flex flex-grow-1 ms-2" style={{ minWidth: 0 }}>
+                    <div className="d-flex justify-content-between">
+                        <span className="me-2 text-nowrap">{activity.activityCode}</span>
+                        <span>-</span>
+                        <span className="ms-2 text-nowrap">{activity.activityName}</span>
                     </div>
                 </div>
             </div>
@@ -316,24 +566,26 @@ const CCMOverview = () => {
                             <h5 className="mb-0">BOQ Details</h5>
                         </div>
 
-                        <div className="position-relative mb-3">
-                            <Search size={18} className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" />
+                        <div className="position-relative mb-3 pb-1">
+                            <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" />
                             <input
                                 type="text"
-                                className="form-control ps-5 "
-                                placeholder="Search BOQ items..." style={{ border: '0.5px solid #0051973D' }}
+                                className="search form-control ps-5"
+                                placeholder="Search BOQ items..." style={{ border: '0.5px solid #0051973D', fontSize: "15px" }}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
 
-                        <div className="card-body" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                            {boqTree.length > 0 ? (
-                                boqTree.map((boq, index) => (
+                        <div className="card-body boq-scroll-container" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                            {filteredBOQTree.length > 0 ? (
+                                filteredBOQTree.map((boq, index) => (
                                     <BOQNode key={index} boq={boq} />
                                 ))
                             ) : (
-                                <div className="text-center text-muted py-4">No BOQ data available</div>
+                                <div className="text-center text-muted py-4">
+                                    {boqTree.length > 0 ? "No matching BOQ items found" : "No BOQ data available"}
+                                </div>
                             )}
                         </div>
                     </div>
@@ -362,24 +614,120 @@ const CCMOverview = () => {
                     </div>
                 </div>
 
-                <div className="col-md-5">
+                <div className="col-md-5 bg-white rounded-3 p-3" style={{ border: '0.5px solid #0051973D' }}>
                     <div className="card border-0 bg-transparent h-100">
-                        <div className="card-header d-flex justify-content-between align-items-center border-0 bg-transparent">
+                        <div className="card-header d-flex justify-content-between align-items-center border-0 bg-transparent pb-3">
                             <h5 className="mb-0">Activity Details</h5>
-                            <button className="border-0 bg-transparent"><small className="text-nowrap text-primary">+ Add Activity</small></button>
+                            {!showAddActivityForm && (
+                                <button
+                                    className="border-0 bg-transparent"
+                                    onClick={() => setShowAddActivityForm(true)}
+                                >
+                                    <small className="text-nowrap text-primary">+ Add Activity</small>
+                                </button>
+                            )}
                         </div>
 
-                        <div className="card-body">
-                            {activityData.map(activity => (
-                                <div key={activity.id} className="py-2 border-bottom">
-                                    <div className="form-check">
-                                        <input className="form-check-input" type="checkbox" id={activity.id} />
-                                        <label className="form-check-label" htmlFor={activity.id}>
-                                            {activity.name}
-                                        </label>
+                        <div className="position-relative mb-3 pb-1">
+                            <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" />
+                            <input
+                                type="text"
+                                className="search form-control ps-5"
+                                placeholder="Search activities..." style={{ border: '0.5px solid #0051973D', fontSize: "15px" }}
+                                value={activitySearchQuery}
+                                onChange={(e) => setActivitySearchQuery(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="card-body activity-scroll-container" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                            {showAddActivityForm ? (
+                                <div className="mb-4 p-3 border rounded" style={{ borderColor: '#0051973D' }}>
+                                    <h6 className="mb-3">New Activity</h6>
+                                    <div className="mb-3">
+                                        <label className="form-label small mb-1">Activity Code</label>
+                                        <input
+                                            type="text"
+                                            className="form-control form-control-sm"
+                                            value={newActivity.activityCode}
+                                            onChange={(e) => setNewActivity({ ...newActivity, activityCode: e.target.value })}
+                                            placeholder="Enter activity code"
+                                        />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label small mb-1">Activity Name</label>
+                                        <input
+                                            type="text"
+                                            className="form-control form-control-sm"
+                                            value={newActivity.activityName}
+                                            onChange={(e) => setNewActivity({ ...newActivity, activityName: e.target.value })}
+                                            placeholder="Enter activity name"
+                                        />
+                                    </div>
+                                    <div className="d-flex justify-content-end gap-2">
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-outline-secondary"
+                                            onClick={handleCancelAddActivity}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-primary"
+                                            onClick={addActivity}
+                                        >
+                                            + Add Activity
+                                        </button>
                                     </div>
                                 </div>
-                            ))}
+                            ) :
+
+                                loading.costCodes ? (
+                                    <div className="text-center py-4">
+                                        <div className="spinner-border text-primary" role="status">
+                                            <span className="visually-hidden">Loading...</span>
+                                        </div>
+                                        <p className="mt-2">Loading activities...</p>
+                                    </div>
+                                ) : costCodeTypes.length > 0 ? (
+                                    costCodeTypes.map((costCodeType) => {
+                                        const typeActivities = activities.filter(activity =>
+                                            activity.costCodeType && activity.costCodeType.id === costCodeType.id
+                                        );
+
+                                        return (
+                                            <div key={costCodeType.id} className="mb-3">
+                                                <div
+                                                    className="d-flex align-items-center py-2 cursor-pointer"
+                                                    onClick={() => toggleActivityFolder(costCodeType.id)}
+                                                    style={{ cursor: 'pointer' }}
+                                                >
+                                                    <span className="me-2">
+                                                        {expandedActivityFolders.has(costCodeType.id) ? <DropDown /> : <ClosedList />}
+                                                    </span>
+                                                    <LargeFolder />
+                                                    <span className="ms-2 fw-semibold">{costCodeType.costCodeName}</span>
+                                                </div>
+                                                {expandedActivityFolders.has(costCodeType.id) && typeActivities.length > 0 && (
+                                                    <div className="ms-4 mt-2">
+                                                        {typeActivities.map((activity) => (
+                                                            <ActivityNode
+                                                                key={activity.id}
+                                                                activity={activity}
+                                                                level={1}
+                                                                costCodeTypeId={costCodeType.id}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <div className="text-center text-muted py-4">
+                                        No activity data available
+                                    </div>
+                                )}
                         </div>
                     </div>
                 </div>
