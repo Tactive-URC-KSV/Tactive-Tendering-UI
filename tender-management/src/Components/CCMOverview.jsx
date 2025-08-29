@@ -1,5 +1,5 @@
 import axios from "axios";
-import { ArrowLeft, ArrowRight, FileText } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, FileText } from 'lucide-react';
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import ClosedList from '../assest/ClosedList.svg?react';
@@ -16,23 +16,37 @@ const CCMOverview = () => {
     const { projectId } = useParams();
     const [boqTree, setBoqTree] = useState([]);
     const [selectedBOQs, setSelectedBOQs] = useState(new Set());
+    const [selectedActivities, setSelectedActivities] = useState(new Set());
     const [selectedMappingType, setSelectedMappingType] = useState("1 : M");
     const [searchQuery, setSearchQuery] = useState("");
     const [expandedFolders, setExpandedFolders] = useState(new Set());
     const [activitySearchQuery, setActivitySearchQuery] = useState("");
     const [expandedActivityFolders, setExpandedActivityFolders] = useState(new Set());
     const [costCodeTypes, setCostCodeTypes] = useState([]);
-    const [activities, setActivities] = useState([]);
+    const [activityGroups, setActivityGroups] = useState([]);
+    const [costCodeActivities, setCostCodeActivities] = useState([]);
     const [loading, setLoading] = useState({
         costCodes: true,
-        activities: true
+        activityGroups: true,
+        costCodeActivities: true
     });
     const [showAddActivityForm, setShowAddActivityForm] = useState(false);
+    const [showMappingPopover, setShowMappingPopover] = useState(false);
     const [newActivity, setNewActivity] = useState({
         costCodeTypeId: "",
+        activityGroupId: "",
         activityCode: "",
-        activityName: ""
+        activityName: "",
+        quantity: 0,
+        rate: 0,
+        uomId: ""
     });
+    const [mappingConfig, setMappingConfig] = useState({
+        splitType: "",
+        percentage: "",
+        value: ""
+    });
+    const [selectedCostCodeType, setSelectedCostCodeType] = useState(null);
 
     const mappingTypes = [
         {
@@ -55,6 +69,12 @@ const CCMOverview = () => {
         },
     ];
 
+    const splitTypes = [
+        { id: "percentage", name: "Percentage" },
+        { id: "value", name: "Value" },
+        { id: "equal", name: "Equal Split" }
+    ];
+
     useEffect(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${projectId}`, {
             headers: {
@@ -73,7 +93,8 @@ const CCMOverview = () => {
 
         fetchBOQData();
         fetchCostCodeTypes();
-        fetchActivities();
+        fetchActivityGroups();
+        fetchCostCodeActivities();
     }, [projectId]);
 
     const fetchBOQData = () => {
@@ -114,36 +135,59 @@ const CCMOverview = () => {
         });
     };
 
-    const fetchActivities = () => {
-        setLoading(prev => ({ ...prev, activities: true }));
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/activities`, {
+    const fetchActivityGroups = () => {
+        setLoading(prev => ({ ...prev, activityGroups: true }));
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/activityGroups`, {
             headers: {
                 Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                 'Content-Type': 'application/json'
             }
         }).then(res => {
             if (res.status === 200) {
-                setActivities(res.data || []);
+                setActivityGroups(res.data || []);
             } else {
-                console.error('Failed to fetch activities:', res.status);
+                console.error('Failed to fetch activity groups:', res.status);
             }
         }).catch(err => {
-            console.error('Error fetching activities:', err);
+            console.error('Error fetching activity groups:', err);
         }).finally(() => {
-            setLoading(prev => ({ ...prev, activities: false }));
+            setLoading(prev => ({ ...prev, activityGroups: false }));
         });
     };
 
-    const addActivity = () => {
+    const fetchCostCodeActivities = () => {
+        setLoading(prev => ({ ...prev, costCodeActivities: true }));
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/costCodeActivities/${projectId}`, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        }).then(res => {
+            if (res.status === 200) {
+                setCostCodeActivities(res.data || []);
+            } else {
+                console.error('Failed to fetch cost code activities:', res.status);
+            }
+        }).catch(err => {
+            console.error('Error fetching cost code activities:', err);
+        }).finally(() => {
+            setLoading(prev => ({ ...prev, costCodeActivities: false }));
+        });
+    };
+
+    const addActivityGroup = () => {
         if (!newActivity.costCodeTypeId || !newActivity.activityCode || !newActivity.activityName) {
-            alert("Please fill all fields");
+            alert("Please fill all required fields");
             return;
         }
 
-        axios.post(`${import.meta.env.VITE_API_BASE_URL}/activity/add`, {
-            ...newActivity,
-            projectId: projectId
-        }, {
+        const activityGroupData = {
+            costCodeTypeId: newActivity.costCodeTypeId,
+            activityCode: newActivity.activityCode,
+            activityName: newActivity.activityName,
+        };
+
+        axios.post(`${import.meta.env.VITE_API_BASE_URL}/activityGroup/add`, activityGroupData, {
             headers: {
                 Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                 'Content-Type': 'application/json'
@@ -152,28 +196,161 @@ const CCMOverview = () => {
             if (res.status === 200) {
                 setNewActivity({
                     costCodeTypeId: "",
+                    activityGroupId: "",
                     activityCode: "",
-                    activityName: ""
+                    activityName: "",
+                    quantity: 0,
+                    rate: 0,
+                    uomId: ""
                 });
                 setShowAddActivityForm(false);
-                fetchActivities();
+                fetchActivityGroups();
             } else {
-                console.error('Failed to add activity:', res.status);
-                alert('Failed to add activity');
+                console.error('Failed to add activity group:', res.status);
+                alert('Failed to add activity group');
             }
         }).catch(err => {
-            console.error('Error adding activity:', err);
-            alert('Error adding activity');
+            console.error('Error adding activity group:', err);
+            alert('Error adding activity group');
         });
+    };
+
+    const saveCostCodeMapping = () => {
+        if (selectedBOQs.size === 0 || selectedActivities.size === 0) {
+            alert("Please select BOQ items and activities to map");
+            return;
+        }
+
+        const costCodeDtos = Array.from(selectedBOQs).map(boqId => {
+            return {
+                boqId: parseInt(boqId, 10),
+                activityCode: newActivity.activityCode || "",
+                activityName: newActivity.activityName || "",
+                quantity: newActivity.quantity || 1,
+                rate: newActivity.rate || 0,
+                amount: (newActivity.quantity || 1) * (newActivity.rate || 0),
+                uomId: newActivity.uomId || "",
+                mappingType: selectedMappingType,
+                costCodeTypeId: newActivity.costCodeTypeId || "",
+                activityGroupId: newActivity.activityGroupId || "",
+                projectId: projectId
+            };
+        });
+
+        axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/save/${projectId}`, costCodeDtos, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        }).then(res => {
+            if (res.status === 200) {
+                alert(`Cost code mapping saved successfully for ${selectedBOQs.size} BOQ items!`);
+                setShowMappingPopover(false);
+                setMappingConfig({
+                    splitType: "",
+                    percentage: "",
+                    value: ""
+                });
+                setSelectedBOQs(new Set());
+                setSelectedActivities(new Set());
+                fetchCostCodeActivities();
+            } else {
+                console.error('Failed to save cost code mapping:', res.status);
+                alert('Failed to save cost code mapping');
+            }
+        }).catch(err => {
+            console.error('Error saving cost code mapping:', err);
+            alert('Error saving cost code mapping');
+        });
+    };
+
+    const deleteCostCodeActivity = (costCodeId) => {
+        if (window.confirm("Are you sure you want to delete this cost code activity?")) {
+            axios.delete(`${import.meta.env.VITE_API_BASE_URL}/costCode/delete/${costCodeId}`, {
+                headers: {
+                    Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                    'Content-Type': 'application/json'
+                }
+            }).then(res => {
+                if (res.status === 200) {
+                    alert("Cost code activity deleted successfully!");
+                    fetchCostCodeActivities();
+                } else {
+                    console.error('Failed to delete cost code activity:', res.status);
+                    alert('Failed to delete cost code activity');
+                }
+            }).catch(err => {
+                console.error('Error deleting cost code activity:', err);
+                alert('Error deleting cost code activity');
+            });
+        }
     };
 
     const handleCancelAddActivity = () => {
         setShowAddActivityForm(false);
         setNewActivity({
             costCodeTypeId: "",
+            activityGroupId: "",
             activityCode: "",
-            activityName: ""
+            activityName: "",
+            quantity: 0,
+            rate: 0,
+            uomId: ""
         });
+    };
+
+    const handleRightArrowClick = () => {
+        if (selectedBOQs.size === 0) {
+            alert("Please select at least one BOQ item to map");
+            return;
+        }
+
+        if (selectedActivities.size == 0) {
+            alert("Please select at least one Activity Group to map");
+            return;
+        }
+
+        if (selectedMappingType === "1 : 1" && selectedBOQs.size !== 1) {
+            alert("One to One mapping requires exactly one BOQ item to be selected");
+            return;
+        }
+
+        if (selectedMappingType === "1 : M" && selectedBOQs.size !== 1) {
+            alert("One to Many mapping requires exactly one BOQ item to be selected");
+            return;
+        }
+
+        setShowMappingPopover(true);
+    };
+
+    const handleLeftArrowClick = () => {
+        setSelectedActivities(new Set());
+    };
+
+    const handleActivitySelection = (activityId, isSelected) => {
+        if (selectedMappingType === "1 : 1" && isSelected && selectedActivities.size >= 1) {
+            alert("One to One mapping allows only one activity to be selected");
+            return;
+        }
+
+        setSelectedActivities(prev => {
+            const newSet = new Set(prev);
+            if (isSelected) {
+                newSet.add(activityId);
+            } else {
+                newSet.delete(activityId);
+            }
+            return newSet;
+        });
+    };
+
+    const handleCostCodeTypeSelection = (costCodeTypeId) => {
+        setSelectedCostCodeType(costCodeTypeId);
+        setNewActivity(prev => ({ ...prev, costCodeTypeId }));
+    };
+
+    const handleActivityGroupSelection = (activityGroupId) => {
+        handleActivitySelection(activityGroupId, true);
     };
 
     const processBOQData = (allBOQ) => {
@@ -206,6 +383,16 @@ const CCMOverview = () => {
     };
 
     const handleBOQSelection = (boqCode, isSelected) => {
+        if (selectedMappingType === "1 : 1" && isSelected && selectedBOQs.size >= 1) {
+            alert("One to One mapping allows only one BOQ item to be selected");
+            return;
+        }
+
+        if (selectedMappingType === "1 : M" && isSelected && selectedBOQs.size >= 1) {
+            alert("One to Many mapping allows only one BOQ item to be selected");
+            return;
+        }
+
         setSelectedBOQs(prev => {
             const newSet = new Set(prev);
             if (isSelected) {
@@ -242,27 +429,23 @@ const CCMOverview = () => {
     };
 
     const handleSaveMapping = () => {
-        alert(`Mapping saved successfully for ${selectedBOQs.size} BOQ items!`);
+        if (costCodeActivities.length === 0) {
+            alert("No cost code activities to save. Please configure mappings first.");
+            return;
+        }
+
+        alert(`All cost code activities saved successfully!`);
     };
 
     const handleReset = () => {
         setSelectedMappingType("1 : M");
         setSelectedBOQs(new Set());
+        setSelectedActivities(new Set());
         setSearchQuery("");
         setExpandedFolders(new Set());
         setActivitySearchQuery("");
         setExpandedActivityFolders(new Set());
-    };
-
-    const expandParentFolders = (node, codeToBOQ, newExpandedFolders) => {
-        if (node.parentBOQ && node.parentBOQ.boqCode) {
-            const parentCode = node.parentBOQ.boqCode;
-            newExpandedFolders.add(parentCode);
-            const parent = codeToBOQ.get(parentCode);
-            if (parent) {
-                expandParentFolders(parent, codeToBOQ, newExpandedFolders);
-            }
-        }
+        setSelectedCostCodeType(null);
     };
 
     const filteredBOQTree = useMemo(() => {
@@ -271,43 +454,15 @@ const CCMOverview = () => {
         }
 
         const query = searchQuery.toLowerCase().trim();
-        const codeToBOQ = new Map();
-
-        const flattenBOQ = (nodes) => {
-            nodes.forEach(node => {
-                codeToBOQ.set(node.boqCode, node);
-                if (node.children && node.children.length > 0) {
-                    flattenBOQ(node.children);
-                }
-            });
-        };
-
-        flattenBOQ(boqTree);
-
-        const matchingCodes = new Set();
-        codeToBOQ.forEach((node, code) => {
-            if (
-                code.toLowerCase().includes(query) ||
-                (node.boqName && node.boqName.toLowerCase().includes(query))
-            ) {
-                matchingCodes.add(code);
-            }
-        });
-
-        const newExpandedFolders = new Set(expandedFolders);
-        matchingCodes.forEach(code => {
-            const node = codeToBOQ.get(code);
-            if (node) {
-                expandParentFolders(node, codeToBOQ, newExpandedFolders);
-            }
-        });
-        setExpandedFolders(newExpandedFolders);
 
         const filterTree = (nodes) => {
             return nodes
                 .map(node => ({ ...node }))
                 .filter(node => {
-                    if (matchingCodes.has(node.boqCode)) {
+                    if (
+                        node.boqCode.toLowerCase().includes(query) ||
+                        (node.boqName && node.boqName.toLowerCase().includes(query))
+                    ) {
                         return true;
                     }
 
@@ -324,39 +479,41 @@ const CCMOverview = () => {
         return filterTree(boqTree);
     }, [boqTree, searchQuery]);
 
-    const filteredActivityData = useMemo(() => {
+    const filteredActivityGroups = useMemo(() => {
         if (!activitySearchQuery.trim()) {
-            return costCodeTypes;
+            return activityGroups;
         }
 
         const query = activitySearchQuery.toLowerCase().trim();
 
-        const filterActivities = (items) => {
-            return items
-                .map(item => ({ ...item }))
-                .filter(item => {
-                    if (item.costCodeName && item.costCodeName.toLowerCase().includes(query)) {
-                        return true;
-                    }
+        return activityGroups.filter(group =>
+            (group.activityCode && group.activityCode.toLowerCase().includes(query)) ||
+            (group.activityName && group.activityName.toLowerCase().includes(query)) ||
+            (group.costCodeType && group.costCodeType.costCodeName && group.costCodeType.costCodeName.toLowerCase().includes(query))
+        );
+    }, [activityGroups, activitySearchQuery]);
 
-                    if (item.activities && item.activities.length > 0) {
-                        const filteredChildren = filterActivities(item.activities);
-                        item.activities = filteredChildren;
-                        return filteredChildren.length > 0;
-                    }
-
-                    return false;
-                });
-        };
-
-        return filterActivities(costCodeTypes);
-    }, [costCodeTypes, activitySearchQuery]);
+    const activityGroupsByCostCodeType = useMemo(() => {
+        const grouped = {};
+        activityGroups.forEach(group => {
+            const costCodeTypeId = group.costCodeType?.id || 'uncategorized';
+            if (!grouped[costCodeTypeId]) {
+                grouped[costCodeTypeId] = {
+                    costCodeType: group.costCodeType,
+                    activityGroups: []
+                };
+            }
+            grouped[costCodeTypeId].activityGroups.push(group);
+        });
+        return grouped;
+    }, [activityGroups]);
 
     const BOQNode = ({ boq, level = 0 }) => {
         const hasChildren = boq.children && boq.children.length > 0;
         const isSelected = selectedBOQs.has(boq.boqCode);
         const total = boq.calculatedTotal || 0;
         const isExpanded = expandedFolders.has(boq.boqCode);
+        const isMapped = costCodeActivities.some(activity => activity.boq && activity.boq.boqCode === boq.boqCode);
 
         const handleCheckboxChange = (e) => {
             handleBOQSelection(boq.boqCode, e.target.checked);
@@ -400,11 +557,11 @@ const CCMOverview = () => {
                             <span className="fw-bold me-md-2 ms-2 text-nowrap" style={{ maxWidth: '80px' }}>{boq.boqCode}</span>
                             <span>-</span>
                             <span className="flex-start fw-bold ms-2 text-nowrap" style={{ maxWidth: '400px' }}>{boq.boqName}</span>
-
+                            {isMapped && <Check size={16} className="text-success ms-2" />}
                         </div>
                         {!boq.parentBOQ && (
                             <span className="text-nowrap text-secondary ms-auto mb-2" style={{ minWidth: '100px' }}>
-                                $ {total.toFixed(2).toLocaleString()}
+                                $ {total.toLocaleString()}
                             </span>
                         )}
                     </div>
@@ -427,6 +584,7 @@ const CCMOverview = () => {
                     style={{ borderColor: '#0051973D', width: '18px', height: '18px' }}
                     checked={isSelected}
                     onChange={handleCheckboxChange}
+                    disabled={isMapped}
                 />
                 <div className="d-flex align-items-center flex-grow-1 pt-1">
                     <span style={{ width: '16px' }}></span>
@@ -436,6 +594,7 @@ const CCMOverview = () => {
                             <span className=" me-2 text-nowrap" >{boq.boqCode}</span>
                             <span>-</span>
                             <span className="ms-2 text-nowrap">{boq.boqName}</span>
+                            {isMapped && <Check size={16} className="text-success ms-2" />}
                         </div>
                     </div>
                 </div>
@@ -443,37 +602,122 @@ const CCMOverview = () => {
         );
     };
 
-    const ActivityNode = ({ activity, level = 0, costCodeTypeId }) => {
-        const isExpanded = expandedActivityFolders.has(activity.id);
+    const CostCodeTypeNode = ({ costCodeTypeId, data }) => {
+        const isExpanded = expandedActivityFolders.has(costCodeTypeId);
+        const costCodeType = data.costCodeType;
+        const activityGroups = data.activityGroups;
+        const isSelected = selectedCostCodeType === costCodeTypeId;
 
         const handleFolderToggle = (e) => {
             e.stopPropagation();
-            toggleActivityFolder(activity.id);
+            toggleActivityFolder(costCodeTypeId);
         };
 
-        const getIcon = () => {
-            if (level === 0) {
-                return <LargeFolder />;
-            } else if (level === 1) {
-                return <MediumFolder />;
-            } else {
-                return <SmallFolder />;
-            }
+        const handleCostCodeTypeClick = (e) => {
+            e.stopPropagation();
+            handleCostCodeTypeSelection(costCodeTypeId);
         };
 
         return (
-            <div className="d-flex align-items-center py-2 ms-3">
+            <div className="mb-3">
+                <div
+                    className={`d-flex align-items-center cursor-pointer py-2 ${isSelected ? 'bg-primary bg-opacity-10' : ''}`}
+                    onClick={handleCostCodeTypeClick}
+                    style={{ cursor: 'pointer' }}
+                >
+                    <span className="me-2" onClick={handleFolderToggle}>
+                        {isExpanded ? <DropDown /> : <ClosedList />}
+                    </span>
+                    <LargeFolder />
+                    <div className="d-flex flex-grow-1 ms-2">
+                        <span className="fw-bold">{costCodeType?.costCodeName || 'Uncategorized'}</span>
+                    </div>
+                </div>
+                {isExpanded && (
+                    <div className="ms-4 mt-2">
+                        {activityGroups.map((group) => (
+                            <ActivityGroupNode key={group.id} group={group} />
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const ActivityGroupNode = ({ group }) => {
+        const isExpanded = expandedActivityFolders.has(group.id);
+        const isSelected = selectedActivities.has(group.id);
+        const isMapped = costCodeActivities.some(activity => activity.activityGroup && activity.activityGroup.id === group.id);
+
+        const handleFolderToggle = (e) => {
+            e.stopPropagation();
+            toggleActivityFolder(group.id);
+        };
+
+        const handleActivityGroupClick = (e) => {
+            e.stopPropagation();
+            handleActivityGroupSelection(group.id);
+        };
+
+        return (
+            <div className="mb-2">
+                <div
+                    className={`d-flex align-items-center cursor-pointer py-2 ${isSelected ? 'bg-primary bg-opacity-10' : ''}`}
+                    onClick={handleActivityGroupClick}
+                    style={{ cursor: 'pointer' }}
+                >
+                    <span className="me-2">
+                        {isExpanded && group.activities && group.activities.length > 0 ? <DropDown /> : group.activities && group.activities.length > 0 ? <ClosedList /> : ""}
+                        <MediumFolder />
+                    </span>
+
+                    <div className="d-flex flex-grow-1 ms-2" style={{ minWidth: 0 }}>
+                        <div className="d-flex justify-content-between">
+                            <span className="me-2 text-nowrap">{group.activityCode}</span>
+                            <span>-</span>
+                            <span className="ms-2 text-nowrap">{group.activityName}</span>
+                            {isMapped && <Check size={16} className="text-success ms-2" />}
+                        </div>
+                    </div>
+                </div>
+                {isExpanded && group.activities && group.activities.length > 0 && (
+                    <div className="ms-4 mt-2">
+                        {group.activities.map((activity) => (
+                            <ActivityNode key={activity.id} activity={activity} />
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const ActivityNode = ({ activity }) => {
+        const isSelected = selectedActivities.has(activity.id);
+        const isMapped = costCodeActivities.some(ca => ca.activity && ca.activity.id === activity.id);
+
+        const handleCheckboxChange = (e) => {
+            handleActivitySelection(activity.id, e.target.checked);
+        };
+
+        return (
+            <div className="d-flex align-items-center py-2">
                 <input
                     type="checkbox"
                     className="form-check-input flex-shrink-0 me-2"
                     style={{ borderColor: '#0051973D', width: '18px', height: '18px' }}
+                    checked={isSelected}
+                    onChange={handleCheckboxChange}
+                    disabled={isMapped}
                 />
-                <SmallFolder style={{ minWidth: '16px' }} />
-                <div className="d-flex flex-grow-1 ms-2" style={{ minWidth: 0 }}>
-                    <div className="d-flex justify-content-between">
-                        <span className="me-2 text-nowrap">{activity.activityCode}</span>
-                        <span>-</span>
-                        <span className="ms-2 text-nowrap">{activity.activityName}</span>
+                <div className="d-flex align-items-center flex-grow-1">
+                    <FileText size={16} className="text-muted me-2" />
+                    <div className="d-flex flex-grow-1" style={{ minWidth: 0 }}>
+                        <div className="d-flex justify-content-between">
+                            <span className="me-2 text-nowrap">{activity.activityCode}</span>
+                            <span>-</span>
+                            <span className="ms-2 text-nowrap">{activity.activityName}</span>
+                            {isMapped && <Check size={16} className="text-success ms-2" />}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -496,63 +740,70 @@ const CCMOverview = () => {
                 {mappingTypes.map((type) => (
                     <div className="col-md-6 col-lg-4 mb-3" key={type.key}>
                         <div
-                            className={`p-3 m-2  rounded h-100 d-flex flex-column ${selectedMappingType === type.key
+                            className={`p-3 m-2 rounded h-100 d-flex flex-column ${selectedMappingType === type.key
                                 ? "border-primary bg-primary bg-opacity-10"
                                 : "border"
                                 }`}
                             style={{
                                 cursor: "pointer",
                                 minWidth: "200px",
-                                transition: "all 0.2s ease", border: '0.5px solid #0051973D'
+                                transition: "all 0.2s ease",
+                                border: '0.5px solid #0051973D'
                             }}
                             onClick={() => setSelectedMappingType(type.key)}
                         >
-                            <h6 className="text-start">{type.title}</h6>
-                            <p className=" small text-start flex-grow-1 p-0 m-0">{type.desc}</p>
-                            <div className="text-start">
-                                <small className="text-muted">
-                                    {type.key === "1 : M" ? (
-                                        <span className="d-flex align-items-center">
-                                            <span className="d-flex align-items-center me-2 ">
-                                                <span className="bg-primary  me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
-                                                BOQ
-                                            </span>
-                                            <span className="me-2">→</span>
-                                            <span className="d-flex align-items-center">
-                                                <span className="bg-success  me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
-                                                <span className="bg-success  me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
-                                                <span className="bg-success  me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
-                                                Activities
-                                            </span>
-                                        </span>
-                                    ) : type.key === "1 : 1" ? (
-                                        <span className="d-flex align-items-center">
-                                            <span className="d-flex align-items-center me-2">
-                                                <span className="bg-primary  me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
-                                                BOQ
-                                            </span>
-                                            <span className="me-2">→</span>
-                                            <span className="d-flex align-items-center">
-                                                <span className="bg-success  me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
-                                                Activity
-                                            </span>
-                                        </span>
-                                    ) : (
-                                        <span className="d-flex align-items-center">
-                                            <span className="d-flex align-items-center me-2">
-                                                <span className="bg-primary  me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
-                                                <span className="bg-primary  me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
-                                                <span className="bg-primary  me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
-                                                BOQ
-                                            </span>
-                                            <span className="me-2">→</span>
-                                            <span className="d-flex align-items-center">
-                                                <span className="bg-success me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
-                                                Activity
-                                            </span>
-                                        </span>
-                                    )}
-                                </small>
+                            <div className="d-flex flex-column h-100">
+                                <div className="mb-2">
+                                    <h6 className="mb-1">{type.title}</h6>
+                                    <p className="text-muted small mb-2">{type.desc}</p>
+                                </div>
+                                <div className="mt-auto">
+                                    <div className="text-start">
+                                        <small className="text-muted">
+                                            {type.key === "1 : M" ? (
+                                                <span className="d-flex align-items-center">
+                                                    <span className="d-flex align-items-center me-2 ">
+                                                        <span className="bg-primary me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
+                                                        BOQ
+                                                    </span>
+                                                    <span className="me-2">→</span>
+                                                    <span className="d-flex align-items-center">
+                                                        <span className="bg-success me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
+                                                        <span className="bg-success me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
+                                                        <span className="bg-success me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
+                                                        Activities
+                                                    </span>
+                                                </span>
+                                            ) : type.key === "1 : 1" ? (
+                                                <span className="d-flex align-items-center">
+                                                    <span className="d-flex align-items-center me-2">
+                                                        <span className="bg-primary me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
+                                                        BOQ
+                                                    </span>
+                                                    <span className="me-2">→</span>
+                                                    <span className="d-flex align-items-center">
+                                                        <span className="bg-success me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
+                                                        Activity
+                                                    </span>
+                                                </span>
+                                            ) : (
+                                                <span className="d-flex align-items-center">
+                                                    <span className="d-flex align-items-center me-2">
+                                                        <span className="bg-primary me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
+                                                        <span className="bg-primary me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
+                                                        <span className="bg-primary me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
+                                                        BOQ
+                                                    </span>
+                                                    <span className="me-2">→</span>
+                                                    <span className="d-flex align-items-center">
+                                                        <span className="bg-success me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
+                                                        Activity
+                                                    </span>
+                                                </span>
+                                            )}
+                                        </small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -564,6 +815,9 @@ const CCMOverview = () => {
                     <div className="card border-0 bg-transparent">
                         <div className="card-header d-flex justify-content-between align-items-center border-0 bg-transparent pb-3">
                             <h5 className="mb-0">BOQ Details</h5>
+                            <div className="text-muted small">
+                                Selected: {selectedBOQs.size} {selectedMappingType === "1 : 1" || selectedMappingType === "1 : M" ? "(Max: 1)" : ""}
+                            </div>
                         </div>
 
                         <div className="position-relative mb-3 pb-1">
@@ -598,6 +852,7 @@ const CCMOverview = () => {
                                 size={28}
                                 className="p-3 rounded-circle bg-primary bg-opacity-10 text-primary shadow"
                                 style={{ width: "60px", height: "60px", cursor: "pointer" }}
+                                onClick={handleRightArrowClick}
                             />
                         </div>
 
@@ -609,6 +864,7 @@ const CCMOverview = () => {
                                 size={28}
                                 className="p-3 rounded-circle bg-primary bg-opacity-10 text-primary shadow "
                                 style={{ width: "60px", height: "60px", cursor: "pointer" }}
+                                onClick={handleLeftArrowClick}
                             />
                         </div>
                     </div>
@@ -639,10 +895,15 @@ const CCMOverview = () => {
                             />
                         </div>
 
-                        <div className="card-body activity-scroll-container" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                        <div className="card-body boq-scroll-container" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                             {showAddActivityForm ? (
                                 <div className="mb-4 p-3 border rounded" style={{ borderColor: '#0051973D' }}>
-                                    <h6 className="mb-3">New Activity</h6>
+                                    <div className="d-flex"><h6 className="mb-3">New Activity</h6>
+                                        <div className="border"></div>
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label small mb-1">Cost Code Type</label>
+                                    </div>
                                     <div className="mb-3">
                                         <label className="form-label small mb-1">Activity Code</label>
                                         <input
@@ -651,6 +912,7 @@ const CCMOverview = () => {
                                             value={newActivity.activityCode}
                                             onChange={(e) => setNewActivity({ ...newActivity, activityCode: e.target.value })}
                                             placeholder="Enter activity code"
+                                            required
                                         />
                                     </div>
                                     <div className="mb-3">
@@ -661,6 +923,7 @@ const CCMOverview = () => {
                                             value={newActivity.activityName}
                                             onChange={(e) => setNewActivity({ ...newActivity, activityName: e.target.value })}
                                             placeholder="Enter activity name"
+                                            required
                                         />
                                     </div>
                                     <div className="d-flex justify-content-end gap-2">
@@ -674,64 +937,176 @@ const CCMOverview = () => {
                                         <button
                                             type="button"
                                             className="btn btn-sm btn-primary"
-                                            onClick={addActivity}
+                                            onClick={addActivityGroup}
                                         >
-                                            + Add Activity
+                                            + Add Activity Group
                                         </button>
                                     </div>
                                 </div>
-                            ) :
-
-                                loading.costCodes ? (
-                                    <div className="text-center py-4">
-                                        <div className="spinner-border text-primary" role="status">
-                                            <span className="visually-hidden">Loading...</span>
-                                        </div>
-                                        <p className="mt-2">Loading activities...</p>
+                            ) : loading.activityGroups ? (
+                                <div className="text-center py-4">
+                                    <div className="spinner-border text-primary" role="status">
+                                        <span className="visually-hidden">Loading...</span>
                                     </div>
-                                ) : costCodeTypes.length > 0 ? (
-                                    costCodeTypes.map((costCodeType) => {
-                                        const typeActivities = activities.filter(activity =>
-                                            activity.costCodeType && activity.costCodeType.id === costCodeType.id
-                                        );
-
-                                        return (
-                                            <div key={costCodeType.id} className="mb-3">
-                                                <div
-                                                    className="d-flex align-items-center py-2 cursor-pointer"
-                                                    onClick={() => toggleActivityFolder(costCodeType.id)}
-                                                    style={{ cursor: 'pointer' }}
-                                                >
-                                                    <span className="me-2">
-                                                        {expandedActivityFolders.has(costCodeType.id) ? <DropDown /> : <ClosedList />}
-                                                    </span>
-                                                    <LargeFolder />
-                                                    <span className="ms-2 fw-semibold">{costCodeType.costCodeName}</span>
-                                                </div>
-                                                {expandedActivityFolders.has(costCodeType.id) && typeActivities.length > 0 && (
-                                                    <div className="ms-4 mt-2">
-                                                        {typeActivities.map((activity) => (
-                                                            <ActivityNode
-                                                                key={activity.id}
-                                                                activity={activity}
-                                                                level={1}
-                                                                costCodeTypeId={costCodeType.id}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })
-                                ) : (
-                                    <div className="text-center text-muted py-4">
-                                        No activity data available
-                                    </div>
-                                )}
+                                    <p className="mt-2">Loading activity groups...</p>
+                                </div>
+                            ) : Object.keys(activityGroupsByCostCodeType).length > 0 ? (
+                                Object.entries(activityGroupsByCostCodeType).map(([costCodeTypeId, data]) => (
+                                    <CostCodeTypeNode key={costCodeTypeId} costCodeTypeId={costCodeTypeId} data={data} />
+                                ))
+                            ) : (
+                                <div className="text-center text-muted py-4">
+                                    No activity groups available
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
             </div>
+
+            {showMappingPopover && (
+                <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">Configure Mapping</h5>
+                                <button
+                                    type="button"
+                                    className="btn-close"
+                                    onClick={() => setShowMappingPopover(false)}
+                                ></button>
+                            </div>
+                            <div className="modal-body">
+                                <div className="mb-3">
+                                    <h6>Selected BOQ Items:</h6>
+                                    <div className="border rounded p-2" style={{ maxHeight: '120px', overflowY: 'auto' }}>
+                                        {Array.from(selectedBOQs).map(boqCode => {
+                                            const boqItem = boqTree.flatMap(b => [b, ...(b.children || [])])
+                                                .find(item => item.boqCode === boqCode);
+                                            return (
+                                                <div key={boqCode} className="d-flex align-items-center">
+                                                    <SmallFolder className="me-2" />
+                                                    <span>{boqCode} - {boqItem?.boqName}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div className="mb-3">
+                                    <h6>Selected Activities:</h6>
+                                    <div className="border rounded p-2" style={{ maxHeight: '120px', overflowY: 'auto' }}>
+                                        {Array.from(selectedActivities).map(activityId => {
+                                            let activity = null;
+                                            for (const group of activityGroups) {
+                                                if (group.id === activityId) {
+                                                    activity = group;
+                                                    break;
+                                                }
+                                                if (group.activities) {
+                                                    activity = group.activities.find(a => a.id === activityId);
+                                                    if (activity) break;
+                                                }
+                                            }
+                                            return (
+                                                <div key={activityId} className="d-flex align-items-center">
+                                                    <FileText size={16} className="text-muted me-2" />
+                                                    <span>{activity?.activityCode} - {activity?.activityName}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div className="mb-3">
+                                    <label className="form-label">Split Type</label>
+                                    <select
+                                        className="form-select"
+                                        value={mappingConfig.splitType}
+                                        onChange={(e) => setMappingConfig({ ...mappingConfig, splitType: e.target.value })}
+                                    >
+                                        <option value="">Select split type</option>
+                                        {splitTypes.map(type => (
+                                            <option key={type.id} value={type.id}>{type.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {mappingConfig.splitType === 'percentage' && (
+                                    <div className="mb-3">
+                                        <label className="form-label">Percentage</label>
+                                        <input
+                                            type="number"
+                                            className="form-control"
+                                            value={mappingConfig.percentage}
+                                            onChange={(e) => setMappingConfig({ ...mappingConfig, percentage: e.target.value })}
+                                            placeholder="Enter percentage"
+                                            min="0"
+                                            max="100"
+                                        />
+                                    </div>
+                                )}
+
+                                {mappingConfig.splitType === 'value' && (
+                                    <div className="mb-3">
+                                        <label className="form-label">Value</label>
+                                        <input
+                                            type="number"
+                                            className="form-control"
+                                            value={mappingConfig.value}
+                                            onChange={(e) => setMappingConfig({ ...mappingConfig, value: e.target.value })}
+                                            placeholder="Enter value"
+                                            min="0"
+                                        />
+                                    </div>
+                                )}
+
+                                <div className="mb-3">
+                                    <label className="form-label">Quantity</label>
+                                    <input
+                                        type="number"
+                                        className="form-control"
+                                        value={newActivity.quantity}
+                                        onChange={(e) => setNewActivity({ ...newActivity, quantity: parseFloat(e.target.value) || 0 })}
+                                        placeholder="Enter quantity"
+                                        min="0"
+                                        step="0.01"
+                                    />
+                                </div>
+
+                                <div className="mb-3">
+                                    <label className="form-label">Rate</label>
+                                    <input
+                                        type="number"
+                                        className="form-control"
+                                        value={newActivity.rate}
+                                        onChange={(e) => setNewActivity({ ...newActivity, rate: parseFloat(e.target.value) || 0 })}
+                                        placeholder="Enter rate"
+                                        min="0"
+                                        step="0.01"
+                                    />
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={() => setShowMappingPopover(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-primary"
+                                    onClick={saveCostCodeMapping}
+                                >
+                                    Save Cost Code Mapping
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="row ">
                 <div className="col-md-12">
