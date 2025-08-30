@@ -541,7 +541,7 @@ const CCMOverview = () => {
         if (hasChildren) {
             return (
                 <div
-                    className={`mb-3 ${level === 0 ? " " : "border-start"} border-1 ps-3 py-3 pe-3 w-100`}
+                    className={`mb-1 ${level === 0 ? " " : "border-start"} border-1 ps-3 py-2 pe-3 w-100`}
                     style={{ borderColor: '#0051973D' }}
                 >
                     <div
@@ -549,24 +549,33 @@ const CCMOverview = () => {
                         onClick={handleFolderToggle}
                         style={{ cursor: 'pointer' }}
                     >
-                        <div className="d-flex align-items-center mb-2">
-                            <span className="me-2">
-                                {isExpanded ? <DropDown /> : <ClosedList />}
-                            </span>
-                            <span>{getIcon()}</span>
-                            <span className="fw-bold me-md-2 ms-2 text-nowrap" style={{ maxWidth: '80px' }}>{boq.boqCode}</span>
-                            <span>-</span>
-                            <span className="flex-start fw-bold ms-2 text-nowrap" style={{ maxWidth: '400px' }}>{boq.boqName}</span>
-                            {isMapped && <Check size={16} className="text-success ms-2" />}
+                        <div className="d-flex justify-content-between align-items-center">
+                            <div className="d-flex align-items-center mb-1">
+                                <span className="me-2">
+                                    {isExpanded ? <DropDown /> : <ClosedList />}
+                                </span>
+                                <span>{getIcon()}</span>
+                                <span className="fw-bold me-md-2 ms-2 text-nowrap" style={{ maxWidth: "80px" }}>
+                                    {boq.boqCode}
+                                </span>
+                                <span>-</span>
+                                <span className="flex-start fw-bold ms-2 text-nowrap" style={{ maxWidth: "400px" }}>
+                                    {boq.boqName}
+                                </span>
+                                {isMapped && <Check size={16} className="text-success ms-2" />}
+                            </div>
+                            {/* {!boq.parentBOQ && (
+                                <div className="text-end ms-auto" style={{ minWidth: "120px" }}>
+                                    <span className="fw-bold text-secondary">
+                                        $ {total.toFixed(2)}
+                                    </span>
+                                </div>
+                            )} */}
                         </div>
-                        {!boq.parentBOQ && (
-                            <span className="text-nowrap text-secondary ms-auto mb-2" style={{ minWidth: '100px' }}>
-                                $ {total.toLocaleString()}
-                            </span>
-                        )}
+
                     </div>
                     {isExpanded && (
-                        <div className="ms-3 mt-2">
+                        <div className="ms-3">
                             {boq.children.map((child, index) => (
                                 <BOQNode key={index} boq={child} level={level + 1} />
                             ))}
