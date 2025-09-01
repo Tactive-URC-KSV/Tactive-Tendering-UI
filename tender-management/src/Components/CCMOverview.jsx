@@ -1,8 +1,10 @@
 import axios from "axios";
-import { ArrowLeft, ArrowRight, Check, FileText, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, FileText } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import Select from 'react-select';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import ClosedList from '../assest/ClosedList.svg?react';
 import DeleteIcon from '../assest/DeleteIcon.svg?react';
 import DropDown from '../assest/DropDown.svg?react';
@@ -12,9 +14,6 @@ import SaveMappingIcon from '../assest/SaveMapping.svg?react';
 import Search from '../assest/Search.svg?react';
 import SmallFolder from '../assest/SmallFolder.svg?react';
 import '../CSS/Styles.css';
-import Select from 'react-select';
-import { set } from "lodash";
-
 
 const CCMOverview = () => {
     const [project, setProject] = useState();
@@ -56,8 +55,26 @@ const CCMOverview = () => {
     const [pendingMappings, setPendingMappings] = useState([]);
     const [showNotification, setShowNotification] = useState(false);
     const [notification, setNotification] = useState({ message: "", type: "" });
+    const [totalPercentageUsed, setTotalPercentageUsed] = useState(0);
+    const [boqTotalAmount, setBoqTotalAmount] = useState(0);
 
     const addActivityFormRef = useRef(null);
+
+    const showAlert = (message, type = "info") => {
+        switch (type) {
+            case "error":
+                toast.error(message);
+                break;
+            case "success":
+                toast.success(message);
+                break;
+            case "warning":
+                toast.warning(message);
+                break;
+            default:
+                toast.info(message);
+        }
+    };
 
     const mappingTypes = [
         {
@@ -89,14 +106,6 @@ const CCMOverview = () => {
         value: type.id,
         label: type.name
     }));
-
-    const showAlert = (message, type = "info") => {
-        setNotification({ message, type });
-        setShowNotification(true);
-        setTimeout(() => {
-            setShowNotification(false);
-        }, 3000);
-    };
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -168,6 +177,7 @@ const CCMOverview = () => {
         }).then(res => {
             if (res.status === 200) {
                 setCostCodeTypes(res.data || []);
+                
             } else {
                 console.error('Failed to fetch cost code types:', res.status);
             }
@@ -238,7 +248,7 @@ const CCMOverview = () => {
                 'Content-Type': 'application/json'
             }
         }).then(res => {
-            if (res.status === 200) {
+            if (res.status === 200) {                
                 setNewActivity({
                     costCodeTypeId: "",
                     activityGroupId: "",
@@ -268,9 +278,8 @@ const CCMOverview = () => {
         }
 
         const costCodeDtos = [];
-
         const selectedActivityGroupIds = Array.from(selectedActivities);
-
+        const selectedBOQIds = Array.from(selectedBOQs).map(boqCode => findBOQItem(boqCode).id);
         const getUomId = () => project?.uom?.id || "";
 
         if (selectedMappingType === "1 : 1") {
@@ -278,75 +287,97 @@ const CCMOverview = () => {
             const boqItem = findBOQItem(boqCode);
             const activityGroupId = Array.from(selectedActivities)[0] || "";
 
-            Array.from(selectedBOQs).forEach(boqCode => {
-                const boqItem = findBOQItem(boqCode);
-                costCodeDtos.push({
-                    boqId: boqItem.id,
-                    activityCode: boqItem.boqCode,
-                    activityName: boqItem.boqName,
-                    quantity: boqItem.quantity || 1,
-                    rate: boqItem.totalRate || 0,
-                    amount: boqItem.totalAmount || 0,
-                    uomId: getUomId(),
-                    mappingType: selectedMappingType,
-                    costCodeTypeId: selectedCostCodeType || getCostCodeTypeFromActivityGroup(activityGroupId),
-                    activityGroupId: activityGroupId,
-                    projectId: projectId
-                });
+            costCodeDtos.push({
+                boqIds: [boqItem.id],
+                activityCode: boqItem.boqCode,
+                activityName: boqItem.boqName,
+                quantity: boqItem.quantity || 1,
+                rate: boqItem.totalRate || 0,
+                amount: boqItem.totalAmount || 0,
+                uomId: getUomId(),
+                mappingType: selectedMappingType,
+                costCodeTypeId: selectedCostCodeType || getCostCodeTypeFromActivityGroup(activityGroupId),
+                activityGroupId: activityGroupId,
+                projectId: projectId
             });
         } else if (selectedMappingType === "1 : M") {
             const boqCode = Array.from(selectedBOQs)[0];
             const boqItem = findBOQItem(boqCode);
 
+            const totalPercentage = mappingActivities.reduce((sum, activity) =>
+                sum + (parseFloat(activity.percentage) || 0), 0);
+
+            if (totalPercentage > 100) {
+                showAlert("Total percentage cannot exceed 100%", "error");
+                return;
+            }
+
             mappingActivities.forEach((activity, index) => {
                 const activityGroupId = selectedActivityGroupIds[index] || selectedActivityGroupIds[0] || "";
+                const percentage = parseFloat(activity.percentage) || 0;
+
+                let quantity, rate, amount;
+
+                if (activity.splitType === "quantity") {
+                    quantity = (boqItem.quantity * percentage / 100) || 0;
+                    rate = boqItem.totalRate || 0;
+                    amount = quantity * rate;
+                } else if (activity.splitType === "rate") {
+                    quantity = boqItem.quantity || 1;
+                    rate = (boqItem.totalRate * percentage / 100) || 0;
+                    amount = quantity * rate;
+                } else if (activity.splitType === "amount") {
+                    quantity = boqItem.quantity || 1;
+                    amount = (boqItem.totalAmount * percentage / 100) || 0;
+                    rate = amount / quantity;
+                } else {
+                    quantity = boqItem.quantity || 1;
+                    amount = (boqItem.totalAmount * percentage / 100) || 0;
+                    rate = amount / quantity;
+                }
 
                 costCodeDtos.push({
-                    boqId: boqItem.id,
+                    boqIds: [boqItem.id],
                     activityCode: activity.activityCode,
                     activityName: activity.activityName,
-                    quantity: activity.quantity || 1,
-                    rate: activity.rate || 0,
-                    amount: (activity.quantity || 1) * (activity.rate || 0),
+                    quantity: quantity,
+                    rate: rate,
+                    amount: amount,
                     uomId: getUomId(),
                     mappingType: selectedMappingType,
                     costCodeTypeId: selectedCostCodeType || getCostCodeTypeFromActivityGroup(activityGroupId),
                     activityGroupId: activityGroupId,
-                    projectId: projectId
+                    projectId: projectId,
+                    splitPercentage: percentage,
+                    splitType: activity.splitType
                 });
             });
         } else {
             const activityGroupId = selectedActivityGroupIds[0] || "";
             const costCodeTypeId = selectedCostCodeType || getCostCodeTypeFromActivityGroup(activityGroupId);
-
             const activity = mappingActivities[0] || {};
 
-            Array.from(selectedBOQs).forEach(boqCode => {
-                const boqItem = findBOQItem(boqCode);
-
-                costCodeDtos.push({
-                    boqId: boqItem.id,
-                    activityCode: activity.activityCode,
-                    activityName: activity.activityName,
-                    quantity: activity.quantity || 1,
-                    rate: activity.rate || 0,
-                    amount: (activity.quantity || 1) * (activity.rate || 0),
-                    uomId: getUomId(),
-                    mappingType: selectedMappingType,
-                    costCodeTypeId: costCodeTypeId,
-                    activityGroupId: activityGroupId,
-                    projectId: projectId
-                });
+            costCodeDtos.push({
+                boqIds: selectedBOQIds,
+                activityCode: activity.activityCode,
+                activityName: activity.activityName,
+                quantity: activity.quantity || 1,
+                rate: activity.rate || 0,
+                amount: (activity.quantity || 1) * (activity.rate || 0),
+                uomId: getUomId(),
+                mappingType: selectedMappingType,
+                costCodeTypeId: costCodeTypeId,
+                activityGroupId: activityGroupId,
+                projectId: projectId
             });
         }
 
         setPendingMappings(prev => [...prev, ...costCodeDtos]);
-        console.log(pendingMappings);
 
         const newMappings = costCodeDtos.map(dto => ({
             id: `pending-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             ...dto,
-            boq: findBOQItemByCode(dto.boqId),
+            boq: findBOQItemByCode(dto.boqIds[0]),
             activityGroup: activityGroups.find(group => group.id === dto.activityGroupId) || null,
             isPending: true
         }));
@@ -363,6 +394,7 @@ const CCMOverview = () => {
         setSelectedActivities(new Set());
         setSelectedCostCodeType(null);
         setMappingActivities([]);
+        setTotalPercentageUsed(0);
 
         showAlert(`Cost code mapping configured for ${selectedBOQs.size} BOQ items!`, "success");
     };
@@ -457,41 +489,35 @@ const CCMOverview = () => {
             return;
         }
 
-        // if (selectedMappingType === "1 : 1" && selectedBOQs.size !== 1) {
-        //     showAlert("One to One mapping requires exactly one BOQ item to be selected", "error");
-        //     return;
-        // }
-
         if (selectedActivities.size === 0 && !selectedCostCodeType) {
             showAlert("Please select at least one activity group or cost code type", "error");
             return;
         }
 
-        // For 1:1 mapping, directly save without configuration popup
+        const boqCode = Array.from(selectedBOQs)[0];
+        const boqItem = findBOQItem(boqCode);
+
+        setBoqTotalAmount(boqItem.totalAmount || 0);
+
         if (selectedMappingType === "1 : 1") {
             saveCostCodeMapping();
         }
-        // For 1:M and M:1, show configuration popup (keep your existing logic)
         else if (selectedMappingType === "1 : M") {
-            const boqCode = Array.from(selectedBOQs)[0];
-            const boqItem = findBOQItem(boqCode);
-
             setMappingActivities([{
-                activityCode: boqItem.boqCode,
-                activityName: boqItem.boqName,
-                quantity: boqItem.quantity,
-                rate: boqItem.totalRate,
-                amount: boqItem.totalAmount,
-                splitType: "",
+                activityCode: "",
+                activityName: "",
+                quantity: 0,
+                rate: 0,
+                splitType: "amount",
                 percentage: "",
                 value: ""
             }]);
+            setTotalPercentageUsed(0);
             setShowMappingPopover(true);
         } else if (selectedMappingType === "M : 1") {
-            console.log(boqItem);
             setMappingActivities([{
-                activityCode: boqCode,
-                activityName: boqItem.boqName,
+                activityCode: "",
+                activityName: "",
                 quantity: 1,
                 rate: 0,
                 splitType: "",
@@ -499,18 +525,6 @@ const CCMOverview = () => {
                 value: ""
             }]);
             setShowMappingPopover(true);
-        } else {
-            setMappingActivities([{
-                activityCode: boqCode,
-                activityName: boqItem.boqName,
-                quantity: boqItem.quantity,
-                rate: boqItem.totalRate,
-                amount: boqItem.totalAmount,
-                splitType: "",
-                percentage: "",
-                value: ""
-            }]);
-            saveCostCodeMapping();
         }
     };
 
@@ -544,7 +558,7 @@ const CCMOverview = () => {
     };
 
     const handleCostCodeTypeSelection = (costCodeTypeId) => {
-        setSelectedActivities(new Set()); // Clear activities when selecting cost code type
+        setSelectedActivities(new Set());
 
         if (selectedCostCodeType === costCodeTypeId) {
             setSelectedCostCodeType(null);
@@ -558,9 +572,12 @@ const CCMOverview = () => {
 
         setSelectedActivities(prev => {
             const newSet = new Set(prev);
-            if (newSet.has(activityGroupId)) {
+            if (newSet.has(activityGroupId) && selectedMappingType !== "M : 1") {
                 newSet.delete(activityGroupId);
             } else {
+                if (selectedMappingType === "M : 1") {
+                    newSet.clear();
+                }
                 newSet.add(activityGroupId);
             }
             return newSet;
@@ -599,6 +616,11 @@ const CCMOverview = () => {
     const handleBOQSelection = (boqCode, isSelected) => {
         if (selectedMappingType === "1 : M" && isSelected && selectedBOQs.size >= 1) {
             showAlert("One to Many mapping allows only one BOQ item to be selected", "error");
+            return;
+        }
+
+        if (selectedMappingType === "1 : 1" && isSelected && selectedBOQs.size >= 1) {
+            showAlert("One to One mapping allows only one BOQ item to be selected", "error");
             return;
         }
 
@@ -643,7 +665,6 @@ const CCMOverview = () => {
             return;
         }
 
-
         axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/save/${projectId}`, pendingMappings, {
             headers: {
                 Authorization: `Bearer ${sessionStorage.getItem('token')}`,
@@ -677,24 +698,27 @@ const CCMOverview = () => {
 
         setCostCodeActivities(prev => prev.filter(activity => !activity.isPending));
         setPendingMappings([]);
-
-
     };
 
     const addMappingActivity = () => {
         const boqCode = Array.from(selectedBOQs)[0];
         const boqItem = findBOQItem(boqCode);
-        if (selectedMappingType === "1 : M") {
-            setMappingActivities([...mappingActivities, {
-                activityCode: boqCode,
-                activityName: boqItem.boqName,
-                quantity: 1,
-                rate: 0,
-                splitType: "",
-                percentage: "",
-                value: ""
-            }]);
+        const remainingPercentage = 100 - totalPercentageUsed;
+
+        if (remainingPercentage <= 0) {
+            showAlert("Cannot add more activities - total percentage already reached 100%", "error");
+            return;
         }
+
+        setMappingActivities([...mappingActivities, {
+            activityCode: "",
+            activityName: "",
+            quantity: 0,
+            rate: 0,
+            splitType: "amount",
+            percentage: "",
+            value: ""
+        }]);
     };
 
     const removeMappingActivity = (index) => {
@@ -704,53 +728,112 @@ const CCMOverview = () => {
         }
 
         const updatedActivities = [...mappingActivities];
+        const removedPercentage = parseFloat(updatedActivities[index].percentage) || 0;
         updatedActivities.splice(index, 1);
         setMappingActivities(updatedActivities);
+        setTotalPercentageUsed(prev => prev - removedPercentage);
     };
 
     const updateMappingActivity = (index, field, value) => {
         const updatedActivities = [...mappingActivities];
         const boqCode = Array.from(selectedBOQs)[0];
         const boqItem = findBOQItem(boqCode);
-        if (field === 'splitType') {
-            if (value === 'rate') {
-                updatedActivities[index] = {
-                    ...updatedActivities[index],
-                    [field]: value,
-                    percentage: 100,
-                    rate: boqItem.totalRate,
-                    quantity: boqItem.quantity,
-                    amount: boqItem.totalAmount,
-                    value: boqItem.totalRate
-                };
+
+        if (field === 'percentage') {
+            const newPercentage = parseFloat(value) || 0;
+
+            if (newPercentage > 100) {
+                showAlert("Percentage cannot exceed 100%", "error");
+                return;
             }
-            else if (value === 'amount') {
-                updatedActivities[index] = {
-                    ...updatedActivities[index],
-                    [field]: value,
-                    percentage: 100,
-                    rate: boqItem.totalRate,
-                    quantity: boqItem.quantity,
-                    amount: boqItem.totalAmount,
-                    value: boqItem.totalAmount
-                };
+
+            const currentTotal = updatedActivities.reduce((sum, activity, i) =>
+                sum + (i === index ? newPercentage : parseFloat(activity.percentage) || 0), 0);
+
+            if (currentTotal > 100) {
+                showAlert("Total percentage cannot exceed 100%", "error");
+                return;
             }
-            else {
-                updatedActivities[index] = {
-                    ...updatedActivities[index],
-                    [field]: value,
-                    percentage: 100,
-                    rate: boqItem.totalRate,
-                    quantity: boqItem.quantity,
-                    amount: boqItem.totalAmount,
-                    value: boqItem.quantity
-                };
+
+            setTotalPercentageUsed(currentTotal);
+
+            const splitType = updatedActivities[index].splitType || "amount";
+            let calculatedValue = 0;
+
+            if (splitType === "quantity") {
+                calculatedValue = (boqItem.quantity * newPercentage / 100) || 0;
+            } else if (splitType === "rate") {
+                calculatedValue = (boqItem.totalRate * newPercentage / 100) || 0;
+            } else if (splitType === "amount") {
+                calculatedValue = (boqItem.totalAmount * newPercentage / 100) || 0;
             }
+
+            updatedActivities[index] = {
+                ...updatedActivities[index],
+                [field]: value,
+                value: calculatedValue.toFixed(2)
+            };
         }
-        updatedActivities[index] = {
-            ...updatedActivities[index],
-            [field]: value
-        };
+        else if (field === 'splitType') {
+            const percentage = parseFloat(updatedActivities[index].percentage) || 0;
+            let calculatedValue = 0;
+
+            if (value === "quantity") {
+                calculatedValue = (boqItem.quantity * percentage / 100) || 0;
+            } else if (value === "rate") {
+                calculatedValue = (boqItem.totalRate * percentage / 100) || 0;
+            } else if (value === "amount") {
+                calculatedValue = (boqItem.totalAmount * percentage / 100) || 0;
+            }
+
+            updatedActivities[index] = {
+                ...updatedActivities[index],
+                [field]: value,
+                value: calculatedValue.toFixed(2)
+            };
+        }
+        else if (field === 'value') {
+            const numericValue = parseFloat(value) || 0;
+            let calculatedPercentage = 0;
+
+            const splitType = updatedActivities[index].splitType || "amount";
+
+            if (splitType === "quantity") {
+                calculatedPercentage = (numericValue / boqItem.quantity) * 100 || 0;
+            } else if (splitType === "rate") {
+                calculatedPercentage = (numericValue / boqItem.totalRate) * 100 || 0;
+            } else if (splitType === "amount") {
+                calculatedPercentage = (numericValue / boqItem.totalAmount) * 100 || 0;
+            }
+
+            if (calculatedPercentage > 100) {
+                showAlert("Percentage cannot exceed 100%", "error");
+                return;
+            }
+
+            const currentTotal = updatedActivities.reduce((sum, activity, i) =>
+                sum + (i === index ? calculatedPercentage : parseFloat(activity.percentage) || 0), 0);
+
+            if (currentTotal > 100) {
+                showAlert("Total percentage cannot exceed 100%", "error");
+                return;
+            }
+
+            setTotalPercentageUsed(currentTotal);
+
+            updatedActivities[index] = {
+                ...updatedActivities[index],
+                [field]: value,
+                percentage: calculatedPercentage.toFixed(2)
+            };
+        }
+        else {
+            updatedActivities[index] = {
+                ...updatedActivities[index],
+                [field]: value
+            };
+        }
+
         setMappingActivities(updatedActivities);
     };
 
@@ -819,30 +902,29 @@ const CCMOverview = () => {
 
     const activityGroupsByCostCodeType = useMemo(() => {
         const grouped = {};
+        
+        costCodeTypes.forEach(type => {
+            grouped[type.id] = {
+                costCodeType: type,
+                activityGroups: []
+            };
+        });
+        
         activityGroups.forEach(group => {
             const costCodeTypeId = group.costCodeType?.id || 'uncategorized';
+            
             if (!grouped[costCodeTypeId]) {
                 grouped[costCodeTypeId] = {
-                    costCodeType: group.costCodeType,
+                    costCodeType: group.costCodeType || { id: 'uncategorized', costCodeName: 'Uncategorized' },
                     activityGroups: []
                 };
             }
+            
             grouped[costCodeTypeId].activityGroups.push(group);
         });
+        
         return grouped;
-    }, [activityGroups]);
-
-    const costCodeActivitiesByGroup = useMemo(() => {
-        const grouped = {};
-        costCodeActivities.forEach(activity => {
-            const activityGroupId = activity.activityGroup?.id || 'uncategorized';
-            if (!grouped[activityGroupId]) {
-                grouped[activityGroupId] = [];
-            }
-            grouped[activityGroupId].push(activity);
-        });
-        return grouped;
-    }, [costCodeActivities]);
+    }, [activityGroups, costCodeTypes]);
 
     const BOQNode = ({ boq, level = 0 }) => {
         const hasChildren = boq.children && boq.children.length > 0;
@@ -900,15 +982,7 @@ const CCMOverview = () => {
                                 </span>
                                 {isMapped && <Check size={16} className="text-success ms-2" />}
                             </div>
-                            {/* {!boq.parentBOQ && (
-                                <div className="text-end ms-auto" style={{ minWidth: "120px" }}>
-                                    <span className="fw-bold text-secondary">
-                                        $ {total.toFixed(2)}
-                                    </span>
-                                </div>
-                            )} */}
                         </div>
-
                     </div>
                     {isExpanded && (
                         <div className="ms-3">
@@ -1066,13 +1140,15 @@ const CCMOverview = () => {
                             <span className="ms-2 text-nowrap">{activity.activityName}</span>
                         </div>
                     </div>
-                    <button
-                        className="btn btn-sm ms-2"
-                        onClick={() => deleteCostCodeActivity(activity.id)}
-                        title="Delete mapping"
-                    >
-                        <DeleteIcon size={14} />
-                    </button>
+                    {isMapped && (
+                        <button
+                            className="btn btn-sm ms-2"
+                            onClick={() => deleteCostCodeActivity(activity.id)}
+                            title="Delete mapping"
+                        >
+                            <DeleteIcon size={14} />
+                        </button>
+                    )}
                 </div>
             </div>
         );
@@ -1080,22 +1156,210 @@ const CCMOverview = () => {
 
     return (
         <div className="container-fluid">
-            {showNotification && (
-                <div className={`alert alert-${notification.type === 'error' ? 'danger' : notification.type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed top-0 end-0 m-3`}
-                    style={{ zIndex: 9999, minWidth: '300px' }} role="alert">
-                    <div>{notification.message}</div>
-                    {notification.type === 'confirm' ? (
-                        <div className="d-flex justify-content-end mt-2">
-                            <button type="button" className="btn btn-sm btn-secondary me-2" onClick={notification.onCancel}>
-                                Cancel
-                            </button>
-                            <button type="button" className="btn btn-sm btn-primary" onClick={notification.onConfirm}>
-                                Confirm
-                            </button>
+            <ToastContainer
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
+            />
+            {showMappingPopover && (
+                <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal-dialog modal-dialog-centered modal-lg text-start">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">Configure Mapping - {selectedMappingType}</h5>
+                                <button
+                                    type="button"
+                                    className="btn-close"
+                                    onClick={() => setShowMappingPopover(false)}
+                                ></button>
+                            </div>
+                            <div className="modal-body">
+                                <div className="d-flex justify-content-between">
+                                    <div className="col-md-6 mb-3">
+                                        <h6>Selected BOQ Items:</h6>
+                                        <div className="rounded p-2" style={{ maxHeight: '120px', overflowY: 'auto' }}>
+                                            {Array.from(selectedBOQs).map(boqCode => {
+                                                const boqItem = findBOQItem(boqCode);
+                                                return (
+                                                    <div key={boqCode} className="d-flex align-items-center">
+                                                        <SmallFolder className="me-2" />
+                                                        <span>{boqCode} - {boqItem?.boqName}</span>
+                                                        <br />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    <div className="col-md-6 mb-3">
+                                        <h6>Selected Activities:</h6>
+                                        <div className="rounded p-2" style={{ maxHeight: '120px', overflowY: 'auto' }}>
+                                            {Array.from(selectedActivities).map(activityId => {
+                                                const activityGroup = activityGroups.find(group => group.id === activityId);
+                                                return (
+                                                    <div key={activityId} className="d-flex align-items-center">
+                                                        <FileText size={16} className="text-muted me-2" />
+                                                        <span>{activityGroup?.activityCode} - {activityGroup?.activityName}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {selectedCostCodeType && (
+                                    <div className="mb-3">
+                                        <h6>Selected Cost Code Type:</h6>
+                                        <div className="border rounded p-2">
+                                            <div className="d-flex align-items-center">
+                                                <LargeFolder className="me-2" />
+                                                <span>{costCodeTypes.find(type => type.id === selectedCostCodeType)?.costCodeName}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedMappingType === "1 : M" && (
+                                    <div className="alert alert-info mb-3">
+                                        <small>
+                                            <strong>BOQ Total Amount: ${boqTotalAmount.toFixed(2)}</strong><br />
+                                            Total Percentage Used: {totalPercentageUsed.toFixed(2)}% / 100%<br />
+                                            Remaining Percentage: {(100 - totalPercentageUsed).toFixed(2)}%<br />
+                                            Allocated Amount: ${(boqTotalAmount * totalPercentageUsed / 100).toFixed(2)}<br />
+                                            Remaining Amount: ${(boqTotalAmount * (100 - totalPercentageUsed) / 100).toFixed(2)}
+                                        </small>
+                                    </div>
+                                )}
+
+                                <h6 className="mb-3">Activity Details:</h6>
+
+                                {mappingActivities.map((activity, index) => (
+                                    <div key={index} className="mb-4 p-3 border rounded position-relative" style={{ borderColor: '#0051973D' }}>
+                                        {(selectedMappingType === "1 : M" && mappingActivities.length > 1) && (
+                                            <button
+                                                type="button"
+                                                className="btn-close position-absolute top-0 end-0 m-2"
+                                                onClick={() => {
+                                                    const newPercentage = parseFloat(activity.percentage) || 0;
+                                                    setTotalPercentageUsed(prev => prev - newPercentage);
+                                                    removeMappingActivity(index);
+                                                }}
+                                            ></button>
+                                        )}
+
+                                        <div className="row">
+                                            <div className="col-md-6 mb-4">
+                                                <label className="projectform text-start d-block">Activity Code <span className="text-danger">*</span></label>
+                                                <input
+                                                    type="text"
+                                                    className="form-input w-100"
+                                                    value={activity.activityCode}
+                                                    onChange={(e) => updateMappingActivity(index, 'activityCode', e.target.value)}
+                                                    placeholder="Enter activity code"
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="col-md-6 mb-4">
+                                                <label className="projectform text-start d-block">Activity Name <span className="text-danger">*</span></label>
+                                                <input
+                                                    type="text"
+                                                    className="form-input w-100"
+                                                    value={activity.activityName}
+                                                    onChange={(e) => updateMappingActivity(index, 'activityName', e.target.value)}
+                                                    placeholder="Enter activity name"
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {selectedMappingType === "1 : M" && (
+                                            <>
+                                                <div className="row">
+                                                    <div className="col-12 mb-4">
+                                                        <label className="projectform-select text-start d-block">Split Type<span className="text-danger">*</span></label>
+                                                        <Select
+                                                            options={splitOption}
+                                                            classNamePrefix="select"
+                                                            placeholder="Select split type"
+                                                            required
+                                                            value={splitOption.find(option => option.value === activity.splitType)}
+                                                            onChange={(option) => updateMappingActivity(index, 'splitType', option.value)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="row">
+                                                    <div className="col-md-6 mb-4">
+                                                        <label className="projectform text-start d-block">Percentage <span className="text-danger">*</span></label>
+                                                        <input
+                                                            type="number"
+                                                            className="form-input w-100"
+                                                            value={activity.percentage}
+                                                            onChange={(e) => updateMappingActivity(index, 'percentage', e.target.value)}
+                                                            placeholder="Enter percentage"
+                                                            min="0"
+                                                            max="100"
+                                                            step="0.01"
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="col-md-6 mb-4">
+                                                        <label className="projectform text-start d-block">Value <span className="text-danger">*</span></label>
+                                                        <input
+                                                            type="number"
+                                                            className="form-input w-100"
+                                                            value={activity.value}
+                                                            onChange={(e) => updateMappingActivity(index, 'value', e.target.value)}
+                                                            placeholder="Enter value"
+                                                            min="0"
+                                                            step="0.01"
+                                                            required
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+
+                                    </div>
+                                ))}
+
+                                {selectedMappingType === "1 : M" && (
+                                    <div className="d-flex justify-content-end mb-3">
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-outline-primary"
+                                            onClick={addMappingActivity}
+                                            disabled={totalPercentageUsed >= 100}
+                                        >
+                                            + Add Activity
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="modal-footer">
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={() => setShowMappingPopover(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn action-button"
+                                    onClick={saveCostCodeMapping}
+                                >
+                                    Configure Mapping
+                                </button>
+                            </div>
                         </div>
-                    ) : (
-                        <button type="button" className="btn-close" onClick={() => setShowNotification(false)}></button>
-                    )}
+                    </div>
                 </div>
             )}
 
@@ -1107,7 +1371,6 @@ const CCMOverview = () => {
                     <span className="fw-bold text-start ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</span>
                 </div>
             </div>
-
 
             <div className="row bg-white rounded-3 ms-4 me-4 py-4 ps-4 mt-3 pe-4 mb-4 " style={{ border: '0.5px solid #0051973D' }}>
                 <h5 className="card-title text-start fs-6 ms-1 mb-3">Select Mapping Type</h5>
@@ -1244,7 +1507,6 @@ const CCMOverview = () => {
                     </div>
                 </div>
 
-
                 <div className="col-md-5 bg-white rounded-3 p-3" style={{ border: '0.5px solid #0051973D' }}>
                     <div className="card border-0 bg-transparent h-100">
                         <div className="card-header d-flex justify-content-between align-items-center border-0 bg-transparent pb-3">
@@ -1258,7 +1520,6 @@ const CCMOverview = () => {
                                             return;
                                         }
                                         setShowAddActivityForm(true);
-
                                         setNewActivity(prev => ({
                                             ...prev,
                                             costCodeTypeId: selectedCostCodeType
@@ -1297,40 +1558,34 @@ const CCMOverview = () => {
                                                 )}
                                             </div>
                                         </div>
-                                        <div className="mb-4 position-relative">
-                                            <fieldset className="border px-3 pb-3 rounded" style={{ borderColor: '#0051973D !important' }}>
-                                                <legend className="float-none w-auto p-2 " style={{ left: "15px", fontSize: '0.9rem', color: '#6c757d', width: 'auto' }}>
-                                                    Activity Code
-                                                </legend>
+                                        <div className="row">
+                                            <div className="mb-4">
+                                                <label className="projectform text-start d-block">Activity Code <span className="text-danger">*</span></label>
                                                 <input
                                                     type="text"
-                                                    className="form-input w-100 form-input w-100-sm"
+                                                    className="form-input w-100"
                                                     value={newActivity.activityCode}
                                                     onChange={(e) => setNewActivity({ ...newActivity, activityCode: e.target.value })}
                                                     placeholder="Enter activity code"
                                                     required
                                                 />
-                                            </fieldset>
-                                        </div>
-                                        <div className="mb-4 position-relative">
-                                            <fieldset className="border px-3 pb-3 rounded" style={{ borderColor: '#0051973D !important' }}>
-                                                <legend className="float-none w-auto p-2" style={{ fontSize: '0.9rem', color: '#6c757d', width: 'auto' }}>
-                                                    Activity Name
-                                                </legend>
+                                            </div>
+                                            <div className=" mb-4">
+                                                <label className="projectform text-start d-block">Activity Name <span className="text-danger">*</span></label>
                                                 <input
                                                     type="text"
-                                                    className="form-input w-100 form-input w-100-sm"
+                                                    className="form-input w-100"
                                                     value={newActivity.activityName}
                                                     onChange={(e) => setNewActivity({ ...newActivity, activityName: e.target.value })}
                                                     placeholder="Enter activity name"
                                                     required
                                                 />
-                                            </fieldset>
+                                            </div>
                                         </div>
-                                        <div className="d-flex justify-content-end gap-2">
+                                        <div className="d-flex justify-content-end">
                                             <button
                                                 type="button"
-                                                className="btn btn-sm btn-outline-secondary"
+                                                className="btn btn-secondary me-3"
                                                 onClick={handleCancelAddActivity}
                                             >
                                                 Cancel
@@ -1352,20 +1607,17 @@ const CCMOverview = () => {
                                     </div>
                                     <p className="mt-2">Loading activities...</p>
                                 </div>
-                            ) : (activitySearchQuery && filteredCostCodeActivities.length > 0) || Object.keys(activityGroupsByCostCodeType).length > 0 ? (
-                                <>
-                                    {activitySearchQuery && filteredCostCodeActivities.length > 0 && (
-                                        <div className="mb-3">
-                                            <h6 className="small text-muted">Matching Activities:</h6>
-                                            {filteredCostCodeActivities.map((activity) => (
-                                                <CostCodeActivityNode key={activity.id} activity={activity} />
-                                            ))}
-                                        </div>
-                                    )}
-                                    {Object.entries(activityGroupsByCostCodeType).map(([costCodeTypeId, data]) => (
-                                        <CostCodeTypeNode key={costCodeTypeId} costCodeTypeId={costCodeTypeId} data={data} />
+                            ) : activitySearchQuery && filteredCostCodeActivities.length > 0 ? (
+                                <div className="mb-3">
+                                    <h6 className="small text-muted">Matching Activities:</h6>
+                                    {filteredCostCodeActivities.map((activity) => (
+                                        <CostCodeActivityNode key={activity.id} activity={activity} />
                                     ))}
-                                </>
+                                </div>
+                            ) : Object.keys(activityGroupsByCostCodeType).length > 0 ? (
+                                Object.entries(activityGroupsByCostCodeType).map(([costCodeTypeId, data]) => (
+    <CostCodeTypeNode key={costCodeTypeId} costCodeTypeId={costCodeTypeId} data={data} />
+))
                             ) : (
                                 <div className="text-center text-muted py-4">
                                     No activity groups available
@@ -1375,182 +1627,6 @@ const CCMOverview = () => {
                     </div>
                 </div>
             </div>
-
-            {showMappingPopover && (
-
-                <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <div className="modal-dialog modal-dialog-centered modal-lg text-start">
-                        <div className="modal-content">
-                            <div className="modal-header">
-                                <h5 className="modal-title">Configure Mapping - {selectedMappingType}</h5>
-                                <button
-                                    type="button"
-                                    className="btn-close"
-                                    onClick={() => setShowMappingPopover(false)}
-                                ></button>
-                            </div>
-                            <div className="modal-body">
-                                <div className="d-flex justify-content-between">
-                                    <div className="col-md-6 mb-3">
-                                        <h6>Selected BOQ Items:</h6>
-                                        <div className="rounded p-2" style={{ maxHeight: '120px', overflowY: 'auto' }}>
-                                            {Array.from(selectedBOQs).map(boqCode => {
-                                                const boqItem = findBOQItem(boqCode);
-                                                return (
-                                                    <div key={boqCode} className="d-flex align-items-center">
-                                                        <SmallFolder className="me-2" />
-                                                        <span>{boqCode} - {boqItem?.boqName}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    <div className="col-md-6 mb-3">
-                                        <h6>Selected Activities:</h6>
-                                        <div className="rounded p-2" style={{ maxHeight: '120px', overflowY: 'auto' }}>
-                                            {Array.from(selectedActivities).map(activityId => {
-                                                const activityGroup = activityGroups.find(group => group.id === activityId);
-                                                return (
-                                                    <div key={activityId} className="d-flex align-items-center">
-                                                        <FileText size={16} className="text-muted me-2" />
-                                                        <span>{activityGroup?.activityCode} - {activityGroup?.activityName}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                </div>
-
-
-                                {selectedCostCodeType && (
-                                    <div className="mb-3">
-                                        <h6>Selected Cost Code Type:</h6>
-                                        <div className="border rounded p-2">
-                                            <div className="d-flex align-items-center">
-                                                <LargeFolder className="me-2" />
-                                                <span>{costCodeTypes.find(type => type.id === selectedCostCodeType)?.costCodeName}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <h6 className="mb-3">Activity Details:</h6>
-
-                                {mappingActivities.map((activity, index) => (
-                                    <div key={index} className="mb-4 p-3 border rounded position-relative" style={{ borderColor: '#0051973D' }}>
-                                        {(selectedMappingType === "1 : M" && mappingActivities.length > 1) && (
-                                            <div className="d-flex justify-content-end mb-2">
-                                                <X onClick={() => removeMappingActivity(index)} className="text-danger" />
-                                            </div>
-                                        )}
-
-                                        <div className="row">
-                                            <div className="col-md-6 mb-4">
-                                                <label className="projectform text-start d-block">Activity Code <span className="text-danger">*</span></label>
-                                                <input
-                                                    type="text"
-                                                    className="form-input w-100"
-                                                    value={activity.activityCode}
-                                                    onChange={(e) => setMappingActivities(...mappingActivities, activity.activityCode = e.target.value)}
-                                                    placeholder="Enter activity code"
-                                                    required
-                                                />
-                                            </div>
-                                            <div className="col-md-6 mb-4">
-                                                <label className="projectform text-start d-block">Activity Name <span className="text-danger">*</span></label>
-                                                <input
-                                                    type="text"
-                                                    className="form-input w-100"
-                                                    value={activity.activityName}
-                                                    onChange={(e) => setMappingActivities(...mappingActivities, activity.activityCode = e.target.value)}
-                                                    placeholder="Enter activity name"
-                                                    required
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {selectedMappingType === "1 : M" && (
-                                            <>
-                                                <div className="row">
-                                                    <div className="col-12 mb-4">
-                                                        <label className="projectform-select text-start d-block">Split Type<span className="text-danger">*</span></label>
-                                                        <Select
-                                                            options={splitOption}
-                                                            classNamePrefix="select"
-                                                            placeholder="Select split type"
-                                                            required
-                                                            value={splitOption.find(option => option.value === activity.splitType)}
-                                                            onChange={(option) => updateMappingActivity(index, 'splitType', option.value)}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="row">
-                                                    <div className="col-md-6 mb-4">
-                                                        <label className="projectform text-start d-block">Percentage <span className="text-danger">*</span></label>
-                                                        <input
-                                                            type="number"
-                                                            className="form-input w-100"
-                                                            value={activity.percentage}
-                                                            onChange={(e) => updateMappingActivity(index, 'percentage', e.target.value)}
-                                                            placeholder="Enter percentage"
-                                                            min="0"
-                                                            max="100"
-                                                            required
-                                                        />
-                                                    </div>
-                                                    <div className="col-md-6 mb-4">
-                                                        <label className="projectform text-start d-block">Value <span className="text-danger">*</span></label>
-                                                        <input
-                                                            type="number"
-                                                            className="form-input w-100"
-                                                            value={activity.value}
-                                                            onChange={(e) => updateMappingActivity(index, 'value', e.target.value)}
-                                                            placeholder="Enter value"
-                                                            min="0"
-                                                            required
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </>
-                                        )}
-
-                                    </div>
-                                ))}
-
-                                {selectedMappingType === "1 : M" && (
-                                    <div className="d-flex justify-content-end mb-3">
-                                        <button
-                                            type="button"
-                                            className="btn btn-sm btn-outline-primary"
-                                            onClick={addMappingActivity}
-                                        >
-                                            + Add Activity
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="modal-footer">
-                                <button
-                                    type="button"
-                                    className="btn btn-secondary"
-                                    onClick={() => setShowMappingPopover(false)}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn action-button"
-                                    onClick={saveCostCodeMapping}
-                                >
-                                    Configure Mapping
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            )}
 
             <div className="row ">
                 <div className="col-md-12">
