@@ -1560,40 +1560,34 @@ const CCMOverview = () => {
                                                 )}
                                             </div>
                                         </div>
-                                        <div className="mb-4 position-relative">
-                                            <fieldset className="border px-3 pb-3 rounded" style={{ borderColor: '#0051973D !important' }}>
-                                                <legend className="float-none w-auto p-2 " style={{ left: "15px", fontSize: '0.9rem', color: '#6c757d', width: 'auto' }}>
-                                                    Activity Code
-                                                </legend>
+                                        <div className="row">
+                                            <div className="mb-4">
+                                                <label className="projectform text-start d-block">Activity Code <span className="text-danger">*</span></label>
                                                 <input
                                                     type="text"
-                                                    className="form-input w-100 form-input w-100-sm"
+                                                    className="form-input w-100"
                                                     value={newActivity.activityCode}
                                                     onChange={(e) => setNewActivity({ ...newActivity, activityCode: e.target.value })}
                                                     placeholder="Enter activity code"
                                                     required
                                                 />
-                                            </fieldset>
-                                        </div>
-                                        <div className="mb-4 position-relative">
-                                            <fieldset className="border px-3 pb-3 rounded" style={{ borderColor: '#0051973D !important' }}>
-                                                <legend className="float-none w-auto p-2" style={{ fontSize: '0.9rem', color: '#6c757d', width: 'auto' }}>
-                                                    Activity Name
-                                                </legend>
+                                            </div>
+                                            <div className=" mb-4">
+                                                <label className="projectform text-start d-block">Activity Name <span className="text-danger">*</span></label>
                                                 <input
                                                     type="text"
-                                                    className="form-input w-100 form-input w-100-sm"
+                                                    className="form-input w-100"
                                                     value={newActivity.activityName}
                                                     onChange={(e) => setNewActivity({ ...newActivity, activityName: e.target.value })}
                                                     placeholder="Enter activity name"
                                                     required
                                                 />
-                                            </fieldset>
+                                            </div>
                                         </div>
-                                        <div className="d-flex justify-content-end gap-2">
+                                        <div className="d-flex justify-content-end">
                                             <button
                                                 type="button"
-                                                className="btn btn-sm btn-outline-secondary"
+                                                className="btn btn-secondary me-3"
                                                 onClick={handleCancelAddActivity}
                                             >
                                                 Cancel
