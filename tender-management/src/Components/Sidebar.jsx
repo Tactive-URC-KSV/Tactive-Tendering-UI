@@ -15,6 +15,8 @@ import ProjectInfo from './ProjectOverview';
 import BOQDefinition from './BOQDefinition';
 import CostCodeMapping from './CostCodeMapping';
 import CCMOverview from './CCMOverview';
+import TenderEstimation from './TenderEstimation';
+
 
 function Sidebar() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -104,7 +106,7 @@ function Sidebar() {
             <Route path="/BOQdefinition/:projectId" element={<BOQDefinition />} />
             <Route path="/CostCodeMapping" element={<CostCodeMapping/>} />
             <Route path="/CostCodeMapping/:projectId" element={<CCMOverview />} />
-            <Route path="/TenderEstimation" element={<h1>Tender Estimation</h1>} />
+            <Route path="/TenderEstimation" element={<TenderEstimation />} />
             <Route path="/TenderFloating" element={<h1>Tender Floating</h1>} />
             <Route path="/TenderTracking" element={<h1>Tender Tracking</h1>} />
             <Route path="/ReceivingOffers" element={<h1>Receiving Offers</h1>} />
