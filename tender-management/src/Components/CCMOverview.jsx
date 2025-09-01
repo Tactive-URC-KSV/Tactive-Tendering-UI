@@ -2,6 +2,7 @@ import axios from "axios";
 import { ArrowLeft, ArrowRight, Check, FileText, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import Select from 'react-select';
 import ClosedList from '../assest/ClosedList.svg?react';
 import DeleteIcon from '../assest/DeleteIcon.svg?react';
 import DropDown from '../assest/DropDown.svg?react';
@@ -275,17 +276,17 @@ const CCMOverview = () => {
         if (selectedMappingType === "1 : 1") {
             const boqCode = Array.from(selectedBOQs)[0];
             const boqItem = findBOQItem(boqCode);
+            const activityGroupId = Array.from(selectedActivities)[0] || "";
 
-            mappingActivities.forEach((activity, index) => {
-                const activityGroupId = selectedActivityGroupIds[index] || "";
-
+            Array.from(selectedBOQs).forEach(boqCode => {
+                const boqItem = findBOQItem(boqCode);
                 costCodeDtos.push({
                     boqId: boqItem.id,
-                    activityCode: activity.activityCode || boqItem.boqCode,
-                    activityName: activity.activityName || boqItem.boqName,
-                    quantity: activity.quantity || 1,
-                    rate: activity.rate || 0,
-                    amount: (activity.quantity || 1) * (activity.rate || 0),
+                    activityCode: boqItem.boqCode,
+                    activityName: boqItem.boqName,
+                    quantity: boqItem.quantity || 1,
+                    rate: boqItem.totalRate || 0,
+                    amount: boqItem.totalAmount || 0,
                     uomId: getUomId(),
                     mappingType: selectedMappingType,
                     costCodeTypeId: selectedCostCodeType || getCostCodeTypeFromActivityGroup(activityGroupId),
@@ -456,14 +457,25 @@ const CCMOverview = () => {
             return;
         }
 
+        // if (selectedMappingType === "1 : 1" && selectedBOQs.size !== 1) {
+        //     showAlert("One to One mapping requires exactly one BOQ item to be selected", "error");
+        //     return;
+        // }
+
         if (selectedActivities.size === 0 && !selectedCostCodeType) {
             showAlert("Please select at least one activity group or cost code type", "error");
             return;
         }
-        const boqCode = Array.from(selectedBOQs)[0];
-        const boqItem = findBOQItem(boqCode);
 
-        if (selectedMappingType === "1 : M") {
+        // For 1:1 mapping, directly save without configuration popup
+        if (selectedMappingType === "1 : 1") {
+            saveCostCodeMapping();
+        }
+        // For 1:M and M:1, show configuration popup (keep your existing logic)
+        else if (selectedMappingType === "1 : M") {
+            const boqCode = Array.from(selectedBOQs)[0];
+            const boqItem = findBOQItem(boqCode);
+
             setMappingActivities([{
                 activityCode: boqItem.boqCode,
                 activityName: boqItem.boqName,
@@ -521,16 +533,18 @@ const CCMOverview = () => {
 
     const handleActivitySelection = (activityId, isSelected) => {
         setSelectedActivities(prev => {
-            const newSet = new Set();
+            const newSet = new Set(prev);
             if (isSelected) {
                 newSet.add(activityId);
+            } else {
+                newSet.delete(activityId);
             }
             return newSet;
         });
     };
 
     const handleCostCodeTypeSelection = (costCodeTypeId) => {
-        setSelectedActivities(new Set());
+        setSelectedActivities(new Set()); // Clear activities when selecting cost code type
 
         if (selectedCostCodeType === costCodeTypeId) {
             setSelectedCostCodeType(null);
@@ -542,11 +556,15 @@ const CCMOverview = () => {
     const handleActivityGroupSelection = (activityGroupId) => {
         setSelectedCostCodeType(null);
 
-        if (selectedActivities.has(activityGroupId)) {
-            handleActivitySelection(activityGroupId, false);
-        } else {
-            handleActivitySelection(activityGroupId, true);
-        }
+        setSelectedActivities(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(activityGroupId)) {
+                newSet.delete(activityGroupId);
+            } else {
+                newSet.add(activityGroupId);
+            }
+            return newSet;
+        });
     };
 
     const processBOQData = (allBOQ) => {
@@ -911,7 +929,6 @@ const CCMOverview = () => {
                     style={{ borderColor: '#0051973D', width: '18px', height: '18px' }}
                     checked={isSelected}
                     onChange={handleCheckboxChange}
-                    disabled={isMapped}
                 />
                 <div className="d-flex align-items-center flex-grow-1 pt-1">
                     <span style={{ width: '16px' }}></span>
