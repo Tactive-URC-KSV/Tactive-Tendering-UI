@@ -15,8 +15,6 @@ import Search from '../assest/Search.svg?react';
 import SmallFolder from '../assest/SmallFolder.svg?react';
 import '../CSS/Styles.css';
 
-
-
 const CCMOverview = () => {
     const [project, setProject] = useState();
     const { projectId } = useParams();
@@ -179,6 +177,7 @@ const CCMOverview = () => {
         }).then(res => {
             if (res.status === 200) {
                 setCostCodeTypes(res.data || []);
+                
             } else {
                 console.error('Failed to fetch cost code types:', res.status);
             }
@@ -249,7 +248,7 @@ const CCMOverview = () => {
                 'Content-Type': 'application/json'
             }
         }).then(res => {
-            if (res.status === 200) {
+            if (res.status === 200) {                
                 setNewActivity({
                     costCodeTypeId: "",
                     activityGroupId: "",
@@ -573,9 +572,12 @@ const CCMOverview = () => {
 
         setSelectedActivities(prev => {
             const newSet = new Set(prev);
-            if (newSet.has(activityGroupId)) {
+            if (newSet.has(activityGroupId) && selectedMappingType !== "M : 1") {
                 newSet.delete(activityGroupId);
             } else {
+                if (selectedMappingType === "M : 1") {
+                    newSet.clear();
+                }
                 newSet.add(activityGroupId);
             }
             return newSet;
@@ -614,6 +616,11 @@ const CCMOverview = () => {
     const handleBOQSelection = (boqCode, isSelected) => {
         if (selectedMappingType === "1 : M" && isSelected && selectedBOQs.size >= 1) {
             showAlert("One to Many mapping allows only one BOQ item to be selected", "error");
+            return;
+        }
+
+        if (selectedMappingType === "1 : 1" && isSelected && selectedBOQs.size >= 1) {
+            showAlert("One to One mapping allows only one BOQ item to be selected", "error");
             return;
         }
 
@@ -658,7 +665,6 @@ const CCMOverview = () => {
             return;
         }
 
-
         axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/save/${projectId}`, pendingMappings, {
             headers: {
                 Authorization: `Bearer ${sessionStorage.getItem('token')}`,
@@ -692,8 +698,6 @@ const CCMOverview = () => {
 
         setCostCodeActivities(prev => prev.filter(activity => !activity.isPending));
         setPendingMappings([]);
-
-
     };
 
     const addMappingActivity = () => {
@@ -724,10 +728,11 @@ const CCMOverview = () => {
         }
 
         const updatedActivities = [...mappingActivities];
+        const removedPercentage = parseFloat(updatedActivities[index].percentage) || 0;
         updatedActivities.splice(index, 1);
         setMappingActivities(updatedActivities);
+        setTotalPercentageUsed(prev => prev - removedPercentage);
     };
-
 
     const updateMappingActivity = (index, field, value) => {
         const updatedActivities = [...mappingActivities];
@@ -770,7 +775,6 @@ const CCMOverview = () => {
             };
         }
         else if (field === 'splitType') {
-
             const percentage = parseFloat(updatedActivities[index].percentage) || 0;
             let calculatedValue = 0;
 
@@ -898,30 +902,29 @@ const CCMOverview = () => {
 
     const activityGroupsByCostCodeType = useMemo(() => {
         const grouped = {};
+        
+        costCodeTypes.forEach(type => {
+            grouped[type.id] = {
+                costCodeType: type,
+                activityGroups: []
+            };
+        });
+        
         activityGroups.forEach(group => {
             const costCodeTypeId = group.costCodeType?.id || 'uncategorized';
+            
             if (!grouped[costCodeTypeId]) {
                 grouped[costCodeTypeId] = {
-                    costCodeType: group.costCodeType,
+                    costCodeType: group.costCodeType || { id: 'uncategorized', costCodeName: 'Uncategorized' },
                     activityGroups: []
                 };
             }
+            
             grouped[costCodeTypeId].activityGroups.push(group);
         });
+        
         return grouped;
-    }, [activityGroups]);
-
-    const costCodeActivitiesByGroup = useMemo(() => {
-        const grouped = {};
-        costCodeActivities.forEach(activity => {
-            const activityGroupId = activity.activityGroup?.id || 'uncategorized';
-            if (!grouped[activityGroupId]) {
-                grouped[activityGroupId] = [];
-            }
-            grouped[activityGroupId].push(activity);
-        });
-        return grouped;
-    }, [costCodeActivities]);
+    }, [activityGroups, costCodeTypes]);
 
     const BOQNode = ({ boq, level = 0 }) => {
         const hasChildren = boq.children && boq.children.length > 0;
@@ -980,7 +983,6 @@ const CCMOverview = () => {
                                 {isMapped && <Check size={16} className="text-success ms-2" />}
                             </div>
                         </div>
-
                     </div>
                     {isExpanded && (
                         <div className="ms-3">
@@ -1154,7 +1156,6 @@ const CCMOverview = () => {
 
     return (
         <div className="container-fluid">
-
             <ToastContainer
                 position="top-right"
                 autoClose={3000}
@@ -1371,7 +1372,6 @@ const CCMOverview = () => {
                 </div>
             </div>
 
-
             <div className="row bg-white rounded-3 ms-4 me-4 py-4 ps-4 mt-3 pe-4 mb-4 " style={{ border: '0.5px solid #0051973D' }}>
                 <h5 className="card-title text-start fs-6 ms-1 mb-3">Select Mapping Type</h5>
                 {mappingTypes.map((type) => (
@@ -1507,7 +1507,6 @@ const CCMOverview = () => {
                     </div>
                 </div>
 
-
                 <div className="col-md-5 bg-white rounded-3 p-3" style={{ border: '0.5px solid #0051973D' }}>
                     <div className="card border-0 bg-transparent h-100">
                         <div className="card-header d-flex justify-content-between align-items-center border-0 bg-transparent pb-3">
@@ -1521,7 +1520,6 @@ const CCMOverview = () => {
                                             return;
                                         }
                                         setShowAddActivityForm(true);
-
                                         setNewActivity(prev => ({
                                             ...prev,
                                             costCodeTypeId: selectedCostCodeType
@@ -1609,20 +1607,17 @@ const CCMOverview = () => {
                                     </div>
                                     <p className="mt-2">Loading activities...</p>
                                 </div>
-                            ) : (activitySearchQuery && filteredCostCodeActivities.length > 0) || Object.keys(activityGroupsByCostCodeType).length > 0 ? (
-                                <>
-                                    {activitySearchQuery && filteredCostCodeActivities.length > 0 && (
-                                        <div className="mb-3">
-                                            <h6 className="small text-muted">Matching Activities:</h6>
-                                            {filteredCostCodeActivities.map((activity) => (
-                                                <CostCodeActivityNode key={activity.id} activity={activity} />
-                                            ))}
-                                        </div>
-                                    )}
-                                    {Object.entries(activityGroupsByCostCodeType).map(([costCodeTypeId, data]) => (
-                                        <CostCodeTypeNode key={costCodeTypeId} costCodeTypeId={costCodeTypeId} data={data} />
+                            ) : activitySearchQuery && filteredCostCodeActivities.length > 0 ? (
+                                <div className="mb-3">
+                                    <h6 className="small text-muted">Matching Activities:</h6>
+                                    {filteredCostCodeActivities.map((activity) => (
+                                        <CostCodeActivityNode key={activity.id} activity={activity} />
                                     ))}
-                                </>
+                                </div>
+                            ) : Object.keys(activityGroupsByCostCodeType).length > 0 ? (
+                                Object.entries(activityGroupsByCostCodeType).map(([costCodeTypeId, data]) => (
+    <CostCodeTypeNode key={costCodeTypeId} costCodeTypeId={costCodeTypeId} data={data} />
+))
                             ) : (
                                 <div className="text-center text-muted py-4">
                                     No activity groups available
