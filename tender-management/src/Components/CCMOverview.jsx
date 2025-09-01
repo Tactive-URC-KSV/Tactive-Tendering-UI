@@ -1,5 +1,5 @@
 import axios from "axios";
-import { ArrowLeft, ArrowRight, Check, FileText } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, FileText, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import ClosedList from '../assest/ClosedList.svg?react';
@@ -11,6 +11,8 @@ import SaveMappingIcon from '../assest/SaveMapping.svg?react';
 import Search from '../assest/Search.svg?react';
 import SmallFolder from '../assest/SmallFolder.svg?react';
 import '../CSS/Styles.css';
+import Select from 'react-select';
+
 
 const CCMOverview = () => {
     const [project, setProject] = useState();
@@ -77,10 +79,14 @@ const CCMOverview = () => {
     ];
 
     const splitTypes = [
-        { id: "percentage", name: "Percentage" },
-        { id: "value", name: "Value" },
-        { id: "equal", name: "Equal Split" }
+        { id: "rate", name: "Total Rate" },
+        { id: "amount", name: "Total Amount" },
+        { id: "quantity", name: "Total Quantity" }
     ];
+    const splitOption = splitTypes.map(type => ({
+        value: type.id,
+        label: type.name
+    }));
 
     const showAlert = (message, type = "info") => {
         setNotification({ message, type });
@@ -333,6 +339,7 @@ const CCMOverview = () => {
         }
 
         setPendingMappings(prev => [...prev, ...costCodeDtos]);
+        console.log(pendingMappings);
 
         const newMappings = costCodeDtos.map(dto => ({
             id: `pending-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -443,18 +450,8 @@ const CCMOverview = () => {
             return;
         }
 
-        if (selectedMappingType === "1 : 1" && selectedBOQs.size !== 1) {
-            showAlert("One to One mapping requires exactly one BOQ item to be selected", "error");
-            return;
-        }
-
         if (selectedMappingType === "1 : M" && selectedBOQs.size !== 1) {
             showAlert("One to Many mapping requires exactly one BOQ item to be selected", "error");
-            return;
-        }
-
-        if (selectedMappingType === "M : 1" && selectedBOQs.size < 2) {
-            showAlert("Many to One mapping requires at least two BOQ items to be selected", "error");
             return;
         }
 
@@ -462,20 +459,21 @@ const CCMOverview = () => {
             showAlert("Please select at least one activity group or cost code type", "error");
             return;
         }
+        const boqCode = Array.from(selectedBOQs)[0];
+        const boqItem = findBOQItem(boqCode);
 
-        if (selectedMappingType === "1 : 1") {
-            const boqCode = Array.from(selectedBOQs)[0];
-            const boqItem = findBOQItem(boqCode);
-
+        if (selectedMappingType === "1 : M") {
             setMappingActivities([{
                 activityCode: boqItem.boqCode,
                 activityName: boqItem.boqName,
-                quantity: 1,
-                rate: 0,
+                quantity: boqItem.quantity,
+                rate: boqItem.totalRate,
+                amount: boqItem.totalAmount,
                 splitType: "",
                 percentage: "",
                 value: ""
             }]);
+            setShowMappingPopover(true);
         } else if (selectedMappingType === "M : 1") {
             setMappingActivities([{
                 activityCode: "",
@@ -486,19 +484,20 @@ const CCMOverview = () => {
                 percentage: "",
                 value: ""
             }]);
+            setShowMappingPopover(true);
         } else {
             setMappingActivities([{
-                activityCode: "",
-                activityName: "",
-                quantity: 1,
-                rate: 0,
+                activityCode: boqCode,
+                activityName: boqItem.boqName,
+                quantity: boqItem.quantity,
+                rate: boqItem.totalRate,
+                amount : boqItem.totalAmount,
                 splitType: "",
                 percentage: "",
                 value: ""
             }]);
+            saveCostCodeMapping();
         }
-
-        setShowMappingPopover(true);
     };
 
     const handleLeftArrowClick = () => {
@@ -512,8 +511,6 @@ const CCMOverview = () => {
             setPendingMappings(prev =>
                 prev.filter(mapping => !activitiesToRemove.includes(mapping.id))
             );
-
-            showAlert(`Unmapped ${activitiesToRemove.length} activities`, "success");
         }
 
         setSelectedActivities(new Set());
@@ -580,11 +577,6 @@ const CCMOverview = () => {
     };
 
     const handleBOQSelection = (boqCode, isSelected) => {
-        if (selectedMappingType === "1 : 1" && isSelected && selectedBOQs.size >= 1) {
-            showAlert("One to One mapping allows only one BOQ item to be selected", "error");
-            return;
-        }
-
         if (selectedMappingType === "1 : M" && isSelected && selectedBOQs.size >= 1) {
             showAlert("One to Many mapping allows only one BOQ item to be selected", "error");
             return;
@@ -631,6 +623,7 @@ const CCMOverview = () => {
             return;
         }
 
+
         axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/save/${projectId}`, pendingMappings, {
             headers: {
                 Authorization: `Bearer ${sessionStorage.getItem('token')}`,
@@ -665,7 +658,7 @@ const CCMOverview = () => {
         setCostCodeActivities(prev => prev.filter(activity => !activity.isPending));
         setPendingMappings([]);
 
-        showAlert("Selections reset successfully", "success");
+
     };
 
     const addMappingActivity = () => {
@@ -1147,7 +1140,7 @@ const CCMOverview = () => {
                             <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" />
                             <input
                                 type="text"
-                                className="search form-control ps-5"
+                                className="search form-input w-100 ps-5"
                                 placeholder="Search BOQ items..." style={{ border: '0.5px solid #0051973D', fontSize: "15px" }}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -1223,7 +1216,7 @@ const CCMOverview = () => {
                             <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" />
                             <input
                                 type="text"
-                                className="search form-control ps-5"
+                                className="search form-input w-100 ps-5"
                                 placeholder="Search activities..." style={{ border: '0.5px solid #0051973D', fontSize: "15px" }}
                                 value={activitySearchQuery}
                                 onChange={(e) => setActivitySearchQuery(e.target.value)}
@@ -1248,12 +1241,12 @@ const CCMOverview = () => {
                                         </div>
                                         <div className="mb-4 position-relative">
                                             <fieldset className="border px-3 pb-3 rounded" style={{ borderColor: '#0051973D !important' }}>
-                                                <legend className="float-none w-auto p-2 position-absolute" style={{ left: "15px", fontSize: '0.9rem', color: '#6c757d', width: 'auto' }}>
+                                                <legend className="float-none w-auto p-2 " style={{ left: "15px", fontSize: '0.9rem', color: '#6c757d', width: 'auto' }}>
                                                     Activity Code
                                                 </legend>
                                                 <input
                                                     type="text"
-                                                    className="form-control form-control-sm"
+                                                    className="form-input w-100 form-input w-100-sm"
                                                     value={newActivity.activityCode}
                                                     onChange={(e) => setNewActivity({ ...newActivity, activityCode: e.target.value })}
                                                     placeholder="Enter activity code"
@@ -1268,7 +1261,7 @@ const CCMOverview = () => {
                                                 </legend>
                                                 <input
                                                     type="text"
-                                                    className="form-control form-control-sm"
+                                                    className="form-input w-100 form-input w-100-sm"
                                                     value={newActivity.activityName}
                                                     onChange={(e) => setNewActivity({ ...newActivity, activityName: e.target.value })}
                                                     placeholder="Enter activity name"
@@ -1286,7 +1279,7 @@ const CCMOverview = () => {
                                             </button>
                                             <button
                                                 type="button"
-                                                className="btn btn-sm btn-primary"
+                                                className="btn action-button"
                                                 onClick={addActivityGroup}
                                             >
                                                 + Add Activity Group
@@ -1326,209 +1319,182 @@ const CCMOverview = () => {
             </div>
 
             {showMappingPopover && (
-                <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <div className="modal-dialog modal-dialog-centered modal-lg">
-                        <div className="modal-content">
-                            <div className="modal-header">
-                                <h5 className="modal-title">Configure Mapping - {selectedMappingType}</h5>
-                                <button
-                                    type="button"
-                                    className="btn-close"
-                                    onClick={() => setShowMappingPopover(false)}
-                                ></button>
-                            </div>
-                            <div className="modal-body">
-                                <div className="mb-3">
-                                    <h6>Selected BOQ Items:</h6>
-                                    <div className="border rounded p-2" style={{ maxHeight: '120px', overflowY: 'auto' }}>
-                                        {Array.from(selectedBOQs).map(boqCode => {
-                                            const boqItem = findBOQItem(boqCode);
-                                            return (
-                                                <div key={boqCode} className="d-flex align-items-center">
-                                                    <SmallFolder className="me-2" />
-                                                    <span>{boqCode} - {boqItem?.boqName}</span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                selectedMappingType === "1 : M" ? (
+                    <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                        <div className="modal-dialog modal-dialog-centered modal-lg text-start">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title">Configure Mapping - {selectedMappingType}</h5>
+                                    <button
+                                        type="button"
+                                        className="btn-close"
+                                        onClick={() => setShowMappingPopover(false)}
+                                    ></button>
                                 </div>
+                                <div className="modal-body">
+                                    <div className="d-flex justify-content-between">
+                                        <div className="col-md-6 mb-3">
+                                            <h6>Selected BOQ Items:</h6>
+                                            <div className="rounded p-2" style={{ maxHeight: '120px', overflowY: 'auto' }}>
+                                                {Array.from(selectedBOQs).map(boqCode => {
+                                                    const boqItem = findBOQItem(boqCode);
+                                                    return (
+                                                        <div key={boqCode} className="d-flex align-items-center">
+                                                            <SmallFolder className="me-2" />
+                                                            <span>{boqCode} - {boqItem?.boqName}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
 
-                                <div className="mb-3">
-                                    <h6>Selected Activities:</h6>
-                                    <div className="border rounded p-2" style={{ maxHeight: '120px', overflowY: 'auto' }}>
-                                        {Array.from(selectedActivities).map(activityId => {
-                                            const activityGroup = activityGroups.find(group => group.id === activityId);
-                                            return (
-                                                <div key={activityId} className="d-flex align-items-center">
-                                                    <FileText size={16} className="text-muted me-2" />
-                                                    <span>{activityGroup?.activityCode} - {activityGroup?.activityName}</span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-
-                                {selectedCostCodeType && (
-                                    <div className="mb-3">
-                                        <h6>Selected Cost Code Type:</h6>
-                                        <div className="border rounded p-2">
-                                            <div className="d-flex align-items-center">
-                                                <LargeFolder className="me-2" />
-                                                <span>{costCodeTypes.find(type => type.id === selectedCostCodeType)?.costCodeName}</span>
+                                        <div className="col-md-6 mb-3">
+                                            <h6>Selected Activities:</h6>
+                                            <div className="rounded p-2" style={{ maxHeight: '120px', overflowY: 'auto' }}>
+                                                {Array.from(selectedActivities).map(activityId => {
+                                                    const activityGroup = activityGroups.find(group => group.id === activityId);
+                                                    return (
+                                                        <div key={activityId} className="d-flex align-items-center">
+                                                            <FileText size={16} className="text-muted me-2" />
+                                                            <span>{activityGroup?.activityCode} - {activityGroup?.activityName}</span>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     </div>
-                                )}
 
-                                <h6 className="mb-3">Activity Details:</h6>
 
-                                {mappingActivities.map((activity, index) => (
-                                    <div key={index} className="mb-4 p-3 border rounded position-relative" style={{ borderColor: '#0051973D' }}>
-                                        {(selectedMappingType === "1 : M" && mappingActivities.length > 1) && (
+                                    {selectedCostCodeType && (
+                                        <div className="mb-3">
+                                            <h6>Selected Cost Code Type:</h6>
+                                            <div className="border rounded p-2">
+                                                <div className="d-flex align-items-center">
+                                                    <LargeFolder className="me-2" />
+                                                    <span>{costCodeTypes.find(type => type.id === selectedCostCodeType)?.costCodeName}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <h6 className="mb-3">Activity Details:</h6>
+
+                                    {mappingActivities.map((activity, index) => (
+                                        <div key={index} className="mb-4 p-3 border rounded position-relative" style={{ borderColor: '#0051973D' }}>
+                                            {(selectedMappingType === "1 : M" && mappingActivities.length > 1) && (
+                                                <div className="d-flex justify-content-end mb-2">
+                                                    <X onClick={() => removeMappingActivity(index)} className="text-danger" />
+                                                </div>
+                                            )}
+
+                                            <div className="row">
+                                                <div className="col-md-6 mb-4">
+                                                    <label className="projectform text-start d-block">Activity Code <span className="text-danger">*</span></label>
+                                                    <input
+                                                        type="text"
+                                                        className="form-input w-100"
+                                                        value={activity.activityCode}
+                                                        onChange={(e) => updateMappingActivity(index, 'activityCode', e.target.value)}
+                                                        placeholder="Enter activity code"
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="col-md-6 mb-4">
+                                                    <label className="projectform text-start d-block">Activity Name <span className="text-danger">*</span></label>
+                                                    <input
+                                                        type="text"
+                                                        className="form-input w-100"
+                                                        value={activity.activityName}
+                                                        onChange={(e) => updateMappingActivity(index, 'activityName', e.target.value)}
+                                                        placeholder="Enter activity name"
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+                                            {selectedMappingType === "1 : M" && (
+                                                <>
+                                                    <div className="row">
+                                                        <div className="col-12 mb-4">
+                                                            <label className="projectform-select text-start d-block">Split Type<span className="text-danger">*</span></label>
+                                                            <Select
+                                                                options={splitOption}
+                                                                classNamePrefix="select"
+                                                                placeholder="Select split type"
+                                                                required
+                                                                value={splitOption.find(option => option.value === activity.splitType)}
+                                                                onChange={(option) => setMappingActivities(...mappingActivities, splitType = option.value
+                                                                )}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="row">
+                                                        <div className="col-md-6 mb-4">
+                                                            <label className="projectform text-start d-block">Percentage <span className="text-danger">*</span></label>
+                                                            <input
+                                                                type="number"
+                                                                className="form-input w-100"
+                                                                value={activity.percentage}
+                                                                onChange={(e) => updateMappingActivity(index, 'percentage', e.target.value)}
+                                                                placeholder="Enter percentage"
+                                                                min="0"
+                                                                max="100"
+                                                                required
+                                                            />
+                                                        </div>
+                                                        <div className="col-md-6 mb-4">
+                                                            <label className="projectform text-start d-block">Value <span className="text-danger">*</span></label>
+                                                            <input
+                                                                type="number"
+                                                                className="form-input w-100"
+                                                                value={activity.value}
+                                                                onChange={(e) => updateMappingActivity(index, 'value', e.target.value)}
+                                                                placeholder="Enter value"
+                                                                min="0"
+                                                                required
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
+
+                                        </div>
+                                    ))}
+
+                                    {selectedMappingType === "1 : M" && (
+                                        <div className="d-flex justify-content-end mb-3">
                                             <button
                                                 type="button"
-                                                className="btn-close position-absolute top-0 end-0 m-2"
-                                                onClick={() => removeMappingActivity(index)}
-                                            />
-                                        )}
-
-                                        <div className="row">
-                                            <div className="col-md-6 mb-3">
-                                                <label className="form-label">Activity Code *</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    value={activity.activityCode}
-                                                    onChange={(e) => updateMappingActivity(index, 'activityCode', e.target.value)}
-                                                    placeholder="Enter activity code"
-                                                    required
-                                                    disabled={selectedMappingType === "1 : 1"}
-                                                />
-                                            </div>
-                                            <div className="col-md-6 mb-3">
-                                                <label className="form-label">Activity Name *</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    value={activity.activityName}
-                                                    onChange={(e) => updateMappingActivity(index, 'activityName', e.target.value)}
-                                                    placeholder="Enter activity name"
-                                                    required
-                                                    disabled={selectedMappingType === "1 : 1"}
-                                                />
-                                            </div>
+                                                className="btn btn-sm btn-outline-primary"
+                                                onClick={addMappingActivity}
+                                            >
+                                                + Add Activity
+                                            </button>
                                         </div>
-
-                                        <div className="row">
-                                            <div className="col-md-4 mb-3">
-                                                <label className="form-label">Split Type</label>
-                                                <select
-                                                    className="form-select"
-                                                    value={activity.splitType}
-                                                    onChange={(e) => updateMappingActivity(index, 'splitType', e.target.value)}
-                                                    required
-                                                >
-                                                    <option value="">Select split type</option>
-                                                    {splitTypes.map(type => (
-                                                        <option key={type.id} value={type.id}>{type.name}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-
-                                            {activity.splitType === 'percentage' && (
-                                                <div className="col-md-4 mb-3">
-                                                    <label className="form-label">Percentage *</label>
-                                                    <input
-                                                        type="number"
-                                                        className="form-control"
-                                                        value={activity.percentage}
-                                                        onChange={(e) => updateMappingActivity(index, 'percentage', e.target.value)}
-                                                        placeholder="Enter percentage"
-                                                        min="0"
-                                                        max="100"
-                                                        required
-                                                    />
-                                                </div>
-                                            )}
-
-                                            {activity.splitType === 'value' && (
-                                                <div className="col-md-4 mb-3">
-                                                    <label className="form-label">Value *</label>
-                                                    <input
-                                                        type="number"
-                                                        className="form-control"
-                                                        value={activity.value}
-                                                        onChange={(e) => updateMappingActivity(index, 'value', e.target.value)}
-                                                        placeholder="Enter value"
-                                                        min="0"
-                                                        required
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="row">
-                                            <div className="col-md-6 mb-3">
-                                                <label className="form-label">Quantity *</label>
-                                                <input
-                                                    type="number"
-                                                    className="form-control"
-                                                    value={activity.quantity}
-                                                    onChange={(e) => updateMappingActivity(index, 'quantity', parseFloat(e.target.value) || 0)}
-                                                    placeholder="Enter quantity"
-                                                    min="0"
-                                                    step="0.01"
-                                                    required
-                                                />
-                                            </div>
-                                            <div className="col-md-6 mb-3">
-                                                <label className="form-label">Rate *</label>
-                                                <input
-                                                    type="number"
-                                                    className="form-control"
-                                                    value={activity.rate}
-                                                    onChange={(e) => updateMappingActivity(index, 'rate', parseFloat(e.target.value) || 0)}
-                                                    placeholder="Enter rate"
-                                                    min="0"
-                                                    step="0.01"
-                                                    required
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-
-                                {selectedMappingType === "1 : M" && (
-                                    <div className="d-flex justify-content-end mb-3">
-                                        <button
-                                            type="button"
-                                            className="btn btn-sm btn-outline-primary"
-                                            onClick={addMappingActivity}
-                                        >
-                                            + Add Activity
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="modal-footer">
-                                <button
-                                    type="button"
-                                    className="btn btn-secondary"
-                                    onClick={() => setShowMappingPopover(false)}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn btn-primary"
-                                    onClick={saveCostCodeMapping}
-                                >
-                                    Configure Mapping
-                                </button>
+                                    )}
+                                </div>
+                                <div className="modal-footer">
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary"
+                                        onClick={() => setShowMappingPopover(false)}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn action-button"
+                                        onClick={saveCostCodeMapping}
+                                    >
+                                        Configure Mapping
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                ) :
+                    (
+                        <div></div>
+                    )
             )}
 
             <div className="row ">
@@ -1539,9 +1505,9 @@ const CCMOverview = () => {
                                 <button className="bg-transparent border-0" style={{ color: "#3273AB" }} onClick={handleReset}>
                                     Reset
                                 </button>
-                                <button className="border-0 text-white p-2 rounded" style={{ backgroundColor: "#3273AB" }} onClick={handleSaveMapping}>
-                                    <SaveMappingIcon className="ms-2" />
-                                    <span className="ps-2">Save Mapping</span>
+                                <button className="btn action-button" onClick={handleSaveMapping}>
+                                    <SaveMappingIcon />
+                                    <span className="ms-2">Save Mapping</span>
                                 </button>
                             </div>
                         </div>
