@@ -53,8 +53,6 @@ const CCMOverview = () => {
     const [selectedCostCodeType, setSelectedCostCodeType] = useState(null);
     const [mappingActivities, setMappingActivities] = useState([]);
     const [pendingMappings, setPendingMappings] = useState([]);
-    const [showNotification, setShowNotification] = useState(false);
-    const [notification, setNotification] = useState({ message: "", type: "" });
     const [totalPercentageUsed, setTotalPercentageUsed] = useState(0);
     const [boqTotalAmount, setBoqTotalAmount] = useState(0);
 
@@ -1377,7 +1375,7 @@ const CCMOverview = () => {
                 {mappingTypes.map((type) => (
                     <div className="col-md-6 col-lg-4 mb-3" key={type.key}>
                         <div
-                            className={`p-3 m-2 rounded h-100 d-flex flex-column ${selectedMappingType === type.key
+                            className={`text-start p-3 m-2 rounded h-100 d-flex flex-column ${selectedMappingType === type.key
                                 ? "border-primary bg-primary bg-opacity-10"
                                 : "border"
                                 }`}
