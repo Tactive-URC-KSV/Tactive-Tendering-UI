@@ -45,14 +45,8 @@ const CCMOverview = () => {
         rate: 0,
         uomId: ""
     });
-    const [mappingConfig, setMappingConfig] = useState({
-        splitType: "",
-        percentage: "",
-        value: ""
-    });
     const [selectedCostCodeType, setSelectedCostCodeType] = useState(null);
     const [mappingActivities, setMappingActivities] = useState([]);
-    const [pendingMappings, setPendingMappings] = useState([]);
     const [totalPercentageUsed, setTotalPercentageUsed] = useState(0);
     const [boqTotalAmount, setBoqTotalAmount] = useState(0);
     const [boqTotalRate, setBoqTotalRate] = useState(0);
@@ -903,21 +897,6 @@ const CCMOverview = () => {
 
         return filterTree(boqTree);
     }, [boqTree, searchQuery]);
-
-    const filteredActivityGroups = useMemo(() => {
-        if (!activitySearchQuery.trim()) {
-            return activityGroups;
-        }
-
-        const query = activitySearchQuery.toLowerCase().trim();
-
-        return activityGroups.filter(group =>
-            (group.activityCode && group.activityCode.toLowerCase().includes(query)) ||
-            (group.activityName && group.activityName.toLowerCase().includes(query)) ||
-            (group.costCodeType && group.costCodeType.costCodeName &&
-                group.costCodeType.costCodeName.toLowerCase().includes(query))
-        );
-    }, [activityGroups, activitySearchQuery]);
 
     const filteredCostCodeActivities = useMemo(() => {
         if (!activitySearchQuery.trim()) {
