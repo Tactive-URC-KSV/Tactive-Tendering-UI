@@ -55,6 +55,9 @@ const CCMOverview = () => {
     const [pendingMappings, setPendingMappings] = useState([]);
     const [totalPercentageUsed, setTotalPercentageUsed] = useState(0);
     const [boqTotalAmount, setBoqTotalAmount] = useState(0);
+    const [boqTotalRate, setBoqTotalRate] = useState(0);
+    const [boqTotalQuantity, setBoqTotalQuantity] = useState(0);
+    const [splitType, setSplitType] = useState("amount");
 
     const addActivityFormRef = useRef(null);
 
@@ -175,7 +178,7 @@ const CCMOverview = () => {
         }).then(res => {
             if (res.status === 200) {
                 setCostCodeTypes(res.data || []);
-                
+
             } else {
                 console.error('Failed to fetch cost code types:', res.status);
             }
@@ -246,7 +249,7 @@ const CCMOverview = () => {
                 'Content-Type': 'application/json'
             }
         }).then(res => {
-            if (res.status === 200) {                
+            if (res.status === 200) {
                 setNewActivity({
                     costCodeTypeId: "",
                     activityGroupId: "",
@@ -496,6 +499,8 @@ const CCMOverview = () => {
         const boqItem = findBOQItem(boqCode);
 
         setBoqTotalAmount(boqItem.totalAmount || 0);
+        setBoqTotalQuantity(boqItem.quantity || 1);
+        setBoqTotalRate(boqItem.totalRate || 0);
 
         if (selectedMappingType === "1 : 1") {
             saveCostCodeMapping();
@@ -773,6 +778,7 @@ const CCMOverview = () => {
             };
         }
         else if (field === 'splitType') {
+            setSplitType(value);
             const percentage = parseFloat(updatedActivities[index].percentage) || 0;
             let calculatedValue = 0;
 
@@ -900,27 +906,27 @@ const CCMOverview = () => {
 
     const activityGroupsByCostCodeType = useMemo(() => {
         const grouped = {};
-        
+
         costCodeTypes.forEach(type => {
             grouped[type.id] = {
                 costCodeType: type,
                 activityGroups: []
             };
         });
-        
+
         activityGroups.forEach(group => {
             const costCodeTypeId = group.costCodeType?.id || 'uncategorized';
-            
+
             if (!grouped[costCodeTypeId]) {
                 grouped[costCodeTypeId] = {
                     costCodeType: group.costCodeType || { id: 'uncategorized', costCodeName: 'Uncategorized' },
                     activityGroups: []
                 };
             }
-            
+
             grouped[costCodeTypeId].activityGroups.push(group);
         });
-        
+
         return grouped;
     }, [activityGroups, costCodeTypes]);
 
@@ -1097,7 +1103,7 @@ const CCMOverview = () => {
                     </div>
                 </div>
                 {isExpanded && groupActivities.length > 0 && (
-                    <div className="ms-4 mt-2">
+                    <div className="ms-4 mt-2 ">
                         {groupActivities.map((activity) => (
                             <CostCodeActivityNode key={activity.id} activity={activity} />
                         ))}
@@ -1223,23 +1229,52 @@ const CCMOverview = () => {
                                         </div>
                                     </div>
                                 )}
-
-                                {selectedMappingType === "1 : M" && (
-                                    <div className="alert alert-info mb-3">
-                                        <small>
-                                            <strong>BOQ Total Amount: ${boqTotalAmount.toFixed(2)}</strong><br />
-                                            Total Percentage Used: {totalPercentageUsed.toFixed(2)}% / 100%<br />
-                                            Remaining Percentage: {(100 - totalPercentageUsed).toFixed(2)}%<br />
-                                            Allocated Amount: ${(boqTotalAmount * totalPercentageUsed / 100).toFixed(2)}<br />
-                                            Remaining Amount: ${(boqTotalAmount * (100 - totalPercentageUsed) / 100).toFixed(2)}
-                                        </small>
-                                    </div>
+                                        {selectedMappingType === "1 : M" && (
+                                    <>
+                                    {splitType === 'amount' && (
+                                       <div className="alert alert-info mb-3">
+                                            <small>
+                                                <strong>BOQ Total Amount: ${boqTotalAmount.toFixed(2)}</strong><br />
+                                                Total Percentage Used: {totalPercentageUsed.toFixed(2)}% / 100%<br />
+                                                Remaining Percentage: {(100 - totalPercentageUsed).toFixed(2)}%<br />
+                                                Allocated Amount: ${(boqTotalAmount * totalPercentageUsed / 100).toFixed(2)}<br />
+                                                Remaining Amount: ${(boqTotalAmount * (100 - totalPercentageUsed) / 100).toFixed(2)}
+                                            </small>
+                                        </div>
+                                    )}
+                                    {splitType === 'rate' && (
+                                        <div className="alert alert-info mb-3">
+                                            <small>
+                                                <strong>BOQ Total Rate: ${boqTotalRate.toFixed(2)}</strong><br />
+                                                Total Percentage Used: {totalPercentageUsed.toFixed(2)}% / 100%<br />
+                                                Remaining Percentage: {(100 - totalPercentageUsed).toFixed(2)}%<br />
+                                                Allocated Rate: ${(boqTotalRate * totalPercentageUsed / 100).toFixed(2)}<br />
+                                                Remaining Rate: ${(boqTotalRate * (100 - totalPercentageUsed) / 100).toFixed(2)}
+                                            </small>
+                                        </div>
+                                    )
+                                }   
+                                {splitType === 'quantity' && (
+                                        <div className="alert alert-info mb-3">
+                                            <small>
+                                                <strong>BOQ Total Quantity: ${boqTotalQuantity.toFixed(2)}</strong><br />
+                                                Total Percentage Used: {totalPercentageUsed.toFixed(2)}% / 100%<br />
+                                                Remaining Percentage: {(100 - totalPercentageUsed).toFixed(2)}%<br />
+                                                Allocated Quantity: ${(boqTotalQuantity * totalPercentageUsed / 100).toFixed(2)}<br />
+                                                Remaining Quantity: ${(boqTotalQuantity * (100 - totalPercentageUsed) / 100).toFixed(2)}
+                                            </small>
+                                        </div>
+                                    )
+                                }   
+                                </>    
                                 )}
+                               
 
                                 <h6 className="mb-3">Activity Details:</h6>
 
                                 {mappingActivities.map((activity, index) => (
                                     <div key={index} className="mb-4 p-3 border rounded position-relative" style={{ borderColor: '#0051973D' }}>
+                                 
                                         {(selectedMappingType === "1 : M" && mappingActivities.length > 1) && (
                                             <button
                                                 type="button"
@@ -1288,7 +1323,7 @@ const CCMOverview = () => {
                                                             placeholder="Select split type"
                                                             required
                                                             value={splitOption.find(option => option.value === activity.splitType)}
-                                                            onChange={(option) => updateMappingActivity(index, 'splitType', option.value)}
+                                                            onChange={(option) => (updateMappingActivity(index, 'splitType', option.value))}
                                                         />
                                                     </div>
                                                 </div>
@@ -1373,7 +1408,7 @@ const CCMOverview = () => {
             <div className="row bg-white rounded-3 ms-4 me-4 py-4 ps-4 mt-3 pe-4 mb-4 " style={{ border: '0.5px solid #0051973D' }}>
                 <h5 className="card-title text-start fs-6 ms-1 mb-3">Select Mapping Type</h5>
                 {mappingTypes.map((type) => (
-                    <div className="col-md-6 col-lg-4 mb-3" key={type.key}>
+                    <div className="col-md-6 col-lg-4 mb-3 text-start" key={type.key}>
                         <div
                             className={`text-start p-3 m-2 rounded h-100 d-flex flex-column ${selectedMappingType === type.key
                                 ? "border-primary bg-primary bg-opacity-10"
@@ -1614,8 +1649,8 @@ const CCMOverview = () => {
                                 </div>
                             ) : Object.keys(activityGroupsByCostCodeType).length > 0 ? (
                                 Object.entries(activityGroupsByCostCodeType).map(([costCodeTypeId, data]) => (
-    <CostCodeTypeNode key={costCodeTypeId} costCodeTypeId={costCodeTypeId} data={data} />
-))
+                                    <CostCodeTypeNode key={costCodeTypeId} costCodeTypeId={costCodeTypeId} data={data} />
+                                ))
                             ) : (
                                 <div className="text-center text-muted py-4">
                                     No activity groups available
