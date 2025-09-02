@@ -8,6 +8,8 @@ import SelectIcon from '../assest/Select.svg?react';
 
 function BOQProjectInfo({ projects, continueRoute }) {
     const [projectId, setProjectId] = useState('');
+    const [search, setSearch] = useState('');
+    const [selectedCompany, setSelectedCompany] = useState(null);
     const projectStatus = useProjectStatus();
     const navigate = useNavigate();
 
@@ -16,6 +18,16 @@ function BOQProjectInfo({ projects, continueRoute }) {
             navigate(`${continueRoute}/${projectId}`);
         }
     }
+
+    const companyOptions = Array.from(
+        new Set(projects.map(prj => prj.companyName))
+    ).map(name => ({ label: name, value: name }));
+
+    const filteredProjects = projects.filter(prj => {
+        const matchesSearch = prj.projectName.toLowerCase().includes(search.toLowerCase());
+        const matchesCompany = selectedCompany ? prj.companyName === selectedCompany.value : true;
+        return matchesSearch && matchesCompany;
+    });
 
     return (
         <>
@@ -27,16 +39,30 @@ function BOQProjectInfo({ projects, continueRoute }) {
                 <div className='mt-3 mb-3 row d-flex justify-content-between ms-2 me-2'>
                     <div className='col-lg-8 col-md-8 col-sm-6'>
                         <label className="text-start d-block me-1 fs-6">Search</label>
-                        <input type="text" className="form-input w-100" placeholder="Search by Project Name" />
+                        <input
+                            type="text"
+                            className="form-input w-100"
+                            placeholder="Search by Project Name"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                        />
                     </div>
                     <div className="col-lg-4 col-md-4 col-sm-6">
                         <label className="text-start d-block me-1 fs-7">Company</label>
-                        <Select placeholder="Filter by Company Name" className="w-100" classNamePrefix="select" isClearable />
+                        <Select
+                            placeholder="Filter by Company Name"
+                            className="w-100"
+                            classNamePrefix="select"
+                            isClearable
+                            options={companyOptions}
+                            value={selectedCompany}
+                            onChange={setSelectedCompany}
+                        />
                     </div>
                 </div>
 
                 <div className='row ms-2 me-2 mb-3'>
-                    {projects.map((prj, index) => (
+                    {filteredProjects.map((prj, index) => (
                         <div className='col-lg-4 col-md-6 col-sm-12 p-2 mt-1' key={index}>
                             <div className={`${projectId === prj.projectId ? 'selected-card ' : ''}card h-100 shadow-sm`}
                                 style={{ border: '0.5px solid #0051973D' }}
