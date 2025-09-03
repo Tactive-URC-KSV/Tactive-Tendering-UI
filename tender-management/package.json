@@ -15,7 +15,7 @@
     "bootstrap": "^5.3.7",
     "flatpickr": "^4.6.13",
     "lodash": "^4.17.21",
-    "lucide-react": "^0.539.0",
+    "lucide-react": "^0.542.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-flatpickr": "^4.0.11",
