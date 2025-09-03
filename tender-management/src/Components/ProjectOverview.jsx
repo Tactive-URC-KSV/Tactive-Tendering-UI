@@ -312,7 +312,7 @@ function ProjectOverview() {
                     </div>
                     <div className="d-flex text-start justify-content-between p-1">
                         {finFeasibility.map((item, index) => (
-                            <div className="col-lg-3 col-md-6 col-sm-12 " key={index} >
+                            <div className="col-lg-3 col-md-3 col-sm-12 " key={index} >
                                 <div className="ms-3 text-start p-2" style={{ backgroundColor: '#F9FAFB' }}>
                                     <span className="text-black ms-3">{item.label}</span>
                                     <p className="fw-bold mt-2 text-success ms-3">{item.value}</p>
