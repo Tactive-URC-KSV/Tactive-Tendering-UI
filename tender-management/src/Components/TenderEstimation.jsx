@@ -31,7 +31,7 @@ function TenderEstimation(){
                     <div className="text-start fw-bold ms-1 mt-1 mb-3">BOQ Definition</div>
                     <ProjectSelection 
                         projects={projects} 
-                        continueRoute="/TenderEstimation" 
+                        continueRoute="/tenderestimation" 
                     />
                 </>
             )}

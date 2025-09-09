@@ -27,11 +27,11 @@ function ProjectOverview() {
     const [approvalDoc, setApprovalDoc] = useState();
 
     const editDetails = () => {
-        navigate(`/ProjectManagement/project/${project.id}#info`);
+        navigate(`/projectmanagement/project/${project.id}#info`);
     };
 
     const handleAddFeasibility = () => {
-        navigate(`/ProjectManagement/project/${project.id}#feasibility`);
+        navigate(`/projectmanagement/project/${project.id}#feasibility`);
     };
 
     useEffect(() => {
@@ -165,7 +165,7 @@ function ProjectOverview() {
             if(res.status === 200){
                 toast.success(res.data);
                 setTimeout(() => {
-                    navigate('/Dashboard');
+                    navigate('/dashboard');
                 }, 2000);
             }
         }).catch(err => {
@@ -187,7 +187,7 @@ function ProjectOverview() {
             if (res.status === 200) {
                 toast.success(res.data);
                 setTimeout(() => {
-                    status === 'approve' ? navigate(`/ProjectManagement/project/${project.id}#document`) : window.location.reload();
+                    status === 'approve' ? navigate(`/projectmanagement/project/${project.id}#document`) : window.location.reload();
                 }, 2000);
             }
         }).catch(err => {

@@ -80,9 +80,9 @@ function App() {
                     <Sidebar>
                       <Routes>
                         <Route path="/dashboard" element={<Dashboard />} caseSensitive={false} />
-                        <Route path="/projectManagement" element={<ProjectManagement />} caseSensitive={false} />
+                        <Route path="/projectmanagement" element={<ProjectManagement />} caseSensitive={false} />
                         <Route path="/dashboard/project/:projectId" element={<ProjectInfo />} caseSensitive={false} />
-                        <Route path="/projectManagement/project/:projectId" element={<ProjectManagement />} caseSensitive={false}/>
+                        <Route path="/projectmanagement/project/:projectId" element={<ProjectManagement />} caseSensitive={false}/>
                         <Route path="/boqdefinition" element={<BOQDefinition />} caseSensitive={false}/>
                         <Route path="/boqdefinition/:projectId" element={<BOQDefinition />} caseSensitive={false}/>
                         <Route path="/costcodemapping" element={<CostCodeMapping />} caseSensitive={false}/>
