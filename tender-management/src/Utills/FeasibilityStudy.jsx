@@ -31,7 +31,11 @@ function FeasibilityStudy({ project, setActiveTab }) {
     const navigate = useNavigate();
 
     useEffect(() => {
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/listOfApprovals`)
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/listOfApprovals`,{
+            headers:{
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`
+            }
+        })
             .then(response => {
                 if (response.status === 200) {
                     setListOfApprovals(response.data);
