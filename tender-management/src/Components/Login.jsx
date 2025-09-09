@@ -5,11 +5,16 @@ import axios from 'axios';
 import { Eye, EyeOff } from 'lucide-react';
 import '../CSS/Login.css';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
+
+
 function Login() {
   const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [visible, setVisible] = useState(false);
+  const navigate = useNavigate();
+
   const handleLogin = async (e) => {
     setLoading(true);
     e.preventDefault();
@@ -22,7 +27,7 @@ function Login() {
         toast.success("Logged in successfully!", { duration: 3000 });
         sessionStorage.setItem('token', response.data.token);
         setTimeout(() => {
-          window.location.href = '/Dashboard';
+          navigate("/Dashboard");
         }, 1000);
       }
     }
