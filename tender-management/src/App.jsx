@@ -7,7 +7,14 @@ import { RegionsProvider } from './Context/RegionsContext';
 import { SectorsProvider } from './Context/SectorsContext';
 import { ScopeProvider } from './Context/ScopeContext';
 import { UomProvider } from './Context/UomContext';
-import  Logo from './assest/logo.svg?react';
+import Dashboard from './Components/Dashboard';
+import ProjectManagement from './Components/ProjectManagement';
+import ProjectInfo from './Components/ProjectOverview';
+import BOQDefinition from './Components/BOQDefinition';
+import CostCodeMapping from './Components/CostCodeMapping';
+import CCMOverview from './Components/CCMOverview';
+import TenderEstimation from './Components/TenderEstimation';
+import Logo from './assest/logo.svg?react';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -43,7 +50,7 @@ function App() {
       }}>
         <div className='mb-5'><Logo /></div>
         <div><h2>Screen width not supported</h2>
-        <p>Please use a tablet or desktop for the best experience.</p></div>
+          <p>Please use a tablet or desktop for the best experience.</p></div>
       </div>
     );
   }
@@ -52,34 +59,51 @@ function App() {
   return (
     !isSmallScreen && (
       <div className="App">
-      <ToastContainer
-        transition={Slide}
-        autoClose={2000}
-        closeButton={false}
-        transitionDuration={600}
-        position="top-right" />
+        <ToastContainer
+          transition={Slide}
+          autoClose={2000}
+          closeButton={false}
+          transitionDuration={600}
+          position="top-right" />
 
-      {!sessionStorage.getItem('token') ? (
-        <Routes>
-          <Route path="/" element={<Login />} />
-          <Route path="/Login" element={<Login />} />
-        </Routes>
-      ) : (
-        <RegionsProvider>
-          <SectorsProvider>
-            <ScopeProvider>
-              <UomProvider>
-                <ProjectStatusProvider>
-                  <Sidebar />
-                </ProjectStatusProvider>
-              </UomProvider>
-            </ScopeProvider>
-          </SectorsProvider>
-        </RegionsProvider>
-      )}
-    </div>
+        {!sessionStorage.getItem('token') ? (
+          <Routes>
+            <Route path="/" element={<Login />} />
+            <Route path="/Login" element={<Login />} />
+          </Routes>
+        ) : (
+          <RegionsProvider>
+            <SectorsProvider>
+              <ScopeProvider>
+                <UomProvider>
+                  <ProjectStatusProvider>
+                    <Sidebar>
+                      <Routes>
+                        <Route path="/Dashboard" element={<Dashboard />} />
+                        <Route path="/ProjectManagement" element={<ProjectManagement />} />
+                        <Route path="/Dashboard/project/:projectId" element={<ProjectInfo />} />
+                        <Route path="/ProjectManagement/project/:projectId" element={<ProjectManagement />} />
+                        <Route path="/BOQdefinition" element={<BOQDefinition />} />
+                        <Route path="/BOQdefinition/:projectId" element={<BOQDefinition />} />
+                        <Route path="/CostCodeMapping" element={<CostCodeMapping />} />
+                        <Route path="/CostCodeMapping/:projectId" element={<CCMOverview />} />
+                        <Route path="/TenderEstimation" element={<TenderEstimation />} />
+                        <Route path="/TenderFloating" element={<h1>Tender Floating</h1>} />
+                        <Route path="/TenderTracking" element={<h1>Tender Tracking</h1>} />
+                        <Route path="/ReceivingOffers" element={<h1>Receiving Offers</h1>} />
+                        <Route path="/TenderComparison" element={<h1>Tender Comparison</h1>} />
+                        <Route path="/ContractorOnboarding" element={<h1>Contractor Onboarding</h1>} />
+                      </Routes>
+                    </Sidebar>
+                  </ProjectStatusProvider>
+                </UomProvider>
+              </ScopeProvider>
+            </SectorsProvider>
+          </RegionsProvider>
+        )}
+      </div>
     )
-    
+
 
 
   );
