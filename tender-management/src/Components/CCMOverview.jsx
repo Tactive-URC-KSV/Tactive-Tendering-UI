@@ -31,7 +31,7 @@ const CCMOverview = () => {
     const [costCodeActivities, setCostCodeActivities] = useState([]);
     const [loading, setLoading] = useState({
         costCodes: true,
-        activityGroups: true,
+        activityGroups: true, 
         costCodeActivities: true
     });
     const [showAddActivityForm, setShowAddActivityForm] = useState(false);
@@ -1250,7 +1250,7 @@ const CCMOverview = () => {
                                 <button
                                     type="button"
                                     className="btn-close"
-                                    onClick={() => setShowMappingPopover(false)}
+                                    onClick={() => setSplitType("amount") &setShowMappingPopover(false)}
                                 ></button>
                             </div>
                             <div className="modal-body">
@@ -1326,7 +1326,7 @@ const CCMOverview = () => {
                                         {splitType === 'quantity' && (
                                             <div className="alert alert-info mb-3">
                                                 <small>
-                                                    <strong>BOQ Total Quantity: ${boqTotalQuantity.toFixed(2)}</strong><br />
+                                                    <strong>BOQ Total Quantity: {boqTotalQuantity.toFixed(2)}</strong><br />
                                                     Total Percentage Used: {totalPercentageUsed.toFixed(2)}% / 100%<br />
                                                     Remaining Percentage: {(100 - totalPercentageUsed).toFixed(2)}%<br />
                                                     Allocated Quantity: {(boqTotalQuantity * totalPercentageUsed / 100).toFixed(2)}<br />
