@@ -64,7 +64,7 @@ function ProjectCreation() {
 
     useEffect(() => {
         const hash = window.location.hash.substring(1);
-        if(hash){
+        if (hash) {
             setActiveTab(hash);
         }
     }, []);
@@ -109,16 +109,16 @@ function ProjectCreation() {
     const handleSubmit = async () => {
         try {
             setLoading(true);
-            
-            if(!project.projectName){
+
+            if (!project.projectName) {
                 toast.error("Project name is required");
                 return;
             }
-            if(!project.shortName){
+            if (!project.shortName) {
                 toast.error("Short name is required");
                 return;
             }
-            
+
             project.otherAmenities = Array.isArray(project.otherAmenities)
                 ? project.otherAmenities
                 : project.otherAmenities.split(',').map(a => a.trim());
@@ -168,10 +168,6 @@ function ProjectCreation() {
                     setProject(prev => ({ ...prev, id: newProjectId, projectId: newProjectId }));
                     currentProjectId = newProjectId;
                     toast.success("Project created successfully!");
-                    
-                    setTimeout(() => {
-                        navigate(`/ProjectManagement/project/${newProjectId}#feasibility`);
-                    }, 1000);
                 }
             }
 
@@ -189,7 +185,7 @@ function ProjectCreation() {
                         }
                     }
                 );
-                
+
                 setUploadedFiles([]);
             }
 
@@ -198,6 +194,9 @@ function ProjectCreation() {
             toast.error(error.response?.data?.message || error.message);
         } finally {
             setLoading(false);
+            setTimeout(() => {
+                navigate(`/ProjectManagement/project/${newProjectId}#feasibility`);
+            }, 1000);
         }
     };
 
