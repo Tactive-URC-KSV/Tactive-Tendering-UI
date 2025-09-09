@@ -39,7 +39,7 @@ function Sidebar({ children }) {
 
   const handleLogout = () => {
     sessionStorage.removeItem("token");
-    navigate("/Login");
+    navigate("/login");
   };
 
   return (
