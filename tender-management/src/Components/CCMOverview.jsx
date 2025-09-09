@@ -56,6 +56,13 @@ const CCMOverview = () => {
     const addActivityFormRef = useRef(null);
     const [notification, setNotification] = useState(null);
     const [showNotification, setShowNotification] = useState(false);
+    const [pendingMappings, setPendingMappings] = useState([]);
+
+    const MAPPING_ENDPOINTS = {
+        "1 : M": `${import.meta.env.VITE_API_BASE_URL}/costCode/saveOneToMany`,
+        "1 : 1": `${import.meta.env.VITE_API_BASE_URL}/costCode/saveOneToOne`,
+        "M : 1": `${import.meta.env.VITE_API_BASE_URL}/costCode/saveManyToOne`
+    };
 
     const showAlert = (message, type = "info") => {
         switch (type) {
@@ -174,7 +181,6 @@ const CCMOverview = () => {
         }).then(res => {
             if (res.status === 200) {
                 setCostCodeTypes(res.data || []);
-
             } else {
                 console.error('Failed to fetch cost code types:', res.status);
             }
@@ -269,15 +275,24 @@ const CCMOverview = () => {
     };
 
     const saveCostCodeMapping = () => {
-        if (mappingActivities.some(activity =>
-            !activity.activityCode?.trim() ||
-            !activity.activityName?.trim() ||
-            (selectedMappingType === "1 : M" && (!activity.percentage || activity.percentage <= 0))
-        )) {
-            showAlert("Please fill all required fields in activity details", "error");
-            return;
+        if (selectedMappingType === "1 : M") {
+            if (mappingActivities.some(activity =>
+                !activity.activityCode?.trim() ||
+                !activity.activityName?.trim() ||
+                !activity.percentage || activity.percentage <= 0
+            )) {
+                showAlert("Please fill all required fields in activity details", "error");
+                return;
+            }
+        } else if (selectedMappingType === "M : 1") {
+            if (mappingActivities.some(activity =>
+                !activity.activityCode?.trim() ||
+                !activity.activityName?.trim()
+            )) {
+                showAlert("Please fill all required fields in activity details", "error");
+                return;
+            }
         }
-
 
         if (selectedBOQs.size === 0 || selectedActivities.size !== 1) {
             showAlert("Please select BOQ items and exactly one activity group to map", "error");
@@ -291,9 +306,6 @@ const CCMOverview = () => {
         const boqItem = findBOQItem(boqCode);
 
         if (selectedMappingType === "1 : 1") {
-
-            console.log(boqItem.id);
-
             costCodeDtos.push({
                 boqId: [Number(boqItem.id)],
                 activityCode: boqItem.boqCode,
@@ -319,8 +331,11 @@ const CCMOverview = () => {
                 return;
             }
 
-            mappingActivities.forEach((activity) => {
+            mappingActivities.forEach((activity, index) => {
                 const percentage = parseFloat(activity.percentage) || 0;
+
+                const activityCode = activity.activityCode.trim() || `${boqItem.boqCode}`;
+                const activityName = activity.activityName.trim() || `${boqItem.boqName}`;
 
                 let quantity, rate, amount;
 
@@ -332,10 +347,6 @@ const CCMOverview = () => {
                     quantity = boqItem.quantity || 1;
                     rate = (boqItem.totalRate * percentage / 100) || 0;
                     amount = quantity * rate;
-                } else if (activity.splitType === "amount") {
-                    quantity = boqItem.quantity || 1;
-                    amount = (boqItem.totalAmount * percentage / 100) || 0;
-                    rate = amount / quantity;
                 } else {
                     quantity = boqItem.quantity || 1;
                     amount = (boqItem.totalAmount * percentage / 100) || 0;
@@ -344,8 +355,8 @@ const CCMOverview = () => {
 
                 costCodeDtos.push({
                     boqId: [boqItem.id],
-                    activityCode: activity.activityCode,
-                    activityName: activity.activityName,
+                    activityCode: activityCode,
+                    activityName: activityName,
                     quantity: quantity,
                     rate: rate,
                     amount: amount,
@@ -355,7 +366,8 @@ const CCMOverview = () => {
                     activityGroupId: activityGroupId,
                     projectId: projectId,
                     splitPercentage: percentage,
-                    splitType: activity.splitType || "amount"
+                    splitType: activity.splitType || "amount",
+                    activityNumber: index + 1
                 });
             });
         } else if (selectedMappingType === "M : 1") {
@@ -366,8 +378,6 @@ const CCMOverview = () => {
                     return boqItem ? Number(boqItem.id) : null;
                 })
                 .filter(id => id !== null && !isNaN(id));
-            console.log(boqIds);
-
 
             costCodeDtos.push({
                 boqId: boqIds,
@@ -384,44 +394,35 @@ const CCMOverview = () => {
             });
         }
 
-        setPendingMappings(prev => [...prev, ...costCodeDtos]);
+        const endpoint = MAPPING_ENDPOINTS[selectedMappingType];
 
-        const newMappings = costCodeDtos.map(dto => ({
-            id: `pending-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            ...dto,
-            boq: findBOQItemByCode(dto.boqId[0]),
-            activityGroup: activityGroups.find(group => group.id === dto.activityGroupId) || null,
-            isPending: true
-        }));
-
-        setCostCodeActivities(prev => [...prev, ...newMappings]);
+        axios.post(endpoint, costCodeDtos, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        }).then(res => {
+            if (res.status === 200) {
+                showAlert(`Cost code mapping saved successfully!`, "success");
+                setCostCodeActivities(prev =>
+                    prev.map(activity => ({ ...activity, isPending: false }))
+                );
+                setPendingMappings([]);
+                fetchCostCodeActivities();
+            } else {
+                console.error('Failed to save cost code mappings:', res.status);
+                showAlert('Failed to save cost code mappings', "error");
+            }
+        }).catch(err => {
+            console.error('Error saving cost code mappings:', err);
+            showAlert('Error saving cost code mappings: ' + (err.response?.data?.message || err.message), "error");
+        });
 
         setShowMappingPopover(false);
-        setMappingConfig({
-            splitType: "",
-            percentage: "",
-            value: ""
-        });
         setSelectedBOQs(new Set());
         setSelectedActivities(new Set());
         setMappingActivities([]);
         setTotalPercentageUsed(0);
-
-        showAlert(`Cost code mapping configured for ${selectedBOQs.size} BOQ items!`, "success");
-    };
-    const findBOQItemByCode = (boqCode) => {
-        const findInTree = (nodes) => {
-            for (const node of nodes) {
-                if (node.boqCode === boqCode) return node;
-                if (node.children && node.children.length > 0) {
-                    const found = findInTree(node.children);
-                    if (found) return found;
-                }
-            }
-            return null;
-        };
-
-        return findInTree(boqTree);
     };
 
     const findBOQItem = (boqCode) => {
@@ -507,6 +508,9 @@ const CCMOverview = () => {
         const boqCode = Array.from(selectedBOQs)[0];
         const boqItem = findBOQItem(boqCode);
 
+        const activityGroupId = Array.from(selectedActivities)[0];
+        const activityGroup = activityGroups.find(group => group.id === activityGroupId);
+
         setBoqTotalAmount(boqItem.totalAmount || 0);
         setBoqTotalQuantity(boqItem.quantity || 1);
         setBoqTotalRate(boqItem.totalRate || 0);
@@ -515,8 +519,8 @@ const CCMOverview = () => {
             saveCostCodeMapping();
         } else if (selectedMappingType === "1 : M") {
             setMappingActivities([{
-                activityCode: "",
-                activityName: "",
+                activityCode: `${activityGroup.activityCode}`,
+                activityName: `${activityGroup.activityName}`,
                 quantity: 0,
                 rate: 0,
                 splitType: "amount",
@@ -527,8 +531,8 @@ const CCMOverview = () => {
             setShowMappingPopover(true);
         } else if (selectedMappingType === "M : 1") {
             setMappingActivities([{
-                activityCode: "",
-                activityName: "",
+                activityCode: activityGroup.activityCode,
+                activityName: activityGroup.activityName,
                 quantity: 1,
                 rate: 0,
                 splitType: "",
@@ -537,6 +541,31 @@ const CCMOverview = () => {
             }]);
             setShowMappingPopover(true);
         }
+    };
+
+    const addMappingActivity = () => {
+        const boqCode = Array.from(selectedBOQs)[0];
+        const boqItem = findBOQItem(boqCode);
+
+        const activityGroupId = Array.from(selectedActivities)[0];
+        const activityGroup = activityGroups.find(group => group.id === activityGroupId);
+
+        const remainingPercentage = 100 - totalPercentageUsed;
+
+        if (remainingPercentage <= 0) {
+            showAlert("Cannot add more activities - total percentage already reached 100%", "error");
+            return;
+        }
+
+        setMappingActivities([...mappingActivities, {
+            activityCode: `${activityGroup.activityCode}`,
+            activityName: `${activityGroup.activityName}`,
+            quantity: 0,
+            rate: 0,
+            splitType: "amount",
+            percentage: "",
+            value: ""
+        }]);
     };
 
     const handleLeftArrowClick = () => {
@@ -669,27 +698,25 @@ const CCMOverview = () => {
     };
 
     const handleSaveMapping = () => {
-        const pendingToSave = costCodeActivities.filter(activity => activity.isPending);
-
-        if (pendingToSave.length === 0) {
+        if (pendingMappings.length === 0) {
             showAlert("No pending mappings to save. Please configure mappings first.", "error");
             return;
         }
 
-        const mappingsToSave = pendingToSave.map(activity => ({
-            boqId: activity.boqId,
-            activityCode: activity.activityCode,
-            activityName: activity.activityName,
-            quantity: activity.quantity,
-            rate: activity.rate,
-            amount: activity.amount,
-            uomId: activity.uomId,
-            mappingType: activity.mappingType,
-            costCodeTypeId: activity.costCodeTypeId,
-            activityGroupId: activity.activityGroupId,
-            projectId: activity.projectId,
-            splitPercentage: activity.splitPercentage,
-            splitType: activity.splitType
+        const mappingsToSave = pendingMappings.map(mapping => ({
+            boqId: mapping.boqId,
+            activityCode: mapping.activityCode,
+            activityName: mapping.activityName,
+            quantity: mapping.quantity,
+            rate: mapping.rate,
+            amount: mapping.amount,
+            uomId: mapping.uomId,
+            mappingType: mapping.mappingType,
+            costCodeTypeId: mapping.costCodeTypeId,
+            activityGroupId: mapping.activityGroupId,
+            projectId: mapping.projectId,
+            splitPercentage: mapping.splitPercentage,
+            splitType: mapping.splitType
         }));
 
         axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/save/${projectId}`, mappingsToSave, {
@@ -714,6 +741,7 @@ const CCMOverview = () => {
             showAlert('Error saving cost code mappings: ' + (err.response?.data?.message || err.message), "error");
         });
     };
+
     const handleReset = () => {
         setSelectedMappingType("1 : M");
         setSelectedBOQs(new Set());
@@ -724,30 +752,9 @@ const CCMOverview = () => {
         setExpandedActivityFolders(new Set());
         setSelectedCostCodeType(null);
         setMappingActivities([]);
+        setPendingMappings([]);
 
         setCostCodeActivities(prev => prev.filter(activity => !activity.isPending));
-        setPendingMappings([]);
-    };
-
-    const addMappingActivity = () => {
-        const boqCode = Array.from(selectedBOQs)[0];
-        const boqItem = findBOQItem(boqCode);
-        const remainingPercentage = 100 - totalPercentageUsed;
-
-        if (remainingPercentage <= 0) {
-            showAlert("Cannot add more activities - total percentage already reached 100%", "error");
-            return;
-        }
-
-        setMappingActivities([...mappingActivities, {
-            activityCode: "",
-            activityName: "",
-            quantity: 0,
-            rate: 0,
-            splitType: "amount",
-            percentage: "",
-            value: ""
-        }]);
     };
 
     const removeMappingActivity = (index) => {
@@ -794,6 +801,8 @@ const CCMOverview = () => {
             } else if (splitType === "rate") {
                 calculatedValue = (boqItem.totalRate * newPercentage / 100) || 0;
             } else if (splitType === "amount") {
+                calculatedValue = (boqItem.totalAmount * newPercentage / 100) || 0;
+            } else {
                 calculatedValue = (boqItem.totalAmount * newPercentage / 100) || 0;
             }
 
@@ -1147,6 +1156,13 @@ const CCMOverview = () => {
                 )}
                 {isMapped && <span style={{ width: '30px' }}></span>}
                 <div className="d-flex align-items-center flex-grow-1">
+
+                    {activity.mappingType === "1 : M" && activity.activityNumber && (
+                        <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2"
+                            style={{ width: '24px', height: '24px', fontSize: '12px' }}>
+                            {activity.activityNumber}
+                        </div>
+                    )}
                     <FileText size={16} className="text-muted me-2" />
                     <div className="d-flex flex-grow-1" style={{ minWidth: 0 }}>
                         <div className="d-flex justify-content-between">
@@ -1313,8 +1329,8 @@ const CCMOverview = () => {
                                                     <strong>BOQ Total Quantity: ${boqTotalQuantity.toFixed(2)}</strong><br />
                                                     Total Percentage Used: {totalPercentageUsed.toFixed(2)}% / 100%<br />
                                                     Remaining Percentage: {(100 - totalPercentageUsed).toFixed(2)}%<br />
-                                                    Allocated Quantity: ${(boqTotalQuantity * totalPercentageUsed / 100).toFixed(2)}<br />
-                                                    Remaining Quantity: ${(boqTotalQuantity * (100 - totalPercentageUsed) / 100).toFixed(2)}
+                                                    Allocated Quantity: {(boqTotalQuantity * totalPercentageUsed / 100).toFixed(2)}<br />
+                                                    Remaining Quantity: {(boqTotalQuantity * (100 - totalPercentageUsed) / 100).toFixed(2)}
                                                 </small>
                                             </div>
                                         )
@@ -1326,7 +1342,14 @@ const CCMOverview = () => {
                                 <h6 className="mb-3">Activity Details:</h6>
 
                                 {mappingActivities.map((activity, index) => (
-                                    <div key={index} className="mb-4 p-3 border rounded position-relative pt-5" style={{ borderColor: '#0051973D' }}>
+                                    <div key={index} className="mb-4 p-3 border rounded position-relative pt-5 " style={{ borderColor: '#0051973D' }}>
+
+                                        {selectedMappingType === "1 : M" && (
+                                            <div className="position-absolute top-0 start-0 m-2   rounded d-flex align-items-center justify-content-center"
+                                                style={{ width: '150px', height: '30px', color:"#005197" , backgroundColor: "#eef0f1ff", marginBottom: '0px'}}>
+                                                Activity-{index + 1}
+                                            </div>
+                                        )}
 
                                         {(selectedMappingType === "1 : M" && mappingActivities.length > 1) && (
                                             <button
@@ -1340,8 +1363,8 @@ const CCMOverview = () => {
                                             ></button>
                                         )}
 
-                                        <div className="row">
-                                            <div className="col-md-6 mb-4">
+                                        <div className="row mt-2">
+                                            <div className="col-md-6 mb-4 ">
                                                 <label className="projectform text-start d-block">Activity Code <span className="text-danger">*</span></label>
                                                 <input
                                                     type="text"
