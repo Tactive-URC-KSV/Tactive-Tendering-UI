@@ -79,15 +79,15 @@ function App() {
                   <ProjectStatusProvider>
                     <Sidebar>
                       <Routes>
-                        <Route path="/Dashboard" element={<Dashboard />} />
-                        <Route path="/ProjectManagement" element={<ProjectManagement />} />
-                        <Route path="/Dashboard/project/:projectId" element={<ProjectInfo />} />
-                        <Route path="/ProjectManagement/project/:projectId" element={<ProjectManagement />} />
-                        <Route path="/BOQdefinition" element={<BOQDefinition />} />
-                        <Route path="/BOQdefinition/:projectId" element={<BOQDefinition />} />
-                        <Route path="/CostCodeMapping" element={<CostCodeMapping />} />
-                        <Route path="/CostCodeMapping/:projectId" element={<CCMOverview />} />
-                        <Route path="/TenderEstimation" element={<TenderEstimation />} />
+                        <Route path="/dashboard" element={<Dashboard />} caseSensitive={false} />
+                        <Route path="/projectManagement" element={<ProjectManagement />} caseSensitive={false} />
+                        <Route path="/dashboard/project/:projectId" element={<ProjectInfo />} caseSensitive={false} />
+                        <Route path="/projectManagement/project/:projectId" element={<ProjectManagement />} caseSensitive={false}/>
+                        <Route path="/boqdefinition" element={<BOQDefinition />} caseSensitive={false}/>
+                        <Route path="/boqdefinition/:projectId" element={<BOQDefinition />} caseSensitive={false}/>
+                        <Route path="/costcodemapping" element={<CostCodeMapping />} caseSensitive={false}/>
+                        <Route path="/costcodemapping/:projectId" element={<CCMOverview />} caseSensitive={false}/>
+                        <Route path="/tenderestimation" element={<TenderEstimation />} caseSensitive={false}/>
                         <Route path="/TenderFloating" element={<h1>Tender Floating</h1>} />
                         <Route path="/TenderTracking" element={<h1>Tender Tracking</h1>} />
                         <Route path="/ReceivingOffers" element={<h1>Receiving Offers</h1>} />
