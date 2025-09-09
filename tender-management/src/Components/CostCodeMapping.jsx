@@ -34,7 +34,7 @@ function CostCodeMapping() {
                     <div className="text-start fw-bold ms-1 mt-1 mb-3">Cost Code Mapping</div>
                     <ProjectSelection 
                         projects={projects} 
-                        continueRoute="/CostCodeMapping" 
+                        continueRoute="/costcodemapping" 
                     />
                 </>
             )}
