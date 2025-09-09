@@ -69,7 +69,7 @@ function App() {
         {!sessionStorage.getItem('token') ? (
           <Routes>
             <Route path="/" element={<Login />} />
-            <Route path="/Login" element={<Login />} />
+            <Route path="/login" element={<Login />} />
           </Routes>
         ) : (
           <RegionsProvider>
