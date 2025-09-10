@@ -301,6 +301,7 @@ const CCMOverview = () => {
 
         if (selectedMappingType === "1 : 1") {
             costCodeDtos.push({
+                projectId: projectId,
                 boqId: [Number(boqItem.id)],
                 activityCode: boqItem.boqCode,
                 activityName: boqItem.boqName,
@@ -352,6 +353,7 @@ const CCMOverview = () => {
                 const activityName = activity.activityName || `${boqItem.boqName}`;
 
                 costCodeDtos.push({
+                    projectId: projectId,
                     boqId: [boqItem.id],
                     activityCode: activityCode,
                     activityName: activityName,
@@ -377,6 +379,7 @@ const CCMOverview = () => {
                 .filter(id => id !== null && !isNaN(id));
 
             costCodeDtos.push({
+                projectId: projectId,
                 boqId: boqIds,
                 activityCode: activity.activityCode,
                 activityName: activity.activityName,
@@ -708,9 +711,9 @@ const CCMOverview = () => {
 
         if (mappingsByType["1 : 1"].length > 0) {
             console.log("1 : 1 Mappings to save.");
-            
+
             savePromises.push(
-                axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/saveOneToOne/${projectId}`, mappingsByType["1 : 1"], {
+                axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/saveOneToOne`, mappingsByType["1 : 1"], {
                     headers: {
                         Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                         'Content-Type': 'application/json'
@@ -723,7 +726,7 @@ const CCMOverview = () => {
             console.log("1 : M Mappings to save.");
 
             savePromises.push(
-                axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/saveOneToMany/${projectId}`, mappingsByType["1 : M"], {
+                axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/saveOneToMany`, mappingsByType["1 : M"], {
                     headers: {
                         Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                         'Content-Type': 'application/json'
@@ -736,7 +739,7 @@ const CCMOverview = () => {
             console.log("M : 1 Mappings to save.");
 
             savePromises.push(
-                axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/saveManyToOne/${projectId}`, mappingsByType["M : 1"], {
+                axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/saveManyToOne`, mappingsByType["M : 1"], {
                     headers: {
                         Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                         'Content-Type': 'application/json'
@@ -1383,7 +1386,7 @@ const CCMOverview = () => {
 
                                 {mappingActivities.map((activity, index) => (
                                     <div key={index} className="mb-4 p-3 border rounded position-relative pt-5" style={{ borderColor: '#0051973D' }}>
-                                        <div className="position-absolute top-0 start-0 px-2 py-1 rounded rounded-bottom-right text-center" style={{ width: '150px', height: '30px', color:"#005197" , backgroundColor: "#eef0f1ff", margin:"10px", }}>
+                                        <div className="position-absolute top-0 start-0 px-2 py-1 rounded rounded-bottom-right text-center" style={{ width: '150px', height: '30px', color: "#005197", backgroundColor: "#eef0f1ff", margin: "10px", }}>
                                             Activity : {index + 1}
                                         </div>
 
