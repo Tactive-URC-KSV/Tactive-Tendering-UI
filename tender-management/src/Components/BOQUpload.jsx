@@ -240,11 +240,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             setSelectedTemplate();
             toast.success("BOQ Data imported SuccessFully");
             sheetOption.length === 1 && (setTimeout(() => {
-               window.location.href = `/BOQdefinition/${projectId}`;
+               window.location.href = `/boqdefinition/${projectId}`;
             }, 3000));
             if(fileType === 'pdf'){
                (setTimeout(() => {
-               window.location.href = `/BOQdefinition/${projectId}`;
+               window.location.href = `/boqdefinition/${projectId}`;
             }, 3000))
             }
 

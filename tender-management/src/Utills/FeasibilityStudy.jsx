@@ -136,7 +136,7 @@ function FeasibilityStudy({ project, setActiveTab }) {
             if (response.status === 200) {
                 toast.success(response.data);
                 setTimeout(()=>{
-                    navigate(`/Dashboard/project/${project.id}`),2000
+                    navigate(`/dashboard/project/${project.id}`),2000
                 })
                 
             }

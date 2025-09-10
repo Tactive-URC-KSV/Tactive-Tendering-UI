@@ -33,7 +33,7 @@ function BOQDefinition() {
                     <div className="text-start fw-bold ms-1 mt-1 mb-3">BOQ Definition</div>
                     <ProjectSelection 
                         projects={projects} 
-                        continueRoute="/BOQdefinition" 
+                        continueRoute="/boqdefinition" 
                     />
                 </>
             )}

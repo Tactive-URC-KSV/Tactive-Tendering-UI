@@ -27,7 +27,7 @@ function Login() {
         toast.success("Logged in successfully!", { duration: 3000 });
         sessionStorage.setItem('token', response.data.token);
         setTimeout(() => {
-          navigate("/Dashboard");
+          navigate("/dashboard");
         }, 1000);
       }
     }
@@ -63,7 +63,7 @@ function Login() {
               </span>
             </div>
             <div className='d-flex justify-content-end mb-5'>
-              <a href="/Dashboard" style={{ textDecoration: 'none', color: 'red', fontSize: '15px' }}>Forgot password ?</a>
+              <a href="#" style={{ textDecoration: 'none', color: 'red', fontSize: '15px' }}>Forgot password ?</a>
             </div>
             <div>
               <button className='custom-btn' onClick={handleLogin} disabled={!username || !password}>{loading ? (<span className="spinner-border text-white"></span>) : 'Login'}</button>

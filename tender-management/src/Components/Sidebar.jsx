@@ -25,11 +25,11 @@ function Sidebar({ children }) {
   const currentPath = location.pathname.split("/")[1];
 
   const sections = [
-    { label: "Dashboard", path: "Dashboard", icon: <FaClipboardList /> },
-    { label: "Project Management", path: "ProjectManagement", icon: <FaPlus /> },
-    { label: "BOQ Definition", path: "BOQdefinition", icon: <FaListAlt /> },
-    { label: "Cost Code Mapping", path: "CostCodeMapping", icon: <FaMapSigns /> },
-    { label: "Tender Estimation", path: "TenderEstimation", icon: <FaCalculator /> },
+    { label: "Dashboard", path: "dashboard", icon: <FaClipboardList /> },
+    { label: "Project Management", path: "projectmanagement", icon: <FaPlus /> },
+    { label: "BOQ Definition", path: "boqdefinition", icon: <FaListAlt /> },
+    { label: "Cost Code Mapping", path: "costcodemapping", icon: <FaMapSigns /> },
+    { label: "Tender Estimation", path: "tenderestimation", icon: <FaCalculator /> },
     { label: "Tender Floating", path: "TenderFloating", icon: <FaPaperPlane /> },
     { label: "Tender Tracking", path: "TenderTracking", icon: <FaSearch /> },
     { label: "Receiving Offers", path: "ReceivingOffers", icon: <FaInbox /> },
@@ -39,7 +39,7 @@ function Sidebar({ children }) {
 
   const handleLogout = () => {
     sessionStorage.removeItem("token");
-    navigate("/Login");
+    navigate("/login");
   };
 
   return (

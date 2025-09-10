@@ -7,5 +7,5 @@ export default defineConfig({
     react(),
     svgr(),
   ],
-  base: 'Tactive-Tendering-UI/tender-management'
+  base: '/'
 });
