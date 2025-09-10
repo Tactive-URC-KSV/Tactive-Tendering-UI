@@ -1366,11 +1366,11 @@ const CCMOverview = () => {
                                         {splitType === 'quantity' && (
                                             <div className="alert alert-info mb-3">
                                                 <small>
-                                                    <strong>BOQ Total Quantity: ${boqTotalQuantity.toFixed(2)}</strong><br />
+                                                    <strong>BOQ Total Quantity: {boqTotalQuantity.toFixed(2)}</strong><br />
                                                     Total Percentage Used: {totalPercentageUsed.toFixed(2)}% / 100%<br />
                                                     Remaining Percentage: {(100 - totalPercentageUsed).toFixed(2)}%<br />
-                                                    Allocated Quantity: ${(boqTotalQuantity * totalPercentageUsed / 100).toFixed(2)}<br />
-                                                    Remaining Quantity: ${(boqTotalQuantity * (100 - totalPercentageUsed) / 100).toFixed(2)}
+                                                    Allocated Quantity: {(boqTotalQuantity * totalPercentageUsed / 100).toFixed(2)}<br />
+                                                    Remaining Quantity: {(boqTotalQuantity * (100 - totalPercentageUsed) / 100).toFixed(2)}
                                                 </small>
                                             </div>
                                         )
