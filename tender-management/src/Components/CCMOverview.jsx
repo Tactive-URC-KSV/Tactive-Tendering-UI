@@ -536,8 +536,8 @@ const CCMOverview = () => {
             setShowMappingPopover(true);
         } else if (selectedMappingType === "M : 1") {
             setMappingActivities([{
-                activityCode: "",
-                activityName: "",
+                activityCode: `${boqItem.boqCode}`,
+                activityName: `${boqItem.boqName}`,
                 quantity: 1,
                 rate: 0,
                 splitType: "",
