@@ -299,43 +299,27 @@ const CCMOverview = () => {
         const boqCode = Array.from(selectedBOQs)[0];
         const boqItem = findBOQItem(boqCode);
 
-        // if (selectedMappingType === "1 : 1") {
-        //     costCodeDtos.push({
-        //         projectId: projectId,
-        //         boqId: [Number(boqItem.id)],
-        //         activityCode: boqItem.boqCode,
-        //         activityName: boqItem.boqName,
-        //         quantity: boqItem.quantity || 1,
-        //         rate: boqItem.totalRate || 0,
-        //         amount: boqItem.totalAmount || 0,
-        //         uomId: getUomId(),
-        //         mappingType: selectedMappingType,
-        //         costCodeTypeId: getCostCodeTypeFromActivityGroup(activityGroupId),
-        //         activityGroupId: activityGroupId,
-        //         projectId: projectId
-        //     });
-        // } 
+
         if (selectedMappingType === "1 : 1") {
-        // Create a mapping for each selected BOQ item
-        Array.from(selectedBOQs).forEach(boqCode => {
-            const boqItem = findBOQItem(boqCode);
-            
-            costCodeDtos.push({
-                projectId: projectId,
-                boqId: [Number(boqItem.id)],
-                activityCode: boqItem.boqCode,
-                activityName: boqItem.boqName,
-                quantity: boqItem.quantity || 1,
-                rate: boqItem.totalRate || 0,
-                amount: boqItem.totalAmount || 0,
-                uomId: getUomId(),
-                mappingType: selectedMappingType,
-                costCodeTypeId: getCostCodeTypeFromActivityGroup(activityGroupId),
-                activityGroupId: activityGroupId,
-                projectId: projectId
+            Array.from(selectedBOQs).forEach(boqCode => {
+                const boqItem = findBOQItem(boqCode);
+
+                costCodeDtos.push({
+                    projectId: projectId,
+                    boqId: [Number(boqItem.id)],
+                    activityCode: boqItem.boqCode,
+                    activityName: boqItem.boqName,
+                    quantity: boqItem.quantity || 1,
+                    rate: boqItem.totalRate || 0,
+                    amount: boqItem.totalAmount || 0,
+                    uomId: getUomId(),
+                    mappingType: selectedMappingType,
+                    costCodeTypeId: getCostCodeTypeFromActivityGroup(activityGroupId),
+                    activityGroupId: activityGroupId,
+                    projectId: projectId
+                });
             });
-        });
-    } else if (selectedMappingType === "1 : M") {
+        } else if (selectedMappingType === "1 : M") {
             const boqCode = Array.from(selectedBOQs)[0];
             const boqItem = findBOQItem(boqCode);
 
@@ -1617,7 +1601,7 @@ const CCMOverview = () => {
                         <div className="card-header d-flex justify-content-between align-items-center border-0 bg-transparent pb-3">
                             <h5 className="mb-0">BOQ Details</h5>
                             <div className="text-muted small">
-                                Selected: {selectedBOQs.size} { selectedMappingType === "1 : M" ? "(Max: 1)" : ""}
+                                Selected: {selectedBOQs.size} {selectedMappingType === "1 : M" ? "(Max: 1)" : ""}
                             </div>
                         </div>
 
