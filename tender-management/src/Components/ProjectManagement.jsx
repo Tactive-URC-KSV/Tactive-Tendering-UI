@@ -195,7 +195,7 @@ function ProjectCreation() {
         } finally {
             setLoading(false);
             setTimeout(() => {
-                navigate(`/projectmanagement/project/${newProjectId}#feasibility`);
+                navigate(`/projectmanagement/project/${project.id}#feasibility`);
             }, 1000);
         }
     };
