@@ -317,7 +317,6 @@ const CCMOverview = () => {
                     mappingType: selectedMappingType,
                     costCodeTypeId: getCostCodeTypeFromActivityGroup(activityGroupId),
                     activityGroupId: activityGroupId,
-                    projectId: projectId
                 });
             });
         } else if (selectedMappingType === "1 : M") {
@@ -370,7 +369,6 @@ const CCMOverview = () => {
                     mappingType: selectedMappingType,
                     costCodeTypeId: getCostCodeTypeFromActivityGroup(activityGroupId),
                     activityGroupId: activityGroupId,
-                    projectId: projectId,
                     splitPercentage: percentage,
                     splitType: activity.splitType || "amount"
                 });
@@ -396,7 +394,6 @@ const CCMOverview = () => {
                 mappingType: selectedMappingType,
                 costCodeTypeId: getCostCodeTypeFromActivityGroup(activityGroupId),
                 activityGroupId: activityGroupId,
-                projectId: projectId
             });
         }
 
