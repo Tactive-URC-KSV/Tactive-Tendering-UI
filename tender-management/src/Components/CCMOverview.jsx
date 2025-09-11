@@ -13,6 +13,7 @@ import MediumFolder from '../assest/MediumFolder.svg?react';
 import SaveMappingIcon from '../assest/SaveMapping.svg?react';
 import Search from '../assest/Search.svg?react';
 import SmallFolder from '../assest/SmallFolder.svg?react';
+import Globe from '../assest/Globe.svg?react';
 import '../CSS/Styles.css';
 
 const CCMOverview = () => {
@@ -299,43 +300,27 @@ const CCMOverview = () => {
         const boqCode = Array.from(selectedBOQs)[0];
         const boqItem = findBOQItem(boqCode);
 
-        // if (selectedMappingType === "1 : 1") {
-        //     costCodeDtos.push({
-        //         projectId: projectId,
-        //         boqId: [Number(boqItem.id)],
-        //         activityCode: boqItem.boqCode,
-        //         activityName: boqItem.boqName,
-        //         quantity: boqItem.quantity || 1,
-        //         rate: boqItem.totalRate || 0,
-        //         amount: boqItem.totalAmount || 0,
-        //         uomId: getUomId(),
-        //         mappingType: selectedMappingType,
-        //         costCodeTypeId: getCostCodeTypeFromActivityGroup(activityGroupId),
-        //         activityGroupId: activityGroupId,
-        //         projectId: projectId
-        //     });
-        // } 
+
         if (selectedMappingType === "1 : 1") {
-        // Create a mapping for each selected BOQ item
-        Array.from(selectedBOQs).forEach(boqCode => {
-            const boqItem = findBOQItem(boqCode);
-            
-            costCodeDtos.push({
-                projectId: projectId,
-                boqId: [Number(boqItem.id)],
-                activityCode: boqItem.boqCode,
-                activityName: boqItem.boqName,
-                quantity: boqItem.quantity || 1,
-                rate: boqItem.totalRate || 0,
-                amount: boqItem.totalAmount || 0,
-                uomId: getUomId(),
-                mappingType: selectedMappingType,
-                costCodeTypeId: getCostCodeTypeFromActivityGroup(activityGroupId),
-                activityGroupId: activityGroupId,
-                projectId: projectId
+            Array.from(selectedBOQs).forEach(boqCode => {
+                const boqItem = findBOQItem(boqCode);
+
+                costCodeDtos.push({
+                    projectId: projectId,
+                    boqId: [Number(boqItem.id)],
+                    activityCode: boqItem.boqCode,
+                    activityName: boqItem.boqName,
+                    quantity: boqItem.quantity || 1,
+                    rate: boqItem.totalRate || 0,
+                    amount: boqItem.totalAmount || 0,
+                    uomId: getUomId(),
+                    mappingType: selectedMappingType,
+                    costCodeTypeId: getCostCodeTypeFromActivityGroup(activityGroupId),
+                    activityGroupId: activityGroupId,
+                    projectId: projectId
+                });
             });
-        });
-    } else if (selectedMappingType === "1 : M") {
+        } else if (selectedMappingType === "1 : M") {
             const boqCode = Array.from(selectedBOQs)[0];
             const boqItem = findBOQItem(boqCode);
 
@@ -1534,6 +1519,9 @@ const CCMOverview = () => {
                     <span className='ms-2'>-</span>
                     <span className="fw-bold text-start ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</span>
                 </div>
+                <div>
+                    <button className="p-2 rounded me-4 bg-transparent" style={{ border: '2px solid #3273AB', color: '#3273AB' }}><span><Globe className="me-2"/></span>Global cost code</button>
+                </div>
             </div>
 
             <div className="row bg-white rounded-3 ms-4 me-4 py-4 ps-4 mt-3 pe-4 mb-4 " style={{ border: '0.5px solid #0051973D' }}>
@@ -1617,7 +1605,7 @@ const CCMOverview = () => {
                         <div className="card-header d-flex justify-content-between align-items-center border-0 bg-transparent pb-3">
                             <h5 className="mb-0">BOQ Details</h5>
                             <div className="text-muted small">
-                                Selected: {selectedBOQs.size} { selectedMappingType === "1 : M" ? "(Max: 1)" : ""}
+                                Selected: {selectedBOQs.size} {selectedMappingType === "1 : M" ? "(Max: 1)" : ""}
                             </div>
                         </div>
 
