@@ -13,6 +13,7 @@ import MediumFolder from '../assest/MediumFolder.svg?react';
 import SaveMappingIcon from '../assest/SaveMapping.svg?react';
 import Search from '../assest/Search.svg?react';
 import SmallFolder from '../assest/SmallFolder.svg?react';
+import Globe from '../assest/Globe.svg?react';
 import '../CSS/Styles.css';
 
 const CCMOverview = () => {
@@ -1517,6 +1518,9 @@ const CCMOverview = () => {
                     <span className='ms-2'>Cost Code Mapping</span>
                     <span className='ms-2'>-</span>
                     <span className="fw-bold text-start ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</span>
+                </div>
+                <div>
+                    <button className="p-2 rounded me-4 bg-transparent" style={{ border: '2px solid #3273AB', color: '#3273AB' }}><span><Globe className="me-2"/></span>Global cost code</button>
                 </div>
             </div>
 
