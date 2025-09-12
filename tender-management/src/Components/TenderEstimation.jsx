@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import ProjectSelection from './BOQProjectInfo';
+import ProjectSelection from './ProjectInfo';
 import axios from "axios";
 
 function TenderEstimation(){

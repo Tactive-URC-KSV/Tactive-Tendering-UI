@@ -30,7 +30,7 @@ function BOQProjectInfo({ projects, continueRoute }) {
     });
 
     return (
-        <>
+        <div className='container-fluid min-vh-100'>
             <div className="mt-3 rounded-3 bg-white mx-4" style={{ border: '0.5px solid #0051973D' }}>
                 <div className="tab-info col-12 h-100">
                     <SelectIcon />
@@ -64,25 +64,35 @@ function BOQProjectInfo({ projects, continueRoute }) {
                 <div className='row ms-2 me-2 mb-3'>
                     {filteredProjects.map((prj, index) => (
                         <div className='col-lg-4 col-md-6 col-sm-12 p-2 mt-1' key={index}>
-                            <div className={`${projectId === prj.projectId ? 'selected-card ' : ''}card h-100 shadow-sm`}
-                                style={{ border: '0.5px solid #0051973D' }}
+                            <div className={`${projectId === prj.projectId ? 'selected-card ' : ''}card project-card h-100 shadow-sm`}
+                                style={{ border: '0.5px solid #0051973D',cursor: 'pointer' }}
                                 onClick={() => { setProjectId(prj.projectId) }}
-                                draggable={true}>
+                                onDoubleClick={() => { setProjectId(prj.projectId); handleContinue() }}>
                                 <div className='card-body'>
-                                    <div className='d-flex justify-content-between text-start'>
-                                        <span className='mb-3 fw-bold text-nowrap' style={{ color: '#005197' }}>{prj.projectName}</span>
-                                        {projectStatus.map((state) =>
-                                            state.status === prj.status && (
-                                                <span key={state.status} className="badge rounded-pill mb-3"
-                                                    style={{
-                                                        backgroundColor: state.bgColor,
-                                                        color: state.textColor,
-                                                        fontSize: '12px'
-                                                    }}
-                                                >
-                                                    {state.status}
-                                                </span>
-                                            )
+                                    <div className="d-flex justify-content-between align-items-start text-start">
+                                        <span
+                                            className="mb-3 fw-bold text-wrap flex-grow-1"
+                                            style={{ color: "#005197", wordBreak: "break-word" }}
+                                        >
+                                            {prj.projectName}
+                                        </span>
+
+                                        {projectStatus.map(
+                                            (state) =>
+                                                state.status === prj.status && (
+                                                    <span
+                                                        key={state.status}
+                                                        className="badge rounded-pill mb-3 ms-2 flex-shrink-0"
+                                                        style={{
+                                                            backgroundColor: state.bgColor,
+                                                            color: state.textColor,
+                                                            fontSize: "12px",
+                                                            whiteSpace: "nowrap"
+                                                        }}
+                                                    >
+                                                        {state.status}
+                                                    </span>
+                                                )
                                         )}
                                     </div>
                                     <div className='d-flex justify-content-start'>
@@ -110,7 +120,7 @@ function BOQProjectInfo({ projects, continueRoute }) {
                     <ArrowRight size={18} />
                 </button>
             </div>
-        </>
+        </div>
     );
 }
 
