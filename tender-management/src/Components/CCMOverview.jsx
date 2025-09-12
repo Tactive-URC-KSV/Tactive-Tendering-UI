@@ -1,7 +1,7 @@
 import axios from "axios";
 import { ArrowLeft, ArrowRight, Check, FileText } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import Select from 'react-select';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -52,12 +52,13 @@ const CCMOverview = () => {
     const [boqTotalAmount, setBoqTotalAmount] = useState(0);
     const [boqTotalRate, setBoqTotalRate] = useState(0);
     const [boqTotalQuantity, setBoqTotalQuantity] = useState(0);
-    const [splitType, setSplitType] = useState("amount");
+    const [splitType, setSplitType] = useState("quantity");
 
     const addActivityFormRef = useRef(null);
     const [notification, setNotification] = useState(null);
     const [showNotification, setShowNotification] = useState(false);
     const [pendingMappings, setPendingMappings] = useState([]);
+    const navigate = useNavigate();
 
     const showAlert = (message, type = "info") => {
         switch (type) {
@@ -531,7 +532,7 @@ const CCMOverview = () => {
                 activityName: `${boqItem.boqName}`,
                 quantity: 0,
                 rate: 0,
-                splitType: "amount",
+                splitType: "quantity",
                 percentage: "",
                 value: ""
             }]);
@@ -1517,7 +1518,7 @@ const CCMOverview = () => {
                     <span className="fw-bold text-start ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</span>
                 </div>
                 <div>
-                    <button className="p-2 rounded me-4 bg-transparent" style={{ border: '2px solid #3273AB', color: '#3273AB' }}><span><Globe className="me-2"/></span>Global cost code</button>
+                    <button className="p-2 rounded me-4 bg-transparent" style={{ border: '2px solid #3273AB', color: '#3273AB' }} onClick={() => navigate(`globalCostCode/${projectId}`)}><span><Globe className="me-2"/></span>Global cost code</button>
                 </div>
             </div>
 

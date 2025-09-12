@@ -228,7 +228,7 @@ function ProjectWorklist() {
                         options={statusOptions}
                         onChange={handleStatusChange}
                         placeholder="Filter by Status"
-                        className="w-100"
+                        className="w-100 bg-transparent"
                         classNamePrefix="select"
                         isClearable
                         menuPlacement='auto'
@@ -340,7 +340,7 @@ function ProjectWorklist() {
                 ) : (
                     filteredProjects.map((project, index) => (
                         <div className="col-lg-4 col-md-6 col-sm-12 mb-4" key={index}>
-                            <div className="card h-100 shadow-sm border-0">
+                            <div className="card project-card h-100 shadow-sm border-0">
                                 <div className="card-body d-flex flex-column justify-content-between">
                                     <div className="d-flex justify-content-between align-items-center mb-2">
                                         <span className="project-code fw-bold text-primary">

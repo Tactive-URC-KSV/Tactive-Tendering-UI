@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
 import '../CSS/Styles.css';
-import ProjectSelection from './BOQProjectInfo';
+import ProjectSelection from './ProjectInfo';
 import BOQOverview from './BOQOverview';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
