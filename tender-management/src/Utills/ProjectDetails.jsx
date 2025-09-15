@@ -44,13 +44,20 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
         setUploadedFiles(prev => [...prev, ...files]);
     };
 
-    useEffect(()=>{
-        console.log(project.id?project.id:"NO id");
-        
-    })
+    const handleStartDateChange = (date) => {
+        setProject({ ...project, startDate: date });
+    };
+
+    const handleEndDateChange = (date) => {
+        if (project.startDate && date < project.startDate) {
+            // alert("End date cannot be earlier than start date");
+            return;
+        }
+        setProject({ ...project, endDate: date });
+    };
     return (
         <div className="project-info-input">
-           
+
             <div className="mt-3 mb-4 pb-5 bg-white rounded-3" style={{ border: '0.5px solid #0051973D' }}>
                 <div className="row ms-auto me-auto mb-4">
                     <span className="tab-info col-12 h-100">General Information</span>
@@ -109,7 +116,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                             placeholder="Select Start date"
                             options={{ dateFormat: "d-m-Y" }}
                             value={project.startDate}
-                            onChange={([date]) => setProject({ ...project, startDate: date })}
+                            onChange={([date]) => handleStartDateChange(date)}
                             ref={datePickerRef}
                         />
                         <span className='calender-icon' onClick={() => openCalendar('startDate')}><FaCalendarAlt size={18} color='#005197' /></span>
@@ -120,9 +127,9 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                             id="endDate"
                             className="form-input w-100"
                             placeholder="Select End date"
-                            options={{ dateFormat: "d-m-Y" }}
+                            options={{ dateFormat: "d-m-Y",minDate: project.startDate, }}
                             value={project.endDate}
-                            onChange={([date]) => setProject({ ...project, endDate: date })}
+                            onChange={([date]) => handleEndDateChange(date)}
                             ref={datePickerRef}
                         />
                         <span className='calender-icon' onClick={() => openCalendar('endDate')}><FaCalendarAlt size={18} color='#005197' /></span>
@@ -166,7 +173,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                 </div>
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-md-6 position-relative mt-3 mb-4">
-                        <label className="projectform-select   text-start d-block">
+                        <label className="projectform-select text-start d-block">
                             Region
                         </label>
                         <Select
@@ -326,7 +333,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
             </div>
             <div className="d-flex justify-content-end">
                 <button className="btn cancel-button mt-2 me-4" onClick={() => { navigate(-1); }} disabled={loading}>Cancel</button>
-                {project.id ? (<button className="btn action-button mt-2 me-4" onClick={handleSubmit} >{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : 'Edit'}</button>) : (<button className="btn action-button mt-2 me-4" onClick={handleSubmit} >{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : 'Submit'}</button>) }
+                {project.id ? (<button className="btn action-button mt-2 me-4" onClick={handleSubmit} >{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : 'Edit'}</button>) : (<button className="btn action-button mt-2 me-4" onClick={handleSubmit} >{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : 'Submit'}</button>)}
             </div>
         </div>
     );
