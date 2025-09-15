@@ -13,7 +13,6 @@ import MediumFolder from '../assest/MediumFolder.svg?react';
 import SaveMappingIcon from '../assest/SaveMapping.svg?react';
 import Search from '../assest/Search.svg?react';
 import SmallFolder from '../assest/SmallFolder.svg?react';
-import Globe from '../assest/Globe.svg?react';
 import '../CSS/Styles.css';
 
 const CCMOverview = () => {
@@ -297,7 +296,6 @@ const CCMOverview = () => {
 
         const costCodeDtos = [];
         const activityGroupId = Array.from(selectedActivities)[0];
-        const getUomId = () => project?.uom?.id || "";
         const boqCode = Array.from(selectedBOQs)[0];
         const boqItem = findBOQItem(boqCode);
 
@@ -305,7 +303,6 @@ const CCMOverview = () => {
         if (selectedMappingType === "1 : 1") {
             Array.from(selectedBOQs).forEach(boqCode => {
                 const boqItem = findBOQItem(boqCode);
-
                 costCodeDtos.push({
                     projectId: projectId,
                     boqId: [Number(boqItem.id)],
@@ -314,7 +311,7 @@ const CCMOverview = () => {
                     quantity: boqItem.quantity || 1,
                     rate: boqItem.totalRate || 0,
                     amount: boqItem.totalAmount || 0,
-                    uomId: getUomId(),
+                    uomId: boqItem.uom.id,
                     mappingType: selectedMappingType,
                     costCodeTypeId: getCostCodeTypeFromActivityGroup(activityGroupId),
                     activityGroupId: activityGroupId,
@@ -324,49 +321,20 @@ const CCMOverview = () => {
             const boqCode = Array.from(selectedBOQs)[0];
             const boqItem = findBOQItem(boqCode);
 
-            const totalPercentage = mappingActivities.reduce((sum, activity) =>
-                sum + (parseFloat(activity.percentage) || 0), 0);
-
-            if (totalPercentage > 100) {
-                showAlert("Total percentage cannot exceed 100%", "error");
-                return;
-            }
-
             mappingActivities.forEach((activity, index) => {
                 const percentage = parseFloat(activity.percentage) || 0;
-
-                let quantity, rate, amount;
-
-                if (activity.splitType === "quantity") {
-                    quantity = (boqItem.quantity * percentage / 100) || 0;
-                    rate = boqItem.totalRate || 0;
-                    amount = quantity * rate;
-                } else if (activity.splitType === "rate") {
-                    quantity = boqItem.quantity || 1;
-                    rate = (boqItem.totalRate * percentage / 100) || 0;
-                    amount = quantity * rate;
-                } else if (activity.splitType === "amount") {
-                    quantity = boqItem.quantity || 1;
-                    amount = (boqItem.totalAmount * percentage / 100) || 0;
-                    rate = amount / quantity;
-                } else {
-                    quantity = boqItem.quantity || 1;
-                    amount = (boqItem.totalAmount * percentage / 100) || 0;
-                    rate = amount / quantity;
-                }
-
-                const activityCode = activity.activityCode || `${boqItem.boqCode}`;
-                const activityName = activity.activityName || `${boqItem.boqName}`;
+                const activityCode = activity.activityCode;
+                const activityName = activity.activityName;
 
                 costCodeDtos.push({
                     projectId: projectId,
                     boqId: [boqItem.id],
                     activityCode: activityCode,
                     activityName: activityName,
-                    quantity: quantity,
-                    rate: rate,
-                    amount: amount,
-                    uomId: getUomId(),
+                    quantity: boqItem.quantity,
+                    rate: boqItem.totalRate,
+                    amount: boqItem.totalAmount,
+                    uomId: boqItem.uom.id,
                     mappingType: selectedMappingType,
                     costCodeTypeId: getCostCodeTypeFromActivityGroup(activityGroupId),
                     activityGroupId: activityGroupId,
@@ -374,7 +342,8 @@ const CCMOverview = () => {
                     splitType: activity.splitType || "amount"
                 });
             });
-        } else if (selectedMappingType === "M : 1") {
+        } 
+        else if (selectedMappingType === "M : 1") {
             const activity = mappingActivities[0] || {};
             const boqIds = Array.from(selectedBOQs)
                 .map(boqCode => {
@@ -391,7 +360,7 @@ const CCMOverview = () => {
                 quantity: activity.quantity || 1,
                 rate: activity.rate || 0,
                 amount: (activity.quantity || 1) * (activity.rate || 0),
-                uomId: getUomId(),
+                uomId: boqItem.uom.id,
                 mappingType: selectedMappingType,
                 costCodeTypeId: getCostCodeTypeFromActivityGroup(activityGroupId),
                 activityGroupId: activityGroupId,
@@ -1516,9 +1485,6 @@ const CCMOverview = () => {
                     <span className='ms-2'>Cost Code Mapping</span>
                     <span className='ms-2'>-</span>
                     <span className="fw-bold text-start ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</span>
-                </div>
-                <div>
-                    <button className="p-2 rounded me-4 bg-transparent" style={{ border: '2px solid #3273AB', color: '#3273AB' }} onClick={() => navigate(`globalCostCode/${projectId}`)}><span><Globe className="me-2"/></span>Global cost code</button>
                 </div>
             </div>
 

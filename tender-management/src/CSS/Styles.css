@@ -533,3 +533,29 @@ label {
     scrollbar-width: thin;
     scrollbar-color: #00519780 #e8e7e7;
 }
+.btn.activeView{
+  background-color: #005197 !important;
+  color: white !important;
+  border: none;
+}
+.card.project-card.active{
+  box-shadow: 0px 10px 40px 0px #00519726 !important;
+  border: 1px solid #00519726 !important;
+
+}
+.activity-details{
+  border-radius: 8px;
+  color: black;
+  background-color: #EFF6FF;
+  border-left: 3px solid #005197B2;
+}
+.table.activity-table{
+  thead th{
+    color: gray !important;
+    font-weight: 400;
+  }
+}
+.rotate-180 {
+  transform: rotate(90deg);
+  transition: transform 0.2s ease;
+}

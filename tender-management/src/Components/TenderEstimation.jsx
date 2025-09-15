@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import ProjectSelection from './ProjectInfo';
+import TenderEstView from "./TenderEstView";
 import axios from "axios";
 
 function TenderEstimation(){
@@ -8,7 +9,7 @@ function TenderEstimation(){
     const [projects, setProjects] = useState([]);
 
      useEffect(() => {
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllBoqUploadedProject`, {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/costCodeUpdatedProjects`, {
             headers: {
                 Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                 'Content-Type': 'application/json',
@@ -28,14 +29,14 @@ function TenderEstimation(){
         <div className="container-fluid">
             {!projectId && (
                 <>
-                    <div className="text-start fw-bold ms-1 mt-1 mb-3">BOQ Definition</div>
+                    <div className="text-start fw-bold ms-1 mt-1 mb-3">Tender Estimation</div>
                     <ProjectSelection 
                         projects={projects} 
                         continueRoute="/tenderestimation" 
                     />
                 </>
             )}
-            {/* {projectId && <BOQOverview projectId={projectId} />} */}
+            {projectId && <TenderEstView projectId={projectId}/>}
         </div>
     )
 }
