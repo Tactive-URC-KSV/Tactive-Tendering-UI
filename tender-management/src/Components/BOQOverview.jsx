@@ -13,30 +13,30 @@ import { toast } from 'react-toastify';
 const BOQContext = createContext();
 
 function ConfirmationDialog({ isOpen, onClose, onConfirm, message }) {
-  if (!isOpen) return null;
+    if (!isOpen) return null;
 
-  return (
-    <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1050 }}>
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">Confirm Deletion</h5>
-          </div>
-          <div className="modal-body">
-            <p>{message}</p>
-          </div>
-          <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="button" className="btn btn-danger" onClick={onConfirm}>
-              Delete
-            </button>
-          </div>
+    return (
+        <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1050 }}>
+            <div className="modal-dialog modal-dialog-centered">
+                <div className="modal-content">
+                    <div className="modal-header">
+                        <h5 className="modal-title">Confirm Deletion</h5>
+                    </div>
+                    <div className="modal-body">
+                        <p>{message}</p>
+                    </div>
+                    <div className="modal-footer">
+                        <button type="button" className="btn btn-secondary" onClick={onClose}>
+                            Cancel
+                        </button>
+                        <button type="button" className="btn btn-danger" onClick={onConfirm}>
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 }
 
 function BOQNode({ boq, level = 0 }) {
@@ -46,7 +46,7 @@ function BOQNode({ boq, level = 0 }) {
     const total = boq.calculatedTotal || 0;
     const isLeaf = !hasChildren;
 
-    const hasTableChildren = hasChildren && boq.children.every(child => 
+    const hasTableChildren = hasChildren && boq.children.every(child =>
         !child.children || child.children.length === 0
     );
 
@@ -64,12 +64,12 @@ function BOQNode({ boq, level = 0 }) {
 
     const toggleAllSelection = () => {
         if (!hasChildren) return;
-        
+
         const allChildrenSelected = boq.children.every(child => selectedNodes.has(child.boqCode));
-        
+
         setSelectedNodes(prev => {
             const newSet = new Set(prev);
-            
+
             if (allChildrenSelected) {
                 boq.children.forEach(child => {
                     newSet.delete(child.boqCode);
@@ -79,7 +79,7 @@ function BOQNode({ boq, level = 0 }) {
                     newSet.add(child.boqCode);
                 });
             }
-            
+
             return newSet;
         });
     };
@@ -88,10 +88,10 @@ function BOQNode({ boq, level = 0 }) {
         return (
             <tr>
                 <td>
-                    <input 
-                        type="checkbox" 
-                        className="form-check-input" 
-                        style={{ borderColor: '#005197' }} 
+                    <input
+                        type="checkbox"
+                        className="form-check-input"
+                        style={{ borderColor: '#005197' }}
                         checked={selectedNodes.has(boq.boqCode)}
                         onChange={() => toggleSelection(boq.boqCode)}
                     />
@@ -122,7 +122,7 @@ function BOQNode({ boq, level = 0 }) {
                         <span className="fw-bold ms-2">{boq.boqName || 'Unnamed BOQ'}</span>
                     </div>
                     <div className="d-flex align-items-center">
-                       {boq.level === 1 && <span className="fw-bold me-3" style={{ color: '#005197' }}>{`$ ${total.toFixed(2)}`}</span>}
+                        {boq.level === 1 && <span className="fw-bold me-3" style={{ color: '#005197' }}>{`$ ${total.toFixed(2)}`}</span>}
                     </div>
                 </div>
                 {isExpanded && hasChildren && (
@@ -133,10 +133,10 @@ function BOQNode({ boq, level = 0 }) {
                                     <thead>
                                         <tr style={{ borderBottom: '1px solid rgba(0, 81, 151, 0.24)' }}>
                                             <th>
-                                                <input 
-                                                    type="checkbox" 
-                                                    className="form-check-input" 
-                                                    style={{ borderColor: '#005197' }} 
+                                                <input
+                                                    type="checkbox"
+                                                    className="form-check-input"
+                                                    style={{ borderColor: '#005197' }}
                                                     checked={boq.children.every(child => selectedNodes.has(child.boqCode))}
                                                     onChange={toggleAllSelection}
                                                 />
@@ -152,10 +152,10 @@ function BOQNode({ boq, level = 0 }) {
                                         {boq.children.length > 0 ? boq.children.map((child, index) => (
                                             <tr key={index} style={{ borderBottom: index === boq.children.length - 1 ? 'none' : '1px solid rgba(0, 81, 151, 0.24)' }}>
                                                 <td>
-                                                    <input 
-                                                        type="checkbox" 
-                                                        className="form-check-input" 
-                                                        style={{ borderColor: '#005197' }} 
+                                                    <input
+                                                        type="checkbox"
+                                                        className="form-check-input"
+                                                        style={{ borderColor: '#005197' }}
                                                         checked={selectedNodes.has(child.boqCode)}
                                                         onChange={() => toggleSelection(child.boqCode)}
                                                     />
@@ -236,12 +236,18 @@ function BOQOverview({ projectId }) {
                     data: selectedCodes
                 }
             ).then(res => {
-                if(res.status === 200 )
+                if (res.status === 200)
                     toast.success("Selected BOQs deleted successfully");
+            }).catch(err => {
+                if (err?.response?.status === 409) {
+                    toast.warn(err?.response?.data);
+                } else {
+                    toast.error(err?.response?.data);
+                }
             });
-            
+
             refreshBOQData();
-            
+
             axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getBoqTotalValue/${projectId}`, {
                 headers: {
                     Authorization: `Bearer ${sessionStorage.getItem('token')}`,
@@ -269,15 +275,14 @@ function BOQOverview({ projectId }) {
             toast.warn("No BOQ items selected for deletion");
             return;
         }
-
         setShowConfirmDialog(true);
     };
 
     const confirmDelete = async () => {
         setShowConfirmDialog(false);
-        
+
         const selectedCodes = Array.from(selectedNodes);
-        
+
         await deleteBoqs(projectId, selectedCodes);
         setSelectedNodes(new Set());
     };
@@ -295,7 +300,7 @@ function BOQOverview({ projectId }) {
         setSelectedNodes
     };
 
-    
+
     const BOQStats = [
         { label: 'Parent BOQ', value: boqTree.length, bgColor: '#EFF6FF', color: '#2563EB' },
         { label: 'Total BOQ', value: allBOQ.length, bgColor: '#F0FDF4', color: '#2BA95A' },
@@ -427,7 +432,7 @@ function BOQOverview({ projectId }) {
                     responseType: "blob",
                 }
             );
-             if(response.status === 204){
+            if (response.status === 204) {
                 toast.warn(response.data);
                 return;
             }
@@ -435,7 +440,7 @@ function BOQOverview({ projectId }) {
             const blob = new Blob([response.data], {
                 type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             });
-           
+
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -472,7 +477,7 @@ function BOQOverview({ projectId }) {
             a.remove();
             window.URL.revokeObjectURL(url);
         } catch (err) {
-           toast.error(err.message);
+            toast.error(err.message);
             console.error(err.message);
         }
     };
@@ -534,8 +539,8 @@ function BOQOverview({ projectId }) {
                                     </>
                                 )}
                             </button>
-                            <DeleteIcon 
-                                style={{ cursor: 'pointer', marginLeft: '15px' }} 
+                            <DeleteIcon
+                                style={{ cursor: 'pointer', marginLeft: '15px' }}
                                 onClick={handleDeleteClick}
                                 title="Delete selected items"
                             />
@@ -551,7 +556,7 @@ function BOQOverview({ projectId }) {
                         )}
                     </BOQContext.Provider>
                 </div>
-                
+
                 <ConfirmationDialog
                     isOpen={showConfirmDialog}
                     onClose={cancelDelete}

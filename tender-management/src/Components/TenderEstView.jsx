@@ -136,7 +136,7 @@ function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon,
                             </div>
                             {expandedGroups[group.id] && (
                                 <div className="ms-4 mt-2 bg-white rounded-3 p-2 mb-3">
-                                    <table className="table activity-table table-responsive">
+                                    <table className="table activity-table table-responsive border-none">
                                         <thead>
                                             <tr>
                                                 <th>Activity Code</th>
@@ -158,7 +158,7 @@ function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon,
                                                     <td>{child.rate}</td>
                                                     <td>{child.amount}</td>
                                                     <td>
-                                                        <div className="badge badge-md" style={{ background: "#DCFCE7", cursor: "pointer" }}><Eye color="#15803D" size={20} /><span className="ms-1" style={{ color: '#15803D' }}>View</span></div>
+                                                        <div className="btn btn-sm" style={{ background: "#DCFCE7", cursor: "pointer" }}><Eye color="#15803D" size={20} /><span className="ms-1" style={{ color: '#15803D' }}>View</span></div>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -294,7 +294,7 @@ function TenderEstView({ projectId }) {
                 </div>
             </div>
             <div className="d-flex ms-3 mt-2">
-                <button className={`btn ${contentView === 'activity' ? 'activeView' : 'bg-white'} px-3 py-2 border`} onClick={() => setContentView('activity')}>
+                <button className={`btn ${contentView === 'activity' ? 'activeView' : 'bg-white'} px-3 py-2 border border-end-0 rounded-start rounded-0`} onClick={() => setContentView('activity')}>
                     {contentView === 'activity' ?
                         (<ActivityView />)
                         :
@@ -302,7 +302,7 @@ function TenderEstView({ projectId }) {
                     }
                     <span className="ms-2 fs-6">Activity View</span>
                 </button>
-                <button className={`btn ${contentView === 'boq' ? 'activeView' : 'bg-white'} px-3 py-2 border`} onClick={() => setContentView('boq')}>
+                <button className={`btn ${contentView === 'boq' ? 'activeView' : 'bg-white'} px-3 py-2 border border-start-0 rounded-end rounded-0`} onClick={() => setContentView('boq')}>
                     {contentView === 'activity' ?
                         (<FolderTree color="#005197" size={24} />)
                         :

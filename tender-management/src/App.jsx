@@ -62,9 +62,9 @@ function App() {
       <div className="App">
         <ToastContainer
           transition={Slide}
-          autoClose={2000}
+          autoClose={5000}
           closeButton={false}
-          transitionDuration={600}
+          transitionDuration={700}
           position="top-right" />
         <Routes>
           <Route path="/" element={<Login />} />
