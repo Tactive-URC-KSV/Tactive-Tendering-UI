@@ -97,9 +97,10 @@ const CCMOverview = () => {
     ];
 
     const splitTypes = [
-        { id: "rate", name: "Total Rate" },
-        { id: "amount", name: "Total Amount" },
-        { id: "quantity", name: "Total Quantity" }
+        { id: "rate", name: "Rate" },
+        { id: "amount", name: "Amount" },
+        { id: "quantity", name: "Quantity" },
+        { id: "qty_rate", name: "Quantity & Rate" }
     ];
     const splitOption = splitTypes.map(type => ({
         value: type.id,
@@ -273,8 +274,7 @@ const CCMOverview = () => {
         if (selectedMappingType === "1 : M") {
             if (mappingActivities.some(activity =>
                 !activity.activityCode?.trim() ||
-                !activity.activityName?.trim() ||
-                !activity.percentage || activity.percentage <= 0
+                !activity.activityName?.trim()
             )) {
                 showAlert("Please fill all required fields in activity details", "error");
                 return;
@@ -296,9 +296,9 @@ const CCMOverview = () => {
 
         const costCodeDtos = [];
         const activityGroupId = Array.from(selectedActivities)[0];
+        const activityGroup = activityGroups.find(group => group.id === activityGroupId);
         const boqCode = Array.from(selectedBOQs)[0];
         const boqItem = findBOQItem(boqCode);
-
 
         if (selectedMappingType === "1 : 1") {
             Array.from(selectedBOQs).forEach(boqCode => {
@@ -321,16 +321,12 @@ const CCMOverview = () => {
             const boqCode = Array.from(selectedBOQs)[0];
             const boqItem = findBOQItem(boqCode);
 
-            mappingActivities.forEach((activity, index) => {
-                const percentage = parseFloat(activity.percentage) || 0;
-                const activityCode = activity.activityCode;
-                const activityName = activity.activityName;
-
+            mappingActivities.forEach((activity) => {
                 costCodeDtos.push({
                     projectId: projectId,
                     boqId: [boqItem.id],
-                    activityCode: activityCode,
-                    activityName: activityName,
+                    activityCode: activity.activityCode,
+                    activityName: activity.activityName,
                     quantity: boqItem.quantity,
                     rate: boqItem.totalRate,
                     amount: boqItem.totalAmount,
@@ -338,34 +334,14 @@ const CCMOverview = () => {
                     mappingType: selectedMappingType,
                     costCodeTypeId: getCostCodeTypeFromActivityGroup(activityGroupId),
                     activityGroupId: activityGroupId,
-                    splitPercentage: percentage,
-                    splitType: activity.splitType || "amount"
+                    splitType: activity.splitType || "amount",
+                    qtySplitPercentage: parseFloat(activity.qtypercentage),
+                    rateSplitPercentage: parseFloat(activity.ratepercentage),
+                    amountSplitPercentage: parseFloat(activity.amountpercentage),
                 });
             });
-        } 
-        else if (selectedMappingType === "M : 1") {
-            const activity = mappingActivities[0] || {};
-            const boqIds = Array.from(selectedBOQs)
-                .map(boqCode => {
-                    const boqItem = findBOQItem(boqCode);
-                    return boqItem ? Number(boqItem.id) : null;
-                })
-                .filter(id => id !== null && !isNaN(id));
-
-            costCodeDtos.push({
-                projectId: projectId,
-                boqId: boqIds,
-                activityCode: activity.activityCode,
-                activityName: activity.activityName,
-                quantity: activity.quantity || 1,
-                rate: activity.rate || 0,
-                amount: (activity.quantity || 1) * (activity.rate || 0),
-                uomId: boqItem.uom.id,
-                mappingType: selectedMappingType,
-                costCodeTypeId: getCostCodeTypeFromActivityGroup(activityGroupId),
-                activityGroupId: activityGroupId,
-            });
         }
+
 
         setPendingMappings(prev => [...prev, ...costCodeDtos.map(dto => ({
             ...dto,
@@ -488,6 +464,8 @@ const CCMOverview = () => {
 
         const boqCode = Array.from(selectedBOQs)[0];
         const boqItem = findBOQItem(boqCode);
+        const activityGroupId = Array.from(selectedActivities)[0];
+        const activityGroup = activityGroups.find(group => group.id === activityGroupId);
 
         setBoqTotalAmount(boqItem.totalAmount || 0);
         setBoqTotalQuantity(boqItem.quantity || 1);
@@ -497,20 +475,24 @@ const CCMOverview = () => {
             saveCostCodeMapping();
         } else if (selectedMappingType === "1 : M") {
             setMappingActivities([{
-                activityCode: `${boqItem.boqCode}`,
-                activityName: `${boqItem.boqName}`,
+                activityCode: activityGroup.activityCode,
+                activityName: activityGroup.activityName,
                 quantity: 0,
                 rate: 0,
                 splitType: "quantity",
-                percentage: "",
-                value: ""
+                qtypercentage: "",
+                qtyvalue: "",
+                ratepercentage: "",
+                ratevalue: "",
+                amountpercentage: "",
+                amountvalue: ""
             }]);
             setTotalPercentageUsed(0);
             setShowMappingPopover(true);
         } else if (selectedMappingType === "M : 1") {
             setMappingActivities([{
-                activityCode: `${boqItem.boqCode}`,
-                activityName: `${boqItem.boqName}`,
+                activityCode: activityGroup.activityCode,
+                activityName: activityGroup.activityName,
                 quantity: 1,
                 rate: 0,
                 splitType: "",
@@ -670,16 +652,18 @@ const CCMOverview = () => {
                 costCodeTypeId: mapping.costCodeTypeId,
                 activityGroupId: mapping.activityGroupId,
                 projectId: mapping.projectId,
-                splitPercentage: mapping.splitPercentage,
-                splitType: mapping.splitType
+                splitType: mapping.splitType,
+                qtySplitPercentage: parseFloat(mapping.qtySplitPercentage) || 0,
+                rateSplitPercentage: parseFloat(mapping.rateSplitPercentage) || 0,
+                amountSplitPercentage: parseFloat(mapping.amountSplitPercentage) || 0
             });
         });
+
 
         const savePromises = [];
 
         if (mappingsByType["1 : 1"].length > 0) {
             console.log("1 : 1 Mappings to save.");
-
             savePromises.push(
                 axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/saveOneToOne`, mappingsByType["1 : 1"], {
                     headers: {
@@ -692,7 +676,6 @@ const CCMOverview = () => {
 
         if (mappingsByType["1 : M"].length > 0) {
             console.log("1 : M Mappings to save.");
-
             savePromises.push(
                 axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/saveOneToMany`, mappingsByType["1 : M"], {
                     headers: {
@@ -705,7 +688,6 @@ const CCMOverview = () => {
 
         if (mappingsByType["M : 1"].length > 0) {
             console.log("M : 1 Mappings to save.");
-
             savePromises.push(
                 axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/saveManyToOne`, mappingsByType["M : 1"], {
                     headers: {
@@ -748,7 +730,6 @@ const CCMOverview = () => {
         setSelectedCostCodeType(null);
         setMappingActivities([]);
         setPendingMappings([]);
-
         setCostCodeActivities(prev => prev.filter(activity => !activity.isPending));
     };
 
@@ -756,26 +737,32 @@ const CCMOverview = () => {
         const boqCode = Array.from(selectedBOQs)[0];
         const boqItem = findBOQItem(boqCode);
         const remainingPercentage = 100 - totalPercentageUsed;
+        const activityGroupId = Array.from(selectedActivities)[0];
+        const activityGroup = activityGroups.find(group => group.id === activityGroupId);
 
         if (remainingPercentage <= 0) {
             showAlert("Cannot add more activities - total percentage already reached 100%", "error");
             return;
         }
 
-        const nextNumber = mappingActivities.length + 1;
-        const activityCode = `${boqItem.boqCode}`;
-        const activityName = `${boqItem.boqName}`;
-
-        setMappingActivities([...mappingActivities, {
-            activityCode: activityCode,
-            activityName: activityName,
-            quantity: 0,
-            rate: 0,
-            splitType: "amount",
-            percentage: "",
-            value: ""
-        }]);
+        setMappingActivities([
+            ...mappingActivities,
+            {
+                activityCode: activityGroup?.activityCode,
+                activityName: activityGroup?.activityName,
+                quantity: 0,
+                rate: 0,
+                splitType: "quantity",
+                qtypercentage: "",
+                qtyvalue: "",
+                ratepercentage: "",
+                ratevalue: "",
+                amountpercentage: "",
+                amountvalue: ""
+            }
+        ]);
     };
+
 
     const removeMappingActivity = (index) => {
         if ((selectedMappingType === "1 : 1" || selectedMappingType === "M : 1") && mappingActivities.length <= 1) {
@@ -795,16 +782,23 @@ const CCMOverview = () => {
         const boqCode = Array.from(selectedBOQs)[0];
         const boqItem = findBOQItem(boqCode);
 
-        if (field === 'percentage') {
-            const newPercentage = parseFloat(value) || 0;
+        let newPercentage = parseFloat(value) || 0;
 
+        if (['qtypercentage', 'ratepercentage', 'amountpercentage'].includes(field)) {
             if (newPercentage > 100) {
                 showAlert("Percentage cannot exceed 100%", "error");
                 return;
             }
 
-            const currentTotal = updatedActivities.reduce((sum, activity, i) =>
-                sum + (i === index ? newPercentage : parseFloat(activity.percentage) || 0), 0);
+            let currentTotal = updatedActivities.reduce((sum, act, i) => {
+                if (i === index) {
+                    return sum + newPercentage;
+                }
+                return sum +
+                    (parseFloat(act.qtypercentage) || 0) +
+                    (parseFloat(act.ratepercentage) || 0) +
+                    (parseFloat(act.amountpercentage) || 0);
+            }, 0);
 
             if (currentTotal > 100) {
                 showAlert("Total percentage cannot exceed 100%", "error");
@@ -813,86 +807,46 @@ const CCMOverview = () => {
 
             setTotalPercentageUsed(currentTotal);
 
-            const splitType = updatedActivities[index].splitType || "amount";
             let calculatedValue = 0;
-
-            if (splitType === "quantity") {
+            if (field === 'qtypercentage') {
                 calculatedValue = (boqItem.quantity * newPercentage / 100) || 0;
-            } else if (splitType === "rate") {
+                updatedActivities[index].qtyvalue = calculatedValue.toFixed(2);
+            }
+            if (field === 'ratepercentage') {
                 calculatedValue = (boqItem.totalRate * newPercentage / 100) || 0;
-            } else if (splitType === "amount") {
+                updatedActivities[index].ratevalue = calculatedValue.toFixed(2);
+            }
+            if (field === 'amountpercentage') {
                 calculatedValue = (boqItem.totalAmount * newPercentage / 100) || 0;
+                updatedActivities[index].amountvalue = calculatedValue.toFixed(2);
             }
-
-            updatedActivities[index] = {
-                ...updatedActivities[index],
-                [field]: value,
-                value: calculatedValue.toFixed(2)
-            };
         }
-        else if (field === 'splitType') {
-            setSplitType(value);
-            const percentage = parseFloat(updatedActivities[index].percentage) || 0;
-            let calculatedValue = 0;
 
-            if (value === "quantity") {
-                calculatedValue = (boqItem.quantity * percentage / 100) || 0;
-            } else if (value === "rate") {
-                calculatedValue = (boqItem.totalRate * percentage / 100) || 0;
-            } else if (value === "amount") {
-                calculatedValue = (boqItem.totalAmount * percentage / 100) || 0;
-            }
-
-            updatedActivities[index] = {
-                ...updatedActivities[index],
-                [field]: value,
-                value: calculatedValue.toFixed(2)
-            };
-        }
-        else if (field === 'value') {
+        if (['qtyvalue', 'ratevalue', 'amountvalue'].includes(field)) {
             const numericValue = parseFloat(value) || 0;
             let calculatedPercentage = 0;
 
-            const splitType = updatedActivities[index].splitType || "amount";
-
-            if (splitType === "quantity") {
+            if (field === 'qtyvalue') {
                 calculatedPercentage = (numericValue / boqItem.quantity) * 100 || 0;
-            } else if (splitType === "rate") {
+                updatedActivities[index].qtypercentage = calculatedPercentage.toFixed(2);
+            }
+            if (field === 'ratevalue') {
                 calculatedPercentage = (numericValue / boqItem.totalRate) * 100 || 0;
-            } else if (splitType === "amount") {
+                updatedActivities[index].ratepercentage = calculatedPercentage.toFixed(2);
+            }
+            if (field === 'amountvalue') {
                 calculatedPercentage = (numericValue / boqItem.totalAmount) * 100 || 0;
+                updatedActivities[index].amountpercentage = calculatedPercentage.toFixed(2);
             }
-
-            if (calculatedPercentage > 100) {
-                showAlert("Percentage cannot exceed 100%", "error");
-                return;
-            }
-
-            const currentTotal = updatedActivities.reduce((sum, activity, i) =>
-                sum + (i === index ? calculatedPercentage : parseFloat(activity.percentage) || 0), 0);
-
-            if (currentTotal > 100) {
-                showAlert("Total percentage cannot exceed 100%", "error");
-                return;
-            }
-
-            setTotalPercentageUsed(currentTotal);
-
-            updatedActivities[index] = {
-                ...updatedActivities[index],
-                [field]: value,
-                percentage: calculatedPercentage.toFixed(2)
-            };
         }
-        else {
-            updatedActivities[index] = {
-                ...updatedActivities[index],
-                [field]: value
-            };
-        }
+        updatedActivities[index] = {
+            ...updatedActivities[index],
+            [field]: value
+        };
 
         setMappingActivities(updatedActivities);
     };
+
 
     const filteredBOQTree = useMemo(() => {
         if (!searchQuery.trim()) {
@@ -971,7 +925,6 @@ const CCMOverview = () => {
     const BOQNode = ({ boq, level = 0 }) => {
         const hasChildren = boq.children && boq.children.length > 0;
         const isSelected = selectedBOQs.has(boq.boqCode);
-        const total = boq.calculatedTotal || 0;
         const isExpanded = expandedFolders.has(boq.boqCode);
         const isMapped = costCodeActivities.some(activity => activity.boq && activity.boq.boqCode === boq.boqCode);
 
@@ -1131,7 +1084,6 @@ const CCMOverview = () => {
                     <span className="me-2" onClick={handleFolderToggle}>
                         {isExpanded ? <span className="d-flex"><DropDown /> <MediumFolder className="mt-2" /> </span> : <span className="d-flex"><ClosedList /> <MediumFolder className="mt-2" /> </span>}
                     </span>
-
                     <div className="d-flex flex-grow-1 ms-2" style={{ minWidth: 0 }}>
                         <div className="d-flex justify-content-between">
                             <span className="me-2 text-nowrap">{group.activityCode}</span>
@@ -1141,7 +1093,7 @@ const CCMOverview = () => {
                     </div>
                 </div>
                 {isExpanded && groupActivities.length > 0 && (
-                    <div className="ms-4 mt-2 ">
+                    <div className="ms-4 mt-2">
                         {groupActivities.map((activity) => (
                             <CostCodeActivityNode key={activity.id} activity={activity} />
                         ))}
@@ -1332,8 +1284,7 @@ const CCMOverview = () => {
                                                     Remaining Rate: ${(boqTotalRate * (100 - totalPercentageUsed) / 100).toFixed(2)}
                                                 </small>
                                             </div>
-                                        )
-                                        }
+                                        )}
                                         {splitType === 'quantity' && (
                                             <div className="alert alert-info mb-3">
                                                 <small>
@@ -1344,17 +1295,15 @@ const CCMOverview = () => {
                                                     Remaining Quantity: {(boqTotalQuantity * (100 - totalPercentageUsed) / 100).toFixed(2)}
                                                 </small>
                                             </div>
-                                        )
-                                        }
+                                        )}
                                     </>
                                 )}
-
 
                                 <h6 className="mb-3">Activity Details:</h6>
 
                                 {mappingActivities.map((activity, index) => (
                                     <div key={index} className="mb-4 p-3 border rounded position-relative pt-5" style={{ borderColor: '#0051973D' }}>
-                                        <div className="position-absolute top-0 start-0 px-2 py-1 rounded rounded-bottom-right text-center" style={{ width: '150px', height: '30px', color: "#005197", backgroundColor: "#eef0f1ff", margin: "10px", }}>
+                                        <div className="position-absolute top-0 start-0 px-2 py-1 rounded rounded-bottom-right text-center" style={{ width: '150px', height: '30px', color: "#005197", backgroundColor: "#eef0f1ff", margin: "10px" }}>
                                             Activity : {index + 1}
                                         </div>
 
@@ -1410,38 +1359,89 @@ const CCMOverview = () => {
                                                         />
                                                     </div>
                                                 </div>
-                                                <div className="row">
-                                                    <div className="col-md-6 mb-4">
-                                                        <label className="projectform text-start d-block">Percentage <span className="text-danger">*</span></label>
-                                                        <input
-                                                            type="number"
-                                                            className="form-input w-100"
-                                                            value={activity.percentage}
-                                                            onChange={(e) => updateMappingActivity(index, 'percentage', e.target.value)}
-                                                            placeholder="Enter percentage"
-                                                            min="0"
-                                                            max="100"
-                                                            step="0.01"
-                                                            required
-                                                        />
+                                                {(activity.splitType === 'quantity' || activity.splitType === 'qty_rate') && (
+                                                    <div className="row">
+                                                        <div className="col-md-6 mb-4">
+                                                            <label className="projectform text-start d-block">Quantity %</label>
+                                                            <input
+                                                                type="number"
+                                                                className="form-input w-100"
+                                                                value={activity.qtypercentage}
+                                                                onChange={(e) => updateMappingActivity(index, 'qtypercentage', e.target.value)}
+                                                                min="0"
+                                                                max="100"
+                                                                step="0.01"
+                                                            />
+                                                        </div>
+                                                        <div className="col-md-6 mb-4">
+                                                            <label className="projectform text-start d-block">Quantity Value</label>
+                                                            <input
+                                                                type="number"
+                                                                className="form-input w-100"
+                                                                value={activity.qtyvalue}
+                                                                onChange={(e) => updateMappingActivity(index, 'qtyvalue', e.target.value)}
+                                                                min="0"
+                                                                step="0.01"
+                                                            />
+                                                        </div>
                                                     </div>
-                                                    <div className="col-md-6 mb-4">
-                                                        <label className="projectform text-start d-block">Value <span className="text-danger">*</span></label>
-                                                        <input
-                                                            type="number"
-                                                            className="form-input w-100"
-                                                            value={activity.value}
-                                                            onChange={(e) => updateMappingActivity(index, 'value', e.target.value)}
-                                                            placeholder="Enter value"
-                                                            min="0"
-                                                            step="0.01"
-                                                            required
-                                                        />
+                                                )}
+                                                {(activity.splitType === 'rate' || activity.splitType === 'qty_rate') && (
+                                                    <div className="row">
+                                                        <div className="col-md-6 mb-4">
+                                                            <label className="projectform text-start d-block">Rate %</label>
+                                                            <input
+                                                                type="number"
+                                                                className="form-input w-100"
+                                                                value={activity.ratepercentage}
+                                                                onChange={(e) => updateMappingActivity(index, 'ratepercentage', e.target.value)}
+                                                                min="0"
+                                                                max="100"
+                                                                step="0.01"
+                                                            />
+                                                        </div>
+                                                        <div className="col-md-6 mb-4">
+                                                            <label className="projectform text-start d-block">Rate Value</label>
+                                                            <input
+                                                                type="number"
+                                                                className="form-input w-100"
+                                                                value={activity.ratevalue}
+                                                                onChange={(e) => updateMappingActivity(index, 'ratevalue', e.target.value)}
+                                                                min="0"
+                                                                step="0.01"
+                                                            />
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                )}
+                                                {activity.splitType === 'amount' && (
+                                                    <div className="row">
+                                                        <div className="col-md-6 mb-4">
+                                                            <label className="projectform text-start d-block">Amount %</label>
+                                                            <input
+                                                                type="number"
+                                                                className="form-input w-100"
+                                                                value={activity.amountpercentage}
+                                                                onChange={(e) => updateMappingActivity(index, 'amountpercentage', e.target.value)}
+                                                                min="0"
+                                                                max="100"
+                                                                step="0.01"
+                                                            />
+                                                        </div>
+                                                        <div className="col-md-6 mb-4">
+                                                            <label className="projectform text-start d-block">Amount Value</label>
+                                                            <input
+                                                                type="number"
+                                                                className="form-input w-100"
+                                                                value={activity.amountvalue}
+                                                                onChange={(e) => updateMappingActivity(index, 'amountvalue', e.target.value)}
+                                                                min="0"
+                                                                step="0.01"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </>
                                         )}
-
                                     </div>
                                 ))}
 
@@ -1451,7 +1451,6 @@ const CCMOverview = () => {
                                             type="button"
                                             className="btn btn-sm btn-outline-primary"
                                             onClick={addMappingActivity}
-                                            disabled={totalPercentageUsed >= 100}
                                         >
                                             + Add Activity
                                         </button>
