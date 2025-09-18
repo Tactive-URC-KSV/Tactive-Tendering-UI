@@ -3,11 +3,11 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { FaTimes } from 'react-icons/fa';
-import  Floors  from '../assest/Floors.svg?react';
-import  Area  from '../assest/Area.svg?react';
-import  Cost  from '../assest/Cost.svg?react';
-import  TotalCost  from '../assest/TotalCost.svg?react';
-import  Amenities  from '../assest/Amenities.svg?react';
+import Floors from '../assest/Floors.svg?react';
+import Area from '../assest/Area.svg?react';
+import Cost from '../assest/Cost.svg?react';
+import TotalCost from '../assest/TotalCost.svg?react';
+import Amenities from '../assest/Amenities.svg?react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
@@ -27,12 +27,12 @@ function FeasibilityStudy({ project, setActiveTab }) {
     const [technicalData, setTechnicalData] = useState({
         executionCapabilities: '',
     });
-    
+
     const navigate = useNavigate();
 
     useEffect(() => {
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/listOfApprovals`,{
-            headers:{
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/listOfApprovals`, {
+            headers: {
                 Authorization: `Bearer ${sessionStorage.getItem('token')}`
             }
         })
@@ -100,8 +100,8 @@ function FeasibilityStudy({ project, setActiveTab }) {
             formData.append(
                 'financialFeasibility',
                 new Blob([JSON.stringify(normalizedFinancialData)], { type: 'application/json' })
-            );               
-            
+            );
+
             const approvalDocDto = selectedApprovals.map(approval => ({
                 docId: approval.value,
                 documentName: approval.docName,
@@ -135,10 +135,10 @@ function FeasibilityStudy({ project, setActiveTab }) {
 
             if (response.status === 200) {
                 toast.success(response.data);
-                setTimeout(()=>{
-                    navigate(`/dashboard/project/${project.id}`),2000
+                setTimeout(() => {
+                    navigate(`/dashboard/project/${project.id}`), 2000
                 })
-                
+
             }
         } catch (error) {
             console.error(error);
@@ -218,65 +218,68 @@ function FeasibilityStudy({ project, setActiveTab }) {
                     </div>
                 </div>
                 {selectedApprovals.map((doc, index) => (
-                    <div className='row align-items-center ms-4 me-4 mb-3' key={index}>
-                        <div className='col-lg-3 col-md-3 text-start d-flex justify-content-between align-items-center'>
-                            <div className='text-start fs-6 fw-bold' style={{ color: '#005197' }}>{doc.docName}</div>
-                            <div>
-                                <button className='btn action-button me-5' onClick={() => { document.getElementById(`file-input-${index}`).click() }}>
-                                    Choose File
-                                </button>
-                                <input
-                                    type="file"
-                                    id={`file-input-${index}`}
-                                    style={{ display: 'none' }}
-                                    onChange={(e) => handleFileChange(index, e)}
-                                />
-                            </div>
-                        </div>
-                        <div className='col-lg-6 col-md-6'>
-                            <input
-                                type="text"
-                                className="form-input w-100"
-                                placeholder='Comments'
-                                value={doc.comment}
-                                onChange={(e) => handleCommentChange(index, e.target.value)}
-                            />
-                        </div>
-                        <div className='col-lg-3 col-md-3 d-flex justify-content-around'>
-                            <div>
-                                <input
-                                    type="radio"
-                                    className='form-check-input'
-                                    value={true}
-                                    checked={doc.isApproved === true}
-                                    onChange={() => handleApprovalChange(index, true)}
-                                /> <label>Approved</label>
-                            </div>
-                            <div>
-                                <input
-                                    type="radio"
-                                    className='form-check-input'
-                                    value={false}
-                                    checked={doc.isApproved === false}
-                                    onChange={() => handleApprovalChange(index, false)}
-                                /> <label>Rejected</label>
-                            </div>
-                        </div>
-                        {doc.file && (
-                            <div className="col-lg-4 col-md-6 col-sm-12 mt-3 mb-3">
-                                <div className="border rounded p-2 position-relative">
-                                    <FaTimes
-                                        size={16}
-                                        className="position-absolute top-0 end-0 m-2"
-                                        style={{ cursor: 'pointer' }}
-                                        onClick={() => handleRemoveFile(index)}
-                                        color='red'
+                    <div key={index}>
+                        <div className='text-start fs-6 fw-bold mb-1' style={{ color: '#005197', marginLeft: '40px' }}>{doc.docName}</div>
+                        <div className='row align-items-center ms-4 me-4 mb-3' >
+                            <div className='col-lg-3 col-md-3 text-start d-flex align-items-center'>
+                                <div>
+                                    <button className='btn action-button btn-lg' onClick={() => { document.getElementById(`file-input-${index}`).click() }}>
+                                        Choose File
+                                    </button>
+                                    <input
+                                        type="file"
+                                        id={`file-input-${index}`}
+                                        style={{ display: 'none' }}
+                                        onChange={(e) => handleFileChange(index, e)}
                                     />
-                                    <div className="small">{doc.file.name}</div>
                                 </div>
                             </div>
-                        )}
+                            <div className='col-lg-6 col-md-6'>
+                                <input
+                                    type="text"
+                                    className="form-input w-100"
+                                    placeholder='Comments'
+                                    value={doc.comment}
+                                    onChange={(e) => handleCommentChange(index, e.target.value)}
+                                />
+                            </div>
+                            <div className='col-lg-3 col-md-3 d-flex justify-content-around'>
+                                <div>
+                                    <input
+                                        type="radio"
+                                        className='form-check-input'
+                                        value={true}
+                                        checked={doc.isApproved === true}
+                                        onChange={() => handleApprovalChange(index, true)}
+                                    /> <label className='ms-2'>Approved</label>
+                                </div>
+                                <div>
+                                    <input
+                                        type="radio"
+                                        className='form-check-input'
+                                        value={false}
+                                        checked={doc.isApproved === false}
+                                        onChange={() => handleApprovalChange(index, false)}
+                                    /> <label className='ms-2'>Rejected</label>
+                                </div>
+                            </div>
+                            {doc.file && (
+                                <div className="col-lg-4 col-md-6 col-sm-12 mt-3 mb-3">
+                                    <div className="border rounded p-2 position-relative">
+                                        <FaTimes
+                                            size={16}
+                                            className="position-absolute top-0 end-0 m-2"
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={() => handleRemoveFile(index)}
+                                            color='red'
+                                        />
+                                        <div className="small">{doc.file.name}</div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
+
                 ))}
 
                 <div className="row align-items-center ms-4 me-4">
