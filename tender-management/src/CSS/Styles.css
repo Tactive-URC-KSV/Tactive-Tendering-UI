@@ -273,8 +273,19 @@ label {
 .select__multi-value__remove:hover {
   background-color: #005197 !important;
   color: white !important;
-  ;
 }
+
+.form-check-input{
+  border-color: #005197 !important;
+}
+.form-check-input:checked{
+  background-color: #005197 !important;
+  box-shadow: none !important;
+}
+.form-check-input:focus {
+  box-shadow: none !important;
+}
+
 
 .upload-file {
   border: 1px #005197;
