@@ -285,8 +285,6 @@ label {
 .form-check-input:focus {
   box-shadow: none !important;
 }
-
-
 .upload-file {
   border: 1px #005197;
   border-style: dashed;
@@ -494,7 +492,8 @@ label {
   font-size: 14px;;
 }
 .btn:focus{
-  border: none;
+  border: none !important;
+  outline: none !important;
 }
 .parent-boq{
   background-color: #EFF6FF ;

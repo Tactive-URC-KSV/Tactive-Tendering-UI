@@ -9,8 +9,14 @@ import Export from '../assest/Export.svg?react';
 import Import from '../assest/Import.svg?react';
 import BOQUpload from "./BOQUpload";
 import { toast } from 'react-toastify';
+import { useNavigate } from "react-router-dom";
 
 const BOQContext = createContext();
+
+const handleUnauthorized = () => {
+    const navigate = useNavigate();
+    navigate('/login');
+}
 
 function ConfirmationDialog({ isOpen, onClose, onConfirm, message }) {
     if (!isOpen) return null;
@@ -221,6 +227,9 @@ function BOQOverview({ projectId }) {
                 setAllBOQ([]);
             }
         }).catch(err => {
+            if (err?.response?.status === 401) {
+                handleUnauthorized();
+            }
             console.error('Error fetching BOQ data:', err);
             setAllBOQ([]);
         });
@@ -239,6 +248,9 @@ function BOQOverview({ projectId }) {
                 if (res.status === 200)
                     toast.success("Selected BOQs deleted successfully");
             }).catch(err => {
+                if (err?.response?.status === 401) {
+                    handleUnauthorized();
+                }
                 if (err?.response?.status === 409) {
                     toast.warn(err?.response?.data);
                 } else {
@@ -261,7 +273,9 @@ function BOQOverview({ projectId }) {
                     setTotalAmount(0);
                 }
             }).catch(err => {
-                console.error('Error fetching total value:', err);
+                if (err?.response?.status === 401) {
+                    handleUnauthorized();
+                }
                 setTotalAmount(0);
             });
         } catch (err) {
@@ -320,7 +334,9 @@ function BOQOverview({ projectId }) {
                 console.error('Failed to fetch project info:', res.status);
             }
         }).catch(err => {
-            console.error('Error fetching project info:', err);
+            if(err?.response?.status === 401){
+                handleUnauthorized();
+            }
         });
     }, [projectId]);
 
@@ -338,7 +354,9 @@ function BOQOverview({ projectId }) {
                 setAllBOQ([]);
             }
         }).catch(err => {
-            console.error('Error fetching BOQ data:', err);
+            if(err?.response?.status === 401){
+                handleUnauthorized();
+            }
             setAllBOQ([]);
         });
     }, [projectId]);
@@ -406,7 +424,9 @@ function BOQOverview({ projectId }) {
                 setTotalAmount(0);
             }
         }).catch(err => {
-            console.error('Error fetching total value:', err);
+            if(err?.response?.status === 401){
+                handleUnauthorized();
+            }
             setTotalAmount(0);
         });
     }, [projectId]);
@@ -450,7 +470,9 @@ function BOQOverview({ projectId }) {
             a.remove();
             window.URL.revokeObjectURL(url);
         } catch (err) {
-            console.log(err);
+            if(err?.response?.status === 401){
+                handleUnauthorized();
+            }
         }
     };
 
@@ -477,6 +499,9 @@ function BOQOverview({ projectId }) {
             a.remove();
             window.URL.revokeObjectURL(url);
         } catch (err) {
+            if(err?.response?.status === 401){
+                handleUnauthorized();
+            }
             toast.error(err.message);
             console.error(err.message);
         }

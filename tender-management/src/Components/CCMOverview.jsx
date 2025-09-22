@@ -15,6 +15,12 @@ import Search from '../assest/Search.svg?react';
 import SmallFolder from '../assest/SmallFolder.svg?react';
 import '../CSS/Styles.css';
 
+const handleUnauthorized = () =>{
+   const navigate = useNavigate();
+   navigate('/login');
+}
+
+
 const CCMOverview = () => {
     const [project, setProject] = useState();
     const { projectId } = useParams();

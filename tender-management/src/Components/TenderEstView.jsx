@@ -12,17 +12,21 @@ import { FolderTree, Eye, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 
+
 const handleUnauthorized = () => {
     const navigate = useNavigate();
     navigate('/login');
 }
 
-function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon, activities }) {
+function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon, activities, projectId }) {
+    const navigate = useNavigate();
     const [percentage, setPercentage] = useState({});
     const [totalAmount, setTotalAmount] = useState();
     const [expandedGroups, setExpandedGroups] = useState({});
     const [activityGroup, setActivityGroup] = useState([]);
-
+    const handleResource = (costCodeId) =>{
+        navigate(`/tenderestimation/${projectId}/resourceadding/${costCodeId}`);
+    }
     useEffect(() => {
         let total = 0;
         costCodeTypes.forEach(costCode => {
@@ -158,7 +162,7 @@ function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon,
                                                     <td>{child.rate}</td>
                                                     <td>{child.amount}</td>
                                                     <td>
-                                                        <div className="btn btn-sm" style={{ background: "#DCFCE7", cursor: "pointer" }}><Eye color="#15803D" size={20} /><span className="ms-1" style={{ color: '#15803D' }}>View</span></div>
+                                                        <button className="btn btn-sm" onClick={() => handleResource(child.id)} style={{ background: "#DCFCE7", cursor: "pointer" }}><Eye color="#15803D" size={20} /><span className="ms-1" style={{ color: '#15803D' }}>View</span></button>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -320,7 +324,7 @@ function TenderEstView({ projectId }) {
                     icon={icon}
                     findActivity={findActivity}
                     activities={activities}
-
+                    projectId={projectId}
                 />
             }
         </div>
