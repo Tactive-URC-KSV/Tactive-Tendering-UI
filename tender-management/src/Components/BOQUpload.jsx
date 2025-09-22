@@ -13,6 +13,7 @@ import Drag from '../assest/Drag.svg?react';
 import Template from '../assest/Template.svg?react';
 import Mapping from '../assest/Mapping.svg?react';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 
 const autoScrollWhileDragging = (e) => {
    const padding = 100;
@@ -26,6 +27,11 @@ const autoScrollWhileDragging = (e) => {
       window.scrollBy({ top: scrollSpeed, behavior: 'smooth' });
    }
 };
+
+const handleUnauthorized = () => {
+   const navigate = useNavigate();
+   navigate('/login');
+}
 
 const throttledAutoScroll = throttle(autoScrollWhileDragging, 50);
 
@@ -81,7 +87,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             setTemplateList(res.data);
          }
       }).catch(err => {
-         console.log(err);
+         if (err?.response?.status === 401) {
+            handleUnauthorized();
+         }
       })
    }, [])
    const templateOption = templateList.map(temp => ({
@@ -142,7 +150,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             }
          }
       }).catch(err => {
-         console.log(err);
+         if (err?.response?.status === 401) {
+            handleUnauthorized();
+         }
       })
    }
 
@@ -158,7 +168,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             setColumns(res.data);
          }
       }).catch(err => {
-         console.log(err);
+         if (err?.response?.status === 401) {
+            handleUnauthorized();
+         }
       })
    }
    const handleDragStart = (e, column) => {
@@ -199,7 +211,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
 
          }
       }).catch(err => {
-         console.log(err);
+         if (err?.response?.status === 401) {
+            handleUnauthorized();
+         }
       })
    }
 
@@ -242,16 +256,18 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             sheetOption.length === 1 && (setTimeout(() => {
                window.location.href = `/boqdefinition/${projectId}`;
             }, 3000));
-            if(fileType === 'pdf'){
+            if (fileType === 'pdf') {
                (setTimeout(() => {
-               window.location.href = `/boqdefinition/${projectId}`;
-            }, 3000))
+                  window.location.href = `/boqdefinition/${projectId}`;
+               }, 3000))
             }
 
          }
       }
       ).catch(err => {
-         console.log(err);
+         if (err?.response?.status === 401) {
+            handleUnauthorized();
+         }
          toast.error("Something went wrong");
       }).finally(() => {
          setLoading(false);
@@ -294,7 +310,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             toast.success(res.data);
          }
       }).catch(err => {
-         console.error(err);
+         if (err?.response?.status === 401) {
+            handleUnauthorized();
+         }
          toast.error("Error saving template");
       });
 
