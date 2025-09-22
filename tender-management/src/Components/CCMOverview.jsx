@@ -15,6 +15,12 @@ import Search from '../assest/Search.svg?react';
 import SmallFolder from '../assest/SmallFolder.svg?react';
 import '../CSS/Styles.css';
 
+const handleUnauthorized = () => {
+    const navigate = useNavigate();
+    navigate('/login');
+}
+
+
 const CCMOverview = () => {
     const [project, setProject] = useState();
     const { projectId } = useParams();
@@ -140,6 +146,9 @@ const CCMOverview = () => {
                 console.error('Failed to fetch project info:', res.status);
             }
         }).catch(err => {
+            if (err?.response?.status === 401) {
+                handleUnauthorized();
+            }
             console.error('Error fetching project info:', err);
         });
 
@@ -163,6 +172,9 @@ const CCMOverview = () => {
                 console.error('Failed to fetch BOQ data:', res.status);
             }
         }).catch(err => {
+            if (err?.response?.status === 401) {
+                handleUnauthorized();
+            }
             console.error('Error fetching BOQ data:', err);
         });
     };
@@ -181,6 +193,9 @@ const CCMOverview = () => {
                 console.error('Failed to fetch cost code types:', res.status);
             }
         }).catch(err => {
+            if (err?.response?.status === 401) {
+                handleUnauthorized();
+            }
             console.error('Error fetching cost code types:', err);
         }).finally(() => {
             setLoading(prev => ({ ...prev, costCodes: false }));
@@ -201,6 +216,9 @@ const CCMOverview = () => {
                 console.error('Failed to fetch activity groups:', res.status);
             }
         }).catch(err => {
+            if (err?.response?.status === 401) {
+                handleUnauthorized();
+            }
             console.error('Error fetching activity groups:', err);
         }).finally(() => {
             setLoading(prev => ({ ...prev, activityGroups: false }));
@@ -222,6 +240,9 @@ const CCMOverview = () => {
                 setCostCodeActivities([]);
             }
         }).catch(err => {
+            if (err?.response?.status === 401) {
+                handleUnauthorized();
+            }
             console.error('Error fetching cost code activities:', err);
             setCostCodeActivities([]);
         }).finally(() => {
@@ -265,6 +286,9 @@ const CCMOverview = () => {
                 showAlert('Failed to add activity group', "error");
             }
         }).catch(err => {
+            if (err?.response?.status === 401) {
+                handleUnauthorized();
+            }
             console.error('Error adding activity group:', err);
             showAlert('Error adding activity group: ' + (err.response?.data?.message || err.message), "error");
         });
@@ -423,6 +447,9 @@ const CCMOverview = () => {
                         showAlert('Failed to delete cost code activity', "error");
                     }
                 }).catch(err => {
+                    if (err?.response?.status === 401) {
+                        handleUnauthorized();
+                    }
                     console.error('Error deleting cost code activity:', err);
                     showAlert('Error deleting cost code activity: ' + (err.response?.data?.message || err.message), "error");
                 });
@@ -709,11 +736,15 @@ const CCMOverview = () => {
                     setPendingMappings([]);
                     fetchCostCodeActivities();
                 } else {
+
                     console.error('Failed to save some cost code mappings');
                     showAlert('Failed to save some cost code mappings', "error");
                 }
             })
             .catch(err => {
+                if (err?.response?.status === 401) {
+                    handleUnauthorized();
+                }
                 console.error('Error saving cost code mappings:', err);
                 showAlert('Error saving cost code mappings: ' + (err.response?.data?.message || err.message), "error");
             });

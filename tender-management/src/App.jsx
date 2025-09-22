@@ -14,6 +14,7 @@ import BOQDefinition from './Components/BOQDefinition';
 import CostCodeMapping from './Components/CostCodeMapping';
 import CCMOverview from './Components/CCMOverview';
 import TenderEstimation from './Components/TenderEstimation';
+import TenderResource from './Components/TenderResource';
 import Logo from './assest/logo.svg?react';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
@@ -88,6 +89,7 @@ function App() {
                             <Route path="/costcodemapping/:projectId" element={<CCMOverview />} caseSensitive={false} />
                             <Route path="/tenderestimation" element={<TenderEstimation />} caseSensitive={false} />
                             <Route path="/tenderestimation/:projectId" element={<TenderEstimation />} caseSensitive={false} />
+                            <Route path="/tenderestimation/:projectId/resourceadding/:costCodeId" element={<TenderResource />} caseSensitive={false} />
                             <Route path="/TenderFloating" element={<h1>Tender Floating</h1>} />
                             <Route path="/TenderTracking" element={<h1>Tender Tracking</h1>} />
                             <Route path="/ReceivingOffers" element={<h1>Receiving Offers</h1>} />

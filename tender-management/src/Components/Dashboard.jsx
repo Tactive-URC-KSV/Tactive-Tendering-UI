@@ -12,7 +12,12 @@ import { useProjectStatus } from '../Context/ProjectStatusContext';
 import { useRegions } from '../Context/RegionsContext';
 import { useSectors } from '../Context/SectorsContext';
 import '../CSS/Styles.css';
+import { useNavigate } from 'react-router-dom';
 
+const handleUnauthorized = () =>{
+   const navigate = useNavigate();
+   navigate('/login');
+}
 
 
 function ProjectWorklist() {
@@ -77,6 +82,9 @@ function ProjectWorklist() {
                 }
             })
             .catch(error => {
+                if (err?.response?.status === 401) {
+                    handleUnauthorized();
+                }
                 console.error('Error fetching projects:', error);
             });
     }, []);
@@ -242,7 +250,7 @@ function ProjectWorklist() {
                         options={regionOptions}
                         placeholder="Filter by Region"
                         onChange={handleRegionChange}
-                        className="w-100"
+                        className="w-100 bg-transparent"
                         classNamePrefix="select"
                         isClearable
                         menuPlacement='auto'
@@ -256,7 +264,7 @@ function ProjectWorklist() {
                         placeholder="Filter by Company Name"
                         options={companyOptions}
                         onChange={handleCompanyChange}
-                        className="w-100"
+                        className="w-100 bg-transparent"
                         classNamePrefix="select"
                         isClearable
                         menuPlacement='auto'
@@ -266,7 +274,7 @@ function ProjectWorklist() {
                     <label className="text-start d-block me-1">
                         Search
                     </label>
-                    <input type="text" value={projectName} className="form-input w-100" onChange={searchProjects} placeholder="Search by Project Name" />
+                    <input type="text" value={projectName} className="form-input w-100 bg-transparent" onChange={searchProjects} placeholder="Search by Project Name" />
                 </div>
             </div>
 
@@ -411,10 +419,10 @@ function ProjectWorklist() {
                                         <span className="small text-muted">
                                             {remainingDaysCalc(project.endDate)} days remaining
                                         </span>
-                                       <Link to={`project/${project.projectId}`} className="text-decoration-none small">
-                                               <Action /><span className='ms-1' style={{ color: '#005197' }}>View details</span>
+                                        <Link to={`project/${project.projectId}`} className="text-decoration-none small">
+                                            <Action /><span className='ms-1' style={{ color: '#005197' }}>View details</span>
                                         </Link>
-                                            
+
                                     </div>
                                 </div>
                             </div>

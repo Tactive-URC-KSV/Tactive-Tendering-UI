@@ -4,6 +4,13 @@ import ProjectSelection from './ProjectInfo';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import CCMOverview from './CCMOverview';
+import { useNavigate } from 'react-router-dom';
+
+const handleUnauthorized = () => {
+    const navigate = useNavigate();
+    navigate('/login');
+}
+
 
 function CostCodeMapping() {
     const projectId = useParams().projectId;
@@ -23,6 +30,9 @@ function CostCodeMapping() {
                 }
             })
             .catch(err => {
+                if (err?.response?.status === 401) {
+                    handleUnauthorized();
+                }
                 console.log(err);
             });
     }, []);
@@ -32,15 +42,15 @@ function CostCodeMapping() {
             {!projectId && (
                 <>
                     <div className="text-start fw-bold ms-1 mt-1 mb-3">Cost Code Mapping</div>
-                    <ProjectSelection 
-                        projects={projects} 
-                        continueRoute="/costcodemapping" 
+                    <ProjectSelection
+                        projects={projects}
+                        continueRoute="/costcodemapping"
                     />
                 </>
             )}
-            {projectId && <CCMOverview projectId={projectId} />}  
-                      
-    
+            {projectId && <CCMOverview projectId={projectId} />}
+
+
         </div>
     );
 }

@@ -9,6 +9,12 @@ import FeasibilityStudy from "../Utills/FeasibilityStudy";
 import ProjectDetails from "../Utills/ProjectDetails";
 import { useNavigate } from "react-router-dom";
 
+const handleUnauthorized = () =>{
+   const navigate = useNavigate();
+   navigate('/login');
+}
+
+
 function ProjectCreation() {
 
     const navigate = useNavigate();
@@ -88,6 +94,9 @@ function ProjectCreation() {
                     }
                 })
                 .catch((err) => {
+                    if (err?.response?.status === 401) {
+                        handleUnauthorized();
+                    }
                     console.error("Failed to fetch project:", err);
                 });
 
@@ -101,6 +110,9 @@ function ProjectCreation() {
                     setFeasbilityStudy(res.data);
                 }
             }).catch(err => {
+                if(err?.response?.status === 401){
+                handleUnauthorized();
+            }
                 console.log(err);
             })
         }
@@ -151,6 +163,7 @@ function ProjectCreation() {
                 if (response.status === 200) {
                     toast.success("Project updated successfully!");
                 }
+                
             } else {
                 response = await axios.post(
                     `${import.meta.env.VITE_API_BASE_URL}/project/createProject`,

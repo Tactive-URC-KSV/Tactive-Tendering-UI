@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import '../CSS/Styles.css';
 import ProjectSelection from './ProjectInfo';
 import BOQOverview from './BOQOverview';
@@ -8,6 +8,10 @@ import axios from 'axios';
 function BOQDefinition() {
     const projectId = useParams().projectId;
     const [projects, setProjects] = useState([]);
+    const navigate = useNavigate();
+    const handleUnauthorized = () =>{
+        navigate('/login');
+    }
 
     useEffect(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/approved/projects`, {
@@ -22,7 +26,9 @@ function BOQDefinition() {
                 }
             })
             .catch(err => {
-                console.log(err);
+                if(err?.response?.status === 401){
+                    handleUnauthorized();
+                }
             });
     }, []);
 
