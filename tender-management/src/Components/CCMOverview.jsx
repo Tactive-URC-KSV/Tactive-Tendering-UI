@@ -736,12 +736,15 @@ const CCMOverview = () => {
                     setPendingMappings([]);
                     fetchCostCodeActivities();
                 } else {
-                    
+
                     console.error('Failed to save some cost code mappings');
                     showAlert('Failed to save some cost code mappings', "error");
                 }
             })
             .catch(err => {
+                if (err?.response?.status === 401) {
+                    handleUnauthorized();
+                }
                 console.error('Error saving cost code mappings:', err);
                 showAlert('Error saving cost code mappings: ' + (err.response?.data?.message || err.message), "error");
             });
