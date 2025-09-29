@@ -63,7 +63,6 @@ const CCMOverview = () => {
     const [notification, setNotification] = useState(null);
     const [showNotification, setShowNotification] = useState(false);
     const [pendingMappings, setPendingMappings] = useState([]);
-    const navigate = useNavigate();
 
     const showAlert = (message, type = "info") => {
         switch (type) {
@@ -363,6 +362,42 @@ const CCMOverview = () => {
                     rateSplitPercentage: parseFloat(activity.ratepercentage),
                     amountSplitPercentage: parseFloat(activity.amountpercentage),
                 });
+            });
+        } else if (selectedMappingType === "M : 1") {
+            const activity = mappingActivities[0]; 
+            const boqItems = Array.from(selectedBOQs).map((boqCode) => findBOQItem(boqCode));
+
+            const uniqueUoms = [...new Set(boqItems.map(item => item.uom.id))];
+            const totalAmount = boqItems.reduce((sum, item) => sum + (item.totalAmount || 0), 0);
+
+            let avgRate = 0;
+            let avgQty = 0;
+            let uomId = null;
+
+            if (uniqueUoms.length === 1) {
+                avgRate = boqItems.reduce((sum, item) => sum + (item.totalRate || 0), 0) / boqItems.length;
+                avgQty = boqItems.reduce((sum, item) => sum + (item.quantity || 0), 0) / boqItems.length;
+                uomId = boqItems[0].uom.id;
+            } else {
+                
+                avgRate = 0;
+                avgQty = 0;
+                uomId = null; 
+            }
+
+            costCodeDtos.push({
+                projectId: projectId,
+                boqId: boqItems.map(item => item.id),   
+                activityCode: activity.activityCode,
+                activityName: activity.activityName,
+                quantity: avgQty,
+                rate: avgRate,
+                amount: totalAmount,
+                uomId: uomId,
+                mappingType: selectedMappingType,
+                costCodeTypeId: getCostCodeTypeFromActivityGroup(activityGroupId),
+                activityGroupId: activityGroupId,
+                mergeType: activity.mergeType || "amount",
             });
         }
 
