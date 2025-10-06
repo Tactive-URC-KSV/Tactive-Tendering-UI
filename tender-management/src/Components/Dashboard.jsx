@@ -13,6 +13,7 @@ import { useRegions } from '../Context/RegionsContext';
 import { useSectors } from '../Context/SectorsContext';
 import '../CSS/Styles.css';
 import { useNavigate } from 'react-router-dom';
+import { IndianRupee } from 'lucide-react';
 
 const handleUnauthorized = () =>{
    const navigate = useNavigate();
@@ -170,7 +171,7 @@ function ProjectWorklist() {
                             <div className="text-start">
                                 <p className="report-feild fw-bold mb-2 mt-2">Total Value</p>
                                 <p className="value fw-bold fs-4">
-                                    $ {projects.reduce((total, project) => total + parseInt(project.estimatedValue) / 1000000, 0).toFixed(2)} M
+                                    <IndianRupee /> {projects.reduce((total, project) => total + parseInt(project.estimatedValue) / 1000000, 0).toFixed(2)} M
                                 </p>
                             </div>
                             <div className="icon">
@@ -298,7 +299,7 @@ function ProjectWorklist() {
                                 <tr>
                                     <th>Project No</th>
                                     <th>Project Name</th>
-                                    <th>Value of Project</th>
+                                    <th>Value of Project(<IndianRupee size={14}/>) </th>
                                     <th>Start Date</th>
                                     <th>End Date</th>
                                     <th>Sector</th>
@@ -311,7 +312,7 @@ function ProjectWorklist() {
                                     <tr key={index}>
                                         <td>{project.projectCode}</td>
                                         <td>{project.projectName}</td>
-                                        <td>$ {project.estimatedValue}</td>
+                                        <td>{project.estimatedValue}</td>
                                         <td>{project.startDate &&
                                             new Date(project.startDate).toLocaleDateString(
                                                 "en-US",
@@ -400,7 +401,7 @@ function ProjectWorklist() {
 
                                     <div className="d-flex justify-content-between mt-1 small">
                                         <span>Value:</span>
-                                        <span>${project.estimatedValue}</span>
+                                        <span><IndianRupee size={14}/>{project.estimatedValue}</span>
                                     </div>
 
                                     <div className="progress mt-3" style={{ height: "10px" }}>

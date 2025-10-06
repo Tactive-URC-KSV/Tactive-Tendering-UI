@@ -1,6 +1,6 @@
 import { Children, useEffect, useState } from "react";
 import axios from "axios";
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, IndianRupee, Plus } from 'lucide-react';
 import '../CSS/Styles.css';
 import ActivityView from "../assest/Activity.svg?react";
 import Directcost from '../assest/DirectCost.svg?react';
@@ -24,7 +24,7 @@ function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon,
     const [totalAmount, setTotalAmount] = useState();
     const [expandedGroups, setExpandedGroups] = useState({});
     const [activityGroup, setActivityGroup] = useState([]);
-    const handleResource = (costCodeId) =>{
+    const handleResource = (costCodeId) => {
         navigate(`/tenderestimation/${projectId}/resourceadding/${costCodeId}`);
     }
     useEffect(() => {
@@ -106,7 +106,7 @@ function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon,
                             <div className="card-body d-flex justify-content-between text-start">
                                 <div>
                                     <p className="fw-medium mb-1">{costCode.costCodeName}</p>
-                                    <p className="mb-1 text-primary fw-bold">$ {amounts[costCode.id] / 1000000} M</p>
+                                    <p className="mb-1 text-primary fw-bold"><IndianRupee size={15} />{(amounts[costCode.id] / 1000000).toFixed(2)} M</p>
                                     <p className="text-muted small mb-0">{(percentage[costCode.id] ?? 0).toFixed(2)}% of total</p>
                                 </div>
                                 <div>
@@ -134,9 +134,14 @@ function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon,
                     </div>
                     {activityGroup.map((group, index) => (
                         <div key={index} className="mb-3 activity-details p-2">
-                            <div className="d-flex align-items-center rounded p-1" onClick={() => toggleGroup(group.id)}>
-                                <ChevronRight size={22} className={`me-2 text-primary ${expandedGroups[group.id] ? "rotate-180" : ""}`} />
-                                <strong>{group.activityName}</strong>
+                            <div className="d-flex align-items-center rounded p-1 justify-content-between">
+                                <div className="ms-1" onClick={() => toggleGroup(group.id)}>
+                                    <ChevronRight size={22} className={`me-2 text-primary ${expandedGroups[group.id] ? "rotate-180" : ""}`} />
+                                    <strong>{group.activityName}</strong>
+                                </div>
+                                <div className="me-3 rounded" style={{backgroundColor: '#DBEAFE', cursor: 'pointer'}}>
+                                    <Plus color="#005197"/>
+                                </div>
                             </div>
                             {expandedGroups[group.id] && (
                                 <div className="ms-4 mt-2 bg-white rounded-3 p-2 mb-3">
@@ -157,10 +162,10 @@ function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon,
                                                 <tr key={cIndex}>
                                                     <td>{child.activityCode}</td>
                                                     <td>{child.activityName}</td>
-                                                    <td>CUM</td>
-                                                    <td>{child.quantity}</td>
-                                                    <td>{child.rate}</td>
-                                                    <td>{child.amount}</td>
+                                                    <td>{child.uom?.uomCode}</td>
+                                                    <td>{(child.quantity).toFixed(3)}</td>
+                                                    <td>{(child.rate).toFixed(2)}</td>
+                                                    <td>{(child.amount).toFixed(2)}</td>
                                                     <td>
                                                         <button className="btn btn-sm" onClick={() => handleResource(child.id)} style={{ background: "#DCFCE7", cursor: "pointer" }}><Eye color="#15803D" size={20} /><span className="ms-1" style={{ color: '#15803D' }}>View</span></button>
                                                     </td>
@@ -180,7 +185,7 @@ function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon,
             <div className="project-title-header d-flex justify-content-between ms-3 mt-4 me-3">
                 <div className="text-start">
                     <p>Total Tender Estimation</p>
-                    <p className="fw-bold">$ {totalAmount / 1000000} M</p>
+                    <p className="fw-bold"><IndianRupee size={14} /> {(totalAmount / 1000000).toFixed(2)} M</p>
                 </div>
                 <div className="text-end">
                     <p>Total activities : {activities.length}</p>

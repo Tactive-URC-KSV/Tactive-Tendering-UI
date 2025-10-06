@@ -1,5 +1,5 @@
 import axios from "axios";
-import { ArrowLeft, Check, X } from "lucide-react";
+import { ArrowLeft, Check, IndianRupee, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -142,17 +142,17 @@ function ProjectOverview() {
         { label: "Building Area", value: project.buildingArea || "N/A" },
         { label: "Other Amenities", value: project.otherAmenities?.join(", ") || "N/A" },
         { label: "Rate Per Unit", value: project.ratePerUnit || "N/A" },
-        { label: "Estimated Value", value: `$ ${(project.estimatedValue / 1000000).toFixed(2)} M` || "N/A" },
+        { label: "Estimated Value", value: `${(project.estimatedValue / 1000000).toFixed(2)} M` || "N/A" },
     ];
     const projectEstimationOverview = [
         { label: 'No.Of.Floors', value: project.numberOfFloors || 'N/A', bgColor: '#EFF6FF', color: '#2563EB' },
         { label: 'Total Area', value: project.buildingArea || 'N/A', bgColor: '#F0FDF4', color: '#2BA95A' },
-        { label: 'Rate per Units', value: `$ ${project.ratePerUnit} M` || 'N/A', bgColor: '#FAF5FF', color: '#9333EA' },
-        { label: 'Estimated value', value: `$ ${(project.estimatedValue / 1000000).toFixed(2)} M` || 'N/A', bgColor: '#FFF7ED', color: '#EA580C' },
+        { label: 'Rate per Units', value: <><IndianRupee size={14}/>{project.ratePerUnit} </>, bgColor: '#FAF5FF', color: '#9333EA' },
+        { label: 'Estimated value', value: <><IndianRupee size={14}/>{(project.estimatedValue / 1000000).toFixed(2)} M</>, bgColor: '#FFF7ED', color: '#EA580C' },
     ];
     const finFeasibility = [
-        { label: 'Selling cost', value: `$ ${feasbilityStudy?.financialFeasibility?.sellingCost} M` || 'N/A' },
-        { label: 'Rental cost', value: `$ ${(feasbilityStudy?.financialFeasibility?.rentalCost / 1000000).toFixed(2)} M` || 'N/A' },
+        { label: 'Selling cost', value: <><IndianRupee size={14}/>{feasbilityStudy?.financialFeasibility?.sellingCost} </>},
+        { label: 'Rental cost', value: <><IndianRupee size={14}/>{(feasbilityStudy?.financialFeasibility?.rentalCost / 1000000).toFixed(2)} M</>},
         { label: 'ROI', value: feasbilityStudy?.financialFeasibility?.profitPercentage + ' % IRR in ' + feasbilityStudy?.financialFeasibility?.roiYear + ' years' || 'N/A' },
     ]
     const handleArchieve = () =>{
