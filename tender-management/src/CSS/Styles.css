@@ -216,6 +216,7 @@ label {
   color: black !important;
   box-shadow: none;
   text-align: left !important;
+  background-color: transparent !important;
 }
 
 .select__control--is-disabled {
@@ -561,8 +562,94 @@ label {
     color: gray !important;
     font-weight: 400;
   }
+  tbody td{
+    color: black !important;
+    align-self: center;
+  }
 }
 .rotate-180 {
   transform: rotate(90deg);
   transition: transform 0.2s ease;
+}
+.modal-resource{
+  background-color: #EFF6FF;
+  border: 1px solid #2563EB3D;
+}
+
+.resource-label{
+  color: #000000bd;
+  font-size: 14px;
+}
+
+.resource-select__menu {
+  z-index: 9999 !important;
+}
+
+.resource-select__control {
+  border-radius: 8px !important;
+  border: 0.5px solid #0000003D !important;
+  height: 45px;
+  font-size: 14px;
+  padding-left: 15px;
+  color: black !important;
+  box-shadow: none;
+  text-align: left !important;
+}
+
+.resource-select__control--is-disabled {
+  background-color: white !important;
+  opacity: 1 !important;
+  cursor: not-allowed;
+}
+
+.resource-select__indicator-separator {
+  display: none !important;
+}
+
+.resource-select__placeholder {
+  color: #00000066 !important;
+  font-size: 13px !important;
+}
+
+.resource-select__control--is-focused {
+  border: 0.5px solid #0000003D !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: black !important;
+}
+
+.resource-select__option {
+  cursor: pointer !important;
+  text-align: start !important;
+  color: #005197b7 !important;
+  font-size: 14px !important;
+  height: 35px !important;
+  font-weight: 500 !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 0px 4px 4px 0px #00519766;
+  text-wrap: nowrap !important;
+  
+}
+
+.resource-select__option:hover{
+  background-color: #005197 !important;
+  color: white !important
+}
+
+.resource-select__option--is-selected {
+  background-color: #005197 !important;
+  color: white !important;
+}
+
+.resource-input,
+.resource-input:focus{
+  outline: none;
+  border-radius: 8px !important;
+  border: 0.5px solid #0000003D !important;
+  height: 45px;
+  font-size: 13px;
+  padding-left: 15px;
+  color: black !important;
+  box-shadow: none;
+  text-align: left !important;
 }

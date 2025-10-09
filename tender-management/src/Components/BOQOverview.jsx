@@ -1,5 +1,5 @@
 import axios from "axios";
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, IndianRupee } from 'lucide-react';
 import { createContext, useContext, useEffect, useState } from "react";
 import CollapseIcon from '../assest/Collapse.svg?react';
 import DeleteIcon from '../assest/DeleteIcon.svg?react';
@@ -128,7 +128,7 @@ function BOQNode({ boq, level = 0 }) {
                         <span className="fw-bold ms-2">{boq.boqName || 'Unnamed BOQ'}</span>
                     </div>
                     <div className="d-flex align-items-center">
-                        {boq.level === 1 && <span className="fw-bold me-3" style={{ color: '#005197' }}>{`$ ${total.toFixed(2)}`}</span>}
+                        {boq.level === 1 && <span className="fw-bold me-3" style={{ color: '#005197' }}><span className="me-1"><IndianRupee size={14}/></span>{total.toFixed(2)}</span>}
                     </div>
                 </div>
                 {isExpanded && hasChildren && (
@@ -318,7 +318,7 @@ function BOQOverview({ projectId }) {
     const BOQStats = [
         { label: 'Parent BOQ', value: boqTree.length, bgColor: '#EFF6FF', color: '#2563EB' },
         { label: 'Total BOQ', value: allBOQ.length, bgColor: '#F0FDF4', color: '#2BA95A' },
-        { label: 'Total Value', value: `$ ${(totalAmount / 1000000)?.toFixed(2)} M` || 'N/A', bgColor: '#FFF7ED', color: '#EA580C' },
+        { label: 'Total Value', value: `${(totalAmount / 1000000)?.toFixed(2)} M` || 'N/A', bgColor: '#FFF7ED', color: '#EA580C' },
     ];
 
     useEffect(() => {
