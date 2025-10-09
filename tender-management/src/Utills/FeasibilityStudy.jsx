@@ -108,9 +108,6 @@ function FeasibilityStudy({ project, setActiveTab }) {
                 approved: approval.isApproved,
                 comment: approval.comment
             }));
-            approvalDocDto.forEach(approval => {
-                console.log(approval.isApproved);
-            })
             formData.append(
                 'approvalDocDTO',
                 new Blob([JSON.stringify(approvalDocDto)], { type: 'application/json' })

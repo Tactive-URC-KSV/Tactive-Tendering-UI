@@ -25,6 +25,7 @@ import "@fontsource/poppins/500.css";
 import "@fontsource/poppins/600.css";
 import { ProjectStatusProvider } from './Context/ProjectStatusContext';
 import ProtectedRoute from './Components/ProtectedRoute';
+import ResourceAdding from './Components/ResourceAdding';
 
 function App() {
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 768);
@@ -90,6 +91,7 @@ function App() {
                             <Route path="/tenderestimation" element={<TenderEstimation />} caseSensitive={false} />
                             <Route path="/tenderestimation/:projectId" element={<TenderEstimation />} caseSensitive={false} />
                             <Route path="/tenderestimation/:projectId/resourceadding/:costCodeId" element={<TenderResource />} caseSensitive={false} />
+                            <Route path="/tenderestimation/resourceadding/:costCodeId" element={<ResourceAdding />} caseSensitive={false} />
                             <Route path="/TenderFloating" element={<h1>Tender Floating</h1>} />
                             <Route path="/TenderTracking" element={<h1>Tender Tracking</h1>} />
                             <Route path="/ReceivingOffers" element={<h1>Receiving Offers</h1>} />
