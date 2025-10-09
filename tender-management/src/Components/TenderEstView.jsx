@@ -11,8 +11,6 @@ import ExpandIcon from '../assest/Expand.svg?react';
 import { FolderTree, Eye, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-
-
 const handleUnauthorized = () => {
     const navigate = useNavigate();
     navigate('/login');
@@ -24,8 +22,12 @@ function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon,
     const [totalAmount, setTotalAmount] = useState();
     const [expandedGroups, setExpandedGroups] = useState({});
     const [activityGroup, setActivityGroup] = useState([]);
+    const [hoverStates, setHoverStates] = useState({});
     const handleResource = (costCodeId) => {
         navigate(`/tenderestimation/${projectId}/resourceadding/${costCodeId}`);
+    }
+    const handleGlobalResource = (costCodeId) => {
+        navigate(`/tenderestimation/resourceadding/${costCodeId}`);
     }
     useEffect(() => {
         let total = 0;
@@ -65,7 +67,9 @@ function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon,
                         quantity: item.quantity,
                         rate: item.rate,
                         amount: item.amount,
-                        uom: item.uom
+                        uom: item.uom,
+                        buttonHover: false
+                        
                     });
                 }
             });
@@ -95,7 +99,12 @@ function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon,
         });
         setExpandedGroups(allCollapsed);
     };
-
+    const handleHover = (groupId, isHovering) => {
+        setHoverStates(prev => ({
+            ...prev,
+            [groupId]: isHovering
+        }));
+    };
 
     return (
         <>
@@ -130,7 +139,6 @@ function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon,
                                 <ExpandIcon /><span>Expand All</span>
                             </button>
                         </div>
-
                     </div>
                     {activityGroup.map((group, index) => (
                         <div key={index} className="mb-3 activity-details p-2">
@@ -139,9 +147,38 @@ function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon,
                                     <ChevronRight size={22} className={`me-2 text-primary ${expandedGroups[group.id] ? "rotate-180" : ""}`} />
                                     <strong>{group.activityName}</strong>
                                 </div>
-                                <div className="me-3 rounded" style={{backgroundColor: '#DBEAFE', cursor: 'pointer'}}>
+                                <div
+                                    className="rounded d-flex align-items-center justify-content-end px-2 py-1"
+                                    style={{
+                                        cursor: 'pointer',
+                                        overflow: 'hidden',
+                                        minWidth: '140px',
+                                        transition: 'background 0.3s ease',
+                                        position: 'relative',
+                                    }}
+                                    onMouseEnter={() => handleHover(group.id, true)}
+                                    onMouseLeave={() => handleHover(group.id, false)}
+                                    onClick={() =>{handleGlobalResource(group.id)}}
+                                >
+                                    <span
+                                        style={{
+                                            opacity: hoverStates[group.id] ? 1 : 0,
+                                            transform: hoverStates[group.id]
+                                                ? 'translateX(0)'
+                                                : 'translateX(20px)',
+                                            transition: 'opacity 0.3s ease, transform 0.3s ease',
+                                            whiteSpace: 'nowrap',
+                                            fontSize: '14px',
+                                            color: '#005197',
+                                            marginRight: '6px',
+                                            pointerEvents: 'none',
+                                        }}
+                                    >
+                                        Add Resource
+                                    </span>
                                     <Plus color="#005197"/>
                                 </div>
+
                             </div>
                             {expandedGroups[group.id] && (
                                 <div className="ms-4 mt-2 bg-white rounded-3 p-2 mb-3">
@@ -175,7 +212,6 @@ function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon,
                                     </table>
                                 </div>
                             )}
-
                         </div>
                     ))}
 
