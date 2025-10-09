@@ -216,6 +216,7 @@ label {
   color: black !important;
   box-shadow: none;
   text-align: left !important;
+  background-color: transparent !important;
 }
 
 .select__control--is-disabled {
