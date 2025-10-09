@@ -113,7 +113,6 @@ function FeasibilityStudy({ project, setActiveTab }) {
                 new Blob([JSON.stringify(approvalDocDto)], { type: 'application/json' })
             );
 
-
             selectedApprovals.forEach(approval => {
                 if (approval.file) {
                     formData.append(`approvalDoc[${approval.docName}]`, approval.file);
@@ -135,7 +134,6 @@ function FeasibilityStudy({ project, setActiveTab }) {
                 setTimeout(() => {
                     navigate(`/dashboard/project/${project.id}`), 2000
                 })
-
             }
         } catch (error) {
             console.error(error);
@@ -143,6 +141,16 @@ function FeasibilityStudy({ project, setActiveTab }) {
         } finally {
             setLoading(false);
         }
+    };
+
+    // Check if all input fields are empty
+    const isSubmitDisabled = () => {
+        const isFinancialDataEmpty = Object.values(financialData).every(value => !value || value === '');
+        const isTechnicalDataEmpty = Object.values(technicalData).every(value => !value || value === '');
+        const isApprovalsEmpty = selectedApprovals.every(
+            approval => !approval.comment && approval.isApproved === null && !approval.file
+        );
+        return isFinancialDataEmpty && isTechnicalDataEmpty && isApprovalsEmpty;
     };
 
     return (
@@ -166,7 +174,6 @@ function FeasibilityStudy({ project, setActiveTab }) {
                             <p className='value fw-bold fs-6 ms-2'>{project.buildingArea}</p>
                         </div>
                     </div>
-
                 </div>
                 <div className="row d-flex justify-content-around ms-4 me-4 mb-3">
                     <div className="col-12 col-md-6 col-lg-6">
@@ -197,8 +204,14 @@ function FeasibilityStudy({ project, setActiveTab }) {
                 </div>
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-12 mt-3 mb-4">
-                        <label className="projectform-select  text-start d-block">List of Approvals</label>
-                        <Select options={approvalDocuments} placeholder="Select Unit of Measurements" className="w-100" classNamePrefix="select" isClearable isMulti
+                        <label className="projectform-select text-start d-block">List of Approvals</label>
+                        <Select
+                            options={approvalDocuments}
+                            placeholder="Select Unit of Measurements"
+                            className="w-100"
+                            classNamePrefix="select"
+                            isClearable
+                            isMulti
                             onChange={(selectedOptions) => {
                                 const updated = selectedOptions.map(option => {
                                     const existing = selectedApprovals.find(a => a.value === option.value);
@@ -211,16 +224,20 @@ function FeasibilityStudy({ project, setActiveTab }) {
                                     };
                                 });
                                 setSelectedApprovals(updated);
-                            }} />
+                            }}
+                        />
                     </div>
                 </div>
                 {selectedApprovals.map((doc, index) => (
                     <div key={index}>
                         <div className='text-start fs-6 fw-bold mb-1' style={{ color: '#005197', marginLeft: '40px' }}>{doc.docName}</div>
-                        <div className='row align-items-center ms-4 me-4 mb-3' >
+                        <div className='row align-items-center ms-4 me-4 mb-3'>
                             <div className='col-lg-3 col-md-3 text-start d-flex align-items-center'>
                                 <div>
-                                    <button className='btn action-button btn-lg' onClick={() => { document.getElementById(`file-input-${index}`).click() }}>
+                                    <button
+                                        className='btn action-button btn-lg'
+                                        onClick={() => { document.getElementById(`file-input-${index}`).click() }}
+                                    >
                                         Choose File
                                     </button>
                                     <input
@@ -276,13 +293,14 @@ function FeasibilityStudy({ project, setActiveTab }) {
                             )}
                         </div>
                     </div>
-
                 ))}
-
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-12 mt-3 mb-3">
                         <label className="projectform text-start d-block">Execution Capabilities</label>
-                        <input type="text" className="form-input w-100" placeholder="Enter Execution capabilities"
+                        <input
+                            type="text"
+                            className="form-input w-100"
+                            placeholder="Enter Execution capabilities"
                             value={Array.isArray(technicalData.executionCapabilities) ? technicalData.executionCapabilities.join(', ') : technicalData.executionCapabilities}
                             onChange={(e) => setTechnicalData({ ...technicalData, executionCapabilities: e.target.value })}
                         />
@@ -295,8 +313,11 @@ function FeasibilityStudy({ project, setActiveTab }) {
                 </div>
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-12 mt-3 mb-4">
-                        <label className="projectform-select   text-start d-block">Market Availability</label>
-                        <input type="text" className="form-input w-100" placeholder="Enter Market Availability"
+                        <label className="projectform-select text-start d-block">Market Availability</label>
+                        <input
+                            type="text"
+                            className="form-input w-100"
+                            placeholder="Enter Market Availability"
                             value={Array.isArray(financialData.marketAvailability) ? financialData.marketAvailability.join(', ') : financialData.marketAvailability}
                             onChange={(e) => setFinancialData({ ...financialData, marketAvailability: e.target.value })}
                         />
@@ -304,8 +325,11 @@ function FeasibilityStudy({ project, setActiveTab }) {
                 </div>
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-12 mt-3 mb-4">
-                        <label className="projectform-select   text-start d-block">Financial Backup</label>
-                        <input type="text" className="form-input w-100" placeholder="Enter Financial Backup"
+                        <label className="projectform-select text-start d-block">Financial Backup</label>
+                        <input
+                            type="text"
+                            className="form-input w-100"
+                            placeholder="Enter Financial Backup"
                             value={financialData.financialBackup}
                             onChange={(e) => setFinancialData({ ...financialData, financialBackup: e.target.value })}
                         />
@@ -318,15 +342,21 @@ function FeasibilityStudy({ project, setActiveTab }) {
                 </div>
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform  text-start d-block">Selling Cost</label>
-                        <input type="text" className="form-input w-100" placeholder="Enter Selling Cost"
+                        <label className="projectform text-start d-block">Selling Cost</label>
+                        <input
+                            type="text"
+                            className="form-input w-100"
+                            placeholder="Enter Selling Cost"
                             value={financialData.sellingCost}
                             onChange={(e) => setFinancialData({ ...financialData, sellingCost: e.target.value })}
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform   text-start d-block">Rental Cost</label>
-                        <input type="text" className="form-input w-100" placeholder="Enter Rental Cost"
+                        <label className="projectform text-start d-block">Rental Cost</label>
+                        <input
+                            type="text"
+                            className="form-input w-100"
+                            placeholder="Enter Rental Cost"
                             value={financialData.rentalCost}
                             onChange={(e) => setFinancialData({ ...financialData, rentalCost: e.target.value })}
                         />
@@ -334,15 +364,21 @@ function FeasibilityStudy({ project, setActiveTab }) {
                 </div>
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-md-6 mt-3 mb-3">
-                        <label className="projectform  text-start d-block">ROI in Years</label>
-                        <input type="text" className="form-input w-100" placeholder="Years"
+                        <label className="projectform text-start d-block">ROI in Years</label>
+                        <input
+                            type="text"
+                            className="form-input w-100"
+                            placeholder="Years"
                             value={financialData.roiYear}
                             onChange={(e) => setFinancialData({ ...financialData, roiYear: e.target.value })}
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-3">
-                        <label className="projectform   text-start d-block">Estimated Profit Percentage</label>
-                        <input type="text" className="form-input w-100" placeholder="%"
+                        <label className="projectform text-start d-block">Estimated Profit Percentage</label>
+                        <input
+                            type="text"
+                            className="form-input w-100"
+                            placeholder="%"
                             value={financialData.profitPercentage}
                             onChange={(e) => setFinancialData({ ...financialData, profitPercentage: e.target.value })}
                         />
@@ -350,11 +386,19 @@ function FeasibilityStudy({ project, setActiveTab }) {
                 </div>
             </div>
             <div className="d-flex justify-content-between">
-                <button className="btn cancel-button mt-2 ms-4" onClick={() => { setActiveTab('info') }}><span className="me-2"><ArrowLeft size={18} /></span>Previous</button>
-                <button className="btn action-button mt-2 me-4" onClick={handleSubmit}>{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : 'Submit'}</button>
+                <button className="btn cancel-button mt-2 ms-4" onClick={() => { setActiveTab('info') }}>
+                    <span className="me-2"><ArrowLeft size={18} /></span>Previous
+                </button>
+                <button
+                    className="btn action-button mt-2 me-4"
+                    onClick={handleSubmit}
+                    disabled={isSubmitDisabled() || loading}
+                >
+                    {loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : 'Submit'}
+                </button>
             </div>
         </div>
     );
-
 }
+
 export default FeasibilityStudy;
