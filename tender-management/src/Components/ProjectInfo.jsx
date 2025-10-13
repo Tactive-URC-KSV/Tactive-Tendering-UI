@@ -57,6 +57,7 @@ function BOQProjectInfo({ projects, continueRoute }) {
                             options={companyOptions}
                             value={selectedCompany}
                             onChange={setSelectedCompany}
+                            isDisabled={true}
                         />
                     </div>
                 </div>
