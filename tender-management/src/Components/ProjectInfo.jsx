@@ -61,8 +61,8 @@ function BOQProjectInfo({ projects, continueRoute }) {
                         />
                     </div>
                 </div>
-
-                <div className='row ms-2 me-2 mb-3'>
+                {filteredProjects.length > 0 ? (
+                    <div className='row ms-2 me-2 mb-3'>
                     {filteredProjects.map((prj, index) => (
                         <div className='col-lg-4 col-md-6 col-sm-12 p-2 mt-1' key={index}>
                             <div className={`${projectId === prj.projectId ? 'selected-card ' : ''}card project-card h-100 shadow-sm`}
@@ -114,6 +114,8 @@ function BOQProjectInfo({ projects, continueRoute }) {
                         </div>
                     ))}
                 </div>
+                ) : (<div className='mt-5 mb-5'>No Projects Available</div>)}
+                
             </div>
             <div className='d-flex justify-content-end mt-3'>
                 <button className='btn action-button me-2 mt-2 fs-6' onClick={handleContinue}>
