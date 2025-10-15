@@ -75,6 +75,14 @@ function FeasibilityStudy({ project, setActiveTab }) {
     };
 
     const handleSubmit = async () => {
+        if(!financialData?.marketAvailability){
+            toast.error("Please enter market availability");
+            return;
+        }
+        if(!financialData?.financialBackup){
+            toast.error("Please enter financial backup");
+            return;
+        }
         setLoading(true);
         try {
             const formData = new FormData();
@@ -143,7 +151,6 @@ function FeasibilityStudy({ project, setActiveTab }) {
         }
     };
 
-    // Check if all input fields are empty
     const isSubmitDisabled = () => {
         const isFinancialDataEmpty = Object.values(financialData).every(value => !value || value === '');
         const isTechnicalDataEmpty = Object.values(technicalData).every(value => !value || value === '');
@@ -207,7 +214,7 @@ function FeasibilityStudy({ project, setActiveTab }) {
                         <label className="projectform-select text-start d-block">List of Approvals</label>
                         <Select
                             options={approvalDocuments}
-                            placeholder="Select Unit of Measurements"
+                            placeholder="Select List of Approval Documents"
                             className="w-100"
                             classNamePrefix="select"
                             isClearable
@@ -313,7 +320,7 @@ function FeasibilityStudy({ project, setActiveTab }) {
                 </div>
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-12 mt-3 mb-4">
-                        <label className="projectform-select text-start d-block">Market Availability</label>
+                        <label className="projectform-select text-start d-block">Market Availability<span className='ms-1 text-danger'>*</span></label>
                         <input
                             type="text"
                             className="form-input w-100"
@@ -325,7 +332,7 @@ function FeasibilityStudy({ project, setActiveTab }) {
                 </div>
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-12 mt-3 mb-4">
-                        <label className="projectform-select text-start d-block">Financial Backup</label>
+                        <label className="projectform-select text-start d-block">Financial Backup<span className='ms-1 text-danger'>*</span></label>
                         <input
                             type="text"
                             className="form-input w-100"
@@ -344,7 +351,7 @@ function FeasibilityStudy({ project, setActiveTab }) {
                     <div className="col-md-6 mt-3 mb-4">
                         <label className="projectform text-start d-block">Selling Cost</label>
                         <input
-                            type="text"
+                            type="number"
                             className="form-input w-100"
                             placeholder="Enter Selling Cost"
                             value={financialData.sellingCost}
@@ -354,7 +361,7 @@ function FeasibilityStudy({ project, setActiveTab }) {
                     <div className="col-md-6 mt-3 mb-4">
                         <label className="projectform text-start d-block">Rental Cost</label>
                         <input
-                            type="text"
+                            type="number"
                             className="form-input w-100"
                             placeholder="Enter Rental Cost"
                             value={financialData.rentalCost}
@@ -366,7 +373,7 @@ function FeasibilityStudy({ project, setActiveTab }) {
                     <div className="col-md-6 mt-3 mb-3">
                         <label className="projectform text-start d-block">ROI in Years</label>
                         <input
-                            type="text"
+                            type="number"
                             className="form-input w-100"
                             placeholder="Years"
                             value={financialData.roiYear}
@@ -376,7 +383,7 @@ function FeasibilityStudy({ project, setActiveTab }) {
                     <div className="col-md-6 mt-3 mb-3">
                         <label className="projectform text-start d-block">Estimated Profit Percentage</label>
                         <input
-                            type="text"
+                            type="number"
                             className="form-input w-100"
                             placeholder="%"
                             value={financialData.profitPercentage}
