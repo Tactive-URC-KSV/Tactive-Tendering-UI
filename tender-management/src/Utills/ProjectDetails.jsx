@@ -333,7 +333,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
             </div>
             <div className="d-flex justify-content-end">
                 <button className="btn cancel-button mt-2 me-4" onClick={() => { navigate(-1); }} disabled={loading}>Cancel</button>
-                {project.id ? (<button className="btn action-button mt-2 me-4" onClick={handleSubmit} >{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : 'Edit'}</button>) : (<button className="btn action-button mt-2 me-4" onClick={handleSubmit} >{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : 'Submit'}</button>)}
+                {project.id ? (<button className="btn action-button mt-2 me-4" onClick={handleSubmit} >{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : 'Edit'}</button>) : (<button className="btn action-button mt-2 me-4" onClick={handleSubmit} >{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : 'Next'}</button>)}
             </div>
         </div>
     );
