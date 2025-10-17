@@ -4,8 +4,8 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useUom } from '../Context/UomContext';
 
-const useResourceModal = (isGlobal = false) => {
-  const { projectId, costCodeId } = useParams();
+const useResourceModal = (isGlobal = false, id, idType) => {
+  const { projectId } = useParams();
   const navigate = useNavigate();
   const [costCode, setCostCode] = useState(null);
   const [resourceTypes, setResourceTypes] = useState([]);
@@ -38,6 +38,7 @@ const useResourceModal = (isGlobal = false) => {
     currencyId: '',
     resourceId: '',
     costCodeActivityId: '',
+    activityGroupId: '', 
     projectId: isGlobal ? '' : projectId,
   });
 
@@ -96,9 +97,12 @@ const useResourceModal = (isGlobal = false) => {
   };
 
   const fetchCostCode = useCallback(() => {
-    const url = isGlobal
-      ? `${import.meta.env.VITE_API_BASE_URL}/costCodeActivity/activityGroup/${costCodeId}`
-      : `${import.meta.env.VITE_API_BASE_URL}/costCodeActivity/costCode/${costCodeId}`;
+    if (!id || !idType) return;
+
+    const url = idType === 'activityGroup'
+      ? `${import.meta.env.VITE_API_BASE_URL}/costCodeActivity/activityGroup/${id}`
+      : `${import.meta.env.VITE_API_BASE_URL}/costCodeActivity/costCode/${id}`;
+
     axios
       .get(url, {
         headers: {
@@ -109,16 +113,21 @@ const useResourceModal = (isGlobal = false) => {
       .then((res) => {
         if (res.status === 200) {
           setCostCode(res.data);
+          if (idType === 'activityGroup') {
+            setResourceData((prev) => ({ ...prev, activityGroupId: id, costCodeActivityId: '' }));
+          } else {
+            setResourceData((prev) => ({ ...prev, costCodeActivityId: res.data.id, activityGroupId: '' }));
+          }
         }
       })
       .catch((err) => {
         if (err?.response?.status === 401) {
           handleUnauthorized();
         } else {
-          toast.error(err?.response?.data?.message || 'Failed to fetch cost code.');
+          toast.error(err?.response?.data?.message || `Failed to fetch ${idType === 'activityGroup' ? 'activity group' : 'cost code'}.`);
         }
       });
-  }, [costCodeId, isGlobal]);
+  }, [id, idType]);
 
   const fetchResourceTypes = useCallback(() => {
     axios
@@ -300,60 +309,127 @@ const useResourceModal = (isGlobal = false) => {
   };
 
   const handleAddResource = () => {
-    if (!resourceData.resourceId || !resourceData.uomId || !resourceData.quantityTypeId || !resourceData.currencyId) {
-      toast.error('Please fill in all required fields.');
-      return;
-    }
-    const dataToSend = {
-      ...resourceData,
-      costCodeActivityId: [costCode?.id],
-    };
-    axios
-      .post(`${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/addResources`, dataToSend, {
-        headers: {
-          Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-        },
-      })
-      .then((res) => {
-        if (res.status === 200 || res.status === 201) {
-          toast.success(res?.data);
-          setShowResourceAdding(false);
-          setResourceData({
-            id: '',
-            docNumber: `DOC${Date.now()}`,
-            coEfficient: 1,
-            calculatedQuantity: 0,
-            wastePercentage: 0,
-            wasteQuantity: 0,
-            netQuantity: 0,
-            rate: 0,
-            additionalRate: 0,
-            shippingPrice: 0,
-            costUnitRate: 0,
-            resourceTotalCost: 0,
-            rateLock: false,
-            totalCostCompanyCurrency: 0,
-            exchangeRate: '',
-            resourceTypeId: '',
-            quantityTypeId: '',
-            resourceNatureId: '',
-            uomId: '',
-            currencyId: '',
-            resourceId: '',
-            costCodeActivityId: '',
-            projectId: isGlobal ? '' : projectId,
-          });
-        }
-      })
-      .catch((err) => {
-        if (err?.response?.status === 401) {
-          handleUnauthorized();
-        } else {
-          toast.error(err?.response?.data?.message || 'Failed to add resource.');
-        }
-      });
+  // Validate mandatory fields
+  if (!resourceData.resourceTypeId) {
+    toast.error('Please select a Resource Type.');
+    return;
+  }
+  if (!resourceData.resourceNatureId) {
+    toast.error('Please select a Nature.');
+    return;
+  }
+  if (!resourceData.resourceId) {
+    toast.error('Please select a Resource Name.');
+    return;
+  }
+  if (!resourceData.uomId) {
+    toast.error('Please select a UOM.');
+    return;
+  }
+  if (!resourceData.quantityTypeId) {
+    toast.error('Please select a Quantity Type.');
+    return;
+  }
+  if (!resourceData.coEfficient && resourceData.coEfficient !== 0) {
+    toast.error('Please enter a Co-Efficient.');
+    return;
+  }
+  if (!resourceData.calculatedQuantity && resourceData.calculatedQuantity !== 0) {
+    toast.error('Calculated Quantity is required.');
+    return;
+  }
+  if (!resourceData.netQuantity && resourceData.netQuantity !== 0) {
+    toast.error('Net Quantity is required.');
+    return;
+  }
+  if (!resourceData.rate && resourceData.rate !== 0) {
+    toast.error('Please enter a Rate.');
+    return;
+  }
+  if (!resourceData.currencyId) {
+    toast.error('Please select a Currency.');
+    return;
+  }
+  if (!resourceData.exchangeRate && resourceData.exchangeRate !== 0) {
+    toast.error('Please enter an Exchange Rate.');
+    return;
+  }
+  if (!resourceData.costUnitRate && resourceData.costUnitRate !== 0) {
+    toast.error('Cost Unit Rate is required.');
+    return;
+  }
+  if (!resourceData.resourceTotalCost && resourceData.resourceTotalCost !== 0) {
+    toast.error('Resource Total Cost is required.');
+    return;
+  }
+  if (!resourceData.totalCostCompanyCurrency && resourceData.totalCostCompanyCurrency !== 0) {
+    toast.error('Resource Total Cost (Company Currency) is required.');
+    return;
+  }
+  if (resourceData.rateLock === undefined) {
+    toast.error('Rate Lock is required.');
+    return;
+  }
+  if (idType === 'activityGroup' && !resourceData.activityGroupId.length) {
+    toast.error('Please associate at least one activity group.');
+    return;
+  }
+
+  const dataToSend = {
+    ...resourceData,
+    costCodeActivityId: idType === 'costCode' ? resourceData.costCodeActivityId : '',
+    activityGroupId: idType === 'activityGroup' ? resourceData.activityGroupId : '',
   };
+
+  axios
+    .post(`${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/addResources`, dataToSend, {
+      headers: {
+        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+        'Content-Type': 'application/json',
+      },
+    })
+    .then((res) => {
+      if (res.status === 200 || res.status === 201) {
+        toast.success(res?.data?.message || 'Resource added successfully.');
+        setShowResourceAdding(false);
+        setResourceData({
+          id: '',
+          docNumber: `DOC${Date.now()}`,
+          coEfficient: 1,
+          calculatedQuantity: 0,
+          wastePercentage: 0,
+          wasteQuantity: 0,
+          netQuantity: 0,
+          rate: 0,
+          additionalRate: 0,
+          shippingPrice: 0,
+          costUnitRate: 0,
+          resourceTotalCost: 0,
+          rateLock: false,
+          totalCostCompanyCurrency: 0,
+          exchangeRate: '',
+          resourceTypeId: '',
+          quantityTypeId: '',
+          resourceNatureId: '',
+          uomId: '',
+          currencyId: '',
+          resourceId: '',
+          costCodeActivityId: [],
+          activityGroupId: [],
+          projectId: isGlobal ? '' : projectId,
+        });
+      }
+    })
+    .catch((err) => {
+      if (err?.response?.status === 401) {
+        handleUnauthorized();
+      } else {
+        toast.error(err?.response?.data?.message || 'Failed to add resource.');
+      }
+    }).finally(() => {
+      fetchEstimatedResources();
+    });
+};
 
   const openModal = () => {
     setShowResourceAdding(true);
