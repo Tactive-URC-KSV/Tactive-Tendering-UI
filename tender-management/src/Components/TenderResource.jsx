@@ -12,11 +12,19 @@ import ResourceModal from '../Utills/ResourceModal';
 import useResourceModal from '../Utills/useResourceModal';
 
 function TenderResource() {
-  const { projectId, costCodeId } = useParams();
+  const { projectId, costCodeId, activityGroupId } = useParams();
   const navigate = useNavigate();
   const [project, setProject] = useState(null);
   const [estimatedResources, setEstimatedResources] = useState([]);
   const [selectedResourceIds, setSelectedResourceIds] = useState([]);
+  const isGlobal = !projectId;
+  const idType = activityGroupId ? 'activityGroup' : costCodeId ? 'costCode' : null;
+  const resourceId = activityGroupId || costCodeId;
+
+  if (!idType) {
+    toast.error('No valid activityGroupId or costCodeId provided.');
+    navigate(-1);
+  }
 
   const {
     costCode,
@@ -37,30 +45,41 @@ function TenderResource() {
     handleAddResource,
     fetchResource,
     openModal,
-  } = useResourceModal(false);
+  } = useResourceModal(isGlobal, resourceId, idType);
+
   useEffect(() => {
-    axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${projectId}`, {
-      headers: {
-        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-        'Content-Type': 'application/json',
-      }
-    }).then(res => {
-      if (res.status === 200) {
-        setProject(res.data);
-        fetchEstimatedResources();
-      }
-    }).catch(err => {
-      if (err.response?.status === 401) {
-        navigate('/login');
-      } else {
-        console.error(err);
-        alert('Failed to fetch project information.');
-      }
-    });
-  }, [projectId]);
+    if (projectId) {
+      axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${projectId}`, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        }
+      }).then(res => {
+        if (res.status === 200) {
+          setProject(res.data);
+          fetchEstimatedResources();
+        }
+      }).catch(err => {
+        if (err.response?.status === 401) {
+          navigate('/login');
+        } else {
+          console.error(err);
+          toast.error('Failed to fetch project information.');
+        }
+      });
+    } else {
+      fetchEstimatedResources();
+    }
+  }, [projectId, costCodeId, activityGroupId]);
 
   const fetchEstimatedResources = () => {
-    axios.get(`${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/estimatedResources/${costCodeId}`, {
+    if (!resourceId) return;
+
+    const url = idType === 'activityGroup'
+      ? `${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/estimatedResourcesByActivityGroup/${resourceId}`
+      : `${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/estimatedResources/${resourceId}`;
+
+    axios.get(url, {
       headers: {
         Authorization: `Bearer ${sessionStorage.getItem('token')}`,
         'Content-Type': 'application/json'
@@ -74,7 +93,7 @@ function TenderResource() {
       if (err?.response?.status === 401) {
         navigate('/login');
       } else {
-        toast.error(err?.response?.data?.message);
+        toast.error(err?.response?.data?.message || 'Failed to fetch resources.');
       }
     });
   };
@@ -114,19 +133,21 @@ function TenderResource() {
       <div className="ms-3 d-flex justify-content-between align-items-center mb-4">
         <div className="fw-bold text-start">
           <ArrowLeft size={20} onClick={() => window.history.back()} style={{ cursor: 'pointer' }} />
-          <span className="ms-2">Activity Details</span>
+          <span className="ms-2">{idType === 'activityGroup' ? 'Activity Group Details' : 'Activity Details'}</span>
         </div>
         <div className="me-3">
           <button className="btn import-button" onClick={openModal}><Plus size={20} /><span className="ms-2">Add Resource</span></button>
         </div>
       </div>
       <div className="bg-white rounded-3 ms-3 me-3 p-4" style={{ border: '1px solid #0051973D' }}>
-        <div className="text-start fw-bold ms-3 mb-2">{`${project?.projectName || 'Loading...'} - (${project?.projectCode || ''})`}</div>
+        <div className="text-start fw-bold ms-3 mb-2">
+          {projectId ? `${project?.projectName || 'Loading...'} - (${project?.projectCode || ''})` : 'Global Activity Group'}
+        </div>
         <div className="row g-2 mb-4 ms-3">
           <div className="col-lg-4 col-md-4">
             <div className="rounded-2 p-3" style={{ backgroundColor: '#EFF6FF', width: '90%', height: '100%' }}>
               <div className="d-flex justify-content-between">
-                <span className="text-muted">Activity Code</span>
+                <span className="text-muted">{idType === 'activityGroup' ? 'Activity Group Code' : 'Activity Code'}</span>
                 <ActivityCode />
               </div>
               <div className="fw-bold text-start mt-2">{costCode?.activityCode || 'N/A'}</div>
@@ -135,7 +156,7 @@ function TenderResource() {
           <div className="col-lg-4 col-md-4">
             <div className="rounded-2 p-3" style={{ backgroundColor: '#EFF6FF', width: '90%', height: '100%' }}>
               <div className="d-flex justify-content-between">
-                <span className="text-muted">Activity Name</span>
+                <span className="text-muted">{idType === 'activityGroup' ? 'Activity Group Name' : 'Activity Name'}</span>
                 <ActivityView size={16} style={{ filter: "brightness(0) saturate(100%) invert(25%) sepia(100%) saturate(6000%) hue-rotate(200deg) brightness(95%) contrast(90%)" }} />
               </div>
               <div className="fw-bold text-start mt-2">{costCode?.activityName || 'N/A'}</div>
@@ -181,15 +202,15 @@ function TenderResource() {
           </div>
         </div>
       </div>
-      {estimatedResources?.length > 0 && (
-        <div className="bg-white rounded-3 ms-3 me-3 p-4 mt-4" style={{ border: '1px solid #0051973D' }}>
-          <div className="text-start d-flex justify-content-between align-items-center pb-3" style={{ borderBottom: '1px solid #0051973D' }}>
-            <h6>Resource Details</h6>
-            <div className="d-flex align-items-center">
-              <button className="btn action-button me-2" onClick={handleCopyResources}><Copy size={20} /><span className="ms-2">Copy</span></button>
-              <button className="btn action-button me-2"><ClipboardPasteIcon size={20} /><span className="ms-2">Paste</span></button>
-            </div>
+      <div className="bg-white rounded-3 ms-3 me-3 p-4 mt-4" style={{ border: '1px solid #0051973D' }}>
+        <div className="text-start d-flex justify-content-between align-items-center pb-3" style={{ borderBottom: '1px solid #0051973D' }}>
+          <h6>Resource Details</h6>
+          <div className="d-flex align-items-center">
+            <button className="btn action-button me-2" onClick={handleCopyResources}><Copy size={20} /><span className="ms-2">Copy</span></button>
+            <button className="btn action-button me-2"><ClipboardPasteIcon size={20} /><span className="ms-2">Paste</span></button>
           </div>
+        </div>
+        {estimatedResources?.length > 0 ? (
           <div className="mt-4">
             <table className="table activity-table">
               <thead>
@@ -239,8 +260,8 @@ function TenderResource() {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        ) : (<div className='mt-4'>No Content Available</div>)}
+      </div>
       <ResourceModal
         showModal={showResourceAdding}
         setShowModal={setShowResourceAdding}

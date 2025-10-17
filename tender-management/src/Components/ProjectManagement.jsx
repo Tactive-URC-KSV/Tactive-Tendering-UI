@@ -178,7 +178,7 @@ function ProjectCreation() {
                 if (response.status === 201) {
                     currentProjectId = response.data.id || response.data.projectId;
                     setProject((prev) => ({ ...prev, id: currentProjectId }));
-                    setEnabledTabs((prev) => [...prev, "feasibility"]); // Enable feasibility tab
+                    setEnabledTabs((prev) => [...prev, "feasibility"]); 
                     toast.success("Project created successfully!");
                 }
             }
@@ -287,7 +287,7 @@ function ProjectCreation() {
                 {activeTab === "feasibility" && (
                     <FeasibilityStudy project={project} setActiveTab={setActiveTab} />
                 )}
-                {activeTab === "document" && <Documents />}
+                {activeTab === "document" && <Documents project={project} setActiveTab={setActiveTab} />}
             </div>
         </div>
     );

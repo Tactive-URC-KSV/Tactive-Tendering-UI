@@ -1,4 +1,3 @@
-import React from 'react';
 import { X, Plus, Info } from 'lucide-react';
 import Area from '../assest/Area.svg?react';
 import Select from 'react-select';
@@ -20,6 +19,7 @@ const ResourceModal = ({
   handleCalculations,
   handleAddResource,
   fetchResource,
+  idType, 
 }) => {
   if (!showModal) return null;
 
@@ -60,6 +60,7 @@ const ResourceModal = ({
                   currencyId: '',
                   resourceId: '',
                   costCodeActivityId: '',
+                  activityGroupId: '',
                   projectId: resourceData.projectId,
                 });
               }}
@@ -75,7 +76,7 @@ const ResourceModal = ({
               </div>
               <div className="row align-items-center p-2 mb-2">
                 <div className="col-lg-4 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Resource type</label>
+                  <label className="resource-label text-start d-block">Resource type<span className='ms-1 text-danger'>*</span></label>
                   <Select
                     options={resourceTypesOption}
                     placeholder="Select Resource Type"
@@ -87,7 +88,7 @@ const ResourceModal = ({
                   />
                 </div>
                 <div className="col-lg-4 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Nature</label>
+                  <label className="resource-label text-start d-block">Nature<span className='ms-1 text-danger'>*</span></label>
                   <Select
                     options={resourceNatureOption}
                     placeholder="Select Nature"
@@ -99,7 +100,7 @@ const ResourceModal = ({
                   />
                 </div>
                 <div className="col-lg-4 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Resource Name</label>
+                  <label className="resource-label text-start d-block">Resource Name<span className='ms-1 text-danger'>*</span></label>
                   <Select
                     options={resourceOption}
                     placeholder="Select Resource Name"
@@ -119,7 +120,7 @@ const ResourceModal = ({
               </div>
               <div className="row align-items-center p-2 mb-2">
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">UOM</label>
+                  <label className="resource-label text-start d-block">UOM<span className='ms-1 text-danger'>*</span></label>
                   <Select
                     options={uomOption}
                     placeholder="Select UOM"
@@ -131,7 +132,7 @@ const ResourceModal = ({
                   />
                 </div>
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Quantity Type</label>
+                  <label className="resource-label text-start d-block">Quantity Type<span className='ms-1 text-danger'>*</span></label>
                   <Select
                     options={quantityTypeOption}
                     placeholder="Select Quantity Type"
@@ -145,7 +146,7 @@ const ResourceModal = ({
               </div>
               <div className="row align-items-center p-2 mb-2">
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Co-Efficient</label>
+                  <label className="resource-label text-start d-block">Co-Efficient<span className='ms-1 text-danger'>*</span></label>
                   <input
                     type="number"
                     className="resource-input w-100"
@@ -161,7 +162,7 @@ const ResourceModal = ({
                   />
                 </div>
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Calculated Quantity</label>
+                  <label className="resource-label text-start d-block">Calculated Quantity<span className='ms-1 text-danger'>*</span></label>
                   <input
                     type="text"
                     className="resource-input w-100"
@@ -204,7 +205,7 @@ const ResourceModal = ({
                   />
                 </div>
                 <div className="col-lg-4 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Net Quantity</label>
+                  <label className="resource-label text-start d-block">Net Quantity<span className='ms-1 text-danger'>*</span></label>
                   <input
                     type="text"
                     className="resource-input w-100"
@@ -222,7 +223,7 @@ const ResourceModal = ({
               </div>
               <div className="row align-items-center p-2 mb-2">
                 <div className="col-lg-4 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Rate</label>
+                  <label className="resource-label text-start d-block">Rate<span className='ms-1 text-danger'>*</span></label>
                   <input
                     type="number"
                     className="resource-input w-100"
@@ -269,7 +270,7 @@ const ResourceModal = ({
               </div>
               <div className="row align-items-center p-2 mb-2">
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Currency</label>
+                  <label className="resource-label text-start d-block">Currency<span className='ms-1 text-danger'>*</span></label>
                   <Select
                     options={currencyOption}
                     placeholder="Select Currency"
@@ -281,7 +282,7 @@ const ResourceModal = ({
                   />
                 </div>
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Exchange Rate</label>
+                  <label className="resource-label text-start d-block">Exchange Rate<span className='ms-1 text-danger'>*</span></label>
                   <input
                     type="number"
                     className="resource-input w-100"
@@ -304,7 +305,7 @@ const ResourceModal = ({
               </div>
               <div className="row align-items-center p-2 mb-2">
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Cost Unit Rate</label>
+                  <label className="resource-label text-start d-block">Cost Unit Rate<span className='ms-1 text-danger'>*</span></label>
                   <input
                     type="text"
                     className="resource-input w-100"
@@ -314,7 +315,7 @@ const ResourceModal = ({
                   />
                 </div>
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Resource Total Cost</label>
+                  <label className="resource-label text-start d-block">Resource Total Cost<span className='ms-1 text-danger'>*</span></label>
                   <input
                     type="text"
                     className="resource-input w-100"
@@ -326,7 +327,7 @@ const ResourceModal = ({
               </div>
               <div className="row align-items-center p-2 mb-2">
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Resource Total Cost (Company Currency)</label>
+                  <label className="resource-label text-start d-block">Resource Total Cost (Company Currency)<span className='ms-1 text-danger'>*</span></label>
                   <input
                     type="text"
                     className="resource-input w-100"
@@ -343,7 +344,7 @@ const ResourceModal = ({
                       checked={resourceData.rateLock}
                       onChange={(e) => setResourceData({ ...resourceData, rateLock: e.target.checked })}
                     />
-                    <label className="resource-label text-start d-block ms-2">Rate Lock</label>
+                    <label className="resource-label text-start d-block ms-2">Rate Lock<span className='ms-1 text-danger'>*</span></label>
                   </div>
                 </div>
               </div>
