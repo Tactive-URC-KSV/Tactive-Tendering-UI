@@ -82,20 +82,47 @@ function ResourceAdding() {
   };
 
   const handleCopyResources = () => {
-    const selectedResources = estimatedResources.filter(resource => selectedResourceIds.includes(resource.id));
+    const selectedResources = estimatedResources.filter(resource =>
+      selectedResourceIds.includes(resource.id)
+    );
+
     if (selectedResources.length === 0) {
       toast.warn('No resources selected to copy.');
       return;
     }
+
     try {
-      localStorage.setItem('resource', JSON.stringify(selectedResources));
-      toast.success('Resources copied successfully');
+      const resourceIds = selectedResources.map(resource => resource.id);
+      localStorage.setItem('resource', JSON.stringify(resourceIds));
+      toast.success('Resource IDs copied successfully');
     } catch (err) {
-      toast.error('Failed to copy resources.');
+      toast.error('Failed to copy resource IDs.');
     }
   };
+ const handlePasteResources = () => {
+    const resourceIds = JSON.parse(localStorage.getItem('resource'));
+    axios.post(`${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/pasteResourceToActivity/${activityGroupId}`,resourceIds,{
+      headers:{
+        Authorization : `Bearer ${sessionStorage.getItem('token')}`,
+        'Content-Type' : 'application/json'
+      }
+    }).then((res)=>{
+      if(res.status === 200 || res.status === 201){
+        toast.success(res.data);
+        setSelectedResourceIds([]);
+        fetchEstimatedResources();
+      }
+    }).catch((err)=>{
+      if(err.response.status === 401){
+        navigate('/login');
+      }else{
+        toast.error(err.response.data.message);
+      }
+    })
+  }
   return (
     <div className='container-fluid min-vh-100'>
+      
       <div className='ms-3 d-flex justify-content-between align-items-center mb-4'>
         <div className='fw-bold text-start'>
           <ArrowLeft size={20} onClick={() => window.history.back()} style={{ cursor: 'pointer' }} />
@@ -105,6 +132,7 @@ function ResourceAdding() {
           <button className="btn import-button" onClick={openModal}><Plus size={20} /><span className="ms-2">Add Resource</span></button>
         </div>
       </div>
+
       <div className='bg-white rounded-3 ms-3 me-3 p-4' style={{ border: '1px solid #0051973D' }}>
         <div className="row g-2 mb-2 ms-3">
           <div className="col-lg-6 col-md-4">
@@ -127,17 +155,17 @@ function ResourceAdding() {
           </div>
         </div>
       </div>
-      
-        <div className="bg-white rounded-3 ms-3 me-3 p-4 mt-4" style={{ border: '1px solid #0051973D' }}>
-          <div className="text-start d-flex justify-content-between align-items-center pb-3" style={{ borderBottom: '1px solid #0051973D' }}>
-            <h6>Resource Details</h6>
-            <div className="d-flex align-items-center">
-              <button className="btn action-button me-2" onClick={handleCopyResources}><Copy size={20} /><span className="ms-2">Copy</span></button>
-              <button className="btn action-button me-2"><ClipboardPasteIcon size={20} /><span className="ms-2">Paste</span></button>
-            </div>
+
+      <div className="bg-white rounded-3 ms-3 me-3 p-4 mt-4" style={{ border: '1px solid #0051973D' }}>
+        <div className="text-start d-flex justify-content-between align-items-center pb-3" style={{ borderBottom: '1px solid #0051973D' }}>
+          <h6>Resource Details</h6>
+          <div className="d-flex align-items-center">
+            <button className="btn action-button me-2" onClick={handleCopyResources}><Copy size={20} /><span className="ms-2">Copy</span></button>
+            <button className="btn action-button me-2" onClick={handlePasteResources}><ClipboardPasteIcon size={20} /><span className="ms-2">Paste</span></button>
           </div>
-          {estimatedResources?.length > 0 ? (
-            <div className="mt-4">
+        </div>
+        {estimatedResources?.length > 0 ? (
+          <div className="mt-4">
             <table className="table activity-table">
               <thead>
                 <tr>
@@ -186,9 +214,9 @@ function ResourceAdding() {
               </tbody>
             </table>
           </div>
-          ) : (<div className='mt-4'>No Content Available</div>)}
-        </div>
-      
+        ) : (<div className='mt-4'>No Content Available</div>)}
+      </div>
+
       <ResourceModal
         showModal={showResourceAdding}
         setShowModal={setShowResourceAdding}

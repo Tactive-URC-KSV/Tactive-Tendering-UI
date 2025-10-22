@@ -8,7 +8,7 @@ import Indirectcost from '../assest/IndirectCost.svg?react';
 import Profit from '../assest/Profit.svg?react';
 import CollapseIcon from '../assest/Collapse.svg?react';
 import ExpandIcon from '../assest/Expand.svg?react';
-import { FolderTree, Eye, ChevronRight } from "lucide-react";
+import { FolderTree, Eye, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const handleUnauthorized = () => {
@@ -239,90 +239,344 @@ function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon,
 
 function BOQView({ boq }) {
   const [boqTree, setBoqTree] = useState([]);
+  const [expandedDivisions, setExpandedDivisions] = useState({});
+
   useEffect(() => {
     if (Array.isArray(boq) && boq.length > 0) {
       const boqMap = new Map();
       boq.forEach((item) => {
-        boqMap.set(item.id, { ...item, children: [] });
+        boqMap.set(item.boqCode, { ...item, children: [] });
       });
 
       const roots = [];
       boq.forEach((item) => {
-        if (item.parentBOQ?.id && boqMap.has(item.parentBOQ?.id)) {
-          boqMap.get(item.parentBOQ?.id).children.push(boqMap.get(item.id));
-        } else if (item.level === 1) {
-          roots.push(boqMap.get(item.id));
+        const parts = item.boqCode.split(".");
+        if (parts.length === 1) {
+          roots.push(boqMap.get(item.boqCode));
+        } else {
+          const parentCode = parts.slice(0, -1).join(".");
+          if (boqMap.has(parentCode)) {
+            boqMap.get(parentCode).children.push(boqMap.get(item.boqCode));
+          }
         }
       });
 
       setBoqTree(roots);
+    } else {
+      setBoqTree([]);
     }
   }, [boq]);
 
-  const BOQRow = ({ item, level = 0 }) => {
-    const [expanded, setExpanded] = useState(false);
+  const toggleDivision = (id) => {
+    setExpandedDivisions((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const BOQRow = ({ item, level = 0, isLastRow = false }) => {
     const hasChildren = item.children && item.children.length > 0;
+    const borderStyle = isLastRow ? "none" : "1px solid #0051973D";
 
     return (
       <>
-        <tr className="border-b border-gray-200">
-          <td className="py-2 px-4">
-            <div
-              className="flex items-center cursor-pointer"
-              style={{ paddingLeft: `${level * 20}px` }}
-              onClick={() => hasChildren && setExpanded(!expanded)}
-            >
-              {hasChildren && (
-                <span className="mr-2 text-gray-600">
-                  {expanded ? "▼" : "▶"}
-                </span>
-              )}
-              <span>{item.boqName}</span>
-            </div>
+        <tr>
+          <td
+            className="text-center"
+            style={{
+              paddingLeft: `${level * 20}px`,
+              borderBottom: borderStyle,
+              padding: "20px 10px",
+            }}
+          >
+            <input
+              type="checkbox"
+              style={{
+                width: "16px",
+                height: "16px",
+                border: "2px solid #005197",
+                borderRadius: "3px",
+                appearance: "none",
+                cursor: "pointer",
+                position: "relative",
+              }}
+            />
           </td>
-          <td className="py-2 px-4 text-right">{item.quantity ?? "-"}</td>
-          <td className="py-2 px-4">{item.uom ?? "-"}</td>
-          <td className="py-2 px-4 text-right">{item.totalRate ?? "-"}</td>
-          <td className="py-2 px-4 text-right">{item.totalAmount ?? "-"}</td>
+
+          <td style={{ borderBottom: borderStyle, padding: "20px 10px" }}>
+            {item.boqName}
+          </td>
+
+          <td
+            className="text-end"
+            style={{ borderBottom: borderStyle, padding: "20px 10px" }}
+          >
+            {item.quantity ?? "-"}
+          </td>
+
+          <td style={{ borderBottom: borderStyle, padding: "20px 10px" }}>
+            {item.uom?.uomCode ?? "-"}
+          </td>
+
+          <td
+            className="text-end"
+            style={{ borderBottom: borderStyle, padding: "20px 10px" }}
+          >
+            {item.totalRate ?? "-"}
+          </td>
+
+          <td
+            className="text-end"
+            style={{ borderBottom: borderStyle, padding: "20px 10px" }}
+          >
+            {item.totalAmount ?? "-"}
+          </td>
         </tr>
 
-        {expanded &&
-          hasChildren &&
-          item.children.map((child) => (
-            <BOQRow key={child.id} item={child} level={level + 1} />
+        {hasChildren &&
+          item.children.map((child, idx) => (
+            <BOQRow
+              key={child.id}
+              item={child}
+              level={level + 1}
+              isLastRow={isLastRow && idx === item.children.length - 1}
+            />
           ))}
       </>
     );
   };
 
+  const renderInnerChildren = (children, isLastRow = false) => {
+    return children.map((child, idx) => {
+      const last = idx === children.length - 1 && isLastRow;
+      if (child.children && child.children.length > 0) {
+        return renderInnerChildren(child.children, last);
+      } else {
+        return (
+          <BOQRow key={child.id} item={child} level={0} isLastRow={last} />
+        );
+      }
+    });
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 mt-4">
-      <h4 className="font-semibold mb-3 text-start">BOQ Structure</h4>
-      <table className="w-full border-collapse">
-        <thead className="bg-gray-100 text-gray-700">
-          <tr>
-            <th className="py-2 px-4 text-left">BOQ Name</th>
-            <th className="py-2 px-4 text-right">Quantity</th>
-            <th className="py-2 px-4 text-left">UOM</th>
-            <th className="py-2 px-4 text-right">Rate</th>
-            <th className="py-2 px-4 text-right">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {boqTree.length > 0 ? (
-            boqTree.map((item) => <BOQRow key={item.id} item={item} />)
-          ) : (
-            <tr>
-              <td colSpan="5" className="text-center py-4 text-gray-500">
-                No BOQ Data Found
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+    <div
+      className="container p-3"
+      style={{
+        backgroundColor: "#ffffff",
+        borderRadius: "0.5rem",
+        marginTop: "20px",
+      }}
+    >
+      <h5 className="fw-bold mb-3 ps-2" style={{ textAlign: "start" }}>
+        BOQ Categories
+      </h5>
+
+      {boqTree.length > 0 ? (
+        boqTree.map((division) => {
+          const hasChildren = division.children && division.children.length > 0;
+
+          return (
+            <div
+              key={division.id}
+              className="mb-5 p-3 rounded"
+              style={{ backgroundColor: "#EFF6FF" }}
+            >
+              <div
+                className="d-flex flex-column mb-2"
+                onClick={() => hasChildren && toggleDivision(division.id)}
+                style={{ cursor: hasChildren ? "pointer" : "default" }}
+              >
+                <div className="d-flex align-items-center fw-bold text-dark">
+                  {hasChildren && (
+                    <span
+                      className="d-flex align-items-center justify-content-center text-primary"
+                      style={{
+                        width: "25px",
+                        height: "12px",
+                        color: "#2563EB",
+                        marginRight: "12px", 
+                      }}
+                    >
+                      {expandedDivisions[division.id] ? (
+                        <ChevronUp size={32} strokeWidth={2} />
+                      ) : (
+                        <ChevronDown size={32} strokeWidth={2} />
+                      )}
+                    </span>
+                  )}
+
+                  <span className="fw-bold">
+                    {division.boqCode === "A" &&
+                      "A - Division 1 - Site Construction"}
+                    {division.boqCode === "B" && "B - Concrete"}
+                    {division.boqCode === "C" && "Reinforcement Concrete"}
+                    {division.boqCode === "D" && "D - Metals"}
+                    {division.boqCode === "E" && "E - Finishes"}
+                    {["A", "B", "C", "D", "E"].includes(division.boqCode) ===
+                      false && division.boqName}
+                  </span>
+                </div>
+
+                {["A", "B", "C", "D", "E"].includes(division.boqCode) && (
+                  <div
+                    className="text-muted small"
+                    style={{ textAlign: "left", paddingLeft: "2rem" }}
+                  >
+                    BOQ Code: {division.boqCode}
+                  </div>
+                )}
+              </div>
+
+              {expandedDivisions[division.id] && hasChildren && (
+                <div
+                  className="mt-2 p-2"
+                  style={{
+                    backgroundColor: "#ffffff",
+                    borderRadius: "0.5rem",
+                  }}
+                >
+                 {["A", "B", "D", "E"].includes(division.boqCode) &&
+  division.children.map((child) => (
+    <div
+      key={child.id}
+      className="mb-2 text-start"
+      style={{
+        paddingLeft: "10px", 
+      }}
+    >
+      <div className="fw-bold text-dark">
+        {child.boqCode} - {child.boqName}
+      </div>
+      <div
+        className="text-muted small"
+        style={{ paddingLeft: "5px" }} 
+      >
+        BOQ Code: {child.boqCode}
+      </div>
+    </div>
+  ))}
+
+
+                  <table
+                    className="table table-sm mb-0"
+                    style={{
+                      backgroundColor: "#EFF6FF",
+                      borderCollapse: "collapse",
+                    }}
+                  >
+                    <thead>
+                      <tr>
+                        <th
+                          style={{
+                            borderBottom: "2px solid #0051973D",
+                            padding: "20px 10px",
+                          }}
+                          className="text-center"
+                        >
+                          <input
+                            type="checkbox"
+                            style={{
+                              width: "16px",
+                              height: "16px",
+                              border: "2px solid #005197",
+                              borderRadius: "3px",
+                              appearance: "none",
+                              cursor: "pointer",
+                              position: "relative",
+                            }}
+                          />
+                        </th>
+                        <th
+                          style={{
+                            borderBottom: "2px solid #0051973D",
+                            padding: "20px 10px",
+                          }}
+                          className="text-primary"
+                        >
+                          BOQ Name
+                        </th>
+                        <th
+                          style={{
+                            borderBottom: "2px solid #0051973D",
+                            padding: "20px 10px",
+                          }}
+                          className="text-primary text-end"
+                        >
+                          Quantity
+                        </th>
+                        <th
+                          style={{
+                            borderBottom: "2px solid #0051973D",
+                            padding: "20px 10px",
+                          }}
+                          className="text-primary"
+                        >
+                          UOM
+                        </th>
+                        <th
+                          style={{
+                            borderBottom: "2px solid #0051973D",
+                            padding: "20px 10px",
+                          }}
+                          className="text-primary text-end"
+                        >
+                          Rate
+                        </th>
+                        <th
+                          style={{
+                            borderBottom: "2px solid #0051973D",
+                            padding: "20px 10px",
+                          }}
+                          className="text-primary text-end"
+                        >
+                          Amount
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {division.children.map((child, index) => {
+                        const isLastRow =
+                          index === division.children.length - 1;
+
+                        if (division.boqCode === "C") {
+                          return renderInnerChildren(
+                            child.children.length ? child.children : [child],
+                            isLastRow
+                          );
+                        } else {
+                          if (child.children && child.children.length > 0) {
+                            return renderInnerChildren(
+                              child.children,
+                              isLastRow
+                            );
+                          } else {
+                            return (
+                              <BOQRow
+                                key={child.id}
+                                item={child}
+                                level={0}
+                                isLastRow={isLastRow}
+                              />
+                            );
+                          }
+                        }
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        })
+      ) : (
+        <div className="text-center py-4 text-muted">No BOQ Data Found</div>
+      )}
     </div>
   );
 }
+
 
 function TenderEstView({ projectId }) {
     const [project, setProject] = useState();
