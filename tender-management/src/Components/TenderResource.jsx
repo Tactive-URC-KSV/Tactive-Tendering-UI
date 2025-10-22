@@ -110,23 +110,49 @@ function TenderResource() {
     if (selectedResourceIds.length === estimatedResources.length) {
       setSelectedResourceIds([]);
     } else {
-      setSelectedResourceIds(estimatedResources.map(resource => resource.id));
+      setSelectedResourceIds(estimatedResources.map(resource => resource.tenderEstimation.id));
     }
   };
 
   const handleCopyResources = () => {
-    const selectedResources = estimatedResources.filter(resource => selectedResourceIds.includes(resource.id));
+    const selectedResources = estimatedResources.filter(resource =>
+      selectedResourceIds.includes(resource.tenderEstimation.id)
+    );
+
     if (selectedResources.length === 0) {
       toast.warn('No resources selected to copy.');
       return;
     }
+
     try {
-      localStorage.setItem('resource', JSON.stringify(selectedResources));
-      toast.success('Resources copied successfully');
+      const resourceIds = selectedResources.map(resource => resource.tenderEstimation.id);
+      localStorage.setItem('resource', JSON.stringify(resourceIds));
+      toast.success('Resource IDs copied successfully');
     } catch (err) {
-      toast.error('Failed to copy resources.');
+      toast.error('Failed to copy resource IDs.');
     }
   };
+  const handlePasteResources = () => {
+    const resourceIds = JSON.parse(localStorage.getItem('resource'));
+    axios.post(`${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/pasteResourceToCostCode/${costCodeId}`,resourceIds,{
+      headers:{
+        Authorization : `Bearer ${sessionStorage.getItem('token')}`,
+        'Content-Type' : 'application/json'
+      }
+    }).then((res)=>{
+      if(res.status === 200 || res.status === 201){
+        toast.success(res.data);
+        setSelectedResourceIds([]);
+        fetchEstimatedResources();
+      }
+    }).catch((err)=>{
+      if(err.response.status === 401){
+        navigate('/login');
+      }else{
+        toast.error(err.response.data.message);
+      }
+    })
+  }
 
   return (
     <div className="container-fluid min-vh-100">
@@ -207,7 +233,7 @@ function TenderResource() {
           <h6>Resource Details</h6>
           <div className="d-flex align-items-center">
             <button className="btn action-button me-2" onClick={handleCopyResources}><Copy size={20} /><span className="ms-2">Copy</span></button>
-            <button className="btn action-button me-2"><ClipboardPasteIcon size={20} /><span className="ms-2">Paste</span></button>
+            <button className="btn action-button me-2" onClick={handlePasteResources}><ClipboardPasteIcon size={20} /><span className="ms-2">Paste</span></button>
           </div>
         </div>
         {estimatedResources?.length > 0 ? (
@@ -241,16 +267,16 @@ function TenderResource() {
                         type="checkbox"
                         className="form-check-input"
                         style={{ borderColor: '#005197' }}
-                        checked={selectedResourceIds.includes(item.id)}
-                        onChange={() => handleCheckboxChange(item.id)}
+                        checked={selectedResourceIds.includes(item.tenderEstimation.id)}
+                        onChange={() => handleCheckboxChange(item.tenderEstimation.id)}
                       />
                     </td>
-                    <td>{item.resourceType.resourceTypeName}</td>
-                    <td>{item.resource.resourceName}</td>
-                    <td>{item.uom.uomCode}</td>
-                    <td>{(item.netQuantity).toFixed(3)}</td>
-                    <td>{(item.costUnitRate).toFixed(2)}</td>
-                    <td>{(item.totalCostCompanyCurrency).toFixed(2)}</td>
+                    <td>{item.tenderEstimation.resourceType.resourceTypeName}</td>
+                    <td>{item.tenderEstimation.resource.resourceName}</td>
+                    <td>{item.tenderEstimation.uom.uomCode}</td>
+                    <td>{(item.costDetails.netQuantity).toFixed(3)}</td>
+                    <td>{(item.costDetails.costUnitRate).toFixed(2)}</td>
+                    <td>{(item.costDetails.totalCostCompanyCurrency).toFixed(2)}</td>
                     <td>
                       <EditIcon size={20} color="#005197" className="me-2" style={{ cursor: 'pointer' }} />
                       <Trash2 size={20} color="red" className="me-2" style={{ cursor: 'pointer' }} />
