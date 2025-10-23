@@ -8,7 +8,7 @@ import Indirectcost from '../assest/IndirectCost.svg?react';
 import Profit from '../assest/Profit.svg?react';
 import CollapseIcon from '../assest/Collapse.svg?react';
 import ExpandIcon from '../assest/Expand.svg?react';
-import { FolderTree, Eye, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
+import { FolderTree, Eye, ChevronRight, ChevronUp, ChevronDown, Search, Percent } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const handleUnauthorized = () => {
@@ -237,15 +237,22 @@ function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon,
     );
 }
 
+
 function BOQView({ boq }) {
   const [boqTree, setBoqTree] = useState([]);
   const [expandedDivisions, setExpandedDivisions] = useState({});
+  const [checkedRows, setCheckedRows] = useState({});
 
   useEffect(() => {
     if (Array.isArray(boq) && boq.length > 0) {
       const boqMap = new Map();
+
       boq.forEach((item) => {
-        boqMap.set(item.boqCode, { ...item, children: [] });
+        boqMap.set(item.boqCode, {
+          ...item,
+          id: item.id || item.boqCode,
+          children: [],
+        });
       });
 
       const roots = [];
@@ -274,11 +281,46 @@ function BOQView({ boq }) {
     }));
   };
 
-  const BOQRow = ({ item, level = 0, isLastRow = false }) => {
+  const handleRowCheck = (id, checked, parentDivision = null) => {
+    setCheckedRows((prev) => {
+      const updated = { ...prev, [id]: checked };
+
+      if (parentDivision) {
+        const allChecked = parentDivision.children.every(
+          (child) => updated[child.id]
+        );
+        updated[parentDivision.id] = allChecked;
+      }
+
+      return updated;
+    });
+  };
+
+  const handleHeadCheck = (division, checked) => {
+    const updates = {};
+    const markChildren = (children) => {
+      children.forEach((child) => {
+        updates[child.id] = checked;
+        if (child.children && child.children.length > 0) {
+          markChildren(child.children);
+        }
+      });
+    };
+    markChildren(division.children);
+    updates[division.id] = checked;
+
+    setCheckedRows((prev) => ({
+      ...prev,
+      ...updates,
+    }));
+  };
+
+  const BOQRow = ({ item, level = 0, isLastRow = false, parentDivision = null }) => {
     const hasChildren = item.children && item.children.length > 0;
     const borderStyle = isLastRow ? "none" : "1px solid #0051973D";
 
     return (
+        
       <>
         <tr>
           <td
@@ -291,15 +333,10 @@ function BOQView({ boq }) {
           >
             <input
               type="checkbox"
-              style={{
-                width: "16px",
-                height: "16px",
-                border: "2px solid #005197",
-                borderRadius: "3px",
-                appearance: "none",
-                cursor: "pointer",
-                position: "relative",
-              }}
+              className={`form-check-input border-primary ${checkedRows[item.id] ? "bg-primary" : ""}`}
+              style={{ width: "16px", height: "16px", cursor: "pointer" }}
+              checked={!!checkedRows[item.id]}
+              onChange={(e) => handleRowCheck(item.id, e.target.checked, parentDivision)}
             />
           </td>
 
@@ -307,10 +344,7 @@ function BOQView({ boq }) {
             {item.boqName}
           </td>
 
-          <td
-            className="text-end"
-            style={{ borderBottom: borderStyle, padding: "20px 10px" }}
-          >
+          <td className="text-end" style={{ borderBottom: borderStyle, padding: "20px 10px" }}>
             {item.quantity ?? "-"}
           </td>
 
@@ -318,17 +352,11 @@ function BOQView({ boq }) {
             {item.uom?.uomCode ?? "-"}
           </td>
 
-          <td
-            className="text-end"
-            style={{ borderBottom: borderStyle, padding: "20px 10px" }}
-          >
+          <td className="text-end" style={{ borderBottom: borderStyle, padding: "20px 10px" }}>
             {item.totalRate ?? "-"}
           </td>
 
-          <td
-            className="text-end"
-            style={{ borderBottom: borderStyle, padding: "20px 10px" }}
-          >
+          <td className="text-end" style={{ borderBottom: borderStyle, padding: "20px 10px" }}>
             {item.totalAmount ?? "-"}
           </td>
         </tr>
@@ -340,227 +368,113 @@ function BOQView({ boq }) {
               item={child}
               level={level + 1}
               isLastRow={isLastRow && idx === item.children.length - 1}
+              parentDivision={item} 
             />
           ))}
       </>
     );
   };
 
-  const renderInnerChildren = (children, isLastRow = false) => {
+  const renderInnerChildren = (children, parentDivision, isLastRow = false) => {
     return children.map((child, idx) => {
       const last = idx === children.length - 1 && isLastRow;
       if (child.children && child.children.length > 0) {
-        return renderInnerChildren(child.children, last);
+        return renderInnerChildren(child.children, child, last);
       } else {
-        return (
-          <BOQRow key={child.id} item={child} level={0} isLastRow={last} />
-        );
+        return <BOQRow key={child.id} item={child} level={0} isLastRow={last} parentDivision={parentDivision} />;
       }
     });
   };
 
   return (
-    <div
-      className="container p-3"
-      style={{
-        backgroundColor: "#ffffff",
-        borderRadius: "0.5rem",
-        marginTop: "20px",
-      }}
-    >
-      <h5 className="fw-bold mb-3 ps-2" style={{ textAlign: "start" }}>
-        BOQ Categories
-      </h5>
+    <div className="container p-3" style={{ backgroundColor: "#ffffff", borderRadius: "0.5rem", marginTop: "20px", border: "1px solid #0051973D" }}>
+      <>
+        <style>{`
+            input::placeholder {
+              color: #005197B0 !important;
+              opacity: 1;
+            }
+          `}</style>
+
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <h5 className="fw-bold mb-0">BOQ Categories</h5>
+
+          <div className="d-flex align-items-center position-relative" style={{ transform: "translateX(-10px)" }}>
+            <Search size={16} strokeWidth={2} color="#00519766" className="position-absolute" style={{ left: "10px", top: "50%", transform: "translateY(-50%)", height: "20px" }} />
+            <input type="text" className="form-control" placeholder="Search BOQ items" style={{ paddingLeft: "30px", borderColor: "#0051973D", color: "#005197", boxShadow: "none", outline: "none", height: "50px", width: "350px" }} />
+
+            <button type="button" className="btn text-white fw-bold ms-4" style={{ backgroundColor: "#005197", height: "50px", width: "144px", borderRadius: "10px" }}>
+              <Percent size={24} className="me-2" /> Set Profit
+            </button>
+          </div>
+        </div>
+      </>
 
       {boqTree.length > 0 ? (
         boqTree.map((division) => {
           const hasChildren = division.children && division.children.length > 0;
 
           return (
-            <div
-              key={division.id}
-              className="mb-5 p-3 rounded"
-              style={{ backgroundColor: "#EFF6FF" }}
-            >
-              <div
-                className="d-flex flex-column mb-2"
-                onClick={() => hasChildren && toggleDivision(division.id)}
-                style={{ cursor: hasChildren ? "pointer" : "default" }}
-              >
+            <div key={division.id} className="mb-5 p-3 rounded" style={{ backgroundColor: "#EFF6FF" }}>
+              <div className="d-flex flex-column mb-2" onClick={() => hasChildren && toggleDivision(division.id)} style={{ cursor: hasChildren ? "pointer" : "default" }}>
                 <div className="d-flex align-items-center fw-bold text-dark">
                   {hasChildren && (
-                    <span
-                      className="d-flex align-items-center justify-content-center text-primary"
-                      style={{
-                        width: "25px",
-                        height: "12px",
-                        color: "#2563EB",
-                        marginRight: "12px", 
-                      }}
-                    >
-                      {expandedDivisions[division.id] ? (
-                        <ChevronUp size={32} strokeWidth={2} />
-                      ) : (
-                        <ChevronDown size={32} strokeWidth={2} />
-                      )}
+                    <span className="d-flex align-items-center justify-content-center text-primary" style={{ width: "25px", height: "12px", color: "#2563EB", marginRight: "12px" }}>
+                      {expandedDivisions[division.id] ? <ChevronUp size={32} strokeWidth={2} /> : <ChevronDown size={32} strokeWidth={2} />}
                     </span>
                   )}
-
                   <span className="fw-bold">
-                    {division.boqCode === "A" &&
-                      "A - Division 1 - Site Construction"}
+                    {division.boqCode === "A" && "A - Division 1 - Site Construction"}
                     {division.boqCode === "B" && "B - Concrete"}
                     {division.boqCode === "C" && "Reinforcement Concrete"}
                     {division.boqCode === "D" && "D - Metals"}
                     {division.boqCode === "E" && "E - Finishes"}
-                    {["A", "B", "C", "D", "E"].includes(division.boqCode) ===
-                      false && division.boqName}
+                    {["A", "B", "C", "D", "E"].includes(division.boqCode) === false && division.boqName}
                   </span>
                 </div>
 
                 {["A", "B", "C", "D", "E"].includes(division.boqCode) && (
-                  <div
-                    className="text-muted small"
-                    style={{ textAlign: "left", paddingLeft: "2rem" }}
-                  >
-                    BOQ Code: {division.boqCode}
-                  </div>
+                  <div className="text-muted small" style={{ textAlign: "left", paddingLeft: "2rem" }}>BOQ Code: {division.boqCode}</div>
                 )}
               </div>
 
               {expandedDivisions[division.id] && hasChildren && (
-                <div
-                  className="mt-2 p-2"
-                  style={{
-                    backgroundColor: "#ffffff",
-                    borderRadius: "0.5rem",
-                  }}
-                >
-                 {["A", "B", "D", "E"].includes(division.boqCode) &&
-  division.children.map((child) => (
-    <div
-      key={child.id}
-      className="mb-2 text-start"
-      style={{
-        paddingLeft: "10px", 
-      }}
-    >
-      <div className="fw-bold text-dark">
-        {child.boqCode} - {child.boqName}
-      </div>
-      <div
-        className="text-muted small"
-        style={{ paddingLeft: "5px" }} 
-      >
-        BOQ Code: {child.boqCode}
-      </div>
-    </div>
-  ))}
+                <div className="mt-2 p-2" style={{ backgroundColor: "#ffffff", borderRadius: "0.5rem" }}>
+                  {["A", "B", "D", "E"].includes(division.boqCode) &&
+                    division.children.map((child) => (
+                      <div key={child.id} className="mb-2 text-start" style={{ paddingLeft: "10px" }}>
+                        <div className="fw-bold text-dark">{child.boqCode} - {child.boqName}</div>
+                        <div className="text-muted small" style={{ paddingLeft: "5px" }}>BOQ Code: {child.boqCode}</div>
+                      </div>
+                    ))}
 
-
-                  <table
-                    className="table table-sm mb-0"
-                    style={{
-                      backgroundColor: "#EFF6FF",
-                      borderCollapse: "collapse",
-                    }}
-                  >
+                  <table className="table table-sm mb-0" style={{ backgroundColor: "#EFF6FF", borderCollapse: "collapse" }}>
                     <thead>
                       <tr>
-                        <th
-                          style={{
-                            borderBottom: "2px solid #0051973D",
-                            padding: "20px 10px",
-                          }}
-                          className="text-center"
-                        >
+                        <th className="text-center" style={{ borderBottom: "2px solid #0051973D", padding: "20px 10px" }}>
                           <input
                             type="checkbox"
-                            style={{
-                              width: "16px",
-                              height: "16px",
-                              border: "2px solid #005197",
-                              borderRadius: "3px",
-                              appearance: "none",
-                              cursor: "pointer",
-                              position: "relative",
-                            }}
+                            className={`form-check-input border-primary ${division.children.every(c => checkedRows[c.id]) ? "bg-primary" : ""}`}
+                            style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                            checked={division.children.every(c => checkedRows[c.id])}
+                            onChange={(e) => handleHeadCheck(division, e.target.checked)}
                           />
                         </th>
-                        <th
-                          style={{
-                            borderBottom: "2px solid #0051973D",
-                            padding: "20px 10px",
-                          }}
-                          className="text-primary"
-                        >
-                          BOQ Name
-                        </th>
-                        <th
-                          style={{
-                            borderBottom: "2px solid #0051973D",
-                            padding: "20px 10px",
-                          }}
-                          className="text-primary text-end"
-                        >
-                          Quantity
-                        </th>
-                        <th
-                          style={{
-                            borderBottom: "2px solid #0051973D",
-                            padding: "20px 10px",
-                          }}
-                          className="text-primary"
-                        >
-                          UOM
-                        </th>
-                        <th
-                          style={{
-                            borderBottom: "2px solid #0051973D",
-                            padding: "20px 10px",
-                          }}
-                          className="text-primary text-end"
-                        >
-                          Rate
-                        </th>
-                        <th
-                          style={{
-                            borderBottom: "2px solid #0051973D",
-                            padding: "20px 10px",
-                          }}
-                          className="text-primary text-end"
-                        >
-                          Amount
-                        </th>
+                        <th className="text-primary" style={{ borderBottom: "2px solid #0051973D", padding: "20px 10px" }}>BOQ Name</th>
+                        <th className="text-primary text-end" style={{ borderBottom: "2px solid #0051973D", padding: "20px 10px" }}>Quantity</th>
+                        <th className="text-primary" style={{ borderBottom: "2px solid #0051973D", padding: "20px 10px" }}>UOM</th>
+                        <th className="text-primary text-end" style={{ borderBottom: "2px solid #0051973D", padding: "20px 10px" }}>Rate</th>
+                        <th className="text-primary text-end" style={{ borderBottom: "2px solid #0051973D", padding: "20px 10px" }}>Amount</th>
                       </tr>
                     </thead>
 
                     <tbody>
                       {division.children.map((child, index) => {
-                        const isLastRow =
-                          index === division.children.length - 1;
-
-                        if (division.boqCode === "C") {
-                          return renderInnerChildren(
-                            child.children.length ? child.children : [child],
-                            isLastRow
-                          );
+                        const isLastRow = index === division.children.length - 1;
+                        if (child.children && child.children.length > 0) {
+                          return renderInnerChildren(child.children, child, isLastRow);
                         } else {
-                          if (child.children && child.children.length > 0) {
-                            return renderInnerChildren(
-                              child.children,
-                              isLastRow
-                            );
-                          } else {
-                            return (
-                              <BOQRow
-                                key={child.id}
-                                item={child}
-                                level={0}
-                                isLastRow={isLastRow}
-                              />
-                            );
-                          }
+                          return <BOQRow key={child.id} item={child} level={0} isLastRow={isLastRow} parentDivision={division} />;
                         }
                       })}
                     </tbody>
@@ -576,6 +490,7 @@ function BOQView({ boq }) {
     </div>
   );
 }
+
 
 
 function TenderEstView({ projectId }) {
