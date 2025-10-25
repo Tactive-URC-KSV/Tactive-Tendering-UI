@@ -653,3 +653,13 @@ label {
   box-shadow: none;
   text-align: left !important;
 }
+.table-responsive::-webkit-scrollbar{
+  height: 8px !important;
+}
+.table-responsive::-webkit-scrollbar-track{
+  border-radius: 10px !important;
+}
+.table-responsive::-webkit-scrollbar-thumb{
+  border-radius: 10px !important;
+  background-color: #0051973D !important;
+}

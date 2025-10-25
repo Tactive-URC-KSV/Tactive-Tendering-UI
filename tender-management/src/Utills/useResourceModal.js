@@ -38,7 +38,7 @@ const useResourceModal = (isGlobal = false, id, idType) => {
     currencyId: '',
     resourceId: '',
     costCodeActivityId: '',
-    activityGroupId: '', 
+    activityGroupId: '',
     projectId: isGlobal ? '' : projectId,
   });
 
@@ -309,127 +309,125 @@ const useResourceModal = (isGlobal = false, id, idType) => {
   };
 
   const handleAddResource = () => {
-  // Validate mandatory fields
-  if (!resourceData.resourceTypeId) {
-    toast.error('Please select a Resource Type.');
-    return;
-  }
-  if (!resourceData.resourceNatureId) {
-    toast.error('Please select a Nature.');
-    return;
-  }
-  if (!resourceData.resourceId) {
-    toast.error('Please select a Resource Name.');
-    return;
-  }
-  if (!resourceData.uomId) {
-    toast.error('Please select a UOM.');
-    return;
-  }
-  if (!resourceData.quantityTypeId) {
-    toast.error('Please select a Quantity Type.');
-    return;
-  }
-  if (!resourceData.coEfficient && resourceData.coEfficient !== 0) {
-    toast.error('Please enter a Co-Efficient.');
-    return;
-  }
-  if (!resourceData.calculatedQuantity && resourceData.calculatedQuantity !== 0) {
-    toast.error('Calculated Quantity is required.');
-    return;
-  }
-  if (!resourceData.netQuantity && resourceData.netQuantity !== 0) {
-    toast.error('Net Quantity is required.');
-    return;
-  }
-  if (!resourceData.rate && resourceData.rate !== 0) {
-    toast.error('Please enter a Rate.');
-    return;
-  }
-  if (!resourceData.currencyId) {
-    toast.error('Please select a Currency.');
-    return;
-  }
-  if (!resourceData.exchangeRate && resourceData.exchangeRate !== 0) {
-    toast.error('Please enter an Exchange Rate.');
-    return;
-  }
-  if (!resourceData.costUnitRate && resourceData.costUnitRate !== 0) {
-    toast.error('Cost Unit Rate is required.');
-    return;
-  }
-  if (!resourceData.resourceTotalCost && resourceData.resourceTotalCost !== 0) {
-    toast.error('Resource Total Cost is required.');
-    return;
-  }
-  if (!resourceData.totalCostCompanyCurrency && resourceData.totalCostCompanyCurrency !== 0) {
-    toast.error('Resource Total Cost (Company Currency) is required.');
-    return;
-  }
-  if (resourceData.rateLock === undefined) {
-    toast.error('Rate Lock is required.');
-    return;
-  }
-  if (idType === 'activityGroup' && !resourceData.activityGroupId.length) {
-    toast.error('Please associate at least one activity group.');
-    return;
-  }
+    const dataToSend = {
+      ...resourceData,
+      costCodeActivityId: idType === 'costCode' ? resourceData.costCodeActivityId : '',
+      activityGroupId: idType === 'activityGroup' ? resourceData.activityGroupId : '',
+    };
+    if (!resourceData.resourceTypeId) {
+      toast.error('Please select a Resource Type.');
+      return;
+    }
+    if (!resourceData.resourceNatureId) {
+      toast.error('Please select a Nature.');
+      return;
+    }
+    if (!resourceData.resourceId) {
+      toast.error('Please select a Resource Name.');
+      return;
+    }
+    if (!resourceData.uomId) {
+      toast.error('Please select a UOM.');
+      return;
+    }
+    if (!resourceData.quantityTypeId) {
+      toast.error('Please select a Quantity Type.');
+      return;
+    }
+    if (!resourceData.coEfficient && resourceData.coEfficient !== 0) {
+      toast.error('Please enter a Co-Efficient.');
+      return;
+    }
+    if (!resourceData.calculatedQuantity && resourceData.calculatedQuantity !== 0) {
+      toast.error('Calculated Quantity is required.');
+      return;
+    }
+    if (!resourceData.netQuantity && resourceData.netQuantity !== 0) {
+      toast.error('Net Quantity is required.');
+      return;
+    }
+    if (!resourceData.rate && resourceData.rate !== 0) {
+      toast.error('Please enter a Rate.');
+      return;
+    }
+    if (!resourceData.currencyId) {
+      toast.error('Please select a Currency.');
+      return;
+    }
+    if (!resourceData.exchangeRate && resourceData.exchangeRate !== 0) {
+      toast.error('Please enter an Exchange Rate.');
+      return;
+    }
+    if (!resourceData.costUnitRate && resourceData.costUnitRate !== 0) {
+      toast.error('Cost Unit Rate is required.');
+      return;
+    }
+    if (!resourceData.resourceTotalCost && resourceData.resourceTotalCost !== 0) {
+      toast.error('Resource Total Cost is required.');
+      return;
+    }
+    if (!resourceData.totalCostCompanyCurrency && resourceData.totalCostCompanyCurrency !== 0) {
+      toast.error('Resource Total Cost (Company Currency) is required.');
+      return;
+    }
+    if (resourceData.rateLock === undefined) {
+      toast.error('Rate Lock is required.');
+      return;
+    }
+    if (idType === 'activityGroup' && !resourceData.activityGroupId.length) {
+      toast.error('Please associate at least one activity group.');
+      return;
+    }
 
-  const dataToSend = {
-    ...resourceData,
-    costCodeActivityId: idType === 'costCode' ? resourceData.costCodeActivityId : '',
-    activityGroupId: idType === 'activityGroup' ? resourceData.activityGroupId : '',
+    axios
+      .post(`${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/addResources`, dataToSend, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      .then((res) => {
+        if (res.status === 200 || res.status === 201) {
+          toast.success(res?.data?.message || 'Resource added successfully.');
+          setShowResourceAdding(false);
+          setResourceData({
+            id: '',
+            docNumber: `DOC${Date.now()}`,
+            coEfficient: 1,
+            calculatedQuantity: 0,
+            wastePercentage: 0,
+            wasteQuantity: 0,
+            netQuantity: 0,
+            rate: 0,
+            additionalRate: 0,
+            shippingPrice: 0,
+            costUnitRate: 0,
+            resourceTotalCost: 0,
+            rateLock: false,
+            totalCostCompanyCurrency: 0,
+            exchangeRate: '',
+            resourceTypeId: '',
+            quantityTypeId: '',
+            resourceNatureId: '',
+            uomId: '',
+            currencyId: '',
+            resourceId: '',
+            costCodeActivityId: [],
+            activityGroupId: [],
+            projectId: isGlobal ? '' : projectId,
+          });
+        }
+      })
+      .catch((err) => {
+        if (err?.response?.status === 401) {
+          handleUnauthorized();
+        } else {
+          toast.error(err?.response?.data?.message || 'Failed to add resource.');
+        }
+      }).finally(() => {
+        fetchEstimatedResources();
+      });
   };
-
-  axios
-    .post(`${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/addResources`, dataToSend, {
-      headers: {
-        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-        'Content-Type': 'application/json',
-      },
-    })
-    .then((res) => {
-      if (res.status === 200 || res.status === 201) {
-        toast.success(res?.data?.message || 'Resource added successfully.');
-        setShowResourceAdding(false);
-        setResourceData({
-          id: '',
-          docNumber: `DOC${Date.now()}`,
-          coEfficient: 1,
-          calculatedQuantity: 0,
-          wastePercentage: 0,
-          wasteQuantity: 0,
-          netQuantity: 0,
-          rate: 0,
-          additionalRate: 0,
-          shippingPrice: 0,
-          costUnitRate: 0,
-          resourceTotalCost: 0,
-          rateLock: false,
-          totalCostCompanyCurrency: 0,
-          exchangeRate: '',
-          resourceTypeId: '',
-          quantityTypeId: '',
-          resourceNatureId: '',
-          uomId: '',
-          currencyId: '',
-          resourceId: '',
-          costCodeActivityId: [],
-          activityGroupId: [],
-          projectId: isGlobal ? '' : projectId,
-        });
-      }
-    })
-    .catch((err) => {
-      if (err?.response?.status === 401) {
-        handleUnauthorized();
-      } else {
-        toast.error(err?.response?.data?.message || 'Failed to add resource.');
-      }
-    }).finally(() => {
-      fetchEstimatedResources();
-    });
-};
 
   const openModal = () => {
     setShowResourceAdding(true);
