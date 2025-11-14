@@ -54,24 +54,24 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [fileType, setFileType] = useState('')
 
    const [internalFields, setInternalFields] = useState([
+      // { fields: 'slno', mappingFields: '', importance: 'Optional', label: 'S.No' },
       { fields: 'boqCode', mappingFields: '', importance: 'Required', label: 'BOQ Code' },
       { fields: 'boqName', mappingFields: '', importance: 'Required', label: 'BOQ Name' },
       { fields: 'uom', mappingFields: '', importance: 'Required', label: 'UOM' },
-      { fields: 'level', mappingFields: '', importance: 'Required', label: 'Level' },
+      // { fields: 'level', mappingFields: '', importance: 'Required', label: 'Level' },
       { fields: 'quantity', mappingFields: '', importance: 'Required', label: 'Quantity' },
-      { fields: 'slno', mappingFields: '', importance: 'Optional', label: 'S.No' },
-      { fields: 'parentLevel', mappingFields: '', importance: 'Optional', label: 'Parent Level' },
-      { fields: 'installationRate', mappingFields: '', importance: 'Optional', label: 'Installation Rate' },
-      { fields: 'supplyRate', mappingFields: '', importance: 'Optional', label: 'Supply Rate' },
-      { fields: 'totalRate', mappingFields: '', importance: 'Optional', label: 'Total Rate' },
-      { fields: 'installationAmount', mappingFields: '', importance: 'Optional', label: 'Installation Amount' },
-      { fields: 'supplyAmount', mappingFields: '', importance: 'Optional', label: 'Supply Amount' },
-      { fields: 'totalAmount', mappingFields: '', importance: 'Optional', label: 'Total Amount' },
-      { fields: 'lastLevel', mappingFields: '', importance: 'Optional', label: 'Last Level' },
-      { fields: 'rateOnly', mappingFields: '', importance: 'Optional', label: 'Rate Only' },
-      { fields: 'remarks', mappingFields: '', importance: 'Optional', label: 'Remarks' },
-      { fields: 'qtyType', mappingFields: '', importance: 'Optional', label: 'Quantity type' },
-      { fields: 'wo', mappingFields: '', importance: 'Optional', label: 'Wo' },
+      // { fields: 'parentLevel', mappingFields: '', importance: 'Optional', label: 'Parent Level' },
+      // { fields: 'installationRate', mappingFields: '', importance: 'Optional', label: 'Installation Rate' },
+      // { fields: 'supplyRate', mappingFields: '', importance: 'Optional', label: 'Supply Rate' },
+      // { fields: 'totalRate', mappingFields: '', importance: 'Optional', label: 'Total Rate' },
+      // { fields: 'installationAmount', mappingFields: '', importance: 'Optional', label: 'Installation Amount' },
+      // { fields: 'supplyAmount', mappingFields: '', importance: 'Optional', label: 'Supply Amount' },
+      // { fields: 'totalAmount', mappingFields: '', importance: 'Optional', label: 'Total Amount' },
+      // { fields: 'lastLevel', mappingFields: '', importance: 'Optional', label: 'Last Level' },
+      // { fields: 'rateOnly', mappingFields: '', importance: 'Optional', label: 'Rate Only' },
+      // { fields: 'remarks', mappingFields: '', importance: 'Optional', label: 'Remarks' },
+      // { fields: 'qtyType', mappingFields: '', importance: 'Optional', label: 'Quantity type' },
+      // { fields: 'wo', mappingFields: '', importance: 'Optional', label: 'Wo' },
 
    ]);
 
@@ -116,6 +116,12 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       setSelectedSheet(null);
       setColumns([]);
       setDraggedColumn(null);
+      setInternalFields(prev =>
+         prev.map(f => ({ ...f, mappingFields: '' }))
+      );
+      setSelectedTemplate(null);
+      setFileType('');
+      setSheetOption([]);
    };
 
 
@@ -193,6 +199,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       }, 0);
    };
    const loadTemplate = (templateId) => {
+      if (columns.length === 0 && fileType !== 'pdf' && !selectedSheet) {
+         toast.error("Please select an Excel sheet first to load columns.");
+         setSelectedTemplate(null);
+         return;
+      }
       axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getTemplate/${templateId}`,
          {
             headers: {
@@ -203,20 +214,40 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       ).then(res => {
          if (res.status === 200) {
             const response = res.data;
-            const updated = internalFields.map(field => ({
-               ...field,
-               mappingFields: response.templateMapping[field.fields] || ''
-            }));
-            setInternalFields(updated);
+            const templateMapping = response.templateMapping;
+            const availableColumns = new Set(columns);
+            const mappedColumnNames = Object.values(templateMapping);
+            const allColumnsPresent = mappedColumnNames.every(mappedName =>
+               availableColumns.has(mappedName)
+            );
+            if (!allColumnsPresent) {
+               toast.error("Template mapping failed: The uploaded file is missing one or more columns required by this template.");
+               setSelectedTemplate(null);
+               setInternalFields(prev =>
+                  prev.map(f => ({ ...f, mappingFields: '' }))
+               );
+               return;
+            }
+            const updatedInternalFields = internalFields.map(field => {
+               const mappedColumnName = templateMapping[field.fields];
+
+               return {
+                  ...field,
+                  mappingFields: mappedColumnName || ''
+               };
+            });
+
+            setInternalFields(updatedInternalFields);
+            toast.success("Template applied successfully.");
 
          }
       }).catch(err => {
          if (err?.response?.status === 401) {
             handleUnauthorized();
          }
-      })
+         toast.error("Error loading template.");
+      });
    }
-
    const mapFields = () => {
       setLoading(true);
       const mapping = {};
@@ -351,7 +382,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                            <li>File format (.xlsx, .xls, .pdf)</li>
                            <li>Pdf must contains data in table format</li>
                            <li>First row of excel file should contain column headers</li>
-                           <li>Required columns: BOQ Code, Parent BOQ, Item Description (or) BOQ Name, Unit, Quantity</li>
+                           <li>Required columns: BOQ Code,Item Description (or) BOQ Name, Unit, Quantity</li>
+                           <li>Level 1 BOQ must be either BOQ Code or BOQ Name</li>
+                           <li>Ensured that the BOQ table contains only BOQ-related details</li>
                         </ul>
                      </div>
                   </>

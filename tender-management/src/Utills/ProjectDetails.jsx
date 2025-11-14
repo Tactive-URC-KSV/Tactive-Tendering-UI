@@ -300,12 +300,9 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                     <div className='col-12 text-center mt-2'>
                         Optional Documents
                     </div>
-                    <div className='col-12 text-center mt-2'>
+                    <div className='col-12 text-center mt-2 py-2'>
                         <button className='btn action-button mt-2' onClick={() => { fileInputRef.current.click() }}>Choose File</button>
                         <input type="file" ref={fileInputRef} multiple style={{ display: 'none' }} onChange={handleFileChange} />
-                    </div>
-                    <div className='col-12 text-center mt-4' style={{ fontSize: '12px' }}>
-                        Any format up to 20MB
                     </div>
                     {uploadedFiles.length > 0 && (
                         <div className="mt-3 px-3 text-start">
