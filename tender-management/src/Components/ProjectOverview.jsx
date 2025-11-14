@@ -1,5 +1,5 @@
 import axios from "axios";
-import { ArrowLeft, Check, IndianRupee, X } from "lucide-react";
+import { ArrowLeft, Check, Eye, IndianRupee, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -108,7 +108,7 @@ function ProjectOverview() {
 
         })
     }, [project])
-    
+
 
     if (loading) return <div>Loading...</div>;
     if (error) return <div>{error}</div>;
@@ -147,22 +147,22 @@ function ProjectOverview() {
     const projectEstimationOverview = [
         { label: 'No.Of.Floors', value: project.numberOfFloors || 'N/A', bgColor: '#EFF6FF', color: '#2563EB' },
         { label: 'Total Area', value: project.buildingArea || 'N/A', bgColor: '#F0FDF4', color: '#2BA95A' },
-        { label: 'Rate per Units', value: <><IndianRupee size={14}/>{project.ratePerUnit} </>, bgColor: '#FAF5FF', color: '#9333EA' },
-        { label: 'Estimated value', value: <><IndianRupee size={14}/>{(project.estimatedValue / 1000000).toFixed(2)} M</>, bgColor: '#FFF7ED', color: '#EA580C' },
+        { label: 'Rate per Units', value: <><IndianRupee size={14} />{project.ratePerUnit} </>, bgColor: '#FAF5FF', color: '#9333EA' },
+        { label: 'Estimated value', value: <><IndianRupee size={14} />{(project.estimatedValue / 1000000).toFixed(2)} M</>, bgColor: '#FFF7ED', color: '#EA580C' },
     ];
     const finFeasibility = [
-        { label: 'Selling cost', value: <><IndianRupee size={14}/>{feasbilityStudy?.financialFeasibility?.sellingCost} </>},
-        { label: 'Rental cost', value: <><IndianRupee size={14}/>{(feasbilityStudy?.financialFeasibility?.rentalCost / 1000000).toFixed(2)} M</>},
+        { label: 'Selling cost', value: <><IndianRupee size={14} />{feasbilityStudy?.financialFeasibility?.sellingCost} </> },
+        { label: 'Rental cost', value: <><IndianRupee size={14} />{(feasbilityStudy?.financialFeasibility?.rentalCost / 1000000).toFixed(2)} M</> },
         { label: 'ROI', value: feasbilityStudy?.financialFeasibility?.profitPercentage + ' % IRR in ' + feasbilityStudy?.financialFeasibility?.roiYear + ' years' || 'N/A' },
     ]
-    const handleArchieve = () =>{
+    const handleArchieve = () => {
         axios.delete(`${import.meta.env.VITE_API_BASE_URL}/project/deleteProject/${projectId}`, {
-            headers:{
-                Authorization : `Bearer ${sessionStorage.getItem('token')}`,
-                'Content-Type' : 'application/json'
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
             }
         }).then(res => {
-            if(res.status === 200){
+            if (res.status === 200) {
                 toast.success(res.data);
                 setTimeout(() => {
                     navigate('/dashboard');
@@ -194,7 +194,55 @@ function ProjectOverview() {
             toast.error(err.message);
         })
     }
+    const fetchDocument = async (doc) => {
+        try {
+            const response = await fetch(
+                `${import.meta.env.VITE_API_BASE_URL}/project/approvalDoc/${doc.id}`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+                    },
+                }
+            );
 
+            const buffer = await response.arrayBuffer();
+            if (!response.ok) {
+                const decoder = new TextDecoder("utf-8");
+                const errorText = decoder.decode(buffer).trim();
+                throw new Error(errorText || `HTTP ${response.status}`);
+            }
+            const contentType =
+                response.headers.get("Content-Type") || "application/pdf";
+
+            const blob = new Blob([buffer], { type: contentType });
+            const pathExt = doc.filepath
+                ? doc.filepath.slice(doc.filePath.lastIndexOf(".")).toLowerCase()
+                : "";
+            let baseName = doc.documentName;
+            const disposition = response.headers.get("Content-Disposition");
+            if (disposition) {
+                const match = disposition.match(/filename="?([^"]*)"?.*$/);
+                if (match) baseName = match[1].replace(/\.[^/.]+$/, "");
+            }
+            const finalExt = pathExt || (baseName.includes(".") ? "" : ".pdf");
+            const filename = `${baseName}${finalExt}`;
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+        } catch (error) {
+            console.error("Error downloading document:", error);
+            alert(error.message || "Failed to download document");
+        }
+    };
+    
     return (
         <div className="container-fluid" style={{ fontSize: '14px' }}>
             <div className="row align-items-center mb-4 ">
@@ -295,9 +343,15 @@ function ProjectOverview() {
                         <div className="col-md-6 col-lg-6 mb-2">
                             <p className="text-muted">List of Approvals</p>
                             {approvalDoc?.map((doc, index) => (
-                                <p className="fw-bold mt-1" key={index}>
-                                    {doc.approved ? <DocSuc /> : <DocFail />}
-                                    <span className="ms-2">{doc.documentName}</span></p>
+                                <div key={index} style={{ cursor: 'pointer' }} >
+                                    <p className="fw-bold mt-1">
+                                        {doc.approved ? <DocSuc /> : <DocFail />}
+                                        <span className="ms-2" onClick={() => fetchDocument(doc)}>{doc.documentName}</span>
+                                    </p>
+                                    
+                                   
+                                </div>
+
                             ))}
                         </div>
                         <div className="col-md-6 col-lg-6 mb-2">
@@ -339,10 +393,10 @@ function ProjectOverview() {
                             </div>
                         </div>
 
-                    ): (<div className=" ms-3 text-start mt-4 me-3 mb-3">
-                            <span className="text-muted mb-1">Comments</span><br />
-                            <span className="fw-bold">{feasbilityStudy.comments}</span>
-                        </div>)}
+                    ) : (<div className=" ms-3 text-start mt-4 me-3 mb-3">
+                        <span className="text-muted mb-1">Comments</span><br />
+                        <span className="fw-bold">{feasbilityStudy.comments}</span>
+                    </div>)}
 
                 </div>)
                     : (

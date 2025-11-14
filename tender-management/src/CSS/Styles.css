@@ -312,7 +312,7 @@ label {
   border: none;
   background-color: #005197;
   transition: 0.3s ease;
-  width: 3%;
+  min-width: 3%;
   color: white;
 }
 
@@ -498,7 +498,7 @@ label {
 }
 .parent-boq{
   background-color: #EFF6FF ;
-  border: 1px solid #0051973D;
+  /* border: 0.5px solid #0051973D; */
 }
 .boq-table{
   .boq-header {
@@ -653,7 +653,7 @@ label {
   box-shadow: none;
   text-align: left !important;
 }
-.table-responsive::-webkit-scrollbar{
+/* .table-responsive::-webkit-scrollbar{
   height: 8px !important;
 }
 .table-responsive::-webkit-scrollbar-track{
@@ -662,4 +662,4 @@ label {
 .table-responsive::-webkit-scrollbar-thumb{
   border-radius: 10px !important;
   background-color: #0051973D !important;
-}
+} */
