@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { ArrowLeft, ArrowRight, ChartArea, IndianRupee, Plus, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, IndianRupee, Plus } from 'lucide-react';
 import '../CSS/Styles.css';
 import ActivityView from "../assest/Activity.svg?react";
 import Directcost from '../assest/DirectCost.svg?react';
@@ -8,59 +8,13 @@ import Indirectcost from '../assest/IndirectCost.svg?react';
 import Profit from '../assest/Profit.svg?react';
 import CollapseIcon from '../assest/Collapse.svg?react';
 import ExpandIcon from '../assest/Expand.svg?react';
-import WeightIcon from '../assest/NetAmount.svg?react';
-import { FolderTree, Eye, ChevronRight, ChevronUp, ChevronDown, Percent, Calculator} from "lucide-react";
+import { FolderTree, Eye, ChevronRight, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
+
 
 const handleUnauthorized = () => {
-  const navigate = useNavigate();
-  navigate('/login');
+  window.location.href = '/login';
 }
-
-function ProfitDialog({ isOpen, handleSetProfit, profitPer, setProfitPer, setIsOpen, selectedBoq }) {
-  if (!isOpen) return null;
-  return (
-    <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0, 0, 0, 0.51)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1050 }}>
-      <div className="modal-dialog modal-lg">
-        <div className="modal-content">
-          <div className="modal-header d-flex justify-content-between" style={{ background: 'linear-gradient(to right, #0056b3, #007bff)' }}>
-            <p className="modal-title"><Percent size={20} color="#FFFFFF" /><span className="ms-2 text-white">Set Profit</span></p>
-            <X color="#FFFFFF" size={20} onClick={() => { setIsOpen(false); setProfitPer(0.0) }} style={{ cursor: 'pointer' }} />
-          </div>
-          <div className="modal-body ms-2 me-2">
-            <p className="text-start fw-bold mb-2">Selected BOQ</p>
-            <div className="mb-3" style={{ maxHeight: '150px', overflow: 'auto' }}>
-              {selectedBoq.map((item, index) => (
-                <div key={index} className="mb-1 text-start p-1 rounded-3" style={{ backgroundColor: '#2563EB14' }}>
-                  <span>{item.boqCode + ' - ' + item.boqName}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 mb-3">
-              <label className="text-start d-block fw-bold">
-                Profit Percentage <span style={{ color: 'red' }}>*</span>
-              </label>
-              <input type="text" className="form-input w-100" placeholder="%"
-                value={profitPer}
-                onChange={(e) => setProfitPer(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button type="button" className="btn template-button" onClick={() => setIsOpen(false)}>
-              Cancel
-            </button>
-            <button type="button" className="btn action-button" onClick={handleSetProfit}>
-              Set Profit
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon, activities, projectId }) {
   const navigate = useNavigate();
   const [percentage, setPercentage] = useState({});
@@ -281,400 +235,347 @@ function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon,
     </>
   );
 }
-
-function BOQView({ boq, fetchBoq }) {
-  const [boqTree, setBoqTree] = useState([]);
-  const [expandedDivisions, setExpandedDivisions] = useState({});
-  const [checkedRows, setCheckedRows] = useState({});
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
-  const [profitPer, setProfitPer] = useState(0.0);
-  const [selectedBoq, setSelectedBoq] = useState({});
-  const [serviceTotal, setServiceTotal] = useState(0.0);
-  const [profitTotal, setProfitTotal] = useState(0.0);
-  const [netTotal, setNetTotal] = useState(0.0);
-
-  useEffect(() => {
-    if (!Array.isArray(boq) || boq.length === 0) {
-      setBoqTree([]);
-      return;
-    }
-
-    const map = new Map();
-
-    boq.forEach((item) => {
-      const id = item.id || item.boqCode;
-      map.set(item.boqCode, {
-        ...item,
-        id,
-        children: [],
-      });
-    });
-
-    const roots = [];
-
-    boq.forEach((item) => {
-      const node = map.get(item.boqCode);
-      if (item.parentLevel === 0) {
-        roots.push(node);
-      } else {
-        const parentCode = item.boqCode.split(".").slice(0, -1).join(".");
-        const parent = map.get(parentCode);
-        if (parent) parent.children.push(node);
-      }
-    });
-
-    setBoqTree(roots);
-    calculateAmount();
-  }, [boq]);
-  const calculateAmount = () => {
-    let serviceTotal = 0.0;
-    let profitTotal = 0.0;
-    let netTotal = 0.0;
-    boq.forEach((item) => {
-      if(item.lastLevel){
-        serviceTotal += Number(item.totalAmount);
-        profitTotal += Number(item.profitAmount);
-        netTotal += Number(item.netAmount);
-      }
-    })
-    setServiceTotal(serviceTotal);
-    setProfitTotal(profitTotal);
-    setNetTotal(netTotal);
+function BOQStructureView({ projectId }) {
+  const navigate = useNavigate();
+  const [parentBoq, setParentBoq] = useState([]);
+  const [parentTree, setParentTree] = useState([]);
+  const [expandedParentIds, setExpandedParentIds] = useState(new Set());
+  const [isAllExpanded, setIsAllExpanded] = useState(false);
+  const handleResource = (boqId) => {
+    navigate(`/tenderestimation/${projectId}/resourceadding/${boqId}`);
   }
-  const toggleDivision = (id) => {
-    setExpandedDivisions((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
-
-  const handleRowCheck = (id, checked, parentDivision = null) => {
-    setCheckedRows((prev) => {
-      const updated = { ...prev, [id]: checked };
-      if (parentDivision && parentDivision.children?.length) {
-        const allChecked = parentDivision.children.every((c) => updated[c.id]);
-        updated[parentDivision.id] = allChecked;
-      }
-      return updated;
-    });
-  };
-
-  const handleHeadCheck = (division, checked) => {
-    const updates = {};
-    const walk = (children) => {
-      children.forEach((c) => {
-        updates[c.id] = checked;
-        if (c.children?.length) walk(c.children);
-      });
-    };
-    walk(division.children);
-    updates[division.id] = checked;
-    setCheckedRows((prev) => ({ ...prev, ...updates }));
-  };
-
-  const BOQRow = ({ item, level = 0, isLastRow = false, parentDivision = null }) => {
-    const hasChildren = !item.lastLevel && item.children?.length > 0;
-    const border = isLastRow ? "none" : "1px solid #0051973D";
-
-    return (
-      <>
-        <tr>
-          <td className="text-center">
-            <input
-              type="checkbox"
-              className={`form-check-input border-primary ${checkedRows[item.id] ? "bg-primary" : ""}`}
-              style={{ width: "16px", height: "16px", cursor: "pointer" }}
-              checked={!!checkedRows[item.id]}
-              onChange={(e) => handleRowCheck(item.id, e.target.checked, parentDivision)}
-            />
-          </td>
-          <td className="text-nowrap p-3">{item.boqName}</td>
-          <td className="text-nowrap p-3">{item.uom?.uomCode ?? "-"}</td>
-          <td className="text-end text-nowrap p-3">
-            {item.quantity != null ? Number(item.quantity).toFixed(3) : "-"}
-          </td>
-          <td className="text-end text-nowrap p-3">
-            {item.totalRate != null ? Number(item.totalRate).toFixed(2) : "-"}
-          </td>
-          <td className="text-end text-nowrap p-3">
-            {item.totalAmount != null ? Number(item.totalAmount).toFixed(2) : "-"}
-          </td>
-          <td className="text-end text-nowrap p-3">{item.profitPer ?? "-"}</td>
-          <td className="text-end text-nowrap p-3">
-            {item.profitRate != null ? Number(item.profitRate).toFixed(2) : "-"}
-          </td>
-          <td className="text-end text-nowrap p-3">
-            {item.profitAmount != null ? Number(item.profitAmount).toFixed(2) : "-"}
-          </td>
-          <td className="text-end text-nowrap p-3">
-            {item.netRate != null ? Number(item.netRate).toFixed(2) : "-"}
-          </td>
-          <td className="text-end text-nowrap p-3">
-            {item.netAmount != null ? Number(item.netAmount).toFixed(2) : "-"}
-          </td>
-        </tr>
-        {hasChildren &&
-          item.children.map((child, idx) => (
-            <BOQRow
-              key={child.id}
-              item={child}
-              level={level + 1}
-              isLastRow={isLastRow && idx === item.children.length - 1}
-              parentDivision={item}
-            />
-          ))}
-      </>
-    );
-  };
-
-  const renderInnerChildren = (children, parentDivision, isLastRow = false, level = 0) => {
-    return children
-      .filter((child) => !child.lastLevel)
-      .map((child, idx) => {
-        const last = idx === children.length - 1 && isLastRow;
-        return (
-          <div key={child.id} className="mb-2 text-start">
-            <div className="fw-bold text-dark">
-              {child.boqCode} - {child.boqName}
-            </div>
-            <div className="text-muted small">
-              BOQ Code: {child.boqCode}
-            </div>
-            {child.children?.length > 0 && (
-              <div className="ms-4">
-                {renderInnerChildren(child.children, child, last, level + 1)}
-              </div>
-            )}
-          </div>
-        );
-      });
-  };
-
-  const filterBoqTree = (items, query) => {
-    const lowerQuery = query.toLowerCase();
-    return items
-      .map((item) => {
-        const matches = item.boqName.toLowerCase().includes(lowerQuery);
-        const filteredChildren = item.children?.length > 0 ? filterBoqTree(item.children, query) : [];
-        if (matches || filteredChildren.length > 0) {
-          return {
-            ...item,
-            children: filteredChildren,
-          };
-        }
-        return null;
-      })
-      .filter((item) => item !== null);
-  };
-  const handleProfit = () => {
-    const selectedItems = boq
-      .filter(item => checkedRows[item.id])
-      .filter(item => item.lastLevel);
-    setSelectedBoq(selectedItems);
-    setIsOpen(true);
-  }
-  const handleSetProfit = () => {
-    const boqIds = selectedBoq.map(item => item.id);
-    axios.put(`${import.meta.env.VITE_API_BASE_URL}/boq/updateProfitMargin?profitPer=${profitPer}`, boqIds,
-      {
+  const refreshParentBoqData = async () => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getParentBoq/${projectId}`, {
         headers: {
           Authorization: `Bearer ${sessionStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         }
-      }).then(res => {
-        if (res.status === 200) {
-          toast.success(res.data);
+      });
+      if (res.status === 200) {
+        setParentBoq(res.data || []);
+        handleParentBoqTree(res.data || []);
+      } else {
+        console.error('Failed to fetch BOQ data:', res.status);
+        setParentBoq([]);
+      }
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        navigate('/login');
+      }
+      setParentBoq([]);
+    }
+  };
+  const handleParentBoqTree = (data = parentBoq) => {
+    if (Array.isArray(data) && data.length > 0) {
+      const parentTree = new Map();
+      data.forEach(parent => {
+        const parentId = parent.id;
+        if (!parentTree.has(parentId)) {
+          parentTree.set(parentId, {
+            ...parent,
+            children: (parent.lastLevel === false) ? null : []
+          });
         }
-      }).catch(err => {
-        if (err.response.status === 401) {
-          handleUnauthorized();
-        }
-      }).finally(() => {
-        setIsOpen(false);
-        setProfitPer(0.0);
-        setSelectedBoq({});
-        setCheckedRows({});
-        fetchBoq();
       })
+      setParentTree(Array.from(parentTree.values()))
+    }
   }
+  const updateNodeInTree = (tree, nodeId, newProps) => {
+    return tree.map(node => {
+      if (node.id === nodeId) {
+        return { ...node, ...newProps };
+      }
+      if (Array.isArray(node.children)) {
+        return { ...node, children: updateNodeInTree(node.children, nodeId, newProps) };
+      }
+      return node;
+    });
+  };
+  const fetchChildrenBoq = async (parentId) => {
+    const findNode = (tree) => {
+      for (const node of tree) {
+        if (node.id === parentId) {
+          return node;
+        }
+        if (Array.isArray(node.children)) {
+          const found = findNode(node.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    const parentNode = findNode(parentTree);
+    if (parentNode && parentNode.children !== null) {
+      return;
+    }
+    setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: 'pending' }));
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${projectId}/${parentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      if (response.status === 200) {
+        const childrenData = (response.data || []).map(child => ({
+          ...child,
+          children: (child.lastLevel === false) ? null : []
+        }));
+        setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: childrenData }));
+      } else {
+        console.error('Failed to fetch children BOQ data:', response.status);
+        setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: [] }));
+      }
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        navigate('/login');
+      }
+      console.error('Error fetching children BOQ data:', err);
+      setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: [] }));
+    }
+  };
+  const handleToggle = (parentId) => {
+    setExpandedParentIds(prevSet => {
+      const newSet = new Set(prevSet);
+      const isExpanded = newSet.has(parentId);
+      if (isExpanded) {
+        newSet.delete(parentId);
+      } else {
+        newSet.add(parentId);
+        fetchChildrenBoq(parentId);
+      }
+      return newSet;
+    });
+  };
+  const toggleAll = () => {
+    if (isAllExpanded) {
+      setExpandedParentIds(new Set());
+    } else {
+      setExpandedParentIds(new Set(parentTree.map(p => p.id)));
+    }
+    setIsAllExpanded(!isAllExpanded);
+  };
+  useEffect(() => {
+    refreshParentBoqData();
+  }, [projectId, navigate]);
 
-  const filteredBoqTree = searchQuery ? filterBoqTree(boqTree, searchQuery) : boqTree;
+  const BOQNode = ({ boq, level = 0 }) => {
+    const canExpand = boq.level === 1 || boq.level === 2;
+    const isExpanded = expandedParentIds.has(boq.id);
+    const childrenStatus = boq.children;
+    const isLoading = isExpanded && childrenStatus === 'pending';
+    const hasFetchedChildren = Array.isArray(childrenStatus) && childrenStatus.length > 0;
+    const hasNoChildren = Array.isArray(childrenStatus) && childrenStatus.length === 0;
 
-  return (
-    <>
-      <div className="row g-3 ms-2 mt-3 mb-3 me-2 d-flex justify-content-between">
-        <div className="col-md-6 col-lg-4 col-sm-12">
-          <div className="card project-card shadow-sm border-0 h-100 p-1 rounded-3">
-            <div className="card-body d-flex justify-content-between text-start">
-                <div>
-                  <p className="fw-medium mb-1">Working Amount</p>
-                  <p className="mb-2 text-primary fw-bold"><IndianRupee size={15}/><span>{serviceTotal.toFixed(2)}</span></p>
-                  <p className="text-muted small mb-0">Total Service Amount</p>
-                </div>
-                <div className="rounded-5 me-2 p-2" style={{backgroundColor: '#DBEAFE', height:'fit-content'}}>
-                  <Calculator size={24} color="#005197"/>
-                </div>
-              </div>
-          </div>
-        </div>
-        <div className="col-md-6 col-lg-4 col-sm-12">
-          <div className="card project-card shadow-sm border-0 h-100 p-1 rounded-3">
-            <div className="card-body d-flex justify-content-between text-start">
-                <div>
-                  <p className="fw-medium mb-1">Profit Amount</p>
-                  <p className="mb-2 text-primary fw-bold"><IndianRupee size={15} /><span>{profitTotal.toFixed(2)}</span></p>
-                  <p className="text-muted small mb-0">Total Profit Amount</p>
-                </div>
-                <div className="rounded-5 me-2 p-2" style={{backgroundColor: '#F0FDF4', height:'fit-content'}}>
-                  <ChartArea size={24} color="#2BA95A"/>
-                </div>
-              </div>
-          </div>
-        </div>
-        <div className="col-md-6 col-lg-4 col-sm-12">
-          <div className="card project-card shadow-sm border-0 h-100 p-1 rounded-3">
-            <div className="card-body d-flex justify-content-between text-start">
-                <div>
-                  <p className="fw-medium mb-1">Net Amount</p>
-                  <p className="mb-2 text-primary fw-bold"><IndianRupee size={15} /><span>{netTotal.toFixed(2)}</span></p>
-                  <p className="text-muted small mb-0">Net Amount Calculation</p>
-                </div>
-                <div className="rounded-5 me-2 p-2" style={{backgroundColor: '#FAF5FF', height:'fit-content'}}>
-                  <WeightIcon size={24} color="#005197"/>
-                </div>
-              </div>
-          </div>
-        </div>
-      </div>
+    let leafChildren = [];
+    let nonLeafChildren = [];
 
-      <div className="p-3 bg-white rounded-3 ms-2 me-2 mt-4" style={{ border: "1px solid #0051973D", maxWidth: '1200px' }}>
-        <div className="d-flex align-items-center justify-content-between mb-3">
-          <h6 className="fw-bold">BOQ Categories</h6>
-          <div className="d-flex justify-content-end">
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Search BOQ items"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ width: "100%", minWidth: "350px", fontSize: "14px" }}
-            />
-            <button className="btn text-white ms-4 p-0" style={{ backgroundColor: '#005197', minWidth: '130px' }} onClick={handleProfit}>
-              <Percent size={18} /> <span>Set Profit</span>
-            </button>
-          </div>
-          <ProfitDialog
-            isOpen={isOpen}
-            handleSetProfit={handleSetProfit}
-            profitPer={profitPer}
-            setProfitPer={setProfitPer}
-            setIsOpen={setIsOpen}
-            selectedBoq={selectedBoq}
-          />
-        </div>
-        {filteredBoqTree.length > 0 ? (
-          filteredBoqTree.map((division) => {
-            const hasChildren = division.children?.length > 0;
-            const collectLastLevelItems = (items, result = []) => {
-              items.forEach((item) => {
-                if (item.lastLevel) {
-                  result.push(item);
-                } else if (item.children?.length) {
-                  collectLastLevelItems(item.children, result);
-                }
-              });
-              return result;
-            };
-            const lastLevelItems = collectLastLevelItems(division.children);
+    if (hasFetchedChildren) {
+      leafChildren = childrenStatus.filter(child => child.lastLevel === true);
+      nonLeafChildren = childrenStatus.filter(child => child.lastLevel === false);
+    }
+    const hasLeafChildren = leafChildren.length > 0;
+    const hasNonLeafChildren = nonLeafChildren.length > 0;
+    const BoqIcon = isExpanded ? ChevronDown : ChevronRight;
+    const boqNameDisplay = boq.boqName && boq.boqName.length > 80
+      ? boq.boqName.substring(0, 80) + '...'
+      : boq.boqName;
+    const indentation = level * 10;
+    if (boq.lastLevel === true) {
+      return (
+        <tr className="boq-leaf-row bg-white" style={{ borderBottom: '1px solid #eee' }}>
+          <td className="px-2">{boq.boqCode}</td>
+          <td className="px-2" title={boq.boqName}>{boqNameDisplay}</td>
+          <td className="px-2">{boq.uom?.uomCode || '-'}</td>
+          <td className="px-2">{boq.quantity?.toFixed(3) || 0}</td>
+          <td className="px-2">
+            <button className="btn btn-sm" style={{ background: "#DCFCE7", cursor: "pointer" }} onClick={() => handleResource(boq.id)}><Eye color="#15803D" size={20} /><span className="ms-1" style={{ color: '#15803D' }}>View</span></button>
+          </td>
+        </tr>
+      );
+    }
 
-            return (
-              <div key={division.id} className="mb-3 p-2 rounded" style={{ backgroundColor: "#EFF6FF" }}>
-                <div
-                  className="d-flex flex-column mb-2"
-                  onClick={() => hasChildren && toggleDivision(division.id)}
-                  style={{ cursor: hasChildren ? "pointer" : "default" }}
-                >
-                  <div className="d-flex fw-bold align-items-center">
-                    {hasChildren && (
-                      <div className="d-flex align-items-center">
-                        {expandedDivisions[division.id] ? (
-                          <ChevronUp size={28} color="#005197" />
-                        ) : (
-                          <ChevronDown size={28} color="#005197" />
-                        )}
-                      </div>
-                    )}
-                    <span className="fw-bold ms-3">{division.boqName}</span>
-                  </div>
-                  {division.parentLevel === 0 && (
-                    <div className="text-muted small text-start ms-5">
-                      BOQ Code: {division.boqCode}
+    return (
+      <div
+        className="boq-non-leaf-container rounded-3"
+        key={boq.id}
+        style={{ marginLeft: `${indentation}px` }}
+      >
+        <div
+          className="parent-boq text-start p-3 rounded-2 d-flex flex-column mb-4"
+          style={{ cursor: canExpand ? 'pointer' : 'default', backgroundColor: `${boq.level === 2 && 'white'}`, borderLeft: `${isExpanded ? '0.5px solid #0051973D' : 'none'}` }}
+        >
+          <div className="d-flex"
+            onClick={(e) => {
+              if (boq.level > 0) e.stopPropagation();
+              if (canExpand) handleToggle(boq.id);
+            }}>
+            {canExpand ? <BoqIcon size={18} /> : <span style={{ width: 20, marginRight: 4 }}></span>}
+
+            <span className="ms-2 fw-bold">{boq.boqCode}</span>
+            <span className="ms-3 text-dark" title={boq.boqName}>{boqNameDisplay}</span>
+          </div>
+
+          {isExpanded && canExpand && (
+            <div
+              className="children-section mt-1"
+            >
+              {isLoading && (
+                <div className="text-muted p-2">Loading items...</div>
+              )}
+
+              {hasFetchedChildren && (
+                <div className="children-content mt-2">
+                  {hasLeafChildren && (
+                    <div className="table-responsive">
+                      <table className="table table-borderless">
+                        <thead>
+                          <tr style={{ borderBottom: '0.5px solid #0051973D', color: '#005197' }}>
+                            <th className="px-2">BOQ Code</th>
+                            <th className="px-2">BOQ Name</th>
+                            <th className="px-2">UOM</th>
+                            <th className="px-2">Quantity</th>
+                            <th className="px-2">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {leafChildren.map(child => (
+                            <BOQNode key={child.id} boq={child} level={level + 1} />
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {hasNonLeafChildren && (
+                    <div className="p-0">
+                      {nonLeafChildren.map(child => (
+                        <BOQNode key={child.id} boq={child} level={level + 1} />
+                      ))}
                     </div>
                   )}
                 </div>
-                {expandedDivisions[division.id] && hasChildren && (
-                  <div className="mt-2 bg-white rounded-3 ms-4 p-3 mb-3">
-                    {renderInnerChildren(division.children, division, true)}
-                    {lastLevelItems.length > 0 && (
-                      <div className="table-responsive">
-                        <table className="tables mb-0">
-                          <thead>
-                            <tr>
-                              <th className="text-center me-2">
-                                <input type="checkbox"
-                                  className={`form-check-input border-primary ${lastLevelItems.every((c) => checkedRows[c.id]) ? "bg-primary" : ""
-                                    }`}
-                                  style={{ width: "16px", height: "16px", cursor: "pointer" }}
-                                  checked={lastLevelItems.every((c) => checkedRows[c.id])}
-                                  onChange={(e) => handleHeadCheck(division, e.target.checked)}
-                                />
-                              </th>
-                              <th className="text-primary text-nowrap p-3">BOQ Name</th>
-                              <th className="text-primary text-nowrap p-3">UOM</th>
-                              <th className="text-primary text-nowrap p-3">Quantity</th>
-                              <th className="text-primary text-nowrap p-3">Service<p>Rate</p></th>
-                              <th className="text-primary text-nowrap p-3">Service<p>Amount</p></th>
-                              <th className="text-primary text-nowrap p-3">Service<p>Profit %</p> </th>
-                              <th className="text-primary text-nowrap p-3">Service<p>Profit Rate</p></th>
-                              <th className="text-primary text-nowrap p-3">Service<p>Profit Amount</p></th>
-                              <th className="text-primary text-nowrap p-3">Service<p>Net Rate</p></th>
-                              <th className="text-primary text-nowrap p-3">Service<p>Net Amount</p></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {lastLevelItems.map((child, idx) => (
-                              <BOQRow
-                                key={child.id}
-                                item={child}
-                                level={0}
-                                isLastRow={idx === lastLevelItems.length - 1}
-                                parentDivision={division}
-                              />
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })
-        ) : (
-          <div className="text-center py-4 text-muted">No BOQ Data Found</div>
-        )}
+              )}
+
+              {hasNoChildren && (
+                <div className="no-items-message text-muted p-2">
+                  No items found.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+
+      </div>
+    );
+  }
+
+  return (
+
+    <>
+      <div className="bg-white rounded-3 ms-3 me-3 mt-5 p-2" style={{ border: '0.5px solid #0051973D' }}>
+        <div className="d-flex justify-content-between mb-3">
+          <div className="fw-bold text-start mt-2 ms-1">
+            <span>BOQ Structure</span>
+          </div>
+          <div className="me-1 d-flex align-items-center">
+            {/* <button className="btn" style={{ cursor: 'pointer', color: '#005197' }} onClick={toggleAll}>
+              {isAllExpanded ? (
+              //   <>
+              //     <CollapseIcon /><span>Collapse All</span>
+              //   </>
+              // ) : (
+              //   <>
+              //     <ExpandIcon /><span>Expand All</span>
+              //   </>
+              // )}
+            </button> */}
+          </div>
+        </div>
+
+        <div className="boq-structure-list mt-3">
+          {parentTree.length > 0 ? (
+            parentTree.map((boq) => (
+              <BOQNode key={boq.id} boq={boq} level={0} />
+            ))
+          ) : (
+            <div className="text-center p-5 text-muted">No Parent BOQ data available.</div>
+          )}
+        </div>
       </div>
     </>
   );
 }
-
+function AbstractView({ projectId }) {
+  const [parentBoq, setParentBoq] = useState([]);
+  useEffect(() => {
+    refreshParentBoqData();
+  }, [projectId]);
+  const refreshParentBoqData = async () => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getParentBoq/${projectId}`, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (res.status === 200) {
+        setParentBoq(res.data || []);
+      } else {
+        console.error('Failed to fetch BOQ data:', res.status);
+        setParentBoq([]);
+      }
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        navigate('/login');
+      }
+      setParentBoq([]);
+    }
+  };
+  const boqNameDisplay = (boqName) => {
+    return boqName && boqName.length > 40
+      ? boqName.substring(0, 40) + '...'
+      : boqName;
+  }
+  return (
+    <div className="p-3 bg-white rounded-3 ms-3 me-3 mt-5" style={{ border: '1px solid #0051973D' }}>
+      <div className="text-start fw-bold">
+        BOQ Work Packages
+      </div>
+      <div className="table-responsive">
+        <table className="table table-borderless">
+          <thead>
+            <tr style={{ borderBottom: '0.5px solid #0051973D', color: '#005197' }}>
+              <th className="px-2">S.no</th>
+              <th className="px-2">BOQ Code</th>
+              <th className="px-2">BOQ Name</th>
+              <th className="px-2">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {parentBoq.map((boq, index) => (
+              <tr className="boq-leaf-row bg-white" key={index}>
+                <td className="px-2">{'-'}</td>
+                <td className="px-2">{'-'}</td>
+                <td className="px-2" title={boq.boqCode}>{() => boqNameDisplay(boq.boqCode)}</td>
+                <td className="px-2">{boq.totalAmount?.toFixed(2) || 0}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 function TenderEstView({ projectId }) {
   const [project, setProject] = useState();
   const [contentView, setContentView] = useState('activity');
   const [costCodeTypes, setCostCodeTypes] = useState([]);
   const [activities, setActivities] = useState([]);
-  const [boq, setBoq] = useState([]);
   const icon = [
     { label: 'Direct cost', icon: <Directcost /> },
     { label: 'In-Direct cost', icon: <Indirectcost /> },
@@ -724,7 +625,6 @@ function TenderEstView({ projectId }) {
       findActivity();
     }
   }, [costCodeType])
-
   const findActivity = () => {
     setActivities([]);
     axios.get(`${import.meta.env.VITE_API_BASE_URL}/costCodeActivity/${costCodeType}/${projectId}`, {
@@ -741,24 +641,6 @@ function TenderEstView({ projectId }) {
         handleUnauthorized();
       }
     })
-  }
-  const fetchBoq = () => {
-    setBoq([]);
-    axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllBOQ/${projectId}`, {
-      headers: {
-        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
-      }
-    }).then(res => {
-      if (res.status === 200) {
-        setBoq(res.data || []);
-      }
-    }).catch(err => {
-      if (err?.response?.status === 401) {
-        handleUnauthorized();
-      }
-      setBoq([]);
-    });
   }
   const calculateTotalAmount = (types) => {
     types.forEach(costCode => {
@@ -782,7 +664,6 @@ function TenderEstView({ projectId }) {
     })
 
   }
-
   return (
     <div className="container-fluid min-vh-100">
       <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-3 mt-2 mb-3">
@@ -793,16 +674,16 @@ function TenderEstView({ projectId }) {
           <span className="fw-bold text-start ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</span>
         </div>
       </div>
-      <div className="d-flex ms-3 mt-2">
+      <div className="d-flex ms-3 mt-3">
         <button className={`btn ${contentView === 'activity' ? 'activeView' : 'bg-white'} px-3 py-2 border border-end-0 rounded-start rounded-0`} onClick={() => setContentView('activity')}>
           {contentView === 'activity' ?
             (<ActivityView />)
             :
             (<ActivityView style={{ filter: "brightness(0) saturate(100%) invert(25%) sepia(100%) saturate(6000%) hue-rotate(200deg) brightness(95%) contrast(90%)" }} />)
           }
-          <span className="ms-2 fs-6">Activity View</span>
+          <span className="ms-2 fs-6">Abstract View</span>
         </button>
-        <button className={`btn ${contentView === 'boq' ? 'activeView' : 'bg-white'} px-3 py-2 border border-start-0 rounded-end rounded-0`} onClick={() => { setContentView('boq'); fetchBoq() }}>
+        <button className={`btn ${contentView === 'boq' ? 'activeView' : 'bg-white'} px-3 py-2 border border-start-0 rounded-end rounded-0`} onClick={() => { setContentView('boq'); }}>
           {contentView === 'activity' ?
             (<FolderTree color="#005197" size={24} />)
             :
@@ -812,19 +693,20 @@ function TenderEstView({ projectId }) {
         </button>
       </div>
       {contentView === 'activity' &&
-        <Activity
-          costCodeTypes={costCodeTypes}
-          costCodeType={costCodeType}
-          setCostCodeType={setCostCodeType}
-          amounts={amounts}
-          icon={icon}
-          findActivity={findActivity}
-          activities={activities}
-          projectId={projectId}
-        />
+        // <Activity
+        //   costCodeTypes={costCodeTypes}
+        //   costCodeType={costCodeType}
+        //   setCostCodeType={setCostCodeType}
+        //   amounts={amounts}
+        //   icon={icon}
+        //   findActivity={findActivity}
+        //   activities={activities}
+        //   projectId={projectId}
+        // />
+        <AbstractView projectId={projectId} />
       }
       {contentView === 'boq' &&
-        <BOQView boq={boq} fetchBoq={fetchBoq} />
+        <BOQStructureView projectId={projectId} />
       }
     </div>
   );
