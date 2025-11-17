@@ -33,6 +33,7 @@ function ResourceAdding() {
     handleQuantityTypeChange,
     handleCalculations,
     handleAddResource,
+    handleEditResource,
     fetchResource,
     openModal
   } = useResourceModal(isGlobal, resourceId, idType);
@@ -120,6 +121,52 @@ function ResourceAdding() {
       }
     })
   }
+  const handleDeleteResource = (resourceId) => {
+    axios.delete(`${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/delete/activityGroup/${resourceId}/${activityGroupId}`,{
+      headers:{
+        Authorization : `Bearer ${sessionStorage.getItem('token')}`,
+        'Content-Type' : 'application/json'
+      }
+    }).then((res)=>{
+      if(res.status === 200 || res.status === 201){
+        toast.success(res.data);
+      }
+    }).catch((err)=>{
+      if(err.response.status === 401){
+        navigate('/login');
+      }else{
+        toast.error(err.response.data.message);
+      }
+    })
+  }
+  const handleEditResourceModal = (resource) => {
+    setResourceData({
+      ...resource,
+      id: resource.id,
+      resourceTypeId: resource.resourceType.id,
+      resourceNatureId: resource.resourceNature.id,
+      resourceId: resource.resource.id,
+      uomId: resource.uom.id,
+      quantityTypeId: resource.quantityType.id,
+      currencyId: resource.currency.id,
+      coEfficient: resource.coEfficient,
+      calculatedQuantity: resource.calculatedQuantity,
+      wastePercentage: resource.wastePercentage,
+      wasteQuantity: resource.wasteQuantity,
+      netQuantity: resource.netQuantity,
+      rate: resource.rate,
+      additionalRate: resource.additionalRate,
+      shippingPrice: resource.shippingPrice,
+      costUnitRate: resource.costUnitRate,
+      resourceTotalCost: resource.resourceTotalCost,
+      rateLock: resource.rateLock,
+      totalCostCompanyCurrency: resource.totalCostCompanyCurrency,
+      exchangeRate: resource.exchangeRate,
+      activityGroupId: activityGroupId,
+    })
+    handleResourceTypeChange(resource.resourceType.id);
+    openModal();
+  }
   return (
     <div className='container-fluid min-vh-100'>
       
@@ -206,8 +253,8 @@ function ResourceAdding() {
                     <td>{(item.costUnitRate)}</td>
                     <td>{(item.totalCostCompanyCurrency)}</td>
                     <td>
-                      <EditIcon size={20} color="#005197" className="me-2" style={{ cursor: 'pointer' }} />
-                      <Trash2 size={20} color="red" className="me-2" style={{ cursor: 'pointer' }} />
+                      <EditIcon size={20} color="#005197" className="me-2" style={{ cursor: 'pointer' }} onClick={() => handleEditResourceModal(item)}/>
+                      <Trash2 size={20} color="red" className="me-2" style={{ cursor: 'pointer' }} onClick={() => handleDeleteResource(item.id)}/>
                     </td>
                   </tr>
                 ))}
@@ -233,6 +280,7 @@ function ResourceAdding() {
         handleQuantityTypeChange={handleQuantityTypeChange}
         handleCalculations={handleCalculations}
         handleAddResource={handleAddResource}
+        handleEditResource={handleEditResource}
         fetchResource={fetchResource}
       />
     </div>

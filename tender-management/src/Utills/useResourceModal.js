@@ -257,7 +257,6 @@ const useResourceModal = (isGlobal = false, id, idType) => {
   };
 
   const handleResourceTypeChange = (resTypeId) => {
-    setResourceData({ ...resourceData, resourceTypeId: resTypeId });
     if (resTypeId) {
       fetchResources(resTypeId);
     } else {
@@ -424,8 +423,6 @@ const useResourceModal = (isGlobal = false, id, idType) => {
         } else {
           toast.error(err?.response?.data?.message || 'Failed to add resource.');
         }
-      }).finally(() => {
-        fetchEstimatedResources();
       });
   };
 
@@ -440,7 +437,53 @@ const useResourceModal = (isGlobal = false, id, idType) => {
   useEffect(() => {
     fetchCostCode();
   }, [fetchCostCode]);
-
+  const handleEditResource = () => {
+    axios.put(`${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/updateResource`, resourceData, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      .then((res) => {
+        if (res.status === 200 || res.status === 201) {
+          toast.success(res?.data?.message || 'Resource updated successfully.');
+          setShowResourceAdding(false);
+          setResourceData({
+            id: '',
+            docNumber: `DOC${Date.now()}`,
+            coEfficient: 1,
+            calculatedQuantity: 0,
+            wastePercentage: 0,
+            wasteQuantity: 0,
+            netQuantity: 0,
+            rate: 0,
+            additionalRate: 0,
+            shippingPrice: 0,
+            costUnitRate: 0,
+            resourceTotalCost: 0,
+            rateLock: false,
+            totalCostCompanyCurrency: 0,
+            exchangeRate: '',
+            resourceTypeId: '',
+            quantityTypeId: '',
+            resourceNatureId: '',
+            uomId: '',
+            currencyId: '',
+            resourceId: '',
+            costCodeActivityId: [],
+            activityGroupId: [],
+            projectId: isGlobal ? '' : projectId,
+          });
+        }
+      })
+      .catch((err) => {
+        if (err?.response?.status === 401) {
+          handleUnauthorized();
+        } else {
+          toast.error(err?.response?.data?.message || 'Failed to add resource.');
+        }
+      });
+  }
   return {
     costCode,
     resourceData,
@@ -458,6 +501,7 @@ const useResourceModal = (isGlobal = false, id, idType) => {
     handleQuantityTypeChange,
     handleCalculations,
     handleAddResource,
+    handleEditResource,
     fetchResource,
     openModal,
   };

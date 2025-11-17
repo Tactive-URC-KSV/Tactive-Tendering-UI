@@ -1,4 +1,4 @@
-import { X, Plus, Info } from 'lucide-react';
+import { X, Plus, Info, Edit } from 'lucide-react';
 import Area from '../assest/Area.svg?react';
 import Select from 'react-select';
 
@@ -18,10 +18,15 @@ const ResourceModal = ({
   handleQuantityTypeChange,
   handleCalculations,
   handleAddResource,
+  handleEditResource,
   fetchResource,
-  idType, 
+  idType,
 }) => {
   if (!showModal) return null;
+  const safeToFixed = (value, decimals = 2) => {
+    const numValue = Number(value) || 0;
+    return numValue.toFixed(decimals);
+  };
 
   return (
     <div className="modal show fade d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
@@ -84,7 +89,10 @@ const ResourceModal = ({
                     classNamePrefix="resource-select"
                     isClearable
                     value={resourceTypesOption.find((option) => option.value === resourceData.resourceTypeId)}
-                    onChange={(option) => handleResourceTypeChange(option ? option.value : '')}
+                    onChange={(option) => {
+                      setResourceData({ ...resourceData, resourceTypeId: option.value });
+                      handleResourceTypeChange(option ? option.value : '')
+                    }}
                   />
                 </div>
                 <div className="col-lg-4 col-md-6 mt-2">
@@ -167,7 +175,7 @@ const ResourceModal = ({
                     type="text"
                     className="resource-input w-100"
                     placeholder="Calculated Quantity"
-                    value={resourceData.calculatedQuantity.toFixed(3)}
+                    value={safeToFixed(resourceData.calculatedQuantity, 3)}
                     readOnly
                   />
                 </div>
@@ -200,7 +208,7 @@ const ResourceModal = ({
                     type="text"
                     className="resource-input w-100"
                     placeholder="Wastage Quantity"
-                    value={resourceData.wasteQuantity.toFixed(3)}
+                    value={safeToFixed(resourceData.wasteQuantity, 3)}
                     readOnly
                   />
                 </div>
@@ -210,7 +218,7 @@ const ResourceModal = ({
                     type="text"
                     className="resource-input w-100"
                     placeholder="Net Quantity"
-                    value={resourceData.netQuantity.toFixed(3)}
+                    value={safeToFixed(resourceData.netQuantity, 3)}
                     readOnly
                   />
                 </div>
@@ -310,7 +318,7 @@ const ResourceModal = ({
                     type="text"
                     className="resource-input w-100"
                     placeholder="Enter Cost unit rate"
-                    value={resourceData.costUnitRate.toFixed(2)}
+                    value={safeToFixed(resourceData.costUnitRate)}
                     readOnly
                   />
                 </div>
@@ -320,7 +328,7 @@ const ResourceModal = ({
                     type="text"
                     className="resource-input w-100"
                     placeholder="Resource Total cost"
-                    value={resourceData.resourceTotalCost.toFixed(2)}
+                    value={safeToFixed(resourceData.resourceTotalCost)}
                     readOnly
                   />
                 </div>
@@ -332,7 +340,7 @@ const ResourceModal = ({
                     type="text"
                     className="resource-input w-100"
                     placeholder="Resource Total Cost (Company Currency)"
-                    value={resourceData.totalCostCompanyCurrency.toFixed(2)}
+                    value={safeToFixed(resourceData.totalCostCompanyCurrency)}
                     readOnly
                   />
                 </div>
@@ -350,10 +358,18 @@ const ResourceModal = ({
               </div>
             </div>
             <div className="d-flex justify-content-end mt-3">
-              <button className="btn action-button" onClick={handleAddResource}>
-                <Plus />
-                <span className="ms-2">Add Resource</span>
-              </button>
+              {resourceData.id ? (
+                <button className="btn action-button" onClick={handleEditResource}>
+                  <Edit size={16} />
+                  <span className="ms-2">Edit Resource</span>
+                </button>
+              )
+                :
+                (
+                  <button className="btn action-button" onClick={handleAddResource}>
+                    <Plus />
+                    <span className="ms-2">Add Resource</span>
+                  </button>)}
             </div>
           </div>
         </div>
