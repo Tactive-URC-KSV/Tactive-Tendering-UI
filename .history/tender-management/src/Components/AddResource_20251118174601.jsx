@@ -8,6 +8,12 @@ import { toast } from "react-toastify";
 function AddResource() {
     const navigate = useNavigate();
 
+    // Assuming a handleUnauthorized function exists or navigate to login is intended
+    const handleUnauthorized = () => {
+        toast.error('Session expired. Please log in again.');
+        // navigate('/login'); // Uncomment if you have a login route
+    };
+
     const darkBlue = '#005197';
     const vibrantBlue = '#007BFF';
     const containerBgColor = '#EFF6FF'; 
@@ -21,7 +27,9 @@ function AddResource() {
     const [selectedResourceType, setSelectedResourceType] = useState(null);
     const [quantityType, setQuantityType] = useState([]); 
     const [currency, setCurrency] = useState([]);
-    const [uomOption, setUomOption] = useState([]);
+    const [uomData, setUomData] = useState([]); // State for UOM data
+
+    // --- Data Fetching Logic ---
 
     const fetchResourceTypes = useCallback(() => {
         axios
@@ -113,11 +121,70 @@ function AddResource() {
 
     useEffect(() => { fetchCurrency(); }, [fetchCurrency]);
 
-    const resourceTypeOptions = useMemo(() => resourceTypes.map(item => ({ value: item.id, label: item.resourceTypeName })), [resourceTypes]);
-    const resourceOption = useMemo(() => resources.map(item => ({ value: item.id, label: `${item.resourceCode}-${item.resourceName}` })), [resources]);
-    const resourceNatureOption = useMemo(() => resourceNature.map(item => ({ value: item.id, label: item.nature })), [resourceNature]);
-    const quantityTypeOption = useMemo(() => quantityType.map(item => ({ value: item.id, label: item.quantityType })), [quantityType]);
-    const currencyOptions = useMemo(() => currency.map(item => ({ value: item.id, label: item.currencyName })), [currency]);
+    const fetchUOM = useCallback(() => {
+        axios
+          .get(`${import.meta.env.VITE_API_BASE_URL}/uom`, { // Assuming /uom endpoint
+            headers: {
+              Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+              'Content-Type': 'application/json',
+            },
+          })
+          .then((res) => { 
+              // Important: Check if data is an array before setting
+              if (res.status === 200 && Array.isArray(res.data)) {
+                  setUomData(res.data); 
+              } else if (res.status === 200) {
+                  // Log or toast a warning if the format is unexpected
+                  console.warn("UOM API response data is not an array:", res.data);
+                  setUomData([]); // Set to empty array to be safe
+              }
+          })
+          .catch((err) => {
+            if (err?.response?.status === 401) handleUnauthorized();
+            else toast.error('Failed to fetch UOMs. Check network tab for error details.');
+          });
+    }, []);
+    
+    useEffect(() => { fetchUOM(); }, [fetchUOM]);
+
+
+    // --- Memoized Options (Ensuring safe access and correct mapping) ---
+    
+    const uomOptions = useMemo(
+        // FIX: Ensure uomData is an array before mapping.
+        () => (Array.isArray(uomData) ? uomData : []).map((uom) => ({ 
+            value: uom.id, 
+            label: uom.uomName 
+        })),
+        [uomData]
+    );
+
+    const resourceTypeOptions = useMemo(
+        () => resourceTypes?.map(item => ({ value: item.id, label: item.resourceTypeName })), 
+        [resourceTypes]
+    );
+
+    const resourceOption = useMemo(
+        () => resources?.map(item => ({ value: item.id, label: `${item.resourceCode}-${item.resourceName}` })), 
+        [resources]
+    );
+
+    const resourceNatureOption = useMemo(
+        () => resourceNature?.map(item => ({ value: item.id, label: item.nature })), 
+        [resourceNature]
+    );
+
+    const quantityTypeOption = useMemo(
+        () => quantityType?.map(item => ({ value: item.id, label: item.quantityType })), 
+        [quantityType]
+    );
+
+    const currencyOptions = useMemo(
+        () => currency?.map(item => ({ value: item.id, label: `${item.currencyName} (${item.currencyCode})` })), 
+        [currency]
+    );
+
+    // --- Component Logic ---
 
     const handleBack = () => navigate(-1);
     const emptyOption = [{ value: '', label: '' }];
@@ -260,7 +327,14 @@ function AddResource() {
                             UOM <span style={{ color: "red" }}>*</span>
                         </label>
                         <div style={{ width: '80%' }}>
-                            <Select options={emptyOption} styles={customStyles} placeholder="Select UOM"/>
+                            {/* Using the memoized UOM options */}
+                            <Select 
+                                options={uomOptions} 
+                                styles={customStyles} 
+                                placeholder="Select UOM"
+                                // Ensure the Select component re-renders when uomOptions changes
+                                key={uomOptions.length}
+                            />
                         </div>
                     </div>
 

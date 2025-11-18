@@ -14,15 +14,7 @@ function AddResource() {
     const containerBorderColor = '#dee2e6'; 
     const boqUOM = ""; 
     const boqTotalQuantity = ""; 
-
     const [resourceTypes, setResourceTypes] = useState([]);
-    const [resources, setResources] = useState([]);
-    const [resourceNature, setResourceNature] = useState([]);
-    const [selectedResourceType, setSelectedResourceType] = useState(null);
-    const [quantityType, setQuantityType] = useState([]); 
-    const [currency, setCurrency] = useState([]);
-    const [uomOption, setUomOption] = useState([]);
-
     const fetchResourceTypes = useCallback(() => {
         axios
           .get(`${import.meta.env.VITE_API_BASE_URL}/resourceType`, {
@@ -32,96 +24,108 @@ function AddResource() {
             }
           })
           .then((res) => {
-            if (res.status === 200) setResourceTypes(res.data);
+            if (res.status === 200) {
+              setResourceTypes(res.data);
+            }
           })
           .catch((err) => {
-            if (err?.response?.status === 401) handleUnauthorized(); 
-            else toast.error('Failed to fetch resource types.');
+            if (err?.response?.status === 401) {
+              handleUnauthorized();
+            } else {
+              toast.error('Failed to fetch resource types.');
+            }
           });
     }, []);
 
-    useEffect(() => { fetchResourceTypes(); }, [fetchResourceTypes]);
+    useEffect(() => {
+        fetchResourceTypes();
+    }, [fetchResourceTypes]);
 
+    const resourceTypeOptions = useMemo(
+        () => resourceTypes.map(item => ({
+            value: item.id,
+            label: item.resourceTypeName
+        })),
+        [resourceTypes]
+    );
+
+    const [ResourceNature, setResourceNature] = useState([]);
     const fetchResourceNature = useCallback(() => {
-      axios
-        .get(`${import.meta.env.VITE_API_BASE_URL}/resourceNature`, {
-          headers: {
-            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-            'Content-Type': 'application/json',
-          },
-        })
-        .then((res) => {
-          if (res.status === 200) setResourceNature(res.data);
-        })
-        .catch((err) => {
-          if (err?.response?.status === 401) handleUnauthorized();
-          else toast.error('Failed to fetch resource natures.');
-        });
-    }, []);
+    axios
+      .get(${import.meta.env.VITE_API_BASE_URL}/resourceNature, {
+        headers: {
+          Authorization: Bearer ${sessionStorage.getItem('token')},
+          'Content-Type': 'application/json',
+        },
+      })
+      .then((res) => {
+        if (res.status === 200) {
+          setResourceNature(res.data);
+        }
+      })
+      .catch((err) => {
+        if (err?.response?.status === 401) {
+          handleUnauthorized();
+        } else {
+          toast.error('Failed to fetch resource natures.');
+        }
+      });
+  }, []);
+     useEffect(() => {
+        fetchResourceNature();
+    }, [fetchResourceNature]);
 
-    useEffect(() => { fetchResourceNature(); }, [fetchResourceNature]);
+     const resourceNatureOption = useMemo(
+        () => resourceNature.map(item => ({
+            value: item.id,
+            label: item.resourceNature
+        })),
+        [resourceNature]
+    );
 
-    const fetchResources = useCallback((resTypeId) => {
-      if (!resTypeId) return;
-      axios
-        .get(`${import.meta.env.VITE_API_BASE_URL}/resources/${resTypeId}`, {
-          headers: {
-            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-            'Content-Type': 'application/json',
-          },
-        })
-        .then((res) => {
-          if (res.status === 200) setResources(res.data);
-        })
-        .catch((err) => {
-          if (err?.response?.status === 401) handleUnauthorized();
-          else toast.error('Failed to fetch resources.');
-        });
-    }, []);
 
+    const [quantityType, setQuantityType] = useState([]);
     const fetchQuantityType = useCallback(() => {
-      axios
-        .get(`${import.meta.env.VITE_API_BASE_URL}/quantityType`, {
-          headers: {
-            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-            'Content-Type': 'application/json',
-          },
-        })
-        .then((res) => { if (res.status === 200) setQuantityType(res.data); })
-        .catch((err) => {
-          if (err?.response?.status === 401) handleUnauthorized();
-          else toast.error('Failed to fetch quantity types.');
-        });
+    axios
+      .get(`${import.meta.env.VITE_API_BASE_URL}/quantityType`, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      .then((res) => {
+        if (res.status === 200) {
+          setQuantityType(res.data);
+        }
+      })
+      .catch((err) => {
+        if (err?.response?.status === 401) {
+          handleUnauthorized();
+        } else {
+          toast.error('Failed to fetch quantity types.');
+        }
+      });
     }, []);
 
-    useEffect(() => { fetchQuantityType(); }, [fetchQuantityType]);
+    useEffect(() => {
+    fetchQuantityType();
+    }, [fetchQuantityType]);
 
-    const fetchCurrency = useCallback(() => {
-      axios
-        .get(`${import.meta.env.VITE_API_BASE_URL}/project/currency`, {
-          headers: {
-            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-            'Content-Type': 'application/json',
-          },
-        })
-        .then((res) => { if (res.status === 200) setCurrency(res.data); })
-        .catch((err) => {
-          if (err?.response?.status === 401) handleUnauthorized();
-          else toast.error('Failed to fetch currencies.');
-        });
-    }, []);
+    const quantityTypeOption = useMemo(
+    () =>
+        quantityType?.map((item) => ({
+            value: item.id,
+            label: item.quantityType,
+        })),
+    [quantityType]
+    );
 
-    useEffect(() => { fetchCurrency(); }, [fetchCurrency]);
+    const handleBack = () => {
+        navigate(-1); 
+    };
 
-    const resourceTypeOptions = useMemo(() => resourceTypes.map(item => ({ value: item.id, label: item.resourceTypeName })), [resourceTypes]);
-    const resourceOption = useMemo(() => resources.map(item => ({ value: item.id, label: `${item.resourceCode}-${item.resourceName}` })), [resources]);
-    const resourceNatureOption = useMemo(() => resourceNature.map(item => ({ value: item.id, label: item.nature })), [resourceNature]);
-    const quantityTypeOption = useMemo(() => quantityType.map(item => ({ value: item.id, label: item.quantityType })), [quantityType]);
-    const currencyOptions = useMemo(() => currency.map(item => ({ value: item.id, label: item.currencyName })), [currency]);
-
-    const handleBack = () => navigate(-1);
     const emptyOption = [{ value: '', label: '' }];
-
+    
     const customStyles = {
         control: (provided, state) => ({
             ...provided,
@@ -131,15 +135,27 @@ function AddResource() {
             minHeight: '38px', 
             width: '100%',
         }),
-        placeholder: (provided) => ({ ...provided, color: '#adb5bd' }),
-        singleValue: (provided) => ({ ...provided, color: '#212529' }),
-        dropdownIndicator: (provided) => ({ ...provided, color: '#000000' }),
-        indicatorSeparator: () => ({ display: 'none' }),
+        placeholder: (provided) => ({
+            ...provided,
+            color: '#adb5bd', 
+        }),
+        singleValue: (provided) => ({
+            ...provided,
+            color: '#212529', 
+        }),
+        dropdownIndicator: (provided) => ({
+            ...provided,
+            color: '#000000', 
+        }),
+        indicatorSeparator: () => ({
+            display: 'none', 
+        }),
     };
-
+    
     const FormSectionContainer = ({ title, icon, defaultOpen = false, children }) => {
         const isStatic = ['Basic Information', 'Quantity & Measurements', 'Cost Summary'].includes(title);
         const [isOpen, setIsOpen] = useState(isStatic || defaultOpen); 
+        
         const headerStyle = {
             cursor: isStatic ? 'default' : 'pointer',
             listStyle: 'none',
@@ -149,6 +165,7 @@ function AddResource() {
             borderRadius: (isStatic || isOpen) ? '0.5rem 0.5rem 0 0' : '0.5rem',
             marginBottom: '0', 
         };
+
         const contentStyle = { 
             backgroundColor: 'white', 
             padding: '1rem 1.5rem', 
@@ -158,15 +175,25 @@ function AddResource() {
             borderRadius: '0 0 0.5rem 0.5rem',
             marginTop: '0' 
         };
+
         const HeaderContent = (
             <div className="py-3 px-4 d-flex justify-content-between align-items-center">
-                <div className="d-flex align-items-center">{icon}<span className="ms-2 text-primary fw-bold" style={{ fontSize: '1rem' }}>{title}</span></div>
+                <div className="d-flex align-items-center">
+                    {icon}
+                    <span className="ms-2 text-primary fw-bold" style={{ fontSize: '1rem' }}>{title}</span>
+                </div>
                 {!isStatic && <ChevronDown size={20} style={{ color: vibrantBlue, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />} 
             </div>
         );
+
         return (
             <div className="mx-3 mb-4">
-                <div style={headerStyle} onClick={() => { if (!isStatic) setIsOpen(!isOpen); }}>{HeaderContent}</div>
+                <div 
+                    style={headerStyle} 
+                    onClick={() => { if (!isStatic) setIsOpen(!isOpen); }} 
+                >
+                    {HeaderContent}
+                </div>
                 {isOpen && <div style={contentStyle}>{children}</div>}
             </div>
         );
@@ -174,7 +201,7 @@ function AddResource() {
 
     return (
         <div className="container-fluid min-vh-100">
-
+            
             <div className="ms-3 d-flex justify-content-between align-items-center mb-4">
                 <div className="fw-bold text-start">
                     <ArrowLeft size={20} onClick={handleBack} style={{ cursor: 'pointer' }} />
@@ -184,15 +211,23 @@ function AddResource() {
 
             <div 
                 className="text-white p-3 d-flex justify-content-between align-items-center mx-3 mb-4" 
-                style={{ background: `linear-gradient(to right, ${darkBlue}, ${vibrantBlue})`, borderRadius: '0.5rem' }} 
+                style={{ 
+                    background: `linear-gradient(to right, ${darkBlue}, ${vibrantBlue})`, 
+                    borderRadius: '0.5rem', 
+                }} 
             >
                 <div className="d-flex align-items-center">
                     <BookOpenText size={20} className="me-2" /> 
                     <span>BOQ Summary</span>
                 </div>
+
                 <div className="d-flex">
-                    <span className="me-3" style={{ fontSize: '0.9rem' }}>Unit of Measurement <strong>{boqUOM}</strong></span>
-                    <span style={{ fontSize: '0.9rem' }}>Total Quantity <strong>{boqTotalQuantity}</strong></span>
+                    <span className="me-3" style={{ fontSize: '0.9rem' }}>
+                        Unit of Measurement <strong>{boqUOM}</strong>
+                    </span>
+                    <span style={{ fontSize: '0.9rem' }}>
+                        Total Quantity <strong>{boqTotalQuantity}</strong>
+                    </span>
                 </div>
             </div>
 
@@ -207,11 +242,6 @@ function AddResource() {
                                 options={resourceTypeOptions} 
                                 styles={customStyles} 
                                 placeholder="Select Resource Type"
-                                value={selectedResourceType}
-                                onChange={(selected) => {
-                                    setSelectedResourceType(selected);
-                                    fetchResources(selected?.value);
-                                }}
                             />
                         </div>
                     </div>
@@ -221,7 +251,7 @@ function AddResource() {
                             <label className="form-label text-start w-100">
                                 Nature <span style={{ color: "red" }}>*</span>
                             </label>
-                            <Select options={resourceNatureOption} styles={customStyles} placeholder="Select Nature"/>
+                            <Select options={Option} styles={customStyles} placeholder=""/>
                         </div>
                     </div>
 
@@ -231,11 +261,18 @@ function AddResource() {
                         </label>
                         <div style={{ width: '80%' }}>
                             <Select 
-                                options={resourceOption} 
+                                options={emptyOption} 
                                 styles={{
                                     ...customStyles,
-                                    placeholder: (provided) => ({ ...provided, color: 'black', textAlign: 'left' }),
-                                    singleValue: (provided) => ({ ...provided, color: 'black' }),
+                                    placeholder: (provided) => ({
+                                        ...provided,
+                                        color: 'black', 
+                                        textAlign: 'left'
+                                    }),
+                                    singleValue: (provided) => ({
+                                        ...provided,
+                                        color: 'black', 
+                                    }),
                                 }}
                                 placeholder="Select resource"
                             />
@@ -247,7 +284,12 @@ function AddResource() {
                             <label className="form-label text-start w-100">
                                 Rate <span style={{ color: "red" }}>*</span>
                             </label>
-                            <input type="number" className="form-control" style={{ borderRadius: '0.5rem' }} placeholder="0.00" />
+                            <input 
+                                type="number" 
+                                className="form-control" 
+                                style={{ borderRadius: '0.5rem' }} 
+                                placeholder="0.00" 
+                            />
                         </div>
                     </div>
                 </div>
@@ -255,12 +297,13 @@ function AddResource() {
 
             <FormSectionContainer title="Quantity & Measurements" icon={<AlignLeft size={20} className="text-primary" />} defaultOpen={true}>
                 <div className="row g-3">
+                    
                     <div className="col-md-6">
                         <label className="form-label text-start w-100">
                             UOM <span style={{ color: "red" }}>*</span>
                         </label>
                         <div style={{ width: '80%' }}>
-                            <Select options={emptyOption} styles={customStyles} placeholder="Select UOM"/>
+                            <Select options={emptyOption} styles={customStyles} placeholder=""/>
                         </div>
                     </div>
 
@@ -269,7 +312,7 @@ function AddResource() {
                             <label className="form-label text-start w-100">
                                 Quantity Type <span style={{ color: "red" }}>*</span>
                             </label>
-                            <Select options={quantityTypeOption} styles={customStyles} placeholder="Select Quantity Type"/>
+                            <Select options={quantityTypeOption} styles={customStyles} placeholder=""/>
                         </div>
                     </div>
 
@@ -278,7 +321,12 @@ function AddResource() {
                             Coefficient <span style={{ color: "red" }}>*</span>
                         </label>
                         <div style={{ width: '80%' }}>
-                            <input type="number" className="form-control" style={{ borderRadius: '0.5rem' }} placeholder="0.00" />
+                            <input 
+                                type="number" 
+                                className="form-control" 
+                                style={{ borderRadius: '0.5rem' }} 
+                                placeholder="0.00" 
+                            />
                         </div>
                     </div>
 
@@ -287,25 +335,21 @@ function AddResource() {
                             <label className="form-label text-start w-100">
                                 Calculated Quantity <span style={{ color: "red" }}>*</span>
                             </label>
-                            <input type="text" className="form-control" style={{ borderRadius: '0.5rem' }} placeholder="" readOnly />
+                            <input 
+                                type="text" 
+                                className="form-control" 
+                                style={{ borderRadius: '0.5rem' }} 
+                                placeholder="" 
+                                readOnly 
+                            />
                         </div>
                     </div>
+
                 </div>
             </FormSectionContainer>
 
-            <FormSectionContainer title="Wastage & Net Quantity" icon={<Settings size={20} className="text-primary" />}>
-                <p className="text-muted">Fields for Wastage and Net Quantity will go here...</p>
-            </FormSectionContainer>
-
-            <FormSectionContainer title="Pricing & Currency" icon={<DollarSign size={20} className="text-primary" />}>
-                <div style={{ width: '80%' }}>
-                    <label className="form-label text-start w-100">
-                        Currency <span style={{ color: "red" }}>*</span>
-                    </label>
-                    <Select options={currencyOptions} styles={customStyles} placeholder="Select Currency"/>
-                </div>
-            </FormSectionContainer>
-
+            <FormSectionContainer title="Wastage & Net Quantity" icon={<Settings size={20} className="text-primary" />}><p className="text-muted">Fields for Wastage and Net Quantity will go here...</p></FormSectionContainer>
+            <FormSectionContainer title="Pricing & Currency" icon={<DollarSign size={20} className="text-primary" />}><p className="text-muted">Fields for Pricing and Currency will go here...</p></FormSectionContainer>
             <FormSectionContainer title="Cost Summary" icon={<Calculator size={20} className="text-primary" />}>
                 <div className="d-flex justify-content-end align-items-center mb-3">
                     <span className="me-2">Rate Lock</span>
@@ -344,7 +388,13 @@ function AddResource() {
             <div className="d-flex justify-content-end pt-3 me-3"> 
                 <button 
                     className="btn" 
-                    style={{ backgroundColor: darkBlue, color: 'white', border: 'none', padding: '0.5rem 1.5rem', borderRadius: '0.5rem' }}
+                    style={{ 
+                        backgroundColor: darkBlue, 
+                        color: 'white',
+                        border: 'none',
+                        padding: '0.5rem 1.5rem',
+                        borderRadius: '0.5rem' 
+                    }}
                 >
                     Add Resource
                 </button>

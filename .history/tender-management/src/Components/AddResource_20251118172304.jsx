@@ -113,12 +113,14 @@ function AddResource() {
 
     useEffect(() => { fetchCurrency(); }, [fetchCurrency]);
 
+    // ----- MEMOIZED OPTIONS -----
     const resourceTypeOptions = useMemo(() => resourceTypes.map(item => ({ value: item.id, label: item.resourceTypeName })), [resourceTypes]);
     const resourceOption = useMemo(() => resources.map(item => ({ value: item.id, label: `${item.resourceCode}-${item.resourceName}` })), [resources]);
     const resourceNatureOption = useMemo(() => resourceNature.map(item => ({ value: item.id, label: item.nature })), [resourceNature]);
     const quantityTypeOption = useMemo(() => quantityType.map(item => ({ value: item.id, label: item.quantityType })), [quantityType]);
     const currencyOptions = useMemo(() => currency.map(item => ({ value: item.id, label: item.currencyName })), [currency]);
 
+    // ----- OTHER HELPERS -----
     const handleBack = () => navigate(-1);
     const emptyOption = [{ value: '', label: '' }];
 
@@ -196,6 +198,7 @@ function AddResource() {
                 </div>
             </div>
 
+            {/* ---------------- Basic Information ---------------- */}
             <FormSectionContainer title="Basic Information" icon={<span className="text-primary" style={{ fontSize: '1.2em' }}>•</span>} defaultOpen={true}>
                 <div className="row g-3">
                     <div className="col-md-6">
@@ -253,6 +256,7 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
+            {/* ---------------- Quantity & Measurements ---------------- */}
             <FormSectionContainer title="Quantity & Measurements" icon={<AlignLeft size={20} className="text-primary" />} defaultOpen={true}>
                 <div className="row g-3">
                     <div className="col-md-6">
@@ -293,10 +297,12 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
+            {/* ---------------- Wastage & Net Quantity ---------------- */}
             <FormSectionContainer title="Wastage & Net Quantity" icon={<Settings size={20} className="text-primary" />}>
                 <p className="text-muted">Fields for Wastage and Net Quantity will go here...</p>
             </FormSectionContainer>
 
+            {/* ---------------- Pricing & Currency ---------------- */}
             <FormSectionContainer title="Pricing & Currency" icon={<DollarSign size={20} className="text-primary" />}>
                 <div style={{ width: '80%' }}>
                     <label className="form-label text-start w-100">
@@ -306,6 +312,7 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
+            {/* ---------------- Cost Summary ---------------- */}
             <FormSectionContainer title="Cost Summary" icon={<Calculator size={20} className="text-primary" />}>
                 <div className="d-flex justify-content-end align-items-center mb-3">
                     <span className="me-2">Rate Lock</span>
@@ -341,6 +348,7 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
+            {/* ---------------- Add Resource Button ---------------- */}
             <div className="d-flex justify-content-end pt-3 me-3"> 
                 <button 
                     className="btn" 

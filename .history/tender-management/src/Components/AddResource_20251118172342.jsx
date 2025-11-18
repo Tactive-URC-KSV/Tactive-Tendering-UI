@@ -297,6 +297,7 @@ function AddResource() {
                 <p className="text-muted">Fields for Wastage and Net Quantity will go here...</p>
             </FormSectionContainer>
 
+            {/* ---------------- Pricing & Currency ---------------- */}
             <FormSectionContainer title="Pricing & Currency" icon={<DollarSign size={20} className="text-primary" />}>
                 <div style={{ width: '80%' }}>
                     <label className="form-label text-start w-100">
@@ -306,6 +307,7 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
+            {/* ---------------- Cost Summary ---------------- */}
             <FormSectionContainer title="Cost Summary" icon={<Calculator size={20} className="text-primary" />}>
                 <div className="d-flex justify-content-end align-items-center mb-3">
                     <span className="me-2">Rate Lock</span>
@@ -341,6 +343,7 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
+            {/* ---------------- Add Resource Button ---------------- */}
             <div className="d-flex justify-content-end pt-3 me-3"> 
                 <button 
                     className="btn" 

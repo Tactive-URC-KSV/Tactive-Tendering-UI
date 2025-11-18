@@ -8,6 +8,12 @@ import { toast } from "react-toastify";
 function AddResource() {
     const navigate = useNavigate();
 
+    // Assuming a handleUnauthorized function exists or navigate to login is intended
+    const handleUnauthorized = () => {
+        toast.error('Session expired. Please log in again.');
+        // navigate('/login'); // Uncomment if you have a login route
+    };
+
     const darkBlue = '#005197';
     const vibrantBlue = '#007BFF';
     const containerBgColor = '#EFF6FF'; 
@@ -21,7 +27,9 @@ function AddResource() {
     const [selectedResourceType, setSelectedResourceType] = useState(null);
     const [quantityType, setQuantityType] = useState([]); 
     const [currency, setCurrency] = useState([]);
-    const [uomOption, setUomOption] = useState([]);
+    const [uomData, setUomData] = useState([]); // Added state for UOM data
+
+    // --- Data Fetching Logic (Existing) ---
 
     const fetchResourceTypes = useCallback(() => {
         axios
@@ -113,11 +121,64 @@ function AddResource() {
 
     useEffect(() => { fetchCurrency(); }, [fetchCurrency]);
 
-    const resourceTypeOptions = useMemo(() => resourceTypes.map(item => ({ value: item.id, label: item.resourceTypeName })), [resourceTypes]);
-    const resourceOption = useMemo(() => resources.map(item => ({ value: item.id, label: `${item.resourceCode}-${item.resourceName}` })), [resources]);
-    const resourceNatureOption = useMemo(() => resourceNature.map(item => ({ value: item.id, label: item.nature })), [resourceNature]);
-    const quantityTypeOption = useMemo(() => quantityType.map(item => ({ value: item.id, label: item.quantityType })), [quantityType]);
-    const currencyOptions = useMemo(() => currency.map(item => ({ value: item.id, label: item.currencyName })), [currency]);
+    // --- UOM Fetching Logic (NEW) ---
+    const fetchUOM = useCallback(() => {
+        axios
+          .get(`${import.meta.env.VITE_API_BASE_URL}/uom`, { // Assuming /uom endpoint
+            headers: {
+              Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+              'Content-Type': 'application/json',
+            },
+          })
+          .then((res) => { 
+              if (res.status === 200) setUomData(res.data); 
+          })
+          .catch((err) => {
+            if (err?.response?.status === 401) handleUnauthorized();
+            else toast.error('Failed to fetch UOMs.');
+          });
+    }, []);
+    
+    useEffect(() => { fetchUOM(); }, [fetchUOM]);
+
+
+    // --- Memoized Options (Updated to reflect user's desired structure and new data) ---
+    
+    // This function must be provided to useUom() or the data must be fetched internally as implemented above.
+    // const uomOption = useUom().map((uom) => ({ value: uom.id, label: uom.uomName })); 
+    
+    // NEW uomOptions based on fetched uomData
+    const uomOptions = useMemo(
+        () => uomData.map((uom) => ({ value: uom.id, label: uom.uomName })),
+        [uomData]
+    );
+
+    const resourceTypeOptions = useMemo(
+        () => resourceTypes?.map(item => ({ value: item.id, label: item.resourceTypeName })), 
+        [resourceTypes]
+    );
+
+    const resourceOption = useMemo(
+        () => resources?.map(item => ({ value: item.id, label: `${item.resourceCode}-${item.resourceName}` })), 
+        [resources]
+    );
+
+    const resourceNatureOption = useMemo(
+        () => resourceNature?.map(item => ({ value: item.id, label: item.nature })), 
+        [resourceNature]
+    );
+
+    const quantityTypeOption = useMemo(
+        () => quantityType?.map(item => ({ value: item.id, label: item.quantityType })), 
+        [quantityType]
+    );
+
+    const currencyOptions = useMemo(
+        () => currency?.map(item => ({ value: item.id, label: `${item.currencyName} (${item.currencyCode})` })), 
+        [currency]
+    );
+
+    // --- Component Logic ---
 
     const handleBack = () => navigate(-1);
     const emptyOption = [{ value: '', label: '' }];
@@ -260,7 +321,8 @@ function AddResource() {
                             UOM <span style={{ color: "red" }}>*</span>
                         </label>
                         <div style={{ width: '80%' }}>
-                            <Select options={emptyOption} styles={customStyles} placeholder="Select UOM"/>
+                            {/* UPDATED: Using the newly fetched uomOptions */}
+                            <Select options={uomOptions} styles={customStyles} placeholder="Select UOM"/>
                         </div>
                     </div>
 
@@ -302,6 +364,7 @@ function AddResource() {
                     <label className="form-label text-start w-100">
                         Currency <span style={{ color: "red" }}>*</span>
                     </label>
+                    {/* Updated to use currencyOptions */}
                     <Select options={currencyOptions} styles={customStyles} placeholder="Select Currency"/>
                 </div>
             </FormSectionContainer>

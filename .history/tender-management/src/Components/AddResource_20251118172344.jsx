@@ -306,6 +306,7 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
+            {/* ---------------- Cost Summary ---------------- */}
             <FormSectionContainer title="Cost Summary" icon={<Calculator size={20} className="text-primary" />}>
                 <div className="d-flex justify-content-end align-items-center mb-3">
                     <span className="me-2">Rate Lock</span>
@@ -341,6 +342,7 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
+            {/* ---------------- Add Resource Button ---------------- */}
             <div className="d-flex justify-content-end pt-3 me-3"> 
                 <button 
                     className="btn" 

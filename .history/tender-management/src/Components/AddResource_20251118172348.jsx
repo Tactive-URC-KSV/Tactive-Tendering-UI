@@ -341,6 +341,7 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
+            {/* ---------------- Add Resource Button ---------------- */}
             <div className="d-flex justify-content-end pt-3 me-3"> 
                 <button 
                     className="btn" 

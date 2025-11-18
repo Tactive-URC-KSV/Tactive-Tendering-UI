@@ -5,8 +5,21 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
 
+// Assuming you have a custom hook file named useUom.js or similar.
+// If not, you must replace the useUom() call with the explicit fetchUOM logic provided below.
+
+// --- START: Assuming useUom is replaced with direct fetch/state logic ---
+// If you are using a custom hook, comment out the following lines related to uom state and fetch
+// and make sure your original useUom hook works correctly.
+
+// If you DO NOT have a useUom hook, this state and fetch logic is necessary:
 function AddResource() {
     const navigate = useNavigate();
+
+    const handleUnauthorized = () => {
+        toast.error('Session expired. Please log in again.');
+        // navigate('/login'); 
+    };
 
     const darkBlue = '#005197';
     const vibrantBlue = '#007BFF';
@@ -21,7 +34,10 @@ function AddResource() {
     const [selectedResourceType, setSelectedResourceType] = useState(null);
     const [quantityType, setQuantityType] = useState([]); 
     const [currency, setCurrency] = useState([]);
-    const [uomOption, setUomOption] = useState([]);
+    const [uomData, setUomData] = useState([]); 
+    const [uomLoading, setUomLoading] = useState(true); 
+
+    // --- Data Fetching Logic (Direct implementation for all) ---
 
     const fetchResourceTypes = useCallback(() => {
         axios
@@ -40,8 +56,6 @@ function AddResource() {
           });
     }, []);
 
-    useEffect(() => { fetchResourceTypes(); }, [fetchResourceTypes]);
-
     const fetchResourceNature = useCallback(() => {
       axios
         .get(`${import.meta.env.VITE_API_BASE_URL}/resourceNature`, {
@@ -58,8 +72,6 @@ function AddResource() {
           else toast.error('Failed to fetch resource natures.');
         });
     }, []);
-
-    useEffect(() => { fetchResourceNature(); }, [fetchResourceNature]);
 
     const fetchResources = useCallback((resTypeId) => {
       if (!resTypeId) return;
@@ -94,8 +106,6 @@ function AddResource() {
         });
     }, []);
 
-    useEffect(() => { fetchQuantityType(); }, [fetchQuantityType]);
-
     const fetchCurrency = useCallback(() => {
       axios
         .get(`${import.meta.env.VITE_API_BASE_URL}/project/currency`, {
@@ -111,16 +121,86 @@ function AddResource() {
         });
     }, []);
 
-    useEffect(() => { fetchCurrency(); }, [fetchCurrency]);
+    // --- UOM Fetching Logic (The crucial part) ---
+    const fetchUOM = useCallback(async () => {
+        setUomLoading(true);
+        try {
+            const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/uom`, {
+                headers: {
+                    Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            
+            if (response.status === 200 && Array.isArray(response.data)) {
+                setUomData(response.data);
+            } else if (response.status === 200) {
+                // If 200 but not an array, log the error and set empty array
+                console.error("UOM API response data is not a valid array:", response.data);
+                toast.error('UOM data format error. Check console.');
+                setUomData([]);
+            }
+        } catch (err) {
+            console.error("Failed to fetch UOM:", err);
+            if (err?.response?.status === 401) handleUnauthorized();
+            else toast.error('Failed to fetch UOMs. Check network tab.');
+            setUomData([]); 
+        } finally {
+            setUomLoading(false);
+        }
+    }, []);
+    // --- END: UOM Fetching Logic ---
 
-    const resourceTypeOptions = useMemo(() => resourceTypes.map(item => ({ value: item.id, label: item.resourceTypeName })), [resourceTypes]);
-    const resourceOption = useMemo(() => resources.map(item => ({ value: item.id, label: `${item.resourceCode}-${item.resourceName}` })), [resources]);
-    const resourceNatureOption = useMemo(() => resourceNature.map(item => ({ value: item.id, label: item.nature })), [resourceNature]);
-    const quantityTypeOption = useMemo(() => quantityType.map(item => ({ value: item.id, label: item.quantityType })), [quantityType]);
-    const currencyOptions = useMemo(() => currency.map(item => ({ value: item.id, label: item.currencyName })), [currency]);
+
+    // --- Trigger all fetches using useEffect ---
+    useEffect(() => { 
+        fetchResourceTypes(); 
+        fetchResourceNature();
+        fetchQuantityType();
+        fetchCurrency();
+        fetchUOM(); // <--- UOM Fetch is triggered here
+    }, [fetchResourceTypes, fetchResourceNature, fetchQuantityType, fetchCurrency, fetchUOM]);
+
+
+    // --- Memoized Options (Transforming fetched data for react-select) ---
+    
+    const uomOptions = useMemo(
+        // IMPORTANT: Ensure 'id' and 'uomName' match your API response keys exactly!
+        () => (Array.isArray(uomData) ? uomData : []).map((uom) => ({ 
+            value: uom.id, 
+            label: uom.uomName 
+        })),
+        [uomData]
+    );
+
+    const resourceTypeOptions = useMemo(
+        () => resourceTypes?.map(item => ({ value: item.id, label: item.resourceTypeName })), 
+        [resourceTypes]
+    );
+
+    const resourceOption = useMemo(
+        () => resources?.map(item => ({ value: item.id, label: `${item.resourceCode}-${item.resourceName}` })), 
+        [resources]
+    );
+
+    const resourceNatureOption = useMemo(
+        () => resourceNature?.map(item => ({ value: item.id, label: item.nature })), 
+        [resourceNature]
+    );
+
+    const quantityTypeOption = useMemo(
+        () => quantityType?.map(item => ({ value: item.id, label: item.quantityType })), 
+        [quantityType]
+    );
+
+    const currencyOptions = useMemo(
+        () => currency?.map(item => ({ value: item.id, label: `${item.currencyName} (${item.currencyCode})` })), 
+        [currency]
+    );
+
+    // --- Component Logic ---
 
     const handleBack = () => navigate(-1);
-    const emptyOption = [{ value: '', label: '' }];
 
     const customStyles = {
         control: (provided, state) => ({
@@ -260,7 +340,13 @@ function AddResource() {
                             UOM <span style={{ color: "red" }}>*</span>
                         </label>
                         <div style={{ width: '80%' }}>
-                            <Select options={emptyOption} styles={customStyles} placeholder="Select UOM"/>
+                            {/* The Select component for UOM */}
+                            <Select 
+                                options={uomOptions} 
+                                styles={customStyles} 
+                                placeholder={uomLoading ? "Loading..." : "Select UOM"}
+                                isLoading={uomLoading}
+                            />
                         </div>
                     </div>
 
