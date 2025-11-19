@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Select from "react-select";
-import { ArrowLeft, BookOpenText, ChevronDown, AlignLeft, DollarSign, Calculator, Settings } from "lucide-react";
+import { ArrowLeft, BookOpenText, ChevronDown, AlignLeft, DollarSign, Calculator, Settings } from "lucide-react"; 
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -11,8 +11,8 @@ function AddResource() {
 
     const darkBlue = '#005197';
     const vibrantBlue = '#007BFF';
-    const containerBgColor = '#EFF6FF';
-    const containerBorderColor = '#dee2e6';
+    const containerBgColor = '#EFF6FF'; 
+    const containerBorderColor = '#dee2e6'; 
     const [boqUOM, setBoqUOM] = useState("CUM");
     const [boqTotalQuantity, setBoqTotalQuantity] = useState(100.00); 
     
@@ -20,7 +20,7 @@ function AddResource() {
     const [resources, setResources] = useState([]);
     const [resourceNature, setResourceNature] = useState([]);
     const [selectedResourceType, setSelectedResourceType] = useState(null);
-    const [quantityType, setQuantityType] = useState([]);
+    const [quantityType, setQuantityType] = useState([]); 
     const [currency, setCurrency] = useState([]);
     const [selectedUom, setSelectedUom] = useState(null);
     const [selectedNature, setSelectedNature] = useState(null);
@@ -60,7 +60,7 @@ function AddResource() {
 
     const uomData = useUom(); 
 
-    const uomOptions = useMemo(() =>
+    const uomOptions = useMemo(() => 
         (Array.isArray(uomData) ? uomData : []).map(uom => ({ value: uom.id, label: uom.uomName })),
         [uomData] 
     );
@@ -123,7 +123,7 @@ function AddResource() {
           })
           .then((res) => { if (res.status === 200) setResourceTypes(res.data); })
           .catch((err) => {
-            if (err?.response?.status === 401) handleUnauthorized();
+            if (err?.response?.status === 401) handleUnauthorized(); 
             else toast.error('Failed to fetch resource types.');
           });
     }, [handleUnauthorized]);
@@ -204,6 +204,7 @@ function AddResource() {
             ...resourceData,
             boqQuantity: boqTotalQuantity,
             boqUOM: boqUOM,
+            // Ensure numbers are not strings if necessary, though POST usually handles it.
         };
 
         axios.post(`${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/addResources`, payload, {
@@ -217,12 +218,13 @@ function AddResource() {
         });
     };
 
+    // --- CUSTOM STYLES (Your existing code) ---
     const customStyles = {
         control: (provided, state) => ({
             ...provided,
             borderRadius: '0.5rem',
-            borderColor: state.isFocused ? darkBlue : provided.borderColor,
-            boxShadow: state.isFocused ? `0 0 0 0.25rem rgba(0, 81, 151, 0.25)` : provided.boxShadow,
+            borderColor: state.isFocused ? darkBlue : provided.borderColor, 
+            boxShadow: state.isFocused ? `0 0 0 0.25rem rgba(0, 81, 151, 0.25)` : provided.boxShadow, 
             minHeight: '38px', 
             width: '100%',
         }),
@@ -232,26 +234,27 @@ function AddResource() {
         indicatorSeparator: () => ({ display: 'none' }),
     };
 
+    // --- SECTION CONTAINER (Your existing code) ---
     const FormSectionContainer = ({ title, icon, defaultOpen = false, children }) => {
         const isStatic = ['Basic Information', 'Quantity & Measurements', 'Cost Summary'].includes(title);
-        const [isOpen, setIsOpen] = useState(isStatic || defaultOpen);
+        const [isOpen, setIsOpen] = useState(isStatic || defaultOpen); 
         const headerStyle = {
             cursor: isStatic ? 'default' : 'pointer',
             listStyle: 'none',
             backgroundColor: containerBgColor,
             border: `1px solid ${containerBorderColor}`,
-            borderBottom: (isStatic || isOpen) ? 'none' : `1px solid ${containerBorderColor}`,
+            borderBottom: (isStatic || isOpen) ? 'none' : `1px solid ${containerBorderColor}`, 
             borderRadius: (isStatic || isOpen) ? '0.5rem 0.5rem 0 0' : '0.5rem',
-            marginBottom: '0',
+            marginBottom: '0', 
         };
-        const contentStyle = {
-            backgroundColor: 'white',
-            padding: '1rem 1.5rem',
-            borderLeft: `1px solid ${containerBorderColor}`,
-            borderRight: `1px solid ${containerBorderColor}`,
-            borderBottom: `1px solid ${containerBorderColor}`,
+        const contentStyle = { 
+            backgroundColor: 'white', 
+            padding: '1rem 1.5rem', 
+            borderLeft: `1px solid ${containerBorderColor}`, 
+            borderRight: `1px solid ${containerBorderColor}`, 
+            borderBottom: `1px solid ${containerBorderColor}`, 
             borderRadius: '0 0 0.5rem 0.5rem',
-            marginTop: '0'
+            marginTop: '0' 
         };
         const HeaderContent = (
             <div className="py-3 px-4 d-flex justify-content-between align-items-center">
@@ -267,6 +270,7 @@ function AddResource() {
         );
     };
 
+    // --- RENDER FUNCTION (Inputs Bound and Display Updated) ---
     return (
         <div className="container-fluid min-vh-100">
 
@@ -277,12 +281,13 @@ function AddResource() {
                 </div>
             </div>
 
+            {/* BOQ Summary */}
             <div 
-                className="text-white p-3 d-flex justify-content-between align-items-center mx-3 mb-4"
-                style={{ background: `linear-gradient(to right, ${darkBlue}, ${vibrantBlue})`, borderRadius: '0.5rem' }}
+                className="text-white p-3 d-flex justify-content-between align-items-center mx-3 mb-4" 
+                style={{ background: `linear-gradient(to right, ${darkBlue}, ${vibrantBlue})`, borderRadius: '0.5rem' }} 
             >
                 <div className="d-flex align-items-center">
-                    <BookOpenText size={20} className="me-2" />
+                    <BookOpenText size={20} className="me-2" /> 
                     <span>BOQ Summary</span>
                 </div>
                 <div className="d-flex">
@@ -291,6 +296,7 @@ function AddResource() {
                 </div>
             </div>
 
+            {/* Basic Information */}
             <FormSectionContainer title="Basic Information" icon={<span className="text-primary" style={{ fontSize: '1.2em' }}>•</span>} defaultOpen={true}>
                 <div className="row g-3">
                     <div className="col-md-6">
@@ -329,8 +335,8 @@ function AddResource() {
                             Resource Name <span style={{ color: "red" }}>*</span>
                         </label>
                         <div style={{ width: '80%' }}>
-                            <Select
-                                options={resourceOption}
+                            <Select 
+                                options={resourceOption} 
                                 styles={{
                                     ...customStyles,
                                     placeholder: (provided) => ({ ...provided, color: 'black', textAlign: 'left' }),
@@ -365,6 +371,7 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
+            {/* Quantity & Measurements */}
             <FormSectionContainer title="Quantity & Measurements" icon={<AlignLeft size={20} className="text-primary" />} defaultOpen={true}>
                 <div className="row g-3">
                     <div className="col-md-6">
@@ -372,11 +379,11 @@ function AddResource() {
                             UOM <span style={{ color: "red" }}>*</span>
                         </label>
                         <div style={{ width: '80%' }}>
-                            <Select
-                                options={uomOptions}
+                            <Select  
+                                options={uomOptions}  
                                 value={selectedUom} 
-                                styles={customStyles}
-                                placeholder="Select UOM"
+                                styles={customStyles}  
+                                placeholder="Select UOM"  
                                 className="w-100" 
                                 classNamePrefix="select" 
                                 onChange={(selected) => {
@@ -437,6 +444,7 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
+            {/* Wastage & Net Quantity */}
             <FormSectionContainer title="Wastage & Net Quantity" icon={<Settings size={20} className="text-primary" />}>
                 <div className="row g-3">
 
@@ -444,8 +452,8 @@ function AddResource() {
                         <label className="form-label text-start w-100">
                             Wastage % <span style={{ color: "red" }}></span>
                         </label>
-                        <input
-                            type="number"
+                        <input 
+                            type="number" 
                             name="wastePercentage"
                             value={resourceData.wastePercentage}
                             onChange={handleChange}
@@ -459,8 +467,8 @@ function AddResource() {
                         <label className="form-label text-start w-100">
                             Wastage Quantity
                         </label>
-                        <input
-                            type="text"
+                        <input 
+                            type="text" 
                             value={resourceData.wasteQuantity.toFixed(2)}
                             readOnly
                             className="form-input w-100"
@@ -473,8 +481,8 @@ function AddResource() {
                         <label className="form-label text-start w-100">
                             Net Quantity
                         </label>
-                        <input
-                            type="text"
+                        <input 
+                            type="text" 
                             value={resourceData.netQuantity.toFixed(2)}
                             readOnly
                             className="form-input w-100"
@@ -487,6 +495,7 @@ function AddResource() {
             </FormSectionContainer>
 
 
+            {/* Pricing & Currency */}
             <FormSectionContainer title="Pricing & Currency" icon={<DollarSign size={20} className="text-primary" />}>
                 <div className="row g-4">
                     <div className="col-md-6">
@@ -500,7 +509,7 @@ function AddResource() {
                                 onChange={handleChange}
                                 className="form-input w-100" 
                                 placeholder="0.00"
-                                style={{ borderRadius: "0.5rem" }} 
+                                style={{ borderRadius: "0.5rem"  }} 
                             />
                         </div>
 
@@ -548,6 +557,7 @@ function AddResource() {
             </FormSectionContainer>
 
 
+            {/* Cost Summary */}
             <FormSectionContainer title="Cost Summary" icon={<Calculator size={20} className="text-primary" />}>
                 <div className="d-flex justify-content-end align-items-center mb-3">
                     <span className="me-2">Rate Lock</span>
@@ -591,9 +601,9 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
-            <div className="d-flex justify-content-end pt-3 me-3">
-                <button
-                    className="btn"
+            <div className="d-flex justify-content-end pt-3 me-3"> 
+                <button 
+                    className="btn" 
                     style={{ backgroundColor: darkBlue, color: 'white', border: 'none', padding: '0.5rem 1.5rem', borderRadius: '0.5rem' }}
                     onClick={handleAddResource}
                 >

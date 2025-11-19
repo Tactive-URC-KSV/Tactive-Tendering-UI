@@ -474,7 +474,7 @@ function AddResource() {
                             Net Quantity
                         </label>
                         <input
-                            type="text"
+                            type="text" 
                             value={resourceData.netQuantity.toFixed(2)}
                             readOnly
                             className="form-input w-100"

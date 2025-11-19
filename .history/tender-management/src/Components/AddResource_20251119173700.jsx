@@ -14,83 +14,89 @@ function AddResource() {
     const containerBgColor = '#EFF6FF';
     const containerBorderColor = '#dee2e6';
     const [boqUOM, setBoqUOM] = useState("CUM");
-    const [boqTotalQuantity, setBoqTotalQuantity] = useState(100.00); 
-    
+    const [boqTotalQuantity, setBoqTotalQuantity] = useState(100.00);
+
     const [resourceTypes, setResourceTypes] = useState([]);
     const [resources, setResources] = useState([]);
     const [resourceNature, setResourceNature] = useState([]);
     const [selectedResourceType, setSelectedResourceType] = useState(null);
     const [quantityType, setQuantityType] = useState([]);
     const [currency, setCurrency] = useState([]);
-    const [selectedUom, setSelectedUom] = useState(null);
+    
+    // selectedUom holds the React-Select object for display
+    const [selectedUom, setSelectedUom] = useState(null); 
+    
     const [selectedNature, setSelectedNature] = useState(null);
     const [selectedQuantityType, setSelectedQuantityType] = useState(null);
     const [selectedCurrency, setSelectedCurrency] = useState(null);
-    const [selectedResource, setSelectedResource] = useState(null);
+    
+    // State to hold the selected resource object (Used by Effect 1 as the primary trigger)
+    const [selectedResource, setSelectedResource] = useState(null); 
 
     const [resourceData, setResourceData] = useState({
-        coEfficient: 1, 
+        coEfficient: 1,
         calculatedQuantity: 0,
         wastePercentage: 0,
         wasteQuantity: 0,
         netQuantity: 0,
-        rate: 0,
+        rate: 0, 
         additionalRate: 0,
         shippingPrice: 0,
         costUnitRate: 0,
         resourceTotalCost: 0,
         rateLock: false,
-        exchangeRate: 1, 
+        exchangeRate: 1,
         totalCostCompanyCurrency: 0,
         resourceTypeId: "",
         quantityTypeId: "",
         resourceNatureId: "",
-        uomId: "",
+        uomId: "", 
         currencyId: "",
         resourceId: "",
-        boqId: "mock_boq_id", 
-        projectId: "mock_project_id" 
+        boqId: "mock_boq_id",
+        projectId: "mock_project_id"
     });
-
 
 
     const handleUnauthorized = useCallback(() => {
         toast.error("Session expired or unauthorized. Please log in again.");
-    }, [navigate]);
+    }, []);
 
-    const uomData = useUom(); 
+    const uomData = useUom();
 
     const uomOptions = useMemo(() =>
         (Array.isArray(uomData) ? uomData : []).map(uom => ({ value: uom.id, label: uom.uomName })),
-        [uomData] 
+        [uomData]
     );
 
+    // This function handles state updates and recalculations
     const handleCalculations = useCallback((updatedData) => {
         setResourceData((prev) => {
             const data = { ...prev, ...updatedData };
-            
+
             const coEfficient = parseFloat(data.coEfficient) || 1;
             const wastePercentage = parseFloat(data.wastePercentage) || 0;
-            const rate = parseFloat(data.rate) || 0;
+            const rate = parseFloat(data.rate) || 0; 
             const additionalRate = parseFloat(data.additionalRate) || 0;
             const shippingPrice = parseFloat(data.shippingPrice) || 0;
             const exchangeRate = parseFloat(data.exchangeRate) || 1;
-            
-            const boqQuantity = parseFloat(boqTotalQuantity) || 0; 
 
-            const calculatedQuantity = boqQuantity * coEfficient; 
+            const boqQuantity = parseFloat(boqTotalQuantity) || 0;
+
+            // Calculations
+            const calculatedQuantity = boqQuantity * coEfficient;
             const wasteQuantity = calculatedQuantity * (wastePercentage / 100);
             const netQuantity = calculatedQuantity + wasteQuantity;
+
+            const unitRate = netQuantity > 0
+                ? rate + additionalRate + (shippingPrice / netQuantity)
+                : rate + additionalRate;
             
-            const unitRate = netQuantity > 0 
-                ? rate + additionalRate + (shippingPrice / netQuantity) 
-                : rate + additionalRate; 
             const totalCostCompanyCurrency = unitRate * netQuantity;
-            
-            const resourceTotalCost = totalCostCompanyCurrency * exchangeRate; 
+            const resourceTotalCost = totalCostCompanyCurrency * exchangeRate;
 
             return {
-                ...data, 
+                ...data,
                 calculatedQuantity,
                 wasteQuantity,
                 netQuantity,
@@ -99,107 +105,195 @@ function AddResource() {
                 totalCostCompanyCurrency: totalCostCompanyCurrency,
             };
         });
-    }, [boqTotalQuantity]); 
-
+    }, [boqTotalQuantity]);
     
+    // Function to set the default Rate and UOM ID upon resource selection
+    const setResourceDefaultValues = useCallback((resource) => {
+        if (resource) {
+            const newRate = resource.defaultRate || 0;
+            const newUomId = resource.defaultUomId || '';
+
+            setResourceData(prev => ({
+                ...prev,
+                resourceId: resource.value,
+                rate: newRate,
+                uomId: newUomId,
+            }));
+        } else {
+             // Reset relevant fields
+             setResourceData(prev => ({
+                 ...prev,
+                 resourceId: "",
+                 rate: 0,
+                 uomId: "",
+             }));
+        }
+    }, []);
+
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        
+
         const newValue = type === 'number' || name === 'coEfficient' || name.includes('Rate') || name.includes('Price') || name.includes('Percentage')
-            ? parseFloat(value) 
-            : type === 'checkbox' 
-            ? checked 
+            ? parseFloat(value) || 0
+            : type === 'checkbox'
+            ? checked
             : value;
-        
-        handleCalculations({ [name]: newValue });
+
+        const finalValue = name === 'rate' ? parseFloat(value) || 0 : newValue;
+
+        handleCalculations({ [name]: finalValue });
     };
 
+    // --- FETCH FUNCTIONS ---
+    // All fetch functions remain largely the same, they just fetch the list of options.
 
-    
     const fetchResourceTypes = useCallback(() => {
         axios
-          .get(`${import.meta.env.VITE_API_BASE_URL}/resourceType`, {
-            headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' }
-          })
-          .then((res) => { if (res.status === 200) setResourceTypes(res.data); })
-          .catch((err) => {
-            if (err?.response?.status === 401) handleUnauthorized();
-            else toast.error('Failed to fetch resource types.');
-          });
+            .get(`${import.meta.env.VITE_API_BASE_URL}/resourceType`, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' }
+            })
+            .then((res) => { if (res.status === 200) setResourceTypes(res.data); })
+            .catch((err) => {
+                if (err?.response?.status === 401) handleUnauthorized();
+                else toast.error('Failed to fetch resource types.');
+            });
     }, [handleUnauthorized]);
 
     useEffect(() => { fetchResourceTypes(); }, [fetchResourceTypes]);
 
     const fetchResourceNature = useCallback(() => {
-      axios
-        .get(`${import.meta.env.VITE_API_BASE_URL}/resourceNature`, {
-          headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' },
-        })
-        .then((res) => { if (res.status === 200) setResourceNature(res.data); })
-        .catch((err) => {
-          if (err?.response?.status === 401) handleUnauthorized();
-          else toast.error('Failed to fetch resource natures.');
-        });
+        axios
+            .get(`${import.meta.env.VITE_API_BASE_URL}/resourceNature`, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' },
+            })
+            .then((res) => { if (res.status === 200) setResourceNature(res.data); })
+            .catch((err) => {
+                if (err?.response?.status === 401) handleUnauthorized();
+                else toast.error('Failed to fetch resource natures.');
+            });
     }, [handleUnauthorized]);
 
     useEffect(() => { fetchResourceNature(); }, [fetchResourceNature]);
 
+    // *** FIX IS HERE: Cleaned up the resource fetching and resetting logic ***
     const fetchResources = useCallback((resTypeId) => {
-      if (!resTypeId) return;
-      axios
-        .get(`${import.meta.env.VITE_API_BASE_URL}/resources/${resTypeId}`, {
-          headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' },
-        })
-        .then((res) => { if (res.status === 200) setResources(res.data); })
-        .catch((err) => {
-          if (err?.response?.status === 401) handleUnauthorized();
-          else toast.error('Failed to fetch resources.');
-        });
-    }, [handleUnauthorized]);
+        // If Resource Type is cleared, only reset the resource list and related states
+        if (!resTypeId) {
+            setResources([]);
+            setSelectedResource(null);
+            setResourceDefaultValues(null); 
+            return;
+        }
+        
+        axios
+            .get(`${import.meta.env.VITE_API_BASE_URL}/resources/${resTypeId}`, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' },
+            })
+            .then((res) => { 
+                if (res.status === 200) {
+                    setResources(res.data);
+                    // Crucial: Only reset the currently selected resource, not the list of resource types.
+                    setSelectedResource(null); 
+                }
+            })
+            .catch((err) => {
+                if (err?.response?.status === 401) handleUnauthorized();
+                else toast.error('Failed to fetch resources.');
+            });
+    }, [handleUnauthorized, setResourceDefaultValues]);
 
 
     const fetchQuantityType = useCallback(() => {
-      axios
-        .get(`${import.meta.env.VITE_API_BASE_URL}/quantityType`, {
-          headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' },
-        })
-        .then((res) => { if (res.status === 200) setQuantityType(res.data); })
-        .catch((err) => {
-          if (err?.response?.status === 401) handleUnauthorized();
-          else toast.error('Failed to fetch quantity types.');
-        });
+        axios
+            .get(`${import.meta.env.VITE_API_BASE_URL}/quantityType`, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' },
+            })
+            .then((res) => { if (res.status === 200) setQuantityType(res.data); })
+            .catch((err) => {
+                if (err?.response?.status === 401) handleUnauthorized();
+                else toast.error('Failed to fetch quantity types.');
+            });
     }, [handleUnauthorized]);
 
     useEffect(() => { fetchQuantityType(); }, [fetchQuantityType]);
 
     const fetchCurrency = useCallback(() => {
-      axios
-        .get(`${import.meta.env.VITE_API_BASE_URL}/project/currency`, {
-          headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' },
-        })
-        .then((res) => { if (res.status === 200) setCurrency(res.data); })
-        .catch((err) => {
-          if (err?.response?.status === 401) handleUnauthorized();
-          else toast.error('Failed to fetch currencies.');
-        });
+        axios
+            .get(`${import.meta.env.VITE_API_BASE_URL}/project/currency`, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' },
+            })
+            .then((res) => { if (res.status === 200) setCurrency(res.data); })
+            .catch((err) => {
+                if (err?.response?.status === 401) handleUnauthorized();
+                else toast.error('Failed to fetch currencies.');
+            });
     }, [handleUnauthorized]);
 
     useEffect(() => { fetchCurrency(); }, [fetchCurrency]);
 
     useEffect(() => {
-        handleCalculations({}); 
+        // Run initial calculations on load
+        handleCalculations({});
     }, [handleCalculations]);
 
-    
+    // --- OPTIONS MEMOS ---
+
     const resourceTypeOptions = useMemo(() => resourceTypes.map(item => ({ value: item.id, label: item.resourceTypeName })), [resourceTypes]);
-    const resourceOption = useMemo(() => resources.map(item => ({ value: item.id, label: `${item.resourceCode}-${item.resourceName}` })), [resources]);
+    
+    // Ensure defaultRate and defaultUomId are correctly extracted and included
+    const resourceOption = useMemo(() => resources.map(item => {
+        return { 
+            value: item.id, 
+            label: `${item.resourceCode}-${item.resourceName}`,
+            defaultRate: item.rate || 0, // Rate property
+            defaultUomId: item.uomId // UOM ID property
+        };
+    }), [resources]);
+
     const resourceNatureOption = useMemo(() => resourceNature.map(item => ({ value: item.id, label: item.nature })), [resourceNature]);
     const quantityTypeOption = useMemo(() => quantityType.map(item => ({ value: item.id, label: item.quantityType })), [quantityType]);
     const currencyOptions = useMemo(() => currency.map(item => ({ value: item.id, label: item.currencyName })), [currency]);
 
-    const handleBack = () => navigate(-1);
     
+    // ⭐ EFFECT 1: Set Rate and UOM ID in resourceData state (DATA POPULATION)
+    // Triggers ONLY when selectedResource changes.
+    useEffect(() => {
+        setResourceDefaultValues(selectedResource);
+    }, [selectedResource, setResourceDefaultValues]); 
+
+    // ⭐ EFFECT 1.5: Trigger Recalculation after Rate/UOM ID is set (COST UPDATE)
+    useEffect(() => {
+        // This ensures calculations (which depend on Rate) are run after the rate state is set.
+        if (resourceData.resourceId) {
+             handleCalculations({});
+        }
+    }, [resourceData.resourceId, resourceData.rate, handleCalculations]); // Run when rate or resource changes
+
+    
+    // ⭐ EFFECT 2: Set the UOM Select component display (VISUAL SYNCHRONIZATION)
+    // Triggers when the resourceData.uomId state value changes OR when uomOptions load.
+    useEffect(() => {
+        const currentUomId = resourceData.uomId;
+        
+        if (uomOptions.length > 0 && currentUomId) {
+            const defaultUomOption = uomOptions.find(uom => String(uom.value) === String(currentUomId));
+            
+            if (defaultUomOption) {
+                setSelectedUom(defaultUomOption);
+            } else {
+                 setSelectedUom(null);
+            }
+        } else if (!currentUomId) {
+            setSelectedUom(null);
+        }
+    }, [uomOptions, resourceData.uomId]);
+
+
+    const handleBack = () => navigate(-1);
+
     const handleAddResource = () => {
+        handleCalculations({}); // Final check
+
         const payload = {
             ...resourceData,
             boqQuantity: boqTotalQuantity,
@@ -223,7 +317,7 @@ function AddResource() {
             borderRadius: '0.5rem',
             borderColor: state.isFocused ? darkBlue : provided.borderColor,
             boxShadow: state.isFocused ? `0 0 0 0.25rem rgba(0, 81, 151, 0.25)` : provided.boxShadow,
-            minHeight: '38px', 
+            minHeight: '38px',
             width: '100%',
         }),
         placeholder: (provided) => ({ ...provided, color: '#adb5bd' }),
@@ -256,7 +350,7 @@ function AddResource() {
         const HeaderContent = (
             <div className="py-3 px-4 d-flex justify-content-between align-items-center">
                 <div className="d-flex align-items-center">{icon}<span className="ms-2 text-primary fw-bold" style={{ fontSize: '1rem' }}>{title}</span></div>
-                {!isStatic && <ChevronDown size={20} style={{ color: vibrantBlue, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />} 
+                {!isStatic && <ChevronDown size={20} style={{ color: vibrantBlue, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />}
             </div>
         );
         return (
@@ -277,7 +371,7 @@ function AddResource() {
                 </div>
             </div>
 
-            <div 
+            <div
                 className="text-white p-3 d-flex justify-content-between align-items-center mx-3 mb-4"
                 style={{ background: `linear-gradient(to right, ${darkBlue}, ${vibrantBlue})`, borderRadius: '0.5rem' }}
             >
@@ -303,7 +397,8 @@ function AddResource() {
                                 onChange={(selected) => {
                                     setSelectedResourceType(selected);
                                     handleCalculations({ resourceTypeId: selected?.value });
-                                    fetchResources(selected?.value);
+                                    // Fetch the resources specific to this type
+                                    fetchResources(selected?.value); 
                                 }}
                             />
                         </div>
@@ -336,11 +431,11 @@ function AddResource() {
                                     placeholder: (provided) => ({ ...provided, color: 'black', textAlign: 'left' }),
                                     singleValue: (provided) => ({ ...provided, color: 'black' }),
                                 }}
-                                placeholder="Select resource"className="w-100"classNamePrefix="select"
+                                placeholder="Select resource" className="w-100" classNamePrefix="select"
                                 value={selectedResource}
                                 onChange={(selected) => {
-                                    setSelectedResource(selected);
-                                    handleCalculations({ resourceId: selected?.value });
+                                    // This triggers Effect 1 to set Rate and UOM ID
+                                    setSelectedResource(selected); 
                                 }}
                             />
                         </div>
@@ -351,13 +446,13 @@ function AddResource() {
                             <label className="form-label text-start w-100">
                                 Rate <span style={{ color: "red" }}>*</span>
                             </label>
-                            <input 
-                                type="number" 
+                            <input
+                                type="number"
                                 name="rate"
-                                value={resourceData.rate}
+                                value={resourceData.rate} 
                                 onChange={handleChange}
-                                style={{ borderRadius: '0.5rem' }} 
-                                placeholder="0.00" 
+                                style={{ borderRadius: '0.5rem' }}
+                                placeholder="0.00"
                                 className="form-input w-100"
                             />
                         </div>
@@ -377,11 +472,11 @@ function AddResource() {
                                 value={selectedUom} 
                                 styles={customStyles}
                                 placeholder="Select UOM"
-                                className="w-100" 
-                                classNamePrefix="select" 
+                                className="w-100"
+                                classNamePrefix="select"
                                 onChange={(selected) => {
                                     setSelectedUom(selected);
-                                    handleCalculations({ uomId: selected?.value });
+                                    handleCalculations({ uomId: selected?.value }); 
                                 }}
                             />
                         </div>
@@ -407,14 +502,14 @@ function AddResource() {
                             Coefficient <span style={{ color: "red" }}>*</span>
                         </label>
                         <div style={{ width: '80%' }}>
-                            <input 
-                                type="number" 
+                            <input
+                                type="number"
                                 name="coEfficient"
                                 value={resourceData.coEfficient}
                                 onChange={handleChange}
-                                style={{ borderRadius: '0.5rem' }} 
-                                placeholder="0.00" 
-                                className="form-input w-100" 
+                                style={{ borderRadius: '0.5rem' }}
+                                placeholder="0.00"
+                                className="form-input w-100"
                             />
                         </div>
                     </div>
@@ -424,12 +519,12 @@ function AddResource() {
                             <label className="form-label text-start w-100">
                                 Calculated Quantity <span style={{ color: "red" }}>*</span>
                             </label>
-                            <input 
-                                type="text" 
+                            <input
+                                type="text"
                                 value={resourceData.calculatedQuantity.toFixed(2)}
-                                style={{ borderRadius: '0.5rem' }} 
-                                placeholder="" 
-                                readOnly 
+                                style={{ borderRadius: '0.5rem' }}
+                                placeholder=""
+                                readOnly
                                 className="form-input w-100"
                             />
                         </div>
@@ -493,52 +588,52 @@ function AddResource() {
 
                         <div className="mb-3">
                             <label className="form-label text-start w-100">Additional Rate</label>
-                            <input 
-                                type="number" 
+                            <input
+                                type="number"
                                 name="additionalRate"
                                 value={resourceData.additionalRate}
                                 onChange={handleChange}
-                                className="form-input w-100" 
+                                className="form-input w-100"
                                 placeholder="0.00"
-                                style={{ borderRadius: "0.5rem" }} 
+                                style={{ borderRadius: "0.5rem" }}
                             />
                         </div>
 
                         <div className="mb-3">
                             <label className="form-label text-start w-100"> Currency <span style={{ color: "red" }}></span></label>
-                            <Select options={currencyOptions} styles={customStyles} placeholder="Select Currency" className="w-100" classNamePrefix="select" 
+                            <Select options={currencyOptions} styles={customStyles} placeholder="Select Currency" className="w-100" classNamePrefix="select"
                                 value={selectedCurrency}
                                 onChange={(selected) => {
                                     setSelectedCurrency(selected);
                                     handleCalculations({ currencyId: selected?.value });
                                 }}
-                            /> 
+                            />
                         </div>
                     </div>
 
                     <div className="col-md-6">
                         <div className="mb-3">
                             <label className="form-label text-start w-100"> Shipping / Freight Price (+ / -) </label>
-                            <input 
-                                type="number" 
+                            <input
+                                type="number"
                                 name="shippingPrice"
                                 value={resourceData.shippingPrice}
                                 onChange={handleChange}
-                                className="form-input w-100" 
-                                placeholder="0.00" 
-                                style={{ borderRadius: "0.5rem" }} 
+                                className="form-input w-100"
+                                placeholder="0.00"
+                                style={{ borderRadius: "0.5rem" }}
                             />
                         </div>
                         <div className="mb-3">
                             <label className="form-label text-start w-100"> Exchange Rate </label>
-                            <input 
-                                type="number" 
+                            <input
+                                type="number"
                                 name="exchangeRate"
                                 value={resourceData.exchangeRate}
                                 onChange={handleChange}
-                                className="form-input w-100" 
-                                placeholder="1.00000" 
-                                style={{ borderRadius: "0.5rem"}} 
+                                className="form-input w-100"
+                                placeholder="1.00000"
+                                style={{ borderRadius: "0.5rem"}}
                             />
                         </div>
 
@@ -552,11 +647,11 @@ function AddResource() {
                 <div className="d-flex justify-content-end align-items-center mb-3">
                     <span className="me-2">Rate Lock</span>
                     <div className="form-check form-switch">
-                        <input 
-                            className="form-check-input" 
-                            type="checkbox" 
-                            role="switch" 
-                            id="rateLockSwitch" 
+                        <input
+                            className="form-check-input"
+                            type="checkbox"
+                            role="switch"
+                            id="rateLockSwitch"
                             name="rateLock"
                             checked={resourceData.rateLock}
                             onChange={handleChange}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Select from "react-select";
-import { ArrowLeft, BookOpenText, ChevronDown, AlignLeft, DollarSign, Calculator, Settings } from "lucide-react";
+import { ArrowLeft, BookOpenText, ChevronDown, AlignLeft, DollarSign, Calculator, Settings } from "lucide-react"; 
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -11,8 +11,8 @@ function AddResource() {
 
     const darkBlue = '#005197';
     const vibrantBlue = '#007BFF';
-    const containerBgColor = '#EFF6FF';
-    const containerBorderColor = '#dee2e6';
+    const containerBgColor = '#EFF6FF'; 
+    const containerBorderColor = '#dee2e6'; 
     const [boqUOM, setBoqUOM] = useState("CUM");
     const [boqTotalQuantity, setBoqTotalQuantity] = useState(100.00); 
     
@@ -20,7 +20,7 @@ function AddResource() {
     const [resources, setResources] = useState([]);
     const [resourceNature, setResourceNature] = useState([]);
     const [selectedResourceType, setSelectedResourceType] = useState(null);
-    const [quantityType, setQuantityType] = useState([]);
+    const [quantityType, setQuantityType] = useState([]); 
     const [currency, setCurrency] = useState([]);
     const [selectedUom, setSelectedUom] = useState(null);
     const [selectedNature, setSelectedNature] = useState(null);
@@ -251,7 +251,7 @@ function AddResource() {
             borderRight: `1px solid ${containerBorderColor}`,
             borderBottom: `1px solid ${containerBorderColor}`,
             borderRadius: '0 0 0.5rem 0.5rem',
-            marginTop: '0'
+            marginTop: '0' 
         };
         const HeaderContent = (
             <div className="py-3 px-4 d-flex justify-content-between align-items-center">
@@ -473,8 +473,8 @@ function AddResource() {
                         <label className="form-label text-start w-100">
                             Net Quantity
                         </label>
-                        <input
-                            type="text"
+                        <input 
+                            type="text" 
                             value={resourceData.netQuantity.toFixed(2)}
                             readOnly
                             className="form-input w-100"

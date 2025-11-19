@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Select from "react-select";
-import { ArrowLeft, BookOpenText, ChevronDown, AlignLeft, DollarSign, Calculator, Settings } from "lucide-react";
+import { ArrowLeft, BookOpenText, ChevronDown, AlignLeft, DollarSign, Calculator, Settings } from "lucide-react"; 
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -11,8 +11,8 @@ function AddResource() {
 
     const darkBlue = '#005197';
     const vibrantBlue = '#007BFF';
-    const containerBgColor = '#EFF6FF';
-    const containerBorderColor = '#dee2e6';
+    const containerBgColor = '#EFF6FF'; 
+    const containerBorderColor = '#dee2e6'; 
     const [boqUOM, setBoqUOM] = useState("CUM");
     const [boqTotalQuantity, setBoqTotalQuantity] = useState(100.00); 
     
@@ -20,7 +20,7 @@ function AddResource() {
     const [resources, setResources] = useState([]);
     const [resourceNature, setResourceNature] = useState([]);
     const [selectedResourceType, setSelectedResourceType] = useState(null);
-    const [quantityType, setQuantityType] = useState([]);
+    const [quantityType, setQuantityType] = useState([]); 
     const [currency, setCurrency] = useState([]);
     const [selectedUom, setSelectedUom] = useState(null);
     const [selectedNature, setSelectedNature] = useState(null);
@@ -53,22 +53,31 @@ function AddResource() {
     });
 
 
+    // --- CRITICAL FIXES AND HELPERS ---
 
     const handleUnauthorized = useCallback(() => {
+        // Implement navigation to login or token refresh logic here
         toast.error("Session expired or unauthorized. Please log in again.");
+        // Example: navigate('/login');
     }, [navigate]);
 
     const uomData = useUom(); 
 
-    const uomOptions = useMemo(() =>
+    const uomOptions = useMemo(() => 
         (Array.isArray(uomData) ? uomData : []).map(uom => ({ value: uom.id, label: uom.uomName })),
-        [uomData] 
+        [uomData] // Depend on the actual data returned by the hook
     );
 
+
+    // --- CALCULATION LOGIC (FIXED & INTEGRATED) ---
+
+    // Moved logic into a stable callback function
     const handleCalculations = useCallback((updatedData) => {
         setResourceData((prev) => {
+            // Apply new data on top of previous state
             const data = { ...prev, ...updatedData };
             
+            // Input values (ensuring they are numbers)
             const coEfficient = parseFloat(data.coEfficient) || 1;
             const wastePercentage = parseFloat(data.wastePercentage) || 0;
             const rate = parseFloat(data.rate) || 0;
@@ -76,21 +85,26 @@ function AddResource() {
             const shippingPrice = parseFloat(data.shippingPrice) || 0;
             const exchangeRate = parseFloat(data.exchangeRate) || 1;
             
+            // FIX: Replace undefined 'costCode?.quantity' with the actual BOQ state variable
             const boqQuantity = parseFloat(boqTotalQuantity) || 0; 
 
+            // Calculation steps
             const calculatedQuantity = boqQuantity * coEfficient; 
             const wasteQuantity = calculatedQuantity * (wastePercentage / 100);
             const netQuantity = calculatedQuantity + wasteQuantity;
             
             const unitRate = netQuantity > 0 
                 ? rate + additionalRate + (shippingPrice / netQuantity) 
-                : rate + additionalRate; 
+                : rate + additionalRate; // Handle division by zero
+            
+            // Assuming totalCostCompanyCurrency is the unit rate * net quantity
             const totalCostCompanyCurrency = unitRate * netQuantity;
             
+            // Assuming resourceTotalCost is totalCostCompanyCurrency * exchangeRate
             const resourceTotalCost = totalCostCompanyCurrency * exchangeRate; 
 
             return {
-                ...data, 
+                ...data, // Keep the updated input values
                 calculatedQuantity,
                 wasteQuantity,
                 netQuantity,
@@ -99,9 +113,10 @@ function AddResource() {
                 totalCostCompanyCurrency: totalCostCompanyCurrency,
             };
         });
-    }, [boqTotalQuantity]); 
+    }, [boqTotalQuantity]); // Depend on BOQ quantity to re-run calculation
 
     
+    // --- GENERAL INPUT HANDLER ---
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         
@@ -115,6 +130,7 @@ function AddResource() {
     };
 
 
+    // --- FETCH HOOKS (Your existing code) ---
     
     const fetchResourceTypes = useCallback(() => {
         axios
@@ -123,7 +139,7 @@ function AddResource() {
           })
           .then((res) => { if (res.status === 200) setResourceTypes(res.data); })
           .catch((err) => {
-            if (err?.response?.status === 401) handleUnauthorized();
+            if (err?.response?.status === 401) handleUnauthorized(); 
             else toast.error('Failed to fetch resource types.');
           });
     }, [handleUnauthorized]);
@@ -186,24 +202,29 @@ function AddResource() {
 
     useEffect(() => { fetchCurrency(); }, [fetchCurrency]);
 
+    // Initial run of calculations (sets defaults to 0/1)
     useEffect(() => {
         handleCalculations({}); 
     }, [handleCalculations]);
 
     
+    // --- MEMOIZED OPTIONS (Your existing code) ---
     const resourceTypeOptions = useMemo(() => resourceTypes.map(item => ({ value: item.id, label: item.resourceTypeName })), [resourceTypes]);
     const resourceOption = useMemo(() => resources.map(item => ({ value: item.id, label: `${item.resourceCode}-${item.resourceName}` })), [resources]);
     const resourceNatureOption = useMemo(() => resourceNature.map(item => ({ value: item.id, label: item.nature })), [resourceNature]);
     const quantityTypeOption = useMemo(() => quantityType.map(item => ({ value: item.id, label: item.quantityType })), [quantityType]);
     const currencyOptions = useMemo(() => currency.map(item => ({ value: item.id, label: item.currencyName })), [currency]);
 
+    // --- HANDLERS (Your existing code + Submit) ---
     const handleBack = () => navigate(-1);
     
     const handleAddResource = () => {
+        // Prepare data for submission (assuming all IDs are correctly set via Select components)
         const payload = {
             ...resourceData,
             boqQuantity: boqTotalQuantity,
             boqUOM: boqUOM,
+            // Ensure numbers are not strings if necessary, though POST usually handles it.
         };
 
         axios.post(`${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/addResources`, payload, {
@@ -217,12 +238,13 @@ function AddResource() {
         });
     };
 
+    // --- CUSTOM STYLES (Your existing code) ---
     const customStyles = {
         control: (provided, state) => ({
             ...provided,
             borderRadius: '0.5rem',
-            borderColor: state.isFocused ? darkBlue : provided.borderColor,
-            boxShadow: state.isFocused ? `0 0 0 0.25rem rgba(0, 81, 151, 0.25)` : provided.boxShadow,
+            borderColor: state.isFocused ? darkBlue : provided.borderColor, 
+            boxShadow: state.isFocused ? `0 0 0 0.25rem rgba(0, 81, 151, 0.25)` : provided.boxShadow, 
             minHeight: '38px', 
             width: '100%',
         }),
@@ -232,26 +254,27 @@ function AddResource() {
         indicatorSeparator: () => ({ display: 'none' }),
     };
 
+    // --- SECTION CONTAINER (Your existing code) ---
     const FormSectionContainer = ({ title, icon, defaultOpen = false, children }) => {
         const isStatic = ['Basic Information', 'Quantity & Measurements', 'Cost Summary'].includes(title);
-        const [isOpen, setIsOpen] = useState(isStatic || defaultOpen);
+        const [isOpen, setIsOpen] = useState(isStatic || defaultOpen); 
         const headerStyle = {
             cursor: isStatic ? 'default' : 'pointer',
             listStyle: 'none',
             backgroundColor: containerBgColor,
             border: `1px solid ${containerBorderColor}`,
-            borderBottom: (isStatic || isOpen) ? 'none' : `1px solid ${containerBorderColor}`,
+            borderBottom: (isStatic || isOpen) ? 'none' : `1px solid ${containerBorderColor}`, 
             borderRadius: (isStatic || isOpen) ? '0.5rem 0.5rem 0 0' : '0.5rem',
-            marginBottom: '0',
+            marginBottom: '0', 
         };
-        const contentStyle = {
-            backgroundColor: 'white',
-            padding: '1rem 1.5rem',
-            borderLeft: `1px solid ${containerBorderColor}`,
-            borderRight: `1px solid ${containerBorderColor}`,
-            borderBottom: `1px solid ${containerBorderColor}`,
+        const contentStyle = { 
+            backgroundColor: 'white', 
+            padding: '1rem 1.5rem', 
+            borderLeft: `1px solid ${containerBorderColor}`, 
+            borderRight: `1px solid ${containerBorderColor}`, 
+            borderBottom: `1px solid ${containerBorderColor}`, 
             borderRadius: '0 0 0.5rem 0.5rem',
-            marginTop: '0'
+            marginTop: '0' 
         };
         const HeaderContent = (
             <div className="py-3 px-4 d-flex justify-content-between align-items-center">
@@ -267,6 +290,7 @@ function AddResource() {
         );
     };
 
+    // --- RENDER FUNCTION (Inputs Bound and Display Updated) ---
     return (
         <div className="container-fluid min-vh-100">
 
@@ -277,12 +301,13 @@ function AddResource() {
                 </div>
             </div>
 
+            {/* BOQ Summary */}
             <div 
-                className="text-white p-3 d-flex justify-content-between align-items-center mx-3 mb-4"
-                style={{ background: `linear-gradient(to right, ${darkBlue}, ${vibrantBlue})`, borderRadius: '0.5rem' }}
+                className="text-white p-3 d-flex justify-content-between align-items-center mx-3 mb-4" 
+                style={{ background: `linear-gradient(to right, ${darkBlue}, ${vibrantBlue})`, borderRadius: '0.5rem' }} 
             >
                 <div className="d-flex align-items-center">
-                    <BookOpenText size={20} className="me-2" />
+                    <BookOpenText size={20} className="me-2" /> 
                     <span>BOQ Summary</span>
                 </div>
                 <div className="d-flex">
@@ -291,6 +316,7 @@ function AddResource() {
                 </div>
             </div>
 
+            {/* Basic Information */}
             <FormSectionContainer title="Basic Information" icon={<span className="text-primary" style={{ fontSize: '1.2em' }}>•</span>} defaultOpen={true}>
                 <div className="row g-3">
                     <div className="col-md-6">
@@ -329,8 +355,8 @@ function AddResource() {
                             Resource Name <span style={{ color: "red" }}>*</span>
                         </label>
                         <div style={{ width: '80%' }}>
-                            <Select
-                                options={resourceOption}
+                            <Select 
+                                options={resourceOption} 
                                 styles={{
                                     ...customStyles,
                                     placeholder: (provided) => ({ ...provided, color: 'black', textAlign: 'left' }),
@@ -365,6 +391,7 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
+            {/* Quantity & Measurements */}
             <FormSectionContainer title="Quantity & Measurements" icon={<AlignLeft size={20} className="text-primary" />} defaultOpen={true}>
                 <div className="row g-3">
                     <div className="col-md-6">
@@ -372,11 +399,11 @@ function AddResource() {
                             UOM <span style={{ color: "red" }}>*</span>
                         </label>
                         <div style={{ width: '80%' }}>
-                            <Select
-                                options={uomOptions}
+                            <Select  
+                                options={uomOptions}  
                                 value={selectedUom} 
-                                styles={customStyles}
-                                placeholder="Select UOM"
+                                styles={customStyles}  
+                                placeholder="Select UOM"  
                                 className="w-100" 
                                 classNamePrefix="select" 
                                 onChange={(selected) => {
@@ -437,6 +464,7 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
+            {/* Wastage & Net Quantity */}
             <FormSectionContainer title="Wastage & Net Quantity" icon={<Settings size={20} className="text-primary" />}>
                 <div className="row g-3">
 
@@ -444,8 +472,8 @@ function AddResource() {
                         <label className="form-label text-start w-100">
                             Wastage % <span style={{ color: "red" }}></span>
                         </label>
-                        <input
-                            type="number"
+                        <input 
+                            type="number" 
                             name="wastePercentage"
                             value={resourceData.wastePercentage}
                             onChange={handleChange}
@@ -459,8 +487,8 @@ function AddResource() {
                         <label className="form-label text-start w-100">
                             Wastage Quantity
                         </label>
-                        <input
-                            type="text"
+                        <input 
+                            type="text" 
                             value={resourceData.wasteQuantity.toFixed(2)}
                             readOnly
                             className="form-input w-100"
@@ -473,8 +501,8 @@ function AddResource() {
                         <label className="form-label text-start w-100">
                             Net Quantity
                         </label>
-                        <input
-                            type="text"
+                        <input 
+                            type="text" 
                             value={resourceData.netQuantity.toFixed(2)}
                             readOnly
                             className="form-input w-100"
@@ -487,6 +515,7 @@ function AddResource() {
             </FormSectionContainer>
 
 
+            {/* Pricing & Currency */}
             <FormSectionContainer title="Pricing & Currency" icon={<DollarSign size={20} className="text-primary" />}>
                 <div className="row g-4">
                     <div className="col-md-6">
@@ -500,7 +529,7 @@ function AddResource() {
                                 onChange={handleChange}
                                 className="form-input w-100" 
                                 placeholder="0.00"
-                                style={{ borderRadius: "0.5rem" }} 
+                                style={{ borderRadius: "0.5rem"  }} 
                             />
                         </div>
 
@@ -548,6 +577,7 @@ function AddResource() {
             </FormSectionContainer>
 
 
+            {/* Cost Summary */}
             <FormSectionContainer title="Cost Summary" icon={<Calculator size={20} className="text-primary" />}>
                 <div className="d-flex justify-content-end align-items-center mb-3">
                     <span className="me-2">Rate Lock</span>
@@ -591,9 +621,9 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
-            <div className="d-flex justify-content-end pt-3 me-3">
-                <button
-                    className="btn"
+            <div className="d-flex justify-content-end pt-3 me-3"> 
+                <button 
+                    className="btn" 
                     style={{ backgroundColor: darkBlue, color: 'white', border: 'none', padding: '0.5rem 1.5rem', borderRadius: '0.5rem' }}
                     onClick={handleAddResource}
                 >

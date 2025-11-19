@@ -473,8 +473,8 @@ function AddResource() {
                         <label className="form-label text-start w-100">
                             Net Quantity
                         </label>
-                        <input
-                            type="text"
+                        <input 
+                            type="text" 
                             value={resourceData.netQuantity.toFixed(2)}
                             readOnly
                             className="form-input w-100"
