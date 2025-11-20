@@ -20,23 +20,20 @@ function AddResource() {
     // 1. SCROLL MANAGEMENT: REF FOR THE MAIN CONTAINER
     const formContainerRef = useRef(null);
     const [scrollPosition, setScrollPosition] = useState(0);
-    const scrollFlag = useRef(false);
+    // Use a single ref to track if a scroll should be restored
+    const shouldRestoreScroll = useRef(false); 
 
     // HELPER FUNCTION: CAPTURE SCROLL
-    const captureScroll = () => {
-        const container = formContainerRef.current;
-        
-        // We capture the window scroll position as that is typically what jumps
+    const captureScroll = useCallback(() => {
+        // Only capture scroll if we are actually scrolled down
         if (window.scrollY > 50) { 
             setScrollPosition(window.scrollY);
-            scrollFlag.current = true;
-        } 
-        // Fallback for internal scrollable container
-        else if (container && container.scrollTop > 0) {
-            setScrollPosition(container.scrollTop);
-            scrollFlag.current = true;
+            shouldRestoreScroll.current = true;
+        } else if (formContainerRef.current && formContainerRef.current.scrollTop > 0) {
+            setScrollPosition(formContainerRef.current.scrollTop);
+            shouldRestoreScroll.current = true;
         }
-    };
+    }, []);
     
     // --- State Variables ---
     const [resourceTypes, setResourceTypes] = useState([]);
@@ -93,9 +90,10 @@ function AddResource() {
 
     
     const handleCalculations = useCallback((updatedData) => {
+        // Use functional state update to ensure latest values are used
         setResourceData((prev) => {
             const data = { ...prev, ...updatedData };
-            const coEfficient = parseFloat(data.coEfficient) || 1;
+            const coEfficient = parseFloat(data.coEfficient) || 0;
             const wastePercentage = parseFloat(data.wastePercentage) || 0;
             const rate = parseFloat(data.rate) || 0;
             const additionalRate = parseFloat(data.additionalRate) || 0;
@@ -128,16 +126,19 @@ function AddResource() {
     }, [boqTotalQuantity]); 
 
     
+    // FIX APPLIED HERE: The core fix is ensuring this function doesn't include any extra logic 
+    // that might trigger a re-render *before* the state update, which could confuse React.
     const handleChange = (e) => {
-        captureScroll();
-
         const { name, value, type, checked } = e.target;
+        
+        // Handle value conversion based on input type
         const newValue = type === 'number' || name === 'coEfficient' || name.includes('Rate') || name.includes('Price') || name.includes('Percentage')
-            ? parseFloat(value) || 0
+            ? parseFloat(value) || 0 // Treat empty number field as 0 for calculations
             : type === 'checkbox' 
             ? checked 
             : value;
         
+        // Only call the calculation function which updates the state.
         handleCalculations({ [name]: newValue });
     };
 
@@ -216,27 +217,26 @@ function AddResource() {
         handleCalculations({}); 
     }, [handleCalculations]);
     
-    // 3. FORCEFUL SCROLL RESTORATION WITH TIMEOUT DELAY
+    // 3. SCROLL RESTORATION EFFECT
     useEffect(() => {
-        // Use a short delay to execute scroll after browser's default behavior completes
-        const timeoutId = setTimeout(() => {
-            const container = formContainerRef.current;
-            
-            if (scrollFlag.current && scrollPosition > 0) {
-                // Priority 1: Restore window scroll (most common scenario)
+        if (shouldRestoreScroll.current && scrollPosition > 0) {
+            // Use a slight delay to allow the DOM to settle after the re-render
+            const timeoutId = setTimeout(() => {
+                const container = formContainerRef.current;
+                
+                // Try to restore window scroll first
                 window.scrollTo(0, scrollPosition);
                 
-                // Priority 2: Restore container internal scroll (if the container itself is scrollable)
+                // Fallback for internal container scroll
                 if (container && container.scrollHeight > container.clientHeight) {
                      container.scrollTop = scrollPosition;
                 }
                 
-                scrollFlag.current = false; // Reset the flag
-            }
-        }, 10); // 10 milliseconds delay is the magic number for overrides
+                shouldRestoreScroll.current = false; // Reset the flag
+            }, 10); 
 
-        // Cleanup the timeout if the component unmounts or state changes again
-        return () => clearTimeout(timeoutId); 
+            return () => clearTimeout(timeoutId); 
+        }
     }, [resourceData, expandedSections, scrollPosition]); 
 
 
@@ -283,9 +283,9 @@ function AddResource() {
         indicatorSeparator: () => ({ display: 'none' }),
     };
 
+    // Toggle logic now explicitly calls captureScroll
     const toggleSection = (title) => {
-        captureScroll();
-        
+        captureScroll(); 
         setExpandedSections(prev => ({
             ...prev,
             [title]: !prev[title]
@@ -293,6 +293,7 @@ function AddResource() {
     };
 
     // --- Form Section Container ---
+    // NOTE: This component is rendered differently when expanded/collapsed, so the scroll restoration logic is essential here.
     const FormSectionContainer = ({ title, icon, children, isStaticSection = false, isOpen, onToggle }) => {
         
         const headerStyle = {
@@ -330,7 +331,7 @@ function AddResource() {
         return (
             <div className="mx-3 mb-4">
                 <div style={headerStyle} onClick={handleClick}>{HeaderContent}</div>
-                {isOpen && <div style={contentStyle}>{children}</div>}
+                {(isStaticSection || isOpen) && <div style={contentStyle}>{children}</div>}
             </div>
         );
     };
@@ -377,8 +378,8 @@ function AddResource() {
                         <div style={{ width: '80%' }}>
                             <Select options={resourceTypeOptions} styles={customStyles} placeholder="Select Resource Type"className="w-100"classNamePrefix="select"
                                 value={selectedResourceType}
+                                onMenuOpen={captureScroll}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedResourceType(selected);
                                     handleCalculations({ resourceTypeId: selected?.value });
                                     fetchResources(selected?.value);
@@ -394,8 +395,8 @@ function AddResource() {
                             </label>
                             <Select options={resourceNatureOption} styles={customStyles} placeholder="Select Nature" className="w-100" classNamePrefix="select"
                                 value={selectedNature}
+                                onMenuOpen={captureScroll}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedNature(selected);
                                     handleCalculations({ resourceNatureId: selected?.value });
                                 }}
@@ -417,8 +418,8 @@ function AddResource() {
                                 }}
                                 placeholder="Select resource"className="w-100"classNamePrefix="select"
                                 value={selectedResource}
+                                onMenuOpen={captureScroll}
                                 onChange={(selectedOption) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedResource(selectedOption);
                                     const selectedResObj = resources.find((r) => r.id === selectedOption?.value);
                                     if (selectedResObj) {
@@ -481,8 +482,8 @@ function AddResource() {
                                 placeholder="Select UOM" 
                                 className="w-100" 
                                 classNamePrefix="select" 
+                                onMenuOpen={captureScroll}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedUom(selected);
                                     handleCalculations({ uomId: selected?.value });
                                 }}
@@ -497,8 +498,8 @@ function AddResource() {
                             </label>
                             <Select options={quantityTypeOption} styles={customStyles} placeholder="Select Quantity Type" className="w-100"classNamePrefix="select"
                                 value={selectedQuantityType}
+                                onMenuOpen={captureScroll}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedQuantityType(selected);
                                     handleCalculations({ quantityTypeId: selected?.value });
                                 }}
@@ -559,6 +560,7 @@ function AddResource() {
                             type="number"
                             name="wastePercentage"
                             value={resourceData.wastePercentage}
+                            // REMOVED onFocus={captureScroll} - not needed as handleChange is clean
                             onChange={handleChange}
                             placeholder="0.00"
                             className="form-input w-100"
@@ -615,6 +617,7 @@ function AddResource() {
                                 type="number" 
                                 name="additionalRate"
                                 value={resourceData.additionalRate}
+                                // REMOVED onFocus={captureScroll}
                                 onChange={handleChange}
                                 className="form-input w-100" 
                                 placeholder="0.00"
@@ -626,8 +629,8 @@ function AddResource() {
                             <label className="form-label text-start w-100"> Currency </label>
                             <Select options={currencyOptions} styles={customStyles} placeholder="Select Currency" className="w-100" classNamePrefix="select" 
                                 value={selectedCurrency}
+                                onMenuOpen={captureScroll}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedCurrency(selected);
                                     handleCalculations({ currencyId: selected?.value });
                                 }}
@@ -642,6 +645,7 @@ function AddResource() {
                                 type="number" 
                                 name="shippingPrice"
                                 value={resourceData.shippingPrice}
+                                // REMOVED onFocus={captureScroll}
                                 onChange={handleChange}
                                 className="form-input w-100" 
                                 placeholder="0.00" 
@@ -654,6 +658,7 @@ function AddResource() {
                                 type="number" 
                                 name="exchangeRate"
                                 value={resourceData.exchangeRate}
+                                // REMOVED onFocus={captureScroll}
                                 onChange={handleChange}
                                 className="form-input w-100" 
                                 placeholder="1.00000" 
@@ -684,6 +689,7 @@ function AddResource() {
                             id="rateLockSwitch" 
                             name="rateLock"
                             checked={resourceData.rateLock}
+                            // REMOVED onFocus={captureScroll}
                             onChange={handleChange}
                         />
                     </div>

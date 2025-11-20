@@ -22,7 +22,7 @@ function AddResource() {
     const [scrollPosition, setScrollPosition] = useState(0);
     const scrollFlag = useRef(false);
 
-    // HELPER FUNCTION: CAPTURE SCROLL
+    // HELPER FUNCTION: CAPTURE SCROLL (ONLY USED for actions that cause jumps: Selects/Toggles)
     const captureScroll = () => {
         const container = formContainerRef.current;
         
@@ -128,9 +128,8 @@ function AddResource() {
     }, [boqTotalQuantity]); 
 
     
+    // 2. MODIFIED: REMOVED captureScroll() from here to fix typing issue
     const handleChange = (e) => {
-        captureScroll();
-
         const { name, value, type, checked } = e.target;
         const newValue = type === 'number' || name === 'coEfficient' || name.includes('Rate') || name.includes('Price') || name.includes('Percentage')
             ? parseFloat(value) || 0
@@ -216,26 +215,25 @@ function AddResource() {
         handleCalculations({}); 
     }, [handleCalculations]);
     
-    // 3. FORCEFUL SCROLL RESTORATION WITH TIMEOUT DELAY
+    // 3. FORCEFUL SCROLL RESTORATION WITH TIMEOUT DELAY (REMAINS THE SAME)
     useEffect(() => {
         // Use a short delay to execute scroll after browser's default behavior completes
         const timeoutId = setTimeout(() => {
             const container = formContainerRef.current;
             
             if (scrollFlag.current && scrollPosition > 0) {
-                // Priority 1: Restore window scroll (most common scenario)
+                // Priority 1: Restore window scroll 
                 window.scrollTo(0, scrollPosition);
                 
-                // Priority 2: Restore container internal scroll (if the container itself is scrollable)
+                // Priority 2: Restore container internal scroll 
                 if (container && container.scrollHeight > container.clientHeight) {
                      container.scrollTop = scrollPosition;
                 }
                 
                 scrollFlag.current = false; // Reset the flag
             }
-        }, 10); // 10 milliseconds delay is the magic number for overrides
+        }, 10); 
 
-        // Cleanup the timeout if the component unmounts or state changes again
         return () => clearTimeout(timeoutId); 
     }, [resourceData, expandedSections, scrollPosition]); 
 
@@ -284,7 +282,7 @@ function AddResource() {
     };
 
     const toggleSection = (title) => {
-        captureScroll();
+        captureScroll(); // Keep scroll capture here
         
         setExpandedSections(prev => ({
             ...prev,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Select from "react-select";
 import { ArrowLeft, BookOpenText, ChevronDown, AlignLeft, DollarSign, Calculator, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -8,8 +8,7 @@ import { useUom } from "../Context/UomContext";
 
 function AddResource() {
     const navigate = useNavigate();
-    
-    // --- Refs and Constants ---
+
     const darkBlue = '#005197';
     const vibrantBlue = '#007BFF';
     const containerBgColor = '#EFF6FF';
@@ -17,44 +16,18 @@ function AddResource() {
     const [boqUOM, setBoqUOM] = useState("CUM");
     const [boqTotalQuantity, setBoqTotalQuantity] = useState(100.00); 
     
-    // 1. SCROLL MANAGEMENT: REF FOR THE MAIN CONTAINER
-    const formContainerRef = useRef(null);
-    const [scrollPosition, setScrollPosition] = useState(0);
-    const scrollFlag = useRef(false);
-
-    // HELPER FUNCTION: CAPTURE SCROLL
-    const captureScroll = () => {
-        const container = formContainerRef.current;
-        
-        // We capture the window scroll position as that is typically what jumps
-        if (window.scrollY > 50) { 
-            setScrollPosition(window.scrollY);
-            scrollFlag.current = true;
-        } 
-        // Fallback for internal scrollable container
-        else if (container && container.scrollTop > 0) {
-            setScrollPosition(container.scrollTop);
-            scrollFlag.current = true;
-        }
-    };
-    
-    // --- State Variables ---
     const [resourceTypes, setResourceTypes] = useState([]);
     const [resources, setResources] = useState([]);
     const [resourceNature, setResourceNature] = useState([]);
     const [selectedResourceType, setSelectedResourceType] = useState(null);
-    const [quantityType, setQuantityType] = useState([]); 
+    const [quantityType, setQuantityType] = useState([]); 
     const [currency, setCurrency] = useState([]);
     const [selectedUom, setSelectedUom] = useState(null);
     const [selectedNature, setSelectedNature] = useState(null);
     const [selectedQuantityType, setSelectedQuantityType] = useState(null);
     const [selectedCurrency, setSelectedCurrency] = useState(null);
     const [selectedResource, setSelectedResource] = useState(null);
-    const [expandedSections, setExpandedSections] = useState({
-        'Wastage & Net Quantity': false,
-        'Pricing & Currency': false,
-    });
-    
+
     const [resourceData, setResourceData] = useState({
         coEfficient: 1, 
         calculatedQuantity: 0,
@@ -80,30 +53,31 @@ function AddResource() {
     });
 
 
+
     const handleUnauthorized = useCallback(() => {
         toast.error("Session expired or unauthorized. Please log in again.");
-    }, []);
+    }, [navigate]);
 
     const uomData = useUom(); 
 
-    const uomOptions = useMemo(() =>
+    const uomOptions = useMemo(() => 
         (Array.isArray(uomData) ? uomData : []).map(uom => ({ value: uom.id, label: uom.uomName })),
         [uomData] 
     );
 
-    
     const handleCalculations = useCallback((updatedData) => {
         setResourceData((prev) => {
             const data = { ...prev, ...updatedData };
+            
             const coEfficient = parseFloat(data.coEfficient) || 1;
             const wastePercentage = parseFloat(data.wastePercentage) || 0;
             const rate = parseFloat(data.rate) || 0;
             const additionalRate = parseFloat(data.additionalRate) || 0;
             const shippingPrice = parseFloat(data.shippingPrice) || 0;
             const exchangeRate = parseFloat(data.exchangeRate) || 1;
-            const boqQuantity = parseFloat(boqTotalQuantity) || 0; 
             
-            // Core Calculations
+            const boqQuantity = parseFloat(boqTotalQuantity) || 0; 
+
             const calculatedQuantity = boqQuantity * coEfficient; 
             const wasteQuantity = calculatedQuantity * (wastePercentage / 100);
             const netQuantity = calculatedQuantity + wasteQuantity;
@@ -111,8 +85,8 @@ function AddResource() {
             const unitRate = netQuantity > 0 
                 ? rate + additionalRate + (shippingPrice / netQuantity) 
                 : rate + additionalRate; 
-                
             const totalCostCompanyCurrency = unitRate * netQuantity;
+            
             const resourceTotalCost = totalCostCompanyCurrency * exchangeRate; 
 
             return {
@@ -129,11 +103,10 @@ function AddResource() {
 
     
     const handleChange = (e) => {
-        captureScroll();
-
         const { name, value, type, checked } = e.target;
+        
         const newValue = type === 'number' || name === 'coEfficient' || name.includes('Rate') || name.includes('Price') || name.includes('Percentage')
-            ? parseFloat(value) || 0
+            ? parseFloat(value) 
             : type === 'checkbox' 
             ? checked 
             : value;
@@ -141,7 +114,8 @@ function AddResource() {
         handleCalculations({ [name]: newValue });
     };
 
-    // --- Data Fetching Hooks (omitted for brevity) ---
+
+    
     const fetchResourceTypes = useCallback(() => {
         axios
           .get(`${import.meta.env.VITE_API_BASE_URL}/resourceType`, {
@@ -215,39 +189,14 @@ function AddResource() {
     useEffect(() => {
         handleCalculations({}); 
     }, [handleCalculations]);
+
     
-    // 3. FORCEFUL SCROLL RESTORATION WITH TIMEOUT DELAY
-    useEffect(() => {
-        // Use a short delay to execute scroll after browser's default behavior completes
-        const timeoutId = setTimeout(() => {
-            const container = formContainerRef.current;
-            
-            if (scrollFlag.current && scrollPosition > 0) {
-                // Priority 1: Restore window scroll (most common scenario)
-                window.scrollTo(0, scrollPosition);
-                
-                // Priority 2: Restore container internal scroll (if the container itself is scrollable)
-                if (container && container.scrollHeight > container.clientHeight) {
-                     container.scrollTop = scrollPosition;
-                }
-                
-                scrollFlag.current = false; // Reset the flag
-            }
-        }, 10); // 10 milliseconds delay is the magic number for overrides
-
-        // Cleanup the timeout if the component unmounts or state changes again
-        return () => clearTimeout(timeoutId); 
-    }, [resourceData, expandedSections, scrollPosition]); 
-
-
-    // --- Options Memoization ---
     const resourceTypeOptions = useMemo(() => resourceTypes.map(item => ({ value: item.id, label: item.resourceTypeName })), [resourceTypes]);
     const resourceOption = useMemo(() => resources.map(item => ({ value: item.id, label: `${item.resourceCode}-${item.resourceName}` })), [resources]);
     const resourceNatureOption = useMemo(() => resourceNature.map(item => ({ value: item.id, label: item.nature })), [resourceNature]);
     const quantityTypeOption = useMemo(() => quantityType.map(item => ({ value: item.id, label: item.quantityType })), [quantityType]);
     const currencyOptions = useMemo(() => currency.map(item => ({ value: item.id, label: item.currencyName })), [currency]);
 
-    // --- Handlers ---
     const handleBack = () => navigate(-1);
     
     const handleAddResource = () => {
@@ -283,27 +232,17 @@ function AddResource() {
         indicatorSeparator: () => ({ display: 'none' }),
     };
 
-    const toggleSection = (title) => {
-        captureScroll();
-        
-        setExpandedSections(prev => ({
-            ...prev,
-            [title]: !prev[title]
-        }));
-    };
-
-    // --- Form Section Container ---
-    const FormSectionContainer = ({ title, icon, children, isStaticSection = false, isOpen, onToggle }) => {
-        
+    const FormSectionContainer = ({ title, icon, defaultOpen = false, children }) => {
+        const isStatic = ['Basic Information', 'Quantity & Measurements', 'Cost Summary'].includes(title);
+        const [isOpen, setIsOpen] = useState(isStatic || defaultOpen);
         const headerStyle = {
-            cursor: isStaticSection ? 'default' : 'pointer',
+            cursor: isStatic ? 'default' : 'pointer',
             listStyle: 'none',
             backgroundColor: containerBgColor,
             border: `1px solid ${containerBorderColor}`,
-            borderBottom: (isStaticSection || isOpen) ? 'none' : `1px solid ${containerBorderColor}`,
-            borderRadius: (isStaticSection || isOpen) ? '0.5rem 0.5rem 0 0' : '0.5rem',
+            borderBottom: (isStatic || isOpen) ? 'none' : `1px solid ${containerBorderColor}`,
+            borderRadius: (isStatic || isOpen) ? '0.5rem 0.5rem 0 0' : '0.5rem',
             marginBottom: '0',
-            userSelect: 'none',
         };
         const contentStyle = {
             backgroundColor: 'white',
@@ -314,31 +253,22 @@ function AddResource() {
             borderRadius: '0 0 0.5rem 0.5rem',
             marginTop: '0'
         };
-
-        const handleClick = () => {
-            if (!isStaticSection) {
-                onToggle(title);
-            }
-        }
-        
         const HeaderContent = (
             <div className="py-3 px-4 d-flex justify-content-between align-items-center">
                 <div className="d-flex align-items-center">{icon}<span className="ms-2 text-primary fw-bold" style={{ fontSize: '1rem' }}>{title}</span></div>
-                {!isStaticSection && <ChevronDown size={20} style={{ color: vibrantBlue, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />}
+                {!isStatic && <ChevronDown size={20} style={{ color: vibrantBlue, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />} 
             </div>
         );
         return (
             <div className="mx-3 mb-4">
-                <div style={headerStyle} onClick={handleClick}>{HeaderContent}</div>
+                <div style={headerStyle} onClick={() => { if (!isStatic) setIsOpen(!isOpen); }}>{HeaderContent}</div>
                 {isOpen && <div style={contentStyle}>{children}</div>}
             </div>
         );
     };
 
-
     return (
-        // ATTACH THE REF TO THE MAIN CONTAINER DIV
-        <div ref={formContainerRef} className="container-fluid min-vh-100">
+        <div className="container-fluid min-vh-100">
 
             <div className="ms-3 d-flex justify-content-between align-items-center mb-4">
                 <div className="fw-bold text-start">
@@ -347,7 +277,7 @@ function AddResource() {
                 </div>
             </div>
 
-            <div
+            <div 
                 className="text-white p-3 d-flex justify-content-between align-items-center mx-3 mb-4"
                 style={{ background: `linear-gradient(to right, ${darkBlue}, ${vibrantBlue})`, borderRadius: '0.5rem' }}
             >
@@ -355,20 +285,13 @@ function AddResource() {
                     <BookOpenText size={20} className="me-2" />
                     <span>BOQ Summary</span>
                 </div>
-               <div className="d-flex">
+                <div className="d-flex">
                     <span className="me-3" style={{ fontSize: '0.9rem' }}>Unit of Measurement <strong>{boqUOM}</strong></span>
                     <span style={{ fontSize: '0.9rem' }}>Total Quantity <strong>{boqTotalQuantity.toFixed(2)}</strong></span>
                 </div>
             </div>
 
-            {/* Basic Information Section */}
-            <FormSectionContainer 
-                title="Basic Information" 
-                icon={<span className="text-primary" style={{ fontSize: '1.2em' }}>•</span>} 
-                isStaticSection={true}
-                isOpen={true} 
-                onToggle={() => {}} 
-            >
+            <FormSectionContainer title="Basic Information" icon={<span className="text-primary" style={{ fontSize: '1.2em' }}>•</span>} defaultOpen={true}>
                 <div className="row g-3">
                     <div className="col-md-6">
                         <label className="form-label text-start w-100">
@@ -378,7 +301,6 @@ function AddResource() {
                             <Select options={resourceTypeOptions} styles={customStyles} placeholder="Select Resource Type"className="w-100"classNamePrefix="select"
                                 value={selectedResourceType}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedResourceType(selected);
                                     handleCalculations({ resourceTypeId: selected?.value });
                                     fetchResources(selected?.value);
@@ -395,7 +317,6 @@ function AddResource() {
                             <Select options={resourceNatureOption} styles={customStyles} placeholder="Select Nature" className="w-100" classNamePrefix="select"
                                 value={selectedNature}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedNature(selected);
                                     handleCalculations({ resourceNatureId: selected?.value });
                                 }}
@@ -408,8 +329,8 @@ function AddResource() {
                             Resource Name <span style={{ color: "red" }}>*</span>
                         </label>
                         <div style={{ width: '80%' }}>
-                            <Select
-                                options={resourceOption}
+                            <Select 
+                                options={resourceOption} 
                                 styles={{
                                     ...customStyles,
                                     placeholder: (provided) => ({ ...provided, color: 'black', textAlign: 'left' }),
@@ -417,26 +338,10 @@ function AddResource() {
                                 }}
                                 placeholder="Select resource"className="w-100"classNamePrefix="select"
                                 value={selectedResource}
-                                onChange={(selectedOption) => {
-                                    captureScroll(); // Capture scroll on Select change
-                                    setSelectedResource(selectedOption);
-                                    const selectedResObj = resources.find((r) => r.id === selectedOption?.value);
-                                    if (selectedResObj) {
-                                        
-                                        const matchingUomOption = uomOptions.find((u) => u.value === selectedResObj.uom?.id);
-                                        if (matchingUomOption) setSelectedUom(matchingUomOption);
-
-                                        handleCalculations({
-                                            resourceId: selectedResObj.id,
-                                            rate: selectedResObj.unitRate,
-                                            uomId: selectedResObj.uom?.id
-                                        });
-                                    } else {
-                                        setSelectedUom(null);
-                                        handleCalculations({ rate: 0, uomId: "", resourceId: "" });
-                                    }
+                                onChange={(selected) => {
+                                    setSelectedResource(selected);
+                                    handleCalculations({ resourceId: selected?.value });
                                 }}
-
                             />
                         </div>
                     </div>
@@ -460,14 +365,7 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
-            {/* Quantity & Measurements Section */}
-            <FormSectionContainer 
-                title="Quantity & Measurements" 
-                icon={<AlignLeft size={20} className="text-primary" />}
-                isStaticSection={true}
-                isOpen={true} 
-                onToggle={() => {}} 
-            >
+            <FormSectionContainer title="Quantity & Measurements" icon={<AlignLeft size={20} className="text-primary" />} defaultOpen={true}>
                 <div className="row g-3">
                     <div className="col-md-6">
                         <label className="form-label text-start w-100">
@@ -482,7 +380,6 @@ function AddResource() {
                                 className="w-100" 
                                 classNamePrefix="select" 
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedUom(selected);
                                     handleCalculations({ uomId: selected?.value });
                                 }}
@@ -498,7 +395,6 @@ function AddResource() {
                             <Select options={quantityTypeOption} styles={customStyles} placeholder="Select Quantity Type" className="w-100"classNamePrefix="select"
                                 value={selectedQuantityType}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedQuantityType(selected);
                                     handleCalculations({ quantityTypeId: selected?.value });
                                 }}
@@ -541,19 +437,12 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
-            {/* Wastage & Net Quantity Section */}
-            <FormSectionContainer 
-                title="Wastage & Net Quantity" 
-                icon={<Settings size={20} className="text-primary" />}
-                isStaticSection={false}
-                isOpen={expandedSections['Wastage & Net Quantity']}
-                onToggle={toggleSection}
-            >
+            <FormSectionContainer title="Wastage & Net Quantity" icon={<Settings size={20} className="text-primary" />}>
                 <div className="row g-3">
 
                     <div className="col-md-4">
                         <label className="form-label text-start w-100">
-                            Wastage % 
+                            Wastage % <span style={{ color: "red" }}></span>
                         </label>
                         <input
                             type="number"
@@ -598,14 +487,7 @@ function AddResource() {
             </FormSectionContainer>
 
 
-            {/* Pricing & Currency Section */}
-            <FormSectionContainer 
-                title="Pricing & Currency" 
-                icon={<DollarSign size={20} className="text-primary" />}
-                isStaticSection={false}
-                isOpen={expandedSections['Pricing & Currency']}
-                onToggle={toggleSection}
-            >
+            <FormSectionContainer title="Pricing & Currency" icon={<DollarSign size={20} className="text-primary" />}>
                 <div className="row g-4">
                     <div className="col-md-6">
 
@@ -618,16 +500,15 @@ function AddResource() {
                                 onChange={handleChange}
                                 className="form-input w-100" 
                                 placeholder="0.00"
-                                style={{ borderRadius: "0.5rem" }} 
+                                style={{ borderRadius: "0.5rem"  }} 
                             />
                         </div>
 
                         <div className="mb-3">
-                            <label className="form-label text-start w-100"> Currency </label>
+                            <label className="form-label text-start w-100"> Currency <span style={{ color: "red" }}></span></label>
                             <Select options={currencyOptions} styles={customStyles} placeholder="Select Currency" className="w-100" classNamePrefix="select" 
                                 value={selectedCurrency}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedCurrency(selected);
                                     handleCalculations({ currencyId: selected?.value });
                                 }}
@@ -666,14 +547,8 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
-            {/* Cost Summary Section */}
-            <FormSectionContainer 
-                title="Cost Summary" 
-                icon={<Calculator size={20} className="text-primary" />}
-                isStaticSection={true}
-                isOpen={true} 
-                onToggle={() => {}}
-            >
+
+            <FormSectionContainer title="Cost Summary" icon={<Calculator size={20} className="text-primary" />}>
                 <div className="d-flex justify-content-end align-items-center mb-3">
                     <span className="me-2">Rate Lock</span>
                     <div className="form-check form-switch">
@@ -716,9 +591,9 @@ function AddResource() {
                 </div>
             </FormSectionContainer>
 
-            <div className="d-flex justify-content-end pt-3 me-3">
-                <button
-                    className="btn"
+            <div className="d-flex justify-content-end pt-3 me-3"> 
+                <button 
+                    className="btn" 
                     style={{ backgroundColor: darkBlue, color: 'white', border: 'none', padding: '0.5rem 1.5rem', borderRadius: '0.5rem' }}
                     onClick={handleAddResource}
                 >

@@ -10,33 +10,14 @@ function AddResource() {
     const navigate = useNavigate();
     
     // --- Refs and Constants ---
+    const topOfFormRef = useRef(null); // Ref to hold the scroll position
+
     const darkBlue = '#005197';
     const vibrantBlue = '#007BFF';
     const containerBgColor = '#EFF6FF';
     const containerBorderColor = '#dee2e6';
     const [boqUOM, setBoqUOM] = useState("CUM");
     const [boqTotalQuantity, setBoqTotalQuantity] = useState(100.00); 
-    
-    // 1. SCROLL MANAGEMENT: REF FOR THE MAIN CONTAINER
-    const formContainerRef = useRef(null);
-    const [scrollPosition, setScrollPosition] = useState(0);
-    const scrollFlag = useRef(false);
-
-    // HELPER FUNCTION: CAPTURE SCROLL
-    const captureScroll = () => {
-        const container = formContainerRef.current;
-        
-        // We capture the window scroll position as that is typically what jumps
-        if (window.scrollY > 50) { 
-            setScrollPosition(window.scrollY);
-            scrollFlag.current = true;
-        } 
-        // Fallback for internal scrollable container
-        else if (container && container.scrollTop > 0) {
-            setScrollPosition(container.scrollTop);
-            scrollFlag.current = true;
-        }
-    };
     
     // --- State Variables ---
     const [resourceTypes, setResourceTypes] = useState([]);
@@ -54,7 +35,7 @@ function AddResource() {
         'Wastage & Net Quantity': false,
         'Pricing & Currency': false,
     });
-    
+    // State to hold the core data and calculated values
     const [resourceData, setResourceData] = useState({
         coEfficient: 1, 
         calculatedQuantity: 0,
@@ -91,7 +72,9 @@ function AddResource() {
         [uomData] 
     );
 
-    
+    // --- Calculation Logic (Modified to use setResourceData's functional update form) ---
+    // The previous implementation used a functional update, which is correct for batching. 
+    // The issue is likely the full component re-render.
     const handleCalculations = useCallback((updatedData) => {
         setResourceData((prev) => {
             const data = { ...prev, ...updatedData };
@@ -129,11 +112,9 @@ function AddResource() {
 
     
     const handleChange = (e) => {
-        captureScroll();
-
         const { name, value, type, checked } = e.target;
         const newValue = type === 'number' || name === 'coEfficient' || name.includes('Rate') || name.includes('Price') || name.includes('Percentage')
-            ? parseFloat(value) || 0
+            ? parseFloat(value) || 0 // Ensure non-numeric input becomes 0 for calculation
             : type === 'checkbox' 
             ? checked 
             : value;
@@ -141,7 +122,7 @@ function AddResource() {
         handleCalculations({ [name]: newValue });
     };
 
-    // --- Data Fetching Hooks (omitted for brevity) ---
+    // --- Data Fetching Hooks (Kept as is, as they don't cause the scrolling issue) ---
     const fetchResourceTypes = useCallback(() => {
         axios
           .get(`${import.meta.env.VITE_API_BASE_URL}/resourceType`, {
@@ -215,30 +196,6 @@ function AddResource() {
     useEffect(() => {
         handleCalculations({}); 
     }, [handleCalculations]);
-    
-    // 3. FORCEFUL SCROLL RESTORATION WITH TIMEOUT DELAY
-    useEffect(() => {
-        // Use a short delay to execute scroll after browser's default behavior completes
-        const timeoutId = setTimeout(() => {
-            const container = formContainerRef.current;
-            
-            if (scrollFlag.current && scrollPosition > 0) {
-                // Priority 1: Restore window scroll (most common scenario)
-                window.scrollTo(0, scrollPosition);
-                
-                // Priority 2: Restore container internal scroll (if the container itself is scrollable)
-                if (container && container.scrollHeight > container.clientHeight) {
-                     container.scrollTop = scrollPosition;
-                }
-                
-                scrollFlag.current = false; // Reset the flag
-            }
-        }, 10); // 10 milliseconds delay is the magic number for overrides
-
-        // Cleanup the timeout if the component unmounts or state changes again
-        return () => clearTimeout(timeoutId); 
-    }, [resourceData, expandedSections, scrollPosition]); 
-
 
     // --- Options Memoization ---
     const resourceTypeOptions = useMemo(() => resourceTypes.map(item => ({ value: item.id, label: item.resourceTypeName })), [resourceTypes]);
@@ -268,6 +225,7 @@ function AddResource() {
         });
     };
 
+    // Custom styles for react-select (Kept as is)
     const customStyles = {
         control: (provided, state) => ({
             ...provided,
@@ -284,17 +242,16 @@ function AddResource() {
     };
 
     const toggleSection = (title) => {
-        captureScroll();
-        
         setExpandedSections(prev => ({
             ...prev,
             [title]: !prev[title]
         }));
     };
 
-    // --- Form Section Container ---
+    // --- Form Section Container (Adjusted for better stability) ---
     const FormSectionContainer = ({ title, icon, children, isStaticSection = false, isOpen, onToggle }) => {
-        
+        const sectionRef = useRef(null);
+
         const headerStyle = {
             cursor: isStaticSection ? 'default' : 'pointer',
             listStyle: 'none',
@@ -303,7 +260,7 @@ function AddResource() {
             borderBottom: (isStaticSection || isOpen) ? 'none' : `1px solid ${containerBorderColor}`,
             borderRadius: (isStaticSection || isOpen) ? '0.5rem 0.5rem 0 0' : '0.5rem',
             marginBottom: '0',
-            userSelect: 'none',
+            userSelect: 'none', // Prevents selection on click
         };
         const contentStyle = {
             backgroundColor: 'white',
@@ -317,6 +274,9 @@ function AddResource() {
 
         const handleClick = () => {
             if (!isStaticSection) {
+                // Manually focus the section element before toggling
+                // This sometimes helps the browser maintain scroll position
+                sectionRef.current.focus(); 
                 onToggle(title);
             }
         }
@@ -328,7 +288,7 @@ function AddResource() {
             </div>
         );
         return (
-            <div className="mx-3 mb-4">
+            <div className="mx-3 mb-4" ref={sectionRef} tabIndex={-1} style={{ outline: 'none' }}>
                 <div style={headerStyle} onClick={handleClick}>{HeaderContent}</div>
                 {isOpen && <div style={contentStyle}>{children}</div>}
             </div>
@@ -337,10 +297,9 @@ function AddResource() {
 
 
     return (
-        // ATTACH THE REF TO THE MAIN CONTAINER DIV
-        <div ref={formContainerRef} className="container-fluid min-vh-100">
+        <div className="container-fluid min-vh-100">
 
-            <div className="ms-3 d-flex justify-content-between align-items-center mb-4">
+            <div className="ms-3 d-flex justify-content-between align-items-center mb-4" ref={topOfFormRef}>
                 <div className="fw-bold text-start">
                     <ArrowLeft size={20} onClick={handleBack} style={{ cursor: 'pointer' }} />
                     <span className="ms-2">Add New Resource</span>
@@ -378,7 +337,6 @@ function AddResource() {
                             <Select options={resourceTypeOptions} styles={customStyles} placeholder="Select Resource Type"className="w-100"classNamePrefix="select"
                                 value={selectedResourceType}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedResourceType(selected);
                                     handleCalculations({ resourceTypeId: selected?.value });
                                     fetchResources(selected?.value);
@@ -395,7 +353,6 @@ function AddResource() {
                             <Select options={resourceNatureOption} styles={customStyles} placeholder="Select Nature" className="w-100" classNamePrefix="select"
                                 value={selectedNature}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedNature(selected);
                                     handleCalculations({ resourceNatureId: selected?.value });
                                 }}
@@ -418,22 +375,21 @@ function AddResource() {
                                 placeholder="Select resource"className="w-100"classNamePrefix="select"
                                 value={selectedResource}
                                 onChange={(selectedOption) => {
-                                    captureScroll(); // Capture scroll on Select change
-                                    setSelectedResource(selectedOption);
-                                    const selectedResObj = resources.find((r) => r.id === selectedOption?.value);
-                                    if (selectedResObj) {
-                                        
-                                        const matchingUomOption = uomOptions.find((u) => u.value === selectedResObj.uom?.id);
-                                        if (matchingUomOption) setSelectedUom(matchingUomOption);
+                                setSelectedResource(selectedOption);
+                                const selectedResObj = resources.find((r) => r.id === selectedOption?.value);
+                                if (selectedResObj) {
+                                    
+                                    const matchingUomOption = uomOptions.find((u) => u.value === selectedResObj.uom?.id);
+                                    if (matchingUomOption) setSelectedUom(matchingUomOption);
 
-                                        handleCalculations({
-                                            resourceId: selectedResObj.id,
-                                            rate: selectedResObj.unitRate,
-                                            uomId: selectedResObj.uom?.id
-                                        });
-                                    } else {
-                                        setSelectedUom(null);
-                                        handleCalculations({ rate: 0, uomId: "", resourceId: "" });
+                                    handleCalculations({
+                                        resourceId: selectedResObj.id,
+                                        rate: selectedResObj.unitRate,
+                                        uomId: selectedResObj.uom?.id
+                                    });
+                                } else {
+                                    setSelectedUom(null);
+                                    handleCalculations({ rate: 0, uomId: "", resourceId: "" });
                                     }
                                 }}
 
@@ -482,7 +438,6 @@ function AddResource() {
                                 className="w-100" 
                                 classNamePrefix="select" 
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedUom(selected);
                                     handleCalculations({ uomId: selected?.value });
                                 }}
@@ -498,7 +453,6 @@ function AddResource() {
                             <Select options={quantityTypeOption} styles={customStyles} placeholder="Select Quantity Type" className="w-100"classNamePrefix="select"
                                 value={selectedQuantityType}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedQuantityType(selected);
                                     handleCalculations({ quantityTypeId: selected?.value });
                                 }}
@@ -627,7 +581,6 @@ function AddResource() {
                             <Select options={currencyOptions} styles={customStyles} placeholder="Select Currency" className="w-100" classNamePrefix="select" 
                                 value={selectedCurrency}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedCurrency(selected);
                                     handleCalculations({ currencyId: selected?.value });
                                 }}

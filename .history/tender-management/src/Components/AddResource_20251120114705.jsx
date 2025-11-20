@@ -17,28 +17,29 @@ function AddResource() {
     const [boqUOM, setBoqUOM] = useState("CUM");
     const [boqTotalQuantity, setBoqTotalQuantity] = useState(100.00); 
     
-    // 1. SCROLL MANAGEMENT: REF FOR THE MAIN CONTAINER
+    // 1. SCROLL MANAGEMENT: NEW REF FOR THE CONTAINER
     const formContainerRef = useRef(null);
     const [scrollPosition, setScrollPosition] = useState(0);
     const scrollFlag = useRef(false);
 
-    // HELPER FUNCTION: CAPTURE SCROLL
+    // NEW HELPER FUNCTION: CAPTURE SCROLL FROM THE REF
     const captureScroll = () => {
         const container = formContainerRef.current;
-        
-        // We capture the window scroll position as that is typically what jumps
-        if (window.scrollY > 50) { 
-            setScrollPosition(window.scrollY);
-            scrollFlag.current = true;
-        } 
-        // Fallback for internal scrollable container
-        else if (container && container.scrollTop > 0) {
-            setScrollPosition(container.scrollTop);
-            scrollFlag.current = true;
+        if (container) {
+            // We check window.scrollY because the component likely scrolls the whole page
+            // If the whole page is scrolled down, we capture that position.
+            if (window.scrollY > 50) { 
+                setScrollPosition(window.scrollY);
+                scrollFlag.current = true;
+            } else if (container.scrollTop > 0) {
+                 // Fallback: If only the container is scrollable internally, use container.scrollTop
+                setScrollPosition(container.scrollTop);
+                scrollFlag.current = true;
+            }
         }
     };
     
-    // --- State Variables ---
+    // --- State Variables (rest remains the same) ---
     const [resourceTypes, setResourceTypes] = useState([]);
     const [resources, setResources] = useState([]);
     const [resourceNature, setResourceNature] = useState([]);
@@ -129,6 +130,7 @@ function AddResource() {
 
     
     const handleChange = (e) => {
+        // CAPTURE SCROLL
         captureScroll();
 
         const { name, value, type, checked } = e.target;
@@ -141,7 +143,9 @@ function AddResource() {
         handleCalculations({ [name]: newValue });
     };
 
-    // --- Data Fetching Hooks (omitted for brevity) ---
+    // --- Data Fetching Hooks (omitted for brevity, keep in your actual code) ---
+    // ... (fetchResourceTypes, fetchResourceNature, fetchResources, etc.)
+
     const fetchResourceTypes = useCallback(() => {
         axios
           .get(`${import.meta.env.VITE_API_BASE_URL}/resourceType`, {
@@ -216,27 +220,20 @@ function AddResource() {
         handleCalculations({}); 
     }, [handleCalculations]);
     
-    // 3. FORCEFUL SCROLL RESTORATION WITH TIMEOUT DELAY
+    // 3. RESTORE SCROLL AFTER RE-RENDER
     useEffect(() => {
-        // Use a short delay to execute scroll after browser's default behavior completes
-        const timeoutId = setTimeout(() => {
-            const container = formContainerRef.current;
+        const container = formContainerRef.current;
+        if (scrollFlag.current && scrollPosition > 0) {
+            // Priority 1: Restore window scroll (most common scenario)
+            window.scrollTo(0, scrollPosition);
             
-            if (scrollFlag.current && scrollPosition > 0) {
-                // Priority 1: Restore window scroll (most common scenario)
-                window.scrollTo(0, scrollPosition);
-                
-                // Priority 2: Restore container internal scroll (if the container itself is scrollable)
-                if (container && container.scrollHeight > container.clientHeight) {
-                     container.scrollTop = scrollPosition;
-                }
-                
-                scrollFlag.current = false; // Reset the flag
+            // Priority 2: Restore container internal scroll (if the container itself is scrollable)
+            if (container && container.scrollHeight > container.clientHeight) {
+                 container.scrollTop = scrollPosition;
             }
-        }, 10); // 10 milliseconds delay is the magic number for overrides
 
-        // Cleanup the timeout if the component unmounts or state changes again
-        return () => clearTimeout(timeoutId); 
+            scrollFlag.current = false; // Reset the flag
+        }
     }, [resourceData, expandedSections, scrollPosition]); 
 
 
@@ -284,6 +281,7 @@ function AddResource() {
     };
 
     const toggleSection = (title) => {
+        // CAPTURE SCROLL
         captureScroll();
         
         setExpandedSections(prev => ({

@@ -128,9 +128,8 @@ function AddResource() {
     }, [boqTotalQuantity]); 
 
     
+    // FIX APPLIED HERE: Removed captureScroll() to maintain input focus.
     const handleChange = (e) => {
-        captureScroll();
-
         const { name, value, type, checked } = e.target;
         const newValue = type === 'number' || name === 'coEfficient' || name.includes('Rate') || name.includes('Price') || name.includes('Percentage')
             ? parseFloat(value) || 0
@@ -284,7 +283,7 @@ function AddResource() {
     };
 
     const toggleSection = (title) => {
-        captureScroll();
+        captureScroll(); // Keep scroll capture here, as section expansion changes component structure
         
         setExpandedSections(prev => ({
             ...prev,
@@ -377,8 +376,9 @@ function AddResource() {
                         <div style={{ width: '80%' }}>
                             <Select options={resourceTypeOptions} styles={customStyles} placeholder="Select Resource Type"className="w-100"classNamePrefix="select"
                                 value={selectedResourceType}
+                                // Added captureScroll for Select components
+                                onMenuOpen={captureScroll}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedResourceType(selected);
                                     handleCalculations({ resourceTypeId: selected?.value });
                                     fetchResources(selected?.value);
@@ -394,8 +394,9 @@ function AddResource() {
                             </label>
                             <Select options={resourceNatureOption} styles={customStyles} placeholder="Select Nature" className="w-100" classNamePrefix="select"
                                 value={selectedNature}
+                                // Added captureScroll for Select components
+                                onMenuOpen={captureScroll}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedNature(selected);
                                     handleCalculations({ resourceNatureId: selected?.value });
                                 }}
@@ -417,8 +418,9 @@ function AddResource() {
                                 }}
                                 placeholder="Select resource"className="w-100"classNamePrefix="select"
                                 value={selectedResource}
+                                // Added captureScroll for Select components
+                                onMenuOpen={captureScroll}
                                 onChange={(selectedOption) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedResource(selectedOption);
                                     const selectedResObj = resources.find((r) => r.id === selectedOption?.value);
                                     if (selectedResObj) {
@@ -481,8 +483,9 @@ function AddResource() {
                                 placeholder="Select UOM" 
                                 className="w-100" 
                                 classNamePrefix="select" 
+                                // Added captureScroll for Select components
+                                onMenuOpen={captureScroll}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedUom(selected);
                                     handleCalculations({ uomId: selected?.value });
                                 }}
@@ -497,8 +500,9 @@ function AddResource() {
                             </label>
                             <Select options={quantityTypeOption} styles={customStyles} placeholder="Select Quantity Type" className="w-100"classNamePrefix="select"
                                 value={selectedQuantityType}
+                                // Added captureScroll for Select components
+                                onMenuOpen={captureScroll}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedQuantityType(selected);
                                     handleCalculations({ quantityTypeId: selected?.value });
                                 }}
@@ -559,6 +563,8 @@ function AddResource() {
                             type="number"
                             name="wastePercentage"
                             value={resourceData.wastePercentage}
+                            // Added onFocus to capture scroll right before typing in expandable section
+                            onFocus={captureScroll} 
                             onChange={handleChange}
                             placeholder="0.00"
                             className="form-input w-100"
@@ -615,6 +621,8 @@ function AddResource() {
                                 type="number" 
                                 name="additionalRate"
                                 value={resourceData.additionalRate}
+                                // Added onFocus to capture scroll right before typing in expandable section
+                                onFocus={captureScroll} 
                                 onChange={handleChange}
                                 className="form-input w-100" 
                                 placeholder="0.00"
@@ -626,8 +634,9 @@ function AddResource() {
                             <label className="form-label text-start w-100"> Currency </label>
                             <Select options={currencyOptions} styles={customStyles} placeholder="Select Currency" className="w-100" classNamePrefix="select" 
                                 value={selectedCurrency}
+                                // Added captureScroll for Select components
+                                onMenuOpen={captureScroll}
                                 onChange={(selected) => {
-                                    captureScroll(); // Capture scroll on Select change
                                     setSelectedCurrency(selected);
                                     handleCalculations({ currencyId: selected?.value });
                                 }}
@@ -642,6 +651,8 @@ function AddResource() {
                                 type="number" 
                                 name="shippingPrice"
                                 value={resourceData.shippingPrice}
+                                // Added onFocus to capture scroll right before typing in expandable section
+                                onFocus={captureScroll} 
                                 onChange={handleChange}
                                 className="form-input w-100" 
                                 placeholder="0.00" 
@@ -654,6 +665,8 @@ function AddResource() {
                                 type="number" 
                                 name="exchangeRate"
                                 value={resourceData.exchangeRate}
+                                // Added onFocus to capture scroll right before typing in expandable section
+                                onFocus={captureScroll} 
                                 onChange={handleChange}
                                 className="form-input w-100" 
                                 placeholder="1.00000" 
@@ -684,6 +697,8 @@ function AddResource() {
                             id="rateLockSwitch" 
                             name="rateLock"
                             checked={resourceData.rateLock}
+                            // Added onFocus to capture scroll right before changing a field that might be off-screen
+                            onFocus={captureScroll} 
                             onChange={handleChange}
                         />
                     </div>
