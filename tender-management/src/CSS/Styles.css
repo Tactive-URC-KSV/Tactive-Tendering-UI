@@ -2,6 +2,7 @@
   font-family: 'Poppins', sans-serif;
   display: flex;
   flex-direction: column;
+  caret-color: transparent;
 }
 
 ::-webkit-scrollbar {
@@ -37,7 +38,7 @@
   top: 66px;
   left: 0;
   height: 100vh;
-  width: 280px;
+  width: 250px;
   background-color: #005197;
   overflow-x: hidden;
   transition: width 0.5s ease;
@@ -49,7 +50,7 @@
 }
 
 .sidebar-container.expanded {
-  width: 280px;
+  width: 250px;
   background-color: #005197CC;
 }
 
@@ -149,6 +150,7 @@
   font-size: 14px;
   padding-left: 20px;
   color: black;
+  caret-color: black;
 }
 
 .form-input::placeholder {
@@ -217,6 +219,7 @@ label {
   box-shadow: none;
   text-align: left !important;
   background-color: transparent !important;
+  caret-color: black !important;
 }
 
 .select__control--is-disabled {
@@ -387,6 +390,11 @@ label {
 .btn.cancel-button:hover{
   background-color: #00519714;
   color: #005197;
+}
+.btn.action-button:disabled{
+  color: white;
+  background-color: #005197CC;
+  cursor: not-allowed;
 }
 .estimation-container {
   background-color: #0051970A;
