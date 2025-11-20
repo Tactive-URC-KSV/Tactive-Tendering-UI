@@ -341,4 +341,4 @@ function TenderResource() {
   );
 }
 
-export default TenderResource; 
+export default TenderResource;  
