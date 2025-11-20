@@ -30,7 +30,7 @@ function Sidebar({ children }) {
     { label: "BOQ Definition", path: "boqdefinition", icon: <FaListAlt /> },
     { label: "Tender Estimation", path: "tenderestimation", icon: <FaCalculator /> },
     { label: "Cost Code Mapping", path: "costcodemapping", icon: <FaMapSigns /> },
-    { label: "Tender Floating", path: "TenderFloating", icon: <FaPaperPlane /> },
+    { label: "Tender Floating", path: "tenderfloating", icon: <FaPaperPlane /> },
     { label: "Tender Tracking", path: "TenderTracking", icon: <FaSearch /> },
     { label: "Receiving Offers", path: "ReceivingOffers", icon: <FaInbox /> },
     { label: "Tender Comparison", path: "TenderComparison", icon: <FaChartBar /> },

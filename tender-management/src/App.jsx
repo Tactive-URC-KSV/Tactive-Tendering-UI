@@ -92,6 +92,7 @@ function App() {
                             <Route path="/tenderestimation" element={<TenderEstimation />} caseSensitive={false} />
                             <Route path="/tenderestimation/:projectId" element={<TenderEstimation />} caseSensitive={false} />
                             <Route path="/tenderestimation/:projectId/resourceadding/:boqId" element={<TenderResource />} caseSensitive={false} />
+                            {/* <Route path="/tenderestimation/resourceadding/:activityGroupId" element={<ResourceAdding />} caseSensitive={false} /> */}
                             <Route path="/TenderFloating" element={<h1>Tender Floating</h1>} />
                             <Route path="/TenderTracking" element={<h1>Tender Tracking</h1>} />
                             <Route path="/ReceivingOffers" element={<h1>Receiving Offers</h1>} />
