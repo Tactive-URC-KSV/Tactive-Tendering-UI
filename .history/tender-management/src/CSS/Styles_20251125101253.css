@@ -1,0 +1,720 @@
+.container-fluid {
+  font-family: 'Poppins', sans-serif;
+  display: flex;
+  flex-direction: column;
+  caret-color: transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #00519726;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #005197;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #005197CC;
+}
+
+.header {
+  background-color: white;
+  height: 65px;
+  box-shadow: 0px 3px 3px 0px #b4d2ec52;
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-container {
+  position: fixed;
+  top: 66px;
+  left: 0;
+  height: 100vh;
+  width: 250px;
+  background-color: #005197;
+  overflow-x: hidden;
+  transition: width 0.5s ease;
+  z-index: 1000;
+}
+
+.sidebar-container.collapsed {
+  width: 65px;
+}
+
+.sidebar-container.expanded {
+  width: 250px;
+  background-color: #005197CC;
+}
+
+.btn.nav-btn {
+  color: white;
+  font-size: 15px;
+  font-weight: 400;
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.btn.nav-btn:hover {
+  background-color: #FFFFFF4D;
+  color: white;
+}
+
+.btn.nav-btn.active {
+  background-color: white;
+  color: #005197;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.user-profile {
+  font-weight: 600;
+  color: #005197;
+}
+
+.content-container {
+  flex: 1;
+  margin-left: 65px;
+  padding: 20px;
+}
+
+.content-container.collapsed,
+.content-container.expanded {
+  margin-top: 65px;
+  background-color: #F9FAFB;
+}
+
+/* Dashboard */
+.project-counts {
+  border-radius: 5px;
+  background-color: white;
+  width: 85%;
+  box-shadow: 0px 10px 10px 0px #00519726;
+}
+
+.project-overview {
+  border-radius: 5px;
+  background-color: white;
+  border: 1px solid #00519726;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.icon {
+  align-self: center;
+}
+
+.value {
+  color: #005197;
+  font-size: 17px;
+}
+
+.report-feild {
+  font-size: 14px;
+}
+
+.table-container thead tr th {
+  font-size: 14px;
+  padding: 8px;
+}
+
+.table-container tbody tr td {
+  background-color: white;
+  color: black;
+  font-size: 14px;
+  align-items: center;
+}
+
+.progress-bar {
+  background-color: #005197 !important;
+}
+.card.project-card:hover{
+  box-shadow: 0px 3px 3px #00519752 !important;
+}
+
+/* Form Inputs */
+.form-input,
+.form-input:focus {
+  outline: none;
+  border-radius: 8px;
+  border: 1px solid #005197CC;
+  height: 50px;
+  font-size: 14px;
+  padding-left: 20px;
+  color: black;
+  caret-color: black;
+}
+
+.form-input::placeholder {
+  color: #00519780;
+  font-size: 13px;
+
+}
+
+.form-input:disabled {
+  background-color: white !important;
+}
+
+.form-input::-webkit-inner-spin-button,
+.form-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+label {
+  font-size: 15px;
+}
+
+.projectform {
+  position: absolute;
+  background-color: white;
+  margin-left: 19px;
+  margin-top: -10px;
+  padding-left: 6px;
+  padding-right: 5px;
+  font-size: 13px;
+  color: #005197;
+  font-weight: 600;
+}
+
+.projectform-select {
+  position: absolute;
+  background-color: white;
+  margin-left: 19px;
+  margin-top: -10px;
+  padding-left: 6px;
+  padding-right: 5px;
+  font-size: 13px;
+  color: #005197;
+  font-weight: 600;
+  z-index: 1;
+}
+
+.calender-icon {
+  position: absolute;
+  margin-top: 10px;
+  margin-left: -35px;
+  cursor: pointer;
+}
+
+.select__menu {
+  z-index: 9999 !important;
+}
+
+.select__control {
+  border-radius: 8px !important;
+  border: 1px solid #005197CC !important;
+  height: 50px;
+  font-size: 14px;
+  padding-left: 15px;
+  color: black !important;
+  box-shadow: none;
+  text-align: left !important;
+  background-color: transparent !important;
+  caret-color: black !important;
+}
+
+.select__control--is-disabled {
+  background-color: white !important;
+  opacity: 1 !important;
+  cursor: not-allowed;
+}
+
+.select__indicator-separator {
+  display: none !important;
+}
+
+.select__placeholder {
+  color: #00519780 !important;
+  font-size: 13px !important;
+}
+
+.select__control--is-focused {
+  border: 1px solid #005197 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: black !important;
+}
+
+
+.select__option {
+  cursor: pointer !important;
+  text-align: start !important;
+  color: #005197b7 !important;
+  font-size: 14px !important;
+  height: 35px !important;
+  font-weight: 500 !important;
+}
+
+.select__option--is-selected {
+  background-color: #005197 !important;
+  color: white !important;
+}
+
+.select__multi-value {
+  background-color: #005197 !important;
+  color: white !important;
+  border-radius: 6px !important;
+  margin-right: 5px;
+  margin-top: 52px !important;
+}
+
+.select__multi-value__label {
+  color: white !important;
+}
+
+.select__multi-value__remove:hover {
+  background-color: #005197 !important;
+  color: white !important;
+}
+/*
+ * *** The section below has been corrected to show chips INSIDE the box,
+ * *** wrapping below the text input line, while keeping the 'X' and arrow hidden.
+ */
+
+/* Target only multi-select controls */
+.select__control--is-multi {
+  /* Ensures the control expands vertically to fit wrapping chips */
+  height: auto !important;
+  overflow: hidden !important;
+}
+
+/* Ensure value container allows wrapping and resets padding */
+.select__control--is-multi .select__value-container {
+  flex-wrap: wrap !important;
+  /* Reset padding from the "chips above" hack to allow chips to wrap inside normally */
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+  overflow: hidden !important;
+}
+
+/* Multi-value tags (chips) should sit inside the container normally */
+.select__control--is-multi .select__multi-value {
+  /* Reset positioning that forced chips outside the box */
+  position: static;
+  top: auto;
+ /* Adjusting margins for cleaner spacing within the container */
+ margin-top: 3px !important;
+margin-bottom: 3px !important;
+ margin-right: 6px !important;
+}
+
+/* Multi-value label styling */
+.select__control--is-multi .select__multi-value__label {
+ color: white !important;
+}
+
+/* Remove the X (remove icon) for multi-select */
+.select__control--is-multi .select__multi-value__remove {
+ display: none !important;
+}
+
+/* Remove dropdown arrow for multi-select */
+.select__control--is-multi .select__indicators {
+ display: none !important;
+}
+
+This updated CSS should give you the desired output: chips that wrap inside the input box, expanding the height, and no 'X' or dropdown arrow visible on the multi-select.
+
+
+
+.form-check-input{
+  border-color: #005197 !important;
+}
+.form-check-input:checked{
+  background-color: #005197 !important;
+  box-shadow: none !important;
+}
+.form-check-input:focus {
+  box-shadow: none !important;
+}
+.upload-file {
+  border: 1px #005197;
+  border-style: dashed;
+  border-radius: 8px;
+  color: #005197;
+}
+
+.project-detail {
+  font-size: 14px;
+}
+
+.change-view {
+  outline: none;
+  border: none;
+  background-color: white;
+  padding: 3px;
+  min-width: 3%;
+  color: #005197;
+  border-radius: 5px;
+}
+
+.change-view.active {
+  outline: none;
+  border: none;
+  background-color: #005197;
+  transition: 0.3s ease;
+  min-width: 3%;
+  color: white;
+}
+
+.table-container {
+  font-size: 14px;
+}
+
+/* Project Creation */
+.tab {
+  border: none;
+  background-color: white;
+  color: grey;
+}
+
+.tab.enabled:hover,
+.tab.active {
+  background-color: white;
+  color: #005197;
+  border-bottom: 2px solid #005197;
+}
+
+.tab.enabled {
+  color: black;
+}
+
+.tab-info {
+  background-color: #005197;
+  color: white;
+  padding: 9px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+.btn.action-button {
+  background-color: #005197;
+  color: white;
+  min-width: 100px !important;
+  border-radius: 8px;
+  font-size: 14px !important;
+}
+
+.btn.action-button:hover,
+.btn.export-button:hover {
+  background-color: #005197 !important;
+  color: white !important;
+}
+.btn.export-button{
+  background-color: #005197;
+  color: white;
+  min-width: 105px !important;
+  border-radius: 8px;
+  font-size: 14px !important;
+}
+.btn.archive-button {
+  background-color: #FEF2F2;
+  color: #DC2626;
+  min-width: 100px !important;
+  border-radius: 8px;
+}
+
+.btn.archive-button:hover {
+  transform: scale(0.93);
+  background-color: #FEF2F2;
+  color: #DC2626;
+}
+
+.btn.cancel-button{
+  background-color: transparent;
+  color: #005197;
+  border-radius: 8px;
+  min-width: 100px !important;
+}
+.btn.cancel-button:hover{
+  background-color: #00519714;
+  color: #005197;
+}
+.btn.action-button:disabled{
+  color: white;
+  background-color: #005197CC;
+  cursor: not-allowed;
+}
+.estimation-container {
+  background-color: #0051970A;
+  border-radius: 10px;
+}
+
+/* Project detail */
+.project-title-header {
+  border-radius: 8px;
+  color: #fff;
+  padding: 15px;
+  background: linear-gradient(to right, #0056b3, #007bff);
+}
+
+.project-title-header p {
+  margin: 5px 0 0;
+  font-size: 0.9rem;
+}
+
+.project-title-header .text-end p {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.project-info-header {
+  border-bottom: 0.5px solid #0051973D;
+
+}
+
+/* BOQ Definition */
+.selected-card.card {
+  border: 1px solid #005197 !important;
+}
+
+.file-description {
+  background: #00519714;
+}
+.btn.template-button{
+  color: #005197;
+  background-color: #0051971F;
+  font-size: 14px;
+}
+.btn.template-button:hover{
+  color: #005197;
+  background-color: #0051971F;
+} 
+.file-preview {
+  height: 50px;
+  background-color: #F0FDF4;
+  width: 92%;
+  border-radius: 10px;
+  font-size: 16px;
+}
+
+.excel-column-container {
+  border: 0.5px solid #2BA95A;
+  font-size: 15px;
+  background-color: #F0FDF4;
+}
+.excel-column-container:active {
+  opacity: 0.5;
+  transform: scale(1.05);
+  transition: all 0.2s ease;
+}
+
+
+.internal-column-container {
+  border: 2px solid #2563EB80;
+  border-style: dashed;
+  font-size: 15px;
+}
+
+.internal-column-container.mapped {
+  background-color: #EFF6FF;
+  font-size: 15px;
+}
+.mapping-condition{
+  height: fit-content;
+  padding-right: 10px;
+  padding-left: 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.mapping-condition.required{
+  background-color: #FEE2E2;
+  color: #C33D1B;
+}
+.mapping-condition.optional{
+  background-color: #F3F4F6;
+
+}
+.mapping-condition.mapped{
+  background-color: #DBEAFE;
+}
+/* BOQ Overview */
+.btn.import-button{
+  background-color: #0DB27B;
+  color: white;
+  font-size: 14px;;
+}
+.btn.import-button:hover{
+  background-color: #0DB27B;
+  color: white;
+  font-size: 14px;;
+}
+.btn:focus{
+  border: none !important;
+  outline: none !important;
+}
+.parent-boq{
+  background-color: #EFF6FF ;
+  /* border: 0.5px solid #0051973D; */
+}
+.boq-table{
+  .boq-header {
+    color: #005197;
+}
+  .boq-data {
+    color: rgba(0, 0, 0, 0.80);
+  }
+}
+
+/* CCMOverview */
+
+.search::placeholder {
+  color: #00519780;
+  font-size: 13px;}
+
+/* Custom scrollbar for BOQ Details */
+.boq-scroll-container::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+.boq-scroll-container::-webkit-scrollbar-track {
+    background: #ffffffff;
+    border-radius: 8px;
+    
+}
+
+.boq-scroll-container::-webkit-scrollbar-thumb {
+    background: #00519780;
+    border-radius: 10px;    
+}
+
+.boq-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: #00519780;
+}
+
+.boq-scroll-container {
+    scrollbar-width: thin;
+    scrollbar-color: #00519780 #e8e7e7;
+}
+.btn.activeView{
+  background-color: #005197 !important;
+  color: white !important;
+  border: none;
+  border-radius: 5px !important;
+}
+.card.project-card.active{
+  box-shadow: 0px 10px 40px 0px #00519726 !important;
+  border: 1px solid #00519726 !important;
+
+}
+.activity-details{
+  border-radius: 8px;
+  color: black;
+  background-color: #EFF6FF80 ;
+  border-left: 3px solid #005197B2;
+}
+.table.activity-table{
+  thead th{
+    color: gray !important;
+    font-weight: 400;
+  }
+  tbody td{
+    color: black !important;
+    align-self: center;
+  }
+}
+.rotate-180 {
+  transform: rotate(90deg);
+  transition: transform 0.2s ease;
+}
+.modal-resource{
+  background-color: #EFF6FF;
+  border: 1px solid #2563EB3D;
+}
+
+.resource-label{
+  color: #000000bd;
+  font-size: 14px;
+}
+
+.resource-select__menu {
+  z-index: 9999 !important;
+}
+
+.resource-select__control {
+  border-radius: 8px !important;
+  border: 0.5px solid #0000003D !important;
+  height: 45px;
+  font-size: 14px;
+  padding-left: 15px;
+  color: black !important;
+  box-shadow: none;
+  text-align: left !important;
+}
+
+.resource-select__control--is-disabled {
+  background-color: white !important;
+  opacity: 1 !important;
+  cursor: not-allowed;
+}
+
+.resource-select__indicator-separator {
+  display: none !important;
+}
+
+.resource-select__placeholder {
+  color: #00000066 !important;
+  font-size: 13px !important;
+}
+
+.resource-select__control--is-focused {
+  border: 0.5px solid #0000003D !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: black !important;
+}
+
+.resource-select__option {
+  cursor: pointer !important;
+  text-align: start !important;
+  color: #005197b7 !important;
+  font-size: 14px !important;
+  height: 35px !important;
+  font-weight: 500 !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 0px 4px 4px 0px #00519766;
+  text-wrap: nowrap !important;
+  
+}
+
+.resource-select__option:hover{
+  background-color: #005197 !important;
+  color: white !important
+}
+
+.resource-select__option--is-selected {
+  background-color: #005197 !important;
+  color: white !important;
+}
+
+.resource-input,
+.resource-input:focus{
+  outline: none;
+  border-radius: 8px !important;
+  border: 0.5px solid #0000003D !important;
+  height: 45px;
+  font-size: 13px;
+  padding-left: 15px;
+  color: black !important;
+  box-shadow: none;
+  text-align: left !important;
+}
+/* .table-responsive::-webkit-scrollbar{
+  height: 8px !important;
+}
+.table-responsive::-webkit-scrollbar-track{
+  border-radius: 10px !important;
+}
+.table-responsive::-webkit-scrollbar-thumb{
+  border-radius: 10px !important;
+  background-color: #0051973D !important;
+} */

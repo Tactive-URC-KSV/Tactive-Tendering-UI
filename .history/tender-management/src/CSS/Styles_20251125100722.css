@@ -1,0 +1,10 @@
+/* Remove the X (remove icon) for multi-select */
+.select__control--is-multi .select__multi-value__remove {
+  display: none !important;
+}
+2.  **Hiding the Dropdown Arrow (Indicators):**
+```css
+/* Remove dropdown arrow for multi-select */
+.select__control--is-multi .select__indicators {
+  display: none !important;
+}
