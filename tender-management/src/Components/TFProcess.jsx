@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, ArrowRight, BoxesIcon, ChevronDown, ChevronRight, IndianRupee, Info, Paperclip, Plus, User2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BoxesIcon, ChevronDown, ChevronRight, IndianRupee, Info, Paperclip, Plus, User2, X, Download } from 'lucide-react'; 
 import axios from "axios";
 import Flatpickr from "react-flatpickr";
-import { FaCalendarAlt } from 'react-icons/fa';
+import { FaCalendarAlt,FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
+import Select from "react-select";
+import { useScope } from "../Context/ScopeContext"; 
+
 
 function TFProcess({ projectId }) {
     const datePickerRef = useRef();
@@ -10,19 +13,23 @@ function TFProcess({ projectId }) {
     const [currentTab, setCurrentTab] = useState('boq');
     const [tab, setTab] = useState('general');
     const [selectedBoq, setSelectedBoq] = useState(new Set());
+    const [boqForRemoval, setBoqForRemoval] = useState(new Set()); 
     const [parentBoq, setParentBoq] = useState([]);
     const [parentTree, setParentTree] = useState([]);
     const [expandedParentIds, setExpandedParentIds] = useState(new Set());
     const generateTenderNumber = () => {
-        const year = new Date().getFullYear();
-        const randomNum = Math.floor(Math.random() * 999999) + 1;
-        const padded = String(randomNum).padStart(6, '0');
-        return `TF-${year}-${padded}`;
+    const year = new Date().getFullYear();
+    const randomNum = Math.floor(Math.random() * 999999) + 1;
+    const padded = String(randomNum).padStart(6, '0');
+    return `TF-${year}-${padded}`;
     };
+    
+
     const getCurrentDate = () => {
         const today = new Date();
-        return today.toISOString().split("T")[0];
+        return today.toISOString().split("T")[0]; 
     }
+
     const [userData, setUserData] = useState();
     const [tenderDetail, setTenderDetail] = useState({
         tenderFloatingNo: generateTenderNumber(),
@@ -30,6 +37,7 @@ function TFProcess({ projectId }) {
         projectId: projectId,
         offerSubmissionMode: '',
         offerSubmissionDate: '',
+        submissionLastDate:'',
         bidOpeningDate: '',
         contactPerson: userData?.name || 'admin',
         contactEmail: userData?.email || 'admin@gmail.com',
@@ -39,6 +47,11 @@ function TFProcess({ projectId }) {
         boqIds: Array.from(selectedBoq),
         contractorIds: ''
     });
+
+    const handleUnauthorized = () => {
+        console.error("Unauthorized access, attempting to redirect to login...");
+    }
+
     useEffect(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${projectId}`, {
             headers: {
@@ -57,22 +70,24 @@ function TFProcess({ projectId }) {
             }
         });
     }, [projectId]);
+
     const getLoggedInUser = () => {
-            axios.get(`${import.meta.env.VITE_API_BASE_URL}/loggedin-user`, {
-                headers: {
-                    Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                    'Content-Type': 'application/json'
-                }
-            }).then(res => {
-                if (res.status === 200) {
-                    setUserData(res.data);
-                }
-            }).catch(err => {
-                if (err.response.status === 401) {
-                    handleUnauthorized();
-                }
-            })
-        }
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/loggedin-user`, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        }).then(res => {
+            if (res.status === 200) {
+                setUserData(res.data);
+            }
+        }).catch(err => {
+            if (err.response.status === 401) {
+                handleUnauthorized();
+            }
+        })
+    }
+
     const fetchParentBoqData = async () => {
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getParentBoq/${projectId}`, {
@@ -90,11 +105,11 @@ function TFProcess({ projectId }) {
             }
         } catch (err) {
             if (err?.response?.status === 401) {
-                navigate('/login');
             }
             setParentBoq([]);
         }
     };
+
     const handleToggle = (parentId) => {
         setExpandedParentIds(prevSet => {
             const newSet = new Set(prevSet);
@@ -108,6 +123,7 @@ function TFProcess({ projectId }) {
             return newSet;
         });
     };
+
     const fetchChildrenBoq = async (parentId) => {
         const findNode = (tree) => {
             for (const node of tree) {
@@ -121,11 +137,14 @@ function TFProcess({ projectId }) {
             }
             return null;
         };
+
         const parentNode = findNode(parentTree);
         if (parentNode && parentNode.children !== null) {
             return;
         }
+
         setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: 'pending' }));
+
         try {
             const response = await axios.get(
                 `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${projectId}/${parentId}`,
@@ -136,6 +155,7 @@ function TFProcess({ projectId }) {
                     }
                 }
             );
+
             if (response.status === 200) {
                 const childrenData = (response.data || []).map(child => ({
                     ...child,
@@ -148,12 +168,13 @@ function TFProcess({ projectId }) {
             }
         } catch (err) {
             if (err?.response?.status === 401) {
-                navigate('/login');
             }
             console.error('Error fetching children BOQ data:', err);
             setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: [] }));
         }
     };
+
+    
     const updateNodeInTree = (tree, nodeId, newProps) => {
         return tree.map(node => {
             if (node.id === nodeId) {
@@ -165,6 +186,7 @@ function TFProcess({ projectId }) {
             return node;
         });
     };
+
     const handleParentBoqTree = (data = parentBoq) => {
         if (Array.isArray(data) && data.length > 0) {
             const parentTree = new Map();
@@ -180,6 +202,7 @@ function TFProcess({ projectId }) {
             setParentTree(Array.from(parentTree.values()))
         }
     }
+
     const toggleSelection = (boqId) => {
         setSelectedBoq(prevSet => {
             const newSet = new Set(prevSet);
@@ -191,6 +214,7 @@ function TFProcess({ projectId }) {
             return newSet;
         });
     };
+
     const toggleAllChildrenSelection = (children, selectAll) => {
         if (!Array.isArray(children)) return;
 
@@ -208,6 +232,58 @@ function TFProcess({ projectId }) {
             return newSet;
         });
     };
+
+    
+
+    const getSelectedLeafBoqs = (tree) => {
+        let result = [];
+        if (!selectedBoq || selectedBoq.size === 0) return [];
+
+        const traverse = (nodes) => {
+            nodes.forEach(boq => {
+                if (boq.lastLevel === true && selectedBoq.has(boq.id)) {
+                    result.push(boq);
+                } else if (Array.isArray(boq.children)) {
+                    traverse(boq.children);
+                }
+            });
+        };
+        traverse(tree);
+        return result;
+    };
+
+    const toggleRemovalSelection = (boqId) => {
+        setBoqForRemoval(prevSet => {
+            const newSet = new Set(prevSet);
+            newSet.has(boqId) ? newSet.delete(boqId) : newSet.add(boqId);
+            return newSet;
+        });
+    };
+
+    const handleRemoveSelectedBoqs = () => {
+        setSelectedBoq(prevSet => {
+            const newSet = new Set(prevSet);
+            boqForRemoval.forEach(id => newSet.delete(id));
+            return newSet;
+        });
+        setBoqForRemoval(new Set()); 
+    };
+    
+    const scopes = useScope() || []; 
+    const scopeOptions = scopes.map(s => ({ value: s.id, label: s.scope }));
+
+    const [selectedScopes, setSelectedScopes] = useState([]);
+
+    useEffect(() => {
+        setTenderDetail(prev => ({ ...prev, scopeOfPackage: Array.isArray(selectedScopes) ? selectedScopes : [] }));
+    }, [selectedScopes]);
+
+    useEffect(() => {
+        if (Array.isArray(tenderDetail?.scopeOfPackage) && tenderDetail.scopeOfPackage.length > 0) {
+            setSelectedScopes(tenderDetail.scopeOfPackage);
+        }
+    }, [tenderDetail?.scopeOfPackage]);
+
     const BOQNode = ({ boq, level = 0 }) => {
         const canExpand = boq.level === 1 || boq.level === 2;
         const isExpanded = expandedParentIds.has(boq.id);
@@ -334,6 +410,7 @@ function TFProcess({ projectId }) {
             </div>
         );
     }
+
     const boqSelection = () => {
         return (
             <div className="bg-white rounded-3 ms-3 me-3 p-3 mt-5" style={{ border: '1px solid #0051973D' }}>
@@ -376,6 +453,7 @@ function TFProcess({ projectId }) {
         );
 
     }
+
     const generalDetails = () => {
         const openCalendar = (id) => {
             const input = document.querySelector(`#${id}`);
@@ -383,6 +461,7 @@ function TFProcess({ projectId }) {
                 input._flatpickr.open();
             }
         };
+
         return (
             <div className="p-2">
                 <div className="text-start ms-1 mt-4">
@@ -392,32 +471,49 @@ function TFProcess({ projectId }) {
                 <div className="row align-items-center justify-content-between ms-1 mt-5">
                     <div className="col-md-4 col-lg-4 ">
                         <label className="projectform text-start d-block">Tender Floating No </label>
-                        <input type="text" className="form-input w-100" placeholder="Enter Tender Floating No"
+                        <input type="text" className="form-input w-100" 
                             value={tenderDetail.tenderFloatingNo}
                             readOnly
                         />
                     </div>
-                    <div className="col-md-4 col-lg-4">
+                    <div className="col-md-4 col-lg-4 ">
                         <label className="projectform text-start d-block">Tender Floating Date </label>
-                        <input type="text" className="form-input w-100" placeholder="Enter Tender Floating No"
+                        <input type="text" className="form-input w-100" 
                             value={tenderDetail.tenderFloatingDate}
                             readOnly
-                        // onChange={(e) => setProject({ ...project, agreementNumber: e.target.value })}
                         />
                     </div>
                     <div className="col-md-4 col-lg-4">
                         <label className="projectform text-start d-block">Project Name </label>
-                        <input type="text" className="form-input w-100" placeholder="Enter Tender Floating No"
+                        <input type="text" className="form-input w-100" 
                             value={project.projectName}
                             readOnly
-                        // onChange={(e) => setProject({ ...project, agreementNumber: e.target.value })}
                         />
                     </div>
                 </div>
                 <div className="row align-items-center justify-content-between ms-1 mt-5">
-                    <div className="col-md-4 col-lg-4 ">
-                        <label className="projectform text-start d-block">Offer Submission Mode</label>
-                        <input type="text" className="form-input w-100" placeholder="Enter Tender Floating No"
+                    <div className="col-md-4 col-lg-4">
+                        <label className="projectform-select text-start d-block">Offer Submission Mode</label>
+                        <Select
+                            options={[
+                                { value: 'online', label: 'Online' },
+                                { value: 'offline', label: 'Offline' }
+                            ]}
+                            placeholder="Select Mode"
+                            className="w-100"
+                            classNamePrefix="select"
+                            value={
+                                tenderDetail.offerSubmissionMode
+                                    ? [{ value: tenderDetail.offerSubmissionMode, label: tenderDetail.offerSubmissionMode.charAt(0).toUpperCase() + tenderDetail.offerSubmissionMode.slice(1) }]
+                                    : null
+                            }
+                            onChange={(selected) =>
+                                setTenderDetail({
+                                    ...tenderDetail,
+                                    offerSubmissionMode: selected ? selected.value : ''
+                                })
+                            }
+                            isClearable
                         />
                     </div>
                     <div className="col-md-4 col-lg-4">
@@ -425,7 +521,7 @@ function TFProcess({ projectId }) {
                         <Flatpickr
                             id="bidOpeningDate"
                             className="form-input w-100"
-                            placeholder="Select Bid opening date"
+                            placeholder="dd - mm - yyyy"
                             options={{ dateFormat: "d-m-Y" }}
                             value={tenderDetail.bidOpeningDate}
                             onChange={([date]) => setTenderDetail({ ...tenderDetail, bidOpeningDate: date })}
@@ -438,10 +534,10 @@ function TFProcess({ projectId }) {
                         <Flatpickr
                             id="submissionLastDate"
                             className="form-input w-100"
-                            placeholder="Select Submission Last date"
+                            placeholder="dd - mm - yyyy"
                             options={{ dateFormat: "d-m-Y" }}
-                            value={tenderDetail.offerSubmissionDate}
-                            onChange={([date]) => setTenderDetail({ ...tenderDetail, offerSubmissionDate: date })}
+                            value={tenderDetail.submissionLastDate}
+                            onChange={([date]) => setTenderDetail({ ...tenderDetail, submissionLastDate: date })}
                             ref={datePickerRef}
                         />
                         <span className='calender-icon' onClick={() => openCalendar('submissionLastDate')}><FaCalendarAlt size={18} color='#005197' /></span>
@@ -450,64 +546,123 @@ function TFProcess({ projectId }) {
                 <div className="row align-items-center justify-content-between ms-1 mt-5">
                     <div className="col-md-4 col-lg-4 ">
                         <label className="projectform text-start d-block">Contact Person</label>
-                        <input type="text" className="form-input w-100" placeholder="Enter Tender Floating No"
+                        <input type="text" className="form-input w-100" 
                             value={tenderDetail.contactPerson}
                             readOnly
-                        // onChange={(e) => setProject({ ...project, agreementNumber: e.target.value })}
                         />
                     </div>
                     <div className="col-md-4 col-lg-4">
                         <label className="projectform text-start d-block">Contact Email</label>
-                        <input type="text" className="form-input w-100" placeholder="Enter Tender Floating No"
+                        <input type="text" className="form-input w-100" 
                             value={tenderDetail.contactEmail}
                             readOnly
-                        // onChange={(e) => setProject({ ...project, agreementNumber: e.target.value })}
                         />
                     </div>
                     <div className="col-md-4 col-lg-4">
                         <label className="projectform text-start d-block">Contact Number</label>
-                        <input type="text" className="form-input w-100" placeholder="Enter Tender Floating No"
+                        <input type="text" className="form-input w-100"
                             value={tenderDetail.contactMobile}
                             readOnly
-                        // onChange={(e) => setProject({ ...project, agreementNumber: e.target.value })}
                         />
                     </div>
                 </div>
                 <div className="row align-items-center ms-1 mt-5">
                     <div className="col-md-4 col-lg-4 ">
-                        <label className="projectform text-start d-block">Scope of Package</label>
-                        <input type="text" className="form-input w-100" placeholder="Enter Tender Floating No"
-                        // value={project.agreementNumber}
-                        // onChange={(e) => setProject({ ...project, agreementNumber: e.target.value })}
+                        <label className="projectform-select text-start d-block">Scope of Package</label>
+
+                        <Select
+                            options={scopeOptions}
+                            isMulti
+                            placeholder="Select Scope of Package"
+                            className="w-100"
+                            classNamePrefix="select"
+                            value={scopeOptions.filter(opt => selectedScopes.includes(opt.value))}
+                            onChange={(selected) => setSelectedScopes(selected ? selected.map(s => s.value) : [])}
                         />
                     </div>
+
                     <div className="col-md-4 col-lg-4">
                         <label className="projectform text-start d-block">Scope of Work</label>
-                        <input type="text" className="form-input w-100" placeholder="Enter Tender Floating No"
-                        // value={project.agreementNumber}
-                        // onChange={(e) => setProject({ ...project, agreementNumber: e.target.value })}
-                        />
+                        <input 
+    type="text"
+    className="form-input w-100"
+    placeholder="Enter Scope of Work"
+    value={tenderDetail.scopeOfWork}
+    onChange={(e) =>
+        setTenderDetail({ ...tenderDetail, scopeOfWork: e.target.value })
+    }
+/>
+
                     </div>
                 </div>
             </div>
         );
     }
+
     const packageDetails = (selectedBoqArray) => {
         const boqNameDisplay = (boqName) => {
             return boqName && boqName.length > 20
                 ? boqName.substring(0, 20) + '...'
                 : boqName;
         }
+        
+        const isAllSelectedForRemoval = selectedBoqArray.length > 0 && selectedBoqArray.every(boq => boqForRemoval.has(boq.id));
+
+        const toggleAllRemovalSelection = (checked) => {
+            if (checked) {
+                setBoqForRemoval(new Set(selectedBoqArray.map(boq => boq.id)));
+            } else {
+                setBoqForRemoval(new Set());
+            }
+        };
+
         return (
             <div className="p-2">
-                <div className="text-start ms-1 mt-4">
-                    <BoxesIcon size={20} color="#2BA95A" />
-                    <span className="ms-2 fw-bold">Package Details</span>
+                <div className="text-start ms-1 mt-4 d-flex justify-content-between align-items-center">
+                    <div className="d-flex flex-column">
+                        <div className="d-flex align-items-center">
+                            <BoxesIcon size={20} color="#2BA95A" />
+                            <span className="ms-2 fw-bold">Package Details</span>
+                        </div>
+                        <div className="text-start ms-1 mt-2 mb-3">
+                            <span className="text-muted" style={{ fontSize: '14px' }}>
+                                Auto-filled based on activity selection
+                            </span>
+                        </div>
+                    </div>
+                    <div className="d-flex gap-5">
+                       <button
+    className="btn btn-sm"
+    style={{ border: '1px solid #dc3545', color: '#dc3545' }}
+    onClick={handleRemoveSelectedBoqs}
+    disabled={boqForRemoval.size === 0}  
+>
+    <X size={18} /> <span className="fw-medium ms-1">Remove</span>
+</button>
+
+                        <button
+                            className="btn btn-sm"
+                            style={{ backgroundColor: '#2BA95A', color: 'white' }}
+                            onClick={() => setCurrentTab('boq')}
+                        >
+                            <Plus size={18} /> <span className="fw-medium ms-1">Add</span>
+                        </button>
+                    </div>
                 </div>
+
                 <div className="table table-responsive mt-4">
                     <table className="table table-borderless">
                         <thead style={{ color: '#005197' }}>
                             <tr>
+                                <th style={{ width: '40px' }}>
+                                    <input
+                                        type="checkbox"
+                                        className="form-check-input"
+                                        style={{ borderColor: '#005197' }}
+                                        checked={isAllSelectedForRemoval}
+                                        onChange={(e) => toggleAllRemovalSelection(e.target.checked)}
+                                    />
+                                </th>
                                 <th>BOQ Code</th>
                                 <th>BOQ Name</th>
                                 <th>UOM</th>
@@ -515,19 +670,36 @@ function TFProcess({ projectId }) {
                             </tr>
                         </thead>
                         <tbody>
-                            {selectedBoqArray.map((boq, index) => (
-                                <tr key={index}>
-                                    <td>{boq.boqCode}</td>
-                                    <td title={boq.boqName}>{boqNameDisplay(boq.boqName) || '-'}</td>
-                                    <td>{boq.uom?.uomCode || '-'}</td>
-                                    <td>{boq.quantity?.toFixed(3) || 0}</td>
-                                </tr>))}
+                            {selectedBoqArray.length === 0 ? (
+                                <tr>
+                                    <td colSpan="5" className="text-center text-muted py-4">No BOQ items selected for this package.</td>
+                                </tr>
+                            ) : (
+                                selectedBoqArray.map((boq) => (
+                                    <tr key={boq.id}>
+                                        <td>
+                                            <input
+                                                type="checkbox"
+                                                className="form-check-input"
+                                                style={{ borderColor: '#005197' }}
+                                                checked={boqForRemoval.has(boq.id)}
+                                                onChange={() => toggleRemovalSelection(boq.id)}
+                                            />
+                                        </td>
+                                        <td>{boq.boqCode}</td>
+                                        <td title={boq.boqName}>{boqNameDisplay(boq.boqName) || '-'}</td>
+                                        <td>{boq.uom?.uomCode || '-'}</td>
+                                        <td>{boq.quantity?.toFixed(3) || 0}</td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
             </div>
         );
     }
+
     const contractorDetails = () => {
         return (
             <div className="p-2">
@@ -538,29 +710,153 @@ function TFProcess({ projectId }) {
             </div>
         );
     }
+    
+const [attachments, setAttachments] = useState({
+    technical: { files: [], notes: '' },
+    drawings: { files: [], notes: '' },
+    commercial: { files: [], notes: '' },
+    others: { files: [], notes: '' },
+});
+const handleFileUpload = (e, key) => {
+    const uploadedFiles = Array.from(e.target.files);
+
+    setAttachments(prev => ({
+        ...prev,
+        [key]: {
+            ...prev[key],
+            files: [...prev[key].files, ...uploadedFiles]
+        }
+    }));
+};
+
+const handleNoteChange = (key, value) => {
+    setAttachments(prev => ({
+        ...prev,
+        [key]: {
+            ...prev[key],
+            notes: value
+        }
+    }));
+};
+
     const attachmentDetails = () => {
-        return (
-            <div className="p-2">
-                <div className="text-start ms-1 mt-3">
-                    <Paperclip size={20} color="#2BA95A" />
-                    <span className="ms-2 fw-bold">Attachment</span>
+    const attachmentTypes = [
+        { key: "technical", title: "Technical Specification", noteLabel: "Additional notes for technical specification" },
+        { key: "drawings", title: "Drawings", noteLabel: "Additional notes for drawings" },
+        { key: "commercial", title: "Commercial Conditions", noteLabel: "Additional notes for commercial conditions" },
+        { key: "others", title: "Others", noteLabel: "Additional notes for others" }
+    ];
+
+    const handleRemoveFile = (fileKey, index) => {
+        const updatedFiles = attachments[fileKey].files.filter((_, idx) => idx !== index);
+        setAttachments(prevState => ({
+            ...prevState,
+            [fileKey]: { ...prevState[fileKey], files: updatedFiles }
+        }));
+    };
+
+    return (
+        <div className="p-4">
+            <div className="text-start ms-1 mt-3 d-flex align-items-center">
+                <Paperclip size={20} color="#005197" />
+                <span className="ms-2 fw-bold" style={{ color: "#005197" }}>Attachments</span>
+            </div>
+
+            <p className="text-muted ms-1 mt-2" style={{ fontSize: "14px", textAlign: "left" }}>
+                Upload required documents
+            </p>
+
+            <div className="outer-container" style={{
+                borderRadius: "10px", 
+                padding: "15px", 
+            }}>
+                <div className="row mt-4">
+                    {attachmentTypes.map((item) => (
+                        <div className="col-md-6 mb-4" key={item.key}>
+                            <div className="attachment-container p-4" style={{
+                                border: "2px solid #B0C4DE",  
+                                borderRadius: "10px", 
+                                backgroundColor: "transparent"  
+                            }}>
+                                <label
+                                    className="w-100 d-flex flex-column justify-content-center align-items-center"
+                                    style={{
+                                        border: "2px dashed #B0C4DE",
+                                        textAlign: "center",
+                                        cursor: "pointer",
+                                        transition: "all 0.3s ease",
+                                        backgroundColor: "transparent", 
+                                    }}
+                                    onMouseEnter={(e) => e.target.style.borderColor = '#005197'}
+                                    onMouseLeave={(e) => e.target.style.borderColor = '#B0C4DE'}
+                                >
+                                    <input
+                                        type="file"
+                                        multiple
+                                        hidden
+                                        onChange={(e) => handleFileUpload(e, item.key)}
+                                    />
+
+                                    <div className="d-flex justify-content-center mb-3">
+                                        <div
+                                            className="rounded-circle d-flex justify-content-center align-items-center"
+                                            style={{
+                                                width: "50px",
+                                                height: "50px",
+                                            }}
+                                        >
+                                            <FaCloudUploadAlt size={38} color="#005197" />
+                                        </div>
+                                    </div>
+
+                                    <h6 className="fw-bold" style={{ color: "#005197" }}>{item.title}</h6>
+                                    <p className="text-muted" style={{ fontSize: "13px", color: "#005197CC" }}>
+                                        Click to upload or drag and drop
+                                    </p>
+                                </label>
+
+                                {attachments[item.key].files.length > 0 && (
+                                    <ul className="mt-2" style={{ fontSize: "13px" }}>
+                                        {attachments[item.key].files.map((file, index) => (
+                                            <li key={index} className="d-flex align-items-center">
+                                                📄 {file.name}
+                                                <FaTimes
+                                                    size={16}
+                                                    color="#FF4F4F" 
+                                                    style={{ cursor: "pointer", marginLeft: "8px" }}
+                                                    onClick={() => handleRemoveFile(item.key, index)} 
+                                                />
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+
+                                <textarea
+                                    className="form-control mt-3"
+                                    placeholder={item.noteLabel}
+                                    rows="2"
+                                    value={attachments[item.key].notes}
+                                    onChange={(e) => handleNoteChange(item.key, e.target.value)}
+                                    style={{
+                                        borderRadius: "8px",
+                                        fontSize: "14px",
+                                        border: "1px solid #B0C4DE",
+                                        padding: "10px",
+                                        color: "#333",
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
-        );
-    }
+        </div>
+    );
+};
+
     const tenderDetails = () => {
-        const fetchSelectedBoq = (tree) => {
-            let result = [];
-            tree.forEach(boq => {
-                if (boq.lastLevel === true) {
-                    result.push(boq);
-                } else if (boq.children && boq.children.length > 0) {
-                    result = result.concat(fetchSelectedBoq(boq.children));
-                }
-            });
-            return result;
-        };
-        const selectedBoqArray = fetchSelectedBoq(parentTree);
+        const selectedBoqArray = getSelectedLeafBoqs(parentTree);
+
         const renderTab = () => {
             switch (tab) {
                 case 'general':
@@ -575,6 +871,7 @@ function TFProcess({ projectId }) {
                     return null;
             }
         }
+
         const handleNext = () => {
             if (tab === 'general') {
                 setTab('package');
@@ -586,6 +883,7 @@ function TFProcess({ projectId }) {
                 setTab('attachment');
             }
         }
+
         const handlePrevious = () => {
             if (tab === 'contractor') {
                 setTab('package');
@@ -597,20 +895,21 @@ function TFProcess({ projectId }) {
                 setTab('general');
             }
         }
+
         return (
             <div className="bg-white ms-3 me-3 rounded-3 p-3 mt-5" style={{ border: '1px solid #0051973D' }}>
 
                 <div className="d-flex justify-content-between align-items-center ms-2 me-2 fw-bold" style={{ borderBottom: '1px solid #0051973D' }}>
-                    <div className="h-100 p-2" style={{ color: `${tab === 'general' ? '#005197' : '#00000080'}`, borderBottom: `${tab === 'general' ? '1px solid #005197' : 'none'}` }}>
+                    <div className="h-100 p-2" onClick={() => setTab('general')} style={{ cursor: 'pointer', color: `${tab === 'general' ? '#005197' : '#00000080'}`, borderBottom: `${tab === 'general' ? '1px solid #005197' : 'none'}` }}>
                         <Info size={18} /> <span className="ms-1">General Details</span>
                     </div>
-                    <div className="h-100 p-2" style={{ color: `${tab === 'package' ? '#005197' : '#00000080'}`, borderBottom: `${tab === 'package' ? '1px solid #005197' : 'none'}` }}>
+                    <div className="h-100 p-2" onClick={() => setTab('package')} style={{ cursor: 'pointer', color: `${tab === 'package' ? '#005197' : '#00000080'}`, borderBottom: `${tab === 'package' ? '1px solid #005197' : 'none'}` }}>
                         <BoxesIcon size={18} /> <span className="ms-1">Package Details</span>
                     </div>
-                    <div className="h-100 p-2" style={{ color: `${tab === 'contractor' ? '#005197' : '#00000080'}`, borderBottom: `${tab === 'contractor' ? '1px solid #005197' : 'none'}` }}>
+                    <div className="h-100 p-2" onClick={() => setTab('contractor')} style={{ cursor: 'pointer', color: `${tab === 'contractor' ? '#005197' : '#00000080'}`, borderBottom: `${tab === 'contractor' ? '1px solid #005197' : 'none'}` }}>
                         <User2 size={18} /> <span className="ms-1">Contractor Details</span>
                     </div>
-                    <div className="h-100 p-2" style={{ color: `${tab === 'attachment' ? '#005197' : '#00000080'}`, borderBottom: `${tab === 'attachment' ? '1px solid #005197' : 'none'}` }}>
+                    <div className="h-100 p-2" onClick={() => setTab('attachment')} style={{ cursor: 'pointer', color: `${tab === 'attachment' ? '#005197' : '#00000080'}`, borderBottom: `${tab === 'attachment' ? '1px solid #005197' : 'none'}` }}>
                         <Paperclip size={18} /> <span className="ms-1">Attachments</span>
                     </div>
                 </div>
@@ -622,8 +921,355 @@ function TFProcess({ projectId }) {
             </div>
         );
     }
-    const reviewTender = () => {
+const AttachmentRow = ({ title, files, notes }) => (
+    <div className="d-flex justify-content-between py-2" style={{ borderBottom: '1px solid #eee' }}>
+        <div className="text-start">
+            <span className="fw-medium" style={{ color: '#333' }}>{title}</span>
+            <p className="text-muted mb-0" style={{ fontSize: '13px' }}>
+                {files.length > 0 ? `${files.length} file(s) attached.` : 'No files attached.'}
+                {notes && ` (Notes: ${notes})`}
+            </p>
+        </div>
+    </div>
+);
+const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+};
+
+
+const getFriendlyFileType = (mimeType) => {
+    if (!mimeType) return 'File';
+    
+    if (mimeType.includes('image/')) {
+        return mimeType.split('/')[1].toUpperCase() || 'Image'; 
     }
+    if (mimeType.includes('pdf')) {
+        return 'PDF';
+    }
+    if (mimeType.includes('word')) {
+        return 'Word';
+    }
+    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) {
+        return 'Excel';
+    }
+    if (mimeType.includes('zip') || mimeType.includes('rar')) {
+        return 'Archive';
+    }
+    
+    const parts = mimeType.split('.');
+    if (parts.length > 1) {
+        return parts.pop().toUpperCase();
+    }
+
+    return 'Document';
+};
+
+  const reviewTender = () => {
+        const boqArray = getSelectedLeafBoqs(parentTree);
+        const contractorsList = []; 
+        
+        const getDisplayMode = (mode) => 
+            mode ? mode.charAt(0).toUpperCase() + mode.slice(1) : '-';
+
+        const getAttachmentTitle = (key) => {
+            if (key === 'others') return 'Others';
+            if (key === 'technical') return 'Technical Specifications';
+            if (key === 'drawings') return 'Drawings';
+            if (key === 'commercial') return 'Commercial Conditions';
+            return key;
+        };
+
+        const boqNameDisplay = (boqName) => {
+            return boqName && boqName.length > 20
+                ? boqName.substring(0, 20) + '...'
+                : boqName;
+        }
+
+        return (
+    <div className="p-4">
+        
+        <div className="p-4 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+            <div className="text-start ms-1 mt-2 mb-4">
+                <h5 className="fw-bold mb-1" style={{ color: '#333' }}>Review & Float Tender</h5>
+                <p className="text-muted" style={{ fontSize: '14px' }}>Review tender details and float to selected contractors</p>
+            </div>
+            <div className="d-flex justify-content-between">
+                <div className="text-start">
+                    <span className="text-muted d-block" style={{ fontSize: '14px' }}>Tender Floating No</span>
+                    <span className="fw-medium" style={{ fontSize: '16px' }}>{tenderDetail.tenderFloatingNo || 'N/A'}</span>
+                </div>
+                <div className="text-end">
+                    <span className="text-muted d-block" style={{ fontSize: '14px' }}>Floating Date</span>
+                    <span className="fw-medium" style={{ fontSize: '16px' }}>
+                        {tenderDetail.floatingDate 
+                           ? new Date(tenderDetail.floatingDate).toLocaleDateString('en-US', { 
+    month: 'long', 
+    day: 'numeric', 
+    year: 'numeric' 
+})
+                            : 'N/A'}
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+<div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+    <div className="text-start ms-1 mt-2 mb-3">
+        <Info size={20} color="#2BA95A" />
+        <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>General Details</span>
+    </div>
+    <div className="row g-4 ms-1">
+        <div className="col-md-4 text-start">
+            <span className="text-muted d-block">Project Name</span>
+            <span className="fw-medium">{project?.projectName || 'N/A'}</span>
+        </div>
+        <div className="col-md-4 text-start">
+            <span className="text-muted d-block">Offer Submission Mode</span>
+            <span className="fw-medium">{getDisplayMode(tenderDetail.offerSubmissionMode)}</span>
+        </div>
+        <div className="col-md-4 text-start">
+            <span className="text-muted d-block">Submission Last Date</span>
+            <span 
+                className="fw-medium" 
+                style={{ color: '#dc3545' }} 
+            >
+                {tenderDetail.submissionLastDate
+                    ? new Date(tenderDetail.submissionLastDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                    : 'N/A'} 
+            </span>
+        </div>
+        <div className="col-md-4 text-start">
+            <span className="text-muted d-block">Bid Opening</span>
+            <span className="fw-medium">
+                {tenderDetail.bidOpeningDate 
+                    ? new Date(tenderDetail.bidOpeningDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                    : 'N/A'} 
+            </span>
+        </div>
+        
+        <div className="col-md-4 text-start">
+            <span className="text-muted d-block">Contact Person</span>
+            <span className="fw-medium">{tenderDetail.contactPerson || 'N/A'}</span>
+        </div>
+        <div className="col-md-4 text-start">
+            <span className="text-muted d-block">Contact Number</span>
+            <span className="fw-medium">{tenderDetail.contactMobile || 'N/A'}</span>
+        </div>
+        <div className="col-md-4 text-start">
+            <span className="text-muted d-block">Contact Email ID</span>
+            <span className="fw-medium">{tenderDetail.contactEmail || 'N/A'}</span>
+        </div>
+        <div className="col-md-12 text-start">
+            <span className="text-muted d-block">Scope of Work</span>
+            <span className="fw-medium">{tenderDetail.scopeOfWork || 'N/A'}</span>
+        </div>
+        
+        <div className="col-md-12 text-start">
+            <span className="text-muted d-block">Scope of Packages</span>
+            <div className="d-flex flex-wrap gap-2 mt-1">
+                {Array.isArray(tenderDetail.scopeOfPackage) && tenderDetail.scopeOfPackage.length > 0 ? (
+                    tenderDetail.scopeOfPackage.map((scopeId, index) => {
+                        const scopeObj = scopeOptions.find(opt => opt.value === scopeId);
+                        return (
+                            <span key={index} className="badge p-2"
+                                style={{ backgroundColor: '#EAF2FE', color: '#2563EBCC', fontSize: '11px', borderRadius:'15px' }}>
+                                {scopeObj ? scopeObj.label : scopeId}
+                            </span>
+                        );
+                    })
+                ) : (
+                    <span className="text-muted" style={{ fontSize: '14px' }}>No scopes selected</span>
+                )}
+            </div>
+        </div>
+    </div>
+</div>
+        <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+    <div className="text-start ms-1 mb-3">
+        <BoxesIcon size={20} color="#2BA95A" />
+        <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>Package Details </span>
+    </div>
+    <div className="table-responsive ms-1 me-1">
+        <table className="table table-borderless"> 
+            <thead style={{ color: '#005197', borderBottom: '2px solid #0051973D' }}>
+                <tr>
+                    <th className="fw-bold">BOQ Code</th>
+                    <th className="fw-bold">BOQ Name</th>
+                    <th className="fw-bold">Unit</th>
+                    <th className="fw-bold text-end">Quantity</th>
+                </tr>
+            </thead>
+            <tbody>
+                {boqArray.length > 0 ? (
+                    boqArray.map((boq) => (
+                        <tr key={boq.id}>
+                            <td>{boq.boqCode}</td>
+                            <td title={boq.boqName}>{boqNameDisplay(boq.boqName)}</td>
+                            <td>{boq.uom?.uomCode || '-'}</td>
+                            <td className="text-end">{boq.quantity?.toFixed(4) || 0}</td>
+                        </tr>
+                    ))
+                ) : (
+                    <tr><td colSpan="4" className="text-center text-muted">No BOQ items selected.</td></tr>
+                )}
+            </tbody>
+        </table>
+    </div>
+</div>
+        <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+            <div className="text-start ms-1 mb-3">
+                <User2 size={20} color="#dc3545" />
+                <span className="ms-2 fw-bold" style={{ color: '#dc3545' }}>Contractor Details</span>
+                <p className="text-muted mt-1" style={{ fontSize: '14px' }}>{contractorsList.length} contractors selected for tender invitation</p>
+            </div>
+            <div className="d-flex flex-wrap gap-3 ms-1">
+                {contractorsList.map((contractor, index) => (
+                    <div key={index} className="p-3" style={{ border: '1px solid #ccc', borderRadius: '8px', minWidth: '300px' }}>
+                        <div className="d-flex justify-content-between align-items-start">
+                            <span className="fw-bold" style={{ color: '#333' }}>{contractor.name}</span>
+                            <span style={{ color: '#dc3545', cursor: 'pointer' }}>
+                                <X size={16} />
+                            </span>
+                        </div>
+                        <p className="text-muted mb-0" style={{ fontSize: '13px' }}>{contractor.contact}</p>
+                    </div>
+                ))}
+            </div>
+        </div>
+<div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+    <div className="text-start ms-1 mb-3">
+        <Paperclip size={20} color="#005197" /> 
+        <span className="ms-2 fw-bold" style={{ color: '#005197' }}>Attachments</span>
+    </div>
+
+    <div className="ms-1 me-1">
+        {Object.keys(attachments).map((key, index) => {
+            const attachmentData = attachments[key];
+            const title = getAttachmentTitle(key);
+            const files = attachmentData.files || [];
+            const notes = attachmentData.notes || '';
+            
+            const fileInfo = files.length > 0 ? files[0] : null;
+
+            return (
+                <div 
+                    key={key} 
+                    className="p-3 rounded-3 mb-3" 
+                    style={{ 
+                        backgroundColor: '#FAFAFA', 
+                    }}
+                >
+                    <div className="d-flex justify-content-between align-items-start">
+                        
+                        <div className="text-start me-4 flex-grow-1">
+                            <span className="fw-medium d-block mb-1" style={{ color: '#333' }}>{title}</span>
+                            {fileInfo ? (
+                                <div className="d-block mt-1">
+                                    <span style={{ fontSize: '13px', color: '#00000080' }}> 
+                                        {getFriendlyFileType(fileInfo.type || fileInfo.extension)} {formatFileSize(fileInfo.size) || fileInfo.id || 'N/A'}
+                                    </span>
+                                </div>
+                            ) : (
+                                <span className="text-muted" style={{ fontSize: '13px' }}>No file uploaded</span>
+                            )}
+                            <span 
+                                className="d-block mt-1" 
+                                style={{ 
+                                    fontSize: '13px', 
+                                    color: 'rgba(0, 0, 0, 0.5)'
+                                }}
+                            >
+                                {notes}
+                            </span>
+                        </div>
+                        {fileInfo && (
+                            <span 
+                                className="p-2 rounded-circle flex-shrink-0" 
+                                style={{ cursor: 'pointer', color: '#005197' }}
+                            >
+                                <Download size={18} />
+                            </span>
+                        )}
+                    </div>
+                </div>
+            );
+        })}
+    </div>
+</div>
+<div className="mt-5 mb-5">
+    
+    <div 
+        className="p-4 d-flex flex-column rounded-3" 
+        style={{ 
+            backgroundColor: '#EAF2FE', 
+            border: '1px solid #C0D9FF', 
+        }}
+    >
+        <div className="mb-3 fw-bold text-start" style={{ color: '#005197' }}> 
+            Tender Summary
+        </div>
+        <div className="d-flex flex-column" style={{ color: '#005197', fontSize: '14px' }}> 
+            <div className="d-flex mb-2"> 
+                <div 
+                    className="d-flex justify-content-between pe-2 me-4" 
+                    style={{ 
+                        width: '50%', 
+                        borderRight: '1px solid #D2E3F4',
+                    }}
+                > 
+                    <span>Total Packages</span> <span style={{ color: '#005197' }}>{boqArray.length > 0 ? 1 : 0}</span> 
+                </div> 
+                <div className="d-flex justify-content-between ps-4" style={{ width: '50%' }}>
+                    <span>Selected Contractors</span> <span style={{ color: '#005197' }}>{contractorsList.length}</span> 
+                </div>
+            </div>
+            
+            <div className="d-flex">
+                <div 
+                    className="d-flex justify-content-between pe-2 me-4" 
+                    style={{ 
+                        width: '50%',
+                        borderRight: '1px solid #D2E3F4' 
+                    }}
+                >
+                    <span>Attachments</span> <span style={{ color: '#005197' }}>{Object.keys(attachments).filter(key => attachments[key].files?.length > 0 || attachments[key].notes).length}</span>
+                </div>
+                <div className="d-flex justify-content-between ps-4" style={{ width: '50%' }}>
+                    <span>Submission Deadline</span> 
+                    <span 
+                        style={{ 
+                            color: '#dc3545' 
+                        }}
+                    >
+                        {tenderDetail.offerSubmissionDate || 'Not Set'}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div className="d-flex justify-content-end mt-3">
+        <button 
+            className="btn fw-bold" 
+            style={{ 
+                backgroundColor: '#005197CC', 
+                color: 'white', 
+                padding: '10px 20px' 
+            }}
+        >
+            Float Tender
+        </button>
+    </div>
+</div>
+
+    </div>
+);
+    };
+
     const renderContent = () => {
         switch (currentTab) {
             case 'boq':
@@ -636,6 +1282,7 @@ function TFProcess({ projectId }) {
                 return null;
         }
     }
+
     const handleNextTabChange = () => {
         if (currentTab === 'boq') {
             setCurrentTab('tender');
@@ -643,6 +1290,7 @@ function TFProcess({ projectId }) {
             setCurrentTab('review');
         }
     }
+
     const handlePreviousTabChange = () => {
         if (currentTab === 'tender') {
             setCurrentTab('boq');
@@ -650,6 +1298,7 @@ function TFProcess({ projectId }) {
             setCurrentTab('tender');
         }
     }
+
     return (
         <div className='container-fluid min-vh-100'>
             <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-3 mt-2 mb-3">
