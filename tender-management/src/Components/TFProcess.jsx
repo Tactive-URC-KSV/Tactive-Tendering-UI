@@ -1316,15 +1316,15 @@ const getFriendlyFileType = (mimeType) => {
                         <span className="py-2 px-3" style={{ background: '#005197', borderRadius: '30px' }}>1</span>
                         <span className="ms-2 fw-bold" style={{ color: '#005197' }}>Select BOQ's</span>
                     </div>
-                    <div className="rounded" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : ''}`, height: '5px', width: '15%' }}></div>
+                    <div className="rounded" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}`, height: '5px', width: '15%' }}></div>
                     <div className="text-white">
-                        <span className="py-2 px-3" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : ''}`, borderRadius: '30px' }}>2</span>
-                        <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : ''}` }}>Tender details</span>
+                        <span className="py-2 px-3" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}`, borderRadius: '30px' }}>2</span>
+                        <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}` }}>Tender details</span>
                     </div>
-                    <div className="rounded" style={{ background: `${currentTab === 'review' ? '#005197' : ''}`, height: '5px', width: '15%' }}></div>
+                    <div className="rounded" style={{ background: `${currentTab === 'review' ? '#005197' : '#00000052'}`, height: '5px', width: '15%' }}></div>
                     <div className="text-white">
-                        <span className="py-2 px-3" style={{ background: `${currentTab === 'review' ? '#005197' : ''}`, borderRadius: '30px' }}>3</span>
-                        <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'review' ? '#005197' : ''}` }}>Review & Float</span>
+                        <span className="py-2 px-3" style={{ background: `${currentTab === 'review' ? '#005197' : '#00000052'}`, borderRadius: '30px' }}>3</span>
+                        <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'review' ? '#005197' : '#00000052'}` }}>Review & Float</span>
                     </div>
                 </div>
             </div>
@@ -1337,4 +1337,5 @@ const getFriendlyFileType = (mimeType) => {
 
     );
 }
+
 export default TFProcess;

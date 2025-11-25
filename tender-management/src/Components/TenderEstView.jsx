@@ -351,14 +351,6 @@ function BOQStructureView({ projectId }) {
       return newSet;
     });
   };
-  const toggleAll = () => {
-    if (isAllExpanded) {
-      setExpandedParentIds(new Set());
-    } else {
-      setExpandedParentIds(new Set(parentTree.map(p => p.id)));
-    }
-    setIsAllExpanded(!isAllExpanded);
-  };
   useEffect(() => {
     refreshParentBoqData();
   }, [projectId, navigate]);

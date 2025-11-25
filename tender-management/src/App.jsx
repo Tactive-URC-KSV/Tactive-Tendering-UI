@@ -101,6 +101,7 @@ function App() {
                             <Route path="/TenderComparison" element={<h1>Tender Comparison</h1>} />
                             <Route path="/ContractorOnboarding" element={<Contractor />} caseSensitive={false}/>
                             <Route path="/add-resource/:projectId/:boqId" element={<AddResource />} caseSensitive={false} />
+                            <Route path="/add-resource/:projectId/:boqId/:tenderEstimationId" element={<AddResource />} caseSensitive={false} />
                           </Routes>
                         </Sidebar>
                       </ProjectStatusProvider>
