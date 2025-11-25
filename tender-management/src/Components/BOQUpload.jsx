@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import '../CSS/Styles.css'
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, FileSymlink, SlidersHorizontal, X } from 'lucide-react';
 import { useEffect } from 'react';
 import axios from 'axios';
 import { FaCloudUploadAlt } from 'react-icons/fa';
@@ -12,6 +12,7 @@ import InternalIcon from '../assest/Internal_Fields.svg?react';
 import Drag from '../assest/Drag.svg?react';
 import Template from '../assest/Template.svg?react';
 import Mapping from '../assest/Mapping.svg?react';
+import useDebounce from '../Utills/useDebounce.js'
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 
@@ -37,6 +38,8 @@ const throttledAutoScroll = throttle(autoScrollWhileDragging, 50);
 
 function BOQUpload({ projectId, projectName, setUploadScreen }) {
 
+
+   const [section, setSection] = useState('columnMapping');
    const [loading, setLoading] = useState(false);
    const fileInputRef = useRef(null);
    const [BOQfile, setBOQfile] = useState(null);
@@ -54,27 +57,23 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [fileType, setFileType] = useState('')
 
    const [internalFields, setInternalFields] = useState([
-      // { fields: 'slno', mappingFields: '', importance: 'Optional', label: 'S.No' },
       { fields: 'boqCode', mappingFields: '', importance: 'Required', label: 'BOQ Code' },
       { fields: 'boqName', mappingFields: '', importance: 'Required', label: 'BOQ Name' },
       { fields: 'uom', mappingFields: '', importance: 'Required', label: 'UOM' },
-      // { fields: 'level', mappingFields: '', importance: 'Required', label: 'Level' },
       { fields: 'quantity', mappingFields: '', importance: 'Required', label: 'Quantity' },
-      // { fields: 'parentLevel', mappingFields: '', importance: 'Optional', label: 'Parent Level' },
-      // { fields: 'installationRate', mappingFields: '', importance: 'Optional', label: 'Installation Rate' },
-      // { fields: 'supplyRate', mappingFields: '', importance: 'Optional', label: 'Supply Rate' },
-      // { fields: 'totalRate', mappingFields: '', importance: 'Optional', label: 'Total Rate' },
-      // { fields: 'installationAmount', mappingFields: '', importance: 'Optional', label: 'Installation Amount' },
-      // { fields: 'supplyAmount', mappingFields: '', importance: 'Optional', label: 'Supply Amount' },
-      // { fields: 'totalAmount', mappingFields: '', importance: 'Optional', label: 'Total Amount' },
-      // { fields: 'lastLevel', mappingFields: '', importance: 'Optional', label: 'Last Level' },
-      // { fields: 'rateOnly', mappingFields: '', importance: 'Optional', label: 'Rate Only' },
-      // { fields: 'remarks', mappingFields: '', importance: 'Optional', label: 'Remarks' },
-      // { fields: 'qtyType', mappingFields: '', importance: 'Optional', label: 'Quantity type' },
-      // { fields: 'wo', mappingFields: '', importance: 'Optional', label: 'Wo' },
-
    ]);
-
+   const [startRow, setStartRow] = useState(0);
+   const [endRow, setEndRow] = useState(0);
+   const [excelData, setExcelData] = useState([]);
+   const [currentPage, setCurrentPage] = useState(0);
+   const [pageSize, setPageSize] = useState(50);
+   const [totalPages, setTotalPages] = useState(0);
+   const [totalItems, setTotalItems] = useState(0);
+   const [searchTerm, setSearchTerm] = useState('');
+   const debouncedSearch = useDebounce(searchTerm, 600);
+   const [selectedRow, setSelectedRow] = useState(new Set());
+   const [levelMap, setLevelMap] = useState({});
+   const [lastLevelMap, setLastLevelMap] = useState({});
    useEffect(() => {
       axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllTemplate`, {
          headers: {
@@ -123,8 +122,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       setFileType('');
       setSheetOption([]);
    };
-
-
    const getExcelSheets = (event) => {
       const file = event.target.files[0];
       setBOQfile(file);
@@ -191,6 +188,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       ghost.style.borderRadius = "6px";
       ghost.style.fontSize = "14px";
       ghost.innerHTML = column;
+      ghost.style.color = "#F0FDF4";
       document.body.appendChild(ghost);
       e.dataTransfer.setDragImage(ghost, 0, 0);
 
@@ -248,6 +246,72 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          toast.error("Error loading template.");
       });
    }
+   useEffect(() => {
+      if (BOQfile) {
+         fetchExcelData(0, pageSize);
+      }
+   }, [debouncedSearch]);
+   const fetchExcelData = async (page = 0, size = 50) => {
+      if (!BOQfile) {
+         toast.error("Please upload a BOQ file");
+         return;
+      }
+      if (!selectedSheet || selectedSheet.trim() === "") {
+         toast.error("Please select a sheet");
+         return;
+      }
+      const columnMapping = internalFields.reduce((acc, item) => {
+         if (item.mappingFields && item.mappingFields !== "") {
+            acc[item.fields] = item.mappingFields;
+         }
+         return acc;
+      }, {});
+
+      if (Object.keys(columnMapping).length === 0) {
+         toast.error("Please map at least one column");
+         return;
+      }
+      try {
+         setLoading(true);
+         const formData = new FormData();
+         formData.append('file', BOQfile);
+         formData.append('sheetName', selectedSheet);
+         const columnMappingBlob = new Blob([JSON.stringify(columnMapping)], {
+            type: 'application/json'
+         });
+         formData.append('columnMapping', columnMappingBlob);
+         formData.append('startRow', startRow.toString());
+         formData.append('endRow', endRow.toString());
+
+         const response = await axios.post(
+            `${import.meta.env.VITE_API_BASE_URL}/project/extractedBOQ?page=${page}&size=${size}&search=${debouncedSearch}`,
+            formData,
+            {
+               headers: {
+                  Authorization: `Bearer ${sessionStorage.getItem('token')}`
+               }
+            }
+         );
+         let updatedPage = response.data.data.map(item => ({
+            ...item,
+            level: levelMap[item.sno] ?? item.level,
+            lastLevel: lastLevelMap[item.sno] ?? item.lastLevel
+         }));
+
+         setExcelData(updatedPage);
+         setCurrentPage(response.data.currentPage);
+         setTotalPages(response.data.totalPages);
+         setPageSize(response.data.pageSize);
+         setTotalItems(response.data.totalItems);
+      } catch (error) {
+         console.error("Error fetching Excel data:", error);
+         toast.error("Failed to load Excel data");
+      } finally {
+         setLoading(false);
+         setSection('levelMapping');
+      }
+   };
+
    const mapFields = () => {
       setLoading(true);
       const mapping = {};
@@ -292,7 +356,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                   window.location.href = `/boqdefinition/${projectId}`;
                }, 3000))
             }
-
          }
       }
       ).catch(err => {
@@ -303,7 +366,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       }).finally(() => {
          setLoading(false);
       })
-
    }
    const templateSave = () => {
       if (!template.templateName || !template.templateCode) {
@@ -346,220 +408,503 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
          toast.error("Error saving template");
       });
-
-
    }
+   const fileUpload = () => {
+      return (
+         <>
+            <div className='upload-file p-2'>
+               <div className='col-12 text-center'>
+                  <FaCloudUploadAlt size={40} />
+               </div>
+               <div className='col-12 text-center mt-2'>
+                  Upload BOQ file
+               </div>
+               <div className='col-12 text-center mt-2'>
+                  <button className='btn action-button mt-2 px-5' onClick={() => { fileInputRef.current.click() }}>Choose File</button>
+                  <input type="file" style={{ display: 'none' }} ref={fileInputRef} onChange={(e) => getExcelSheets(e)} />
+               </div>
+               <div className='col-12 text-center mt-4' style={{ fontSize: '12px' }}>
+                  Supported formats: .xlsx, .xls, .pdf .
+               </div>
+            </div>
+            <div className='file-description p-2 mt-3'>
+               <p className='fw-bold ms-2 mt-3'>File Description :</p>
+               <ul className='ms-4' style={{ fontSize: '15px' }}>
+                  <li>File format (.xlsx, .xls, .pdf)</li>
+                  <li>Pdf must contains data in table format</li>
+                  <li>First row of excel file should contain column headers</li>
+                  <li>Required columns: BOQ Code,Item Description (or) BOQ Name, Unit, Quantity</li>
+                  <li>Level 1 BOQ must be either BOQ Code or BOQ Name</li>
+                  <li>Ensured that the BOQ table contains only BOQ-related details</li>
+               </ul>
+            </div>
+         </>
+      );
+   }
+   const levelMapping = () => {
+      const goToPreviousPage = () => {
+         if (currentPage > 0) {
+            fetchExcelData(currentPage - 1);
+         }
+      };
+      const goToNextPage = () => {
+         if (currentPage < totalPages - 1) {
+            fetchExcelData(currentPage + 1);
+         }
+      };
+      const boqNameDisplay = (boqName, length) => {
+         return boqName && boqName.length > length
+            ? boqName.substring(0, length) + '...'
+            : boqName;
+      }
+      const toggleSelection = (sno) => {
+         setSelectedRow(prev => {
+            const updated = new Set(prev);
+            if (updated.has(sno)) {
+               updated.delete(sno);
+            } else {
+               updated.add(sno);
+            }
+            return updated;
+         });
+      };
+      const assignLevel = (level) => {
+         setLevelMap(prev => {
+            const updated = { ...prev };
+            selectedRow.forEach(sno => {
+               updated[sno] = level;
+            });
+            return updated;
+         });
+         setExcelData(prev =>
+            prev.map(item =>
+               selectedRow.has(item.sno) ? { ...item, level: level } : item
+            )
+         );
+         setSelectedRow(new Set());
+      };
+      const clearLevel = () => {
+         setLevelMap(prev => {
+            const updated = { ...prev };
+            selectedRow.forEach(sno => delete updated[sno]);
+            return updated;
+         });
+         setLastLevelMap(prev => {
+            const updated = { ...prev };
+            selectedRow.forEach(sno => delete updated[sno]);
+            return updated;
+         });
+         setExcelData(prev =>
+            prev.map(item =>
+               selectedRow.has(item.sno)
+                  ? { ...item, level: 0, lastLevel: false }
+                  : item
+            )
+         );
+         setSelectedRow(new Set());
+      };
 
-   return (
-      <div>
-         <div className="text-start fw-bold ms-1 mt-2 mb-4">
-            <ArrowLeft size={20} onClick={() => setUploadScreen(false)} /><span className='ms-2'>BOQ Definition</span>
-         </div>
-         <div className='ms-2 mt-3 rounded-3 bg-white' style={{ border: '0.5px solid #0051973D' }}>
-            <div className='tab-info col-12 h-100'>Upload BOQ File</div>
-            <div className='text-start p-3 ms-4 mt-2 me-4'>
-               <p className='fw-bold'>{projectName}</p>
-               {!BOQfile && (
-                  <>
-                     <div className='upload-file p-2'>
-                        <div className='col-12 text-center'>
-                           <FaCloudUploadAlt size={40} />
-                        </div>
-                        <div className='col-12 text-center mt-2'>
-                           Upload BOQ file
-                        </div>
-                        <div className='col-12 text-center mt-2'>
-                           <button className='btn action-button mt-2 px-5' onClick={() => { fileInputRef.current.click() }}>Choose File</button>
-                           <input type="file" style={{ display: 'none' }} ref={fileInputRef} onChange={(e) => getExcelSheets(e)} />
-                        </div>
-                        <div className='col-12 text-center mt-4' style={{ fontSize: '12px' }}>
-                           Supported formats: .xlsx, .xls, .pdf .
-                        </div>
+      const assignLastLevel = () => {
+         setLastLevelMap(prev => {
+            const updated = { ...prev };
+            selectedRow.forEach(sno => {
+               updated[sno] = true;
+            });
+            return updated;
+         });
+         setExcelData(prev =>
+            prev.map(item =>
+               selectedRow.has(item.sno)
+                  ? { ...item, lastLevel: true, level: item.level ?? 0 }
+                  : item
+            )
+         );
+         setSelectedRow(new Set());
+      };
+      const levelDisplay = (level, lastLevel) => {
+         if (lastLevel) {
+            return (
+               <span
+                  className="badge px-2 py-1"
+                  style={{ backgroundColor: "#2BA95A", color: "#ffffff" }}
+               >
+                  Last Level
+               </span>
+            );
+         }
+         const levelStyles = {
+            1: "#9333EA",
+            2: "#2563EB",
+            3: "#CA8A04",
+         };
+         if (levelStyles[level]) {
+            return (
+               <span
+                  className="badge px-2 py-1"
+                  style={{ backgroundColor: levelStyles[level], color: "#ffffff" }}
+               >
+                  Level {level}
+               </span>
+            );
+         }
+         return <span>-</span>;
+      };
+      return (
+         <div className='row g-3 ms-1 me-2 mt-4'>
+            <div className='col-lg-9 col-md-8 col-sm-12 p-2'>
+               <div className='bg-white rounded-3 h-100' style={{ border: '1px solid #0051973D' }}>
+                  <div className='row g-2 p-3 align-items-end'>
+                     <div className='col-lg-8 col-md-8 col-sm-8'>
+                        <label className="text-start d-block">Search BOQ</label>
+                        <input
+                           type="text"
+                           className="form-search-input w-100"
+                           placeholder="Search by BOQ Code or Description..."
+                           value={searchTerm}
+                           onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                      </div>
-                     <div className='file-description p-2 mt-3'>
-                        <p className='fw-bold ms-2 mt-3'>File Description :</p>
-                        <ul className='ms-4' style={{ fontSize: '15px' }}>
-                           <li>File format (.xlsx, .xls, .pdf)</li>
-                           <li>Pdf must contains data in table format</li>
-                           <li>First row of excel file should contain column headers</li>
-                           <li>Required columns: BOQ Code,Item Description (or) BOQ Name, Unit, Quantity</li>
-                           <li>Level 1 BOQ must be either BOQ Code or BOQ Name</li>
-                           <li>Ensured that the BOQ table contains only BOQ-related details</li>
-                        </ul>
-                     </div>
-                  </>
-               )}
-
-               {BOQfile && (<>
-                  <div className='rounded-3 px-3 py-3 mt-4' style={{ border: '0.5px solid #0051973D' }}>
-                     <div className='d-flex justify-content-between mt-1'>
-                        <div className='col-lg-6 col-md-6 col-sm-12 mb-4'>
-                           <div className='file-preview d-flex align-items-center justify-content-between'>
-                              <div>
-                                 <span className='ms-2'><FileIcon /></span>
-                                 <span className='ms-2'>{BOQfile ? BOQfile.name : 'No file selected'}</span>
+                     {excelData.length > 0 && (
+                        <div className='col-lg-4 col-md-4 col-sm-4 text-end'>
+                           <div className='d-flex justify-content-around align-items-center'>
+                              <span className="text-muted small">
+                                 {((currentPage) * pageSize) + 1} - {Math.min((currentPage + 1) * pageSize, totalItems)} of {totalItems.toLocaleString()} items
+                              </span>
+                              <div className='d-flex align-items-center'>
+                                 <button
+                                    className="btn pagination btn-sm border-none me-2"
+                                    onClick={goToPreviousPage}
+                                    disabled={currentPage === 0}
+                                 >
+                                    <ChevronLeft size={18} />
+                                 </button>
+                                 <button
+                                    className="btn pagination btn-sm border-none"
+                                    onClick={goToNextPage}
+                                    disabled={currentPage >= totalPages - 1}
+                                 >
+                                    <ChevronRight size={18} />
+                                 </button>
                               </div>
-                              <span className='me-2' style={{ cursor: 'pointer' }}><X color='#C33D1B' size={20} onClick={removeFile} /></span>
                            </div>
                         </div>
-                        <div className='col-lg-6 col-md-6 col-sm-12 mb-4'>
-                           <label className="projectform-select text-start d-block">
-                              Excel Sheet
-                           </label>
-                           <Select placeholder="Select Excel Sheet"
-                              options={sheetOption}
-                              className="w-100"
-                              classNamePrefix="select"
-                              value={sheetOption.find(option => option.value === selectedSheet)}
-                              isClearable
-                              menuPlacement='auto'
-                              onChange={(option) => {
-                                 const sheetValue = option?.value ?? null;
-                                 setSelectedSheet(sheetValue);
-                                 if (sheetValue) {
-                                    loadSheetColumn(sheetValue);
+                     )}
+                  </div>
+                  <div className='p-3'>
+                     {excelData.length > 0 ? (
+                        <div className="boq-data table-responsive">
+                           <table className="table align-middle">
+                              <thead className="text-white">
+                                 <tr>
+                                    <th></th>
+                                    <th className="text-center text-nowrap" style={{ width: '80px' }}>S.No</th>
+                                    <th style={{ width: '100px' }} className='text-nowrap'>BOQ Code</th>
+                                    <th className='text-nowrap'>BOQ Description</th>
+                                    <th className="text-center text-nowrap" style={{ width: '100px' }}>Unit</th>
+                                    <th className="text-end text-nowrap" style={{ width: '80px' }}>Quantity</th>
+                                    <th className="text-center text-nowrap" style={{ width: '140px' }}>Level</th>
+                                    <th className="text-center text-nowrap" style={{ width: '100px' }}>Parent</th>
+                                 </tr>
+                              </thead>
+                              <tbody>
+                                 {excelData.map((item) => (
+                                    <tr key={item.sno} className={item.lastLevel ? "last-level" : item.level === 1 ? "level1" : item.level === 2 ? "level2" : item.level === 3 ? "level3" : ""}>
+                                       <td>
+                                          <input
+                                             type="checkbox"
+                                             className="form-check-input"
+                                             style={{ borderColor: '#005197' }}
+                                             checked={selectedRow.has(item.sno)}
+                                             onChange={() => toggleSelection(item.sno)}
+                                          />
+                                       </td>
+                                       <td className="text-center text-nowrap">{item.sno}</td>
+                                       <td className='text-nowrap' title={item.boqCode}>
+                                          {boqNameDisplay(item.boqCode, 9)}
+                                       </td>
+                                       <td className='text-nowrap' title={item.boqName}>
+                                          {boqNameDisplay(item.boqName, 15)}
+                                       </td>
+                                       <td className="text-center text-nowrap">{item.uom || '-'}</td>
+                                       <td className="text-end text-nowrap">
+                                          {item.quantity && item.quantity !== 0 ? item.quantity.toFixed(3) : "-"}
+                                       </td>
+                                       <td className="text-center text-nowrap">{levelDisplay(item.level, item.lastLevel)}</td>
+                                       <td className="text-center text-muted small text-nowrap">
+                                          {item.parentSno > 0 ? item.parentSno : 'Not Assigned'}
+                                       </td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     ) : (
+                        <div className="text-center py-5 text-muted">
+                           <h5>No BOQ items extracted</h5>
+                           <p>Please upload an Excel file and map the columns.</p>
+                        </div>
+                     )}
+                  </div>
+               </div>
+            </div>
+            <div className='col-lg-3 col-md-4 col-sm-12 p-2'>
+               <div className='bg-white p-2 rounded-2 pt-3 h-100' style={{ border: '1px solid #0051973D' }}>
+                  <div className='ms-2' style={{ borderBottom: '1px solid #0051973D' }}>
+                     <div className='text-start fw-bold'>Assign Levels</div>
+                     <div className='text-start text-muted pb-1 pt-1' style={{ fontSize: '13px' }}>Assign selected rows to a level</div>
+                  </div>
+                  <div className='d-flex ms-2 flex-column mt-3 align-items-around'>
+                     <button className='btn level1 rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={() => assignLevel(1)}>
+                        <span className=''></span>Level 1
+                     </button>
+                     <button className='btn level2 rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={() => assignLevel(2)}>
+                        Level 2
+                     </button>
+                     <button className='btn level3 rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={() => assignLevel(3)}>
+                        Level 3
+                     </button>
+                     <button className='btn lastLevel rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={() => assignLastLevel()}>
+                        Last Level
+                     </button>
+                     <button className='btn cancel rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={clearLevel}>
+                        <X size={16} /><span className='ms-2'>Clear Level</span>
+                     </button>
+                  </div>
+               </div>
+            </div>
+         </div>
+      );
+      {/* <div className='d-flex justify-content-end mt-4'>
+   <button className='btn cancel-button mt-2 me-4'>Cancel</button>
+   <button className='btn action-button mt-2 fs-6' onClick={mapFields}>{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : (<span>Import BOQ Data</span>)}</button>
+</div> */}
+   }
+   const columnMapping = () => {
+      return (
+         <div className='ms-3 me-3 bg-white mt-5 rounded-3 p-3' style={{ border: '1px solid #0051973D' }}>
+            <div className='text-start fw-bold mb-4'>
+               Column Mapping
+            </div>
+            <div className='row mt-3'>
+               <div className='col-12'>
+                  <label className="projectform-select text-start d-block">
+                     Mapping Template
+                  </label>
+                  <Select placeholder="Select Mapping Template"
+                     options={templateOption}
+                     className="w-100"
+                     classNamePrefix="select"
+                     isClearable
+                     onChange={(option) => {
+                        const templateValue = option?.value || null;
+                        setSelectedTemplate(templateValue);
+                        if (templateValue) {
+                           loadTemplate(templateValue);
+                        } else {
+                           setInternalFields(prev =>
+                              prev.map(f => ({ ...f, mappingFields: '' }))
+                           );
+                        }
+                     }}
+                  />
+               </div>
+            </div>
+            {(selectedSheet || columns) && (<div className='mt-5'>
+               <div className='mb-4 text-start fw-bold'>Map the Fields</div>
+               <div className='row d-flex justify-content-between'>
+                  <div className='col-lg-6 col-md-6 col-sm-12'>
+                     <ColumnIcon /><span className='fw-bold fs-6 ms-2'>Excel Feilds</span>
+                     <div className='mt-1 rounded-3 p-2'>
+                        {columns
+                           .filter(col => !internalFields.some(f => f.mappingFields === col))
+                           .map((col, index) => (
+                              <div className={`excel-column-container me-2 p-3 rounded-3 mt-3 mb-3 d-flex justify-content-between align-items-center`} key={index} draggable={true}
+                                 onDragStart={(e) =>
+                                    handleDragStart(e, col)
                                  }
-                              }}
-                              isDisabled={fileType === 'pdf'}
+                              >
+                                 <span>{col}</span>
+                                 <span><Drag /></span>
+                              </div>
+                           ))}
+                     </div>
+                  </div>
+                  <div className='col-lg-6 col-md-6 col-sm-12'>
+                     <InternalIcon /><span className='fw-bold fs-6 ms-2'>Internal Feilds</span>
+                     <div className='mt-1 rounded-3 p-2'>
+                        {internalFields.map((col, index) => (
+                           <div key={index}>
+                              <div className={`internal-column-container ${col.mappingFields ? 'mapped ' : ' '} me-2 p-3 rounded-3 mt-3 mb-3 d-flex flex-column justify-content-between text-start`}
+                                 onDragOver={(e) => e.preventDefault()}
+                                 onDrop={() => {
+                                    if (draggedColumn) {
+                                       const updated = [...internalFields];
+                                       updated[index].mappingFields = draggedColumn;
+                                       setInternalFields(updated);
+                                       setDraggedColumn(null);
+                                    }
+                                 }}>
+                                 <div className='d-flex justify-content-between'>
+                                    <span className='mb-1'>{col.label}</span>
+                                    <span className={`mapping-condition ${!col.mappingFields ? (col.importance === 'Required' ? 'required' : 'optional') : 'mapped'}`}>
+                                       {col.mappingFields ? 'Mapped' : col.importance}
+                                    </span>
+                                 </div>
+                                 {col?.mappingFields &&
+                                    <div className='d-flex justify-content-between bg-white w-100 rounded'>
+                                       <div>
+                                          <span className='ms-2'><Mapping /></span>
+                                          <span className='ms-2'>{col.mappingFields}</span>
+                                       </div>
+                                       <span className='me-2' style={{ cursor: 'pointer' }}>
+                                          <X color='#C33D1B' size={14} onClick={() => {
+                                             const updated = [...internalFields];
+                                             updated[index].mappingFields = '';
+                                             setInternalFields(updated);
+                                          }} />
+                                       </span>
+                                    </div>}
+                              </div>
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+               </div>
+            </div>)}
+            {!selectedTemplate && (
+               <div className='mt-4'>
+                  <div className='fw-bold text-start mb-4'>Save as Template</div>
+                  <div className='d-flex justify-content-between'>
+                     <div className='col-lg-6 col-md-6 col-sm-12 mb-4'>
+                        <div className='p-2'>
+                           <label className="projectform-select text-start d-block">
+                              Template Name
+                           </label>
+                           <input type="text" className="form-input w-100" placeholder="Enter Template Name" value={template.templateName}
+                              onChange={(e) => { setTemplate({ ...template, templateName: e.target.value }) }}
                            />
                         </div>
                      </div>
+                     <div className='col-lg-6 col-md-6 col-sm-12 mb-4'>
+                        <div className='p-2'>
+                           <label className="projectform-select text-start d-block">
+                              Template code
+                           </label>
+                           <input type="text" className="form-input w-100" placeholder="Enter Template Code" value={template.templateCode}
+                              onChange={(e) => { setTemplate({ ...template, templateCode: e.target.value }) }}
+                           />
+                        </div>
 
-                     <div className='col-12'>
+                     </div>
+                  </div>
+                  <div className='col-12 mb-4'>
+                     <div className='p-2'>
                         <label className="projectform-select text-start d-block">
-                           Mapping Template
+                           Template Description
                         </label>
-                        <Select placeholder="Select Mapping Template"
-                           options={templateOption}
-                           className="w-100"
-                           classNamePrefix="select"
-                           isClearable
-                           onChange={(option) => {
-                              const templateValue = option?.value || null;
-                              setSelectedTemplate(templateValue);
-                              if (templateValue) {
-                                 loadTemplate(templateValue);
-                              } else {
-                                 setInternalFields(prev =>
-                                    prev.map(f => ({ ...f, mappingFields: '' }))
-                                 );
-                              }
-                           }}
+                        <input type="text" className="form-input w-100" placeholder="Enter Template Description" value={template.description}
+                           onChange={(e) => { setTemplate({ ...template, description: e.target.value }) }}
                         />
                      </div>
                   </div>
-                  {(selectedSheet || columns) && (<div className='mt-5'>
-                     <h5 className='mb-3'>Map the Fields</h5>
-                     <div className='row d-flex justify-content-between'>
-                        <div className='col-lg-6 col-md-6 col-sm-12'>
-                           <ColumnIcon /><span className='fw-bold fs-6 ms-2'>Excel Feilds</span>
-                           <div className='mt-1 rounded-3 p-2'>
-                              {columns
-                                 .filter(col => !internalFields.some(f => f.mappingFields === col))
-                                 .map((col, index) => (
-                                    <div className={`excel-column-container me-2 p-3 rounded-3 mt-3 mb-3 d-flex justify-content-between align-items-center`} key={index} draggable={true}
-                                       onDragStart={(e) =>
-                                          handleDragStart(e, col)
-                                       }
-                                    >
-                                       <span>{col}</span>
-                                       <span><Drag /></span>
-                                    </div>
-                                 ))}
-                           </div>
-                        </div>
-                        <div className='col-lg-6 col-md-6 col-sm-12'>
-                           <InternalIcon /><span className='fw-bold fs-6 ms-2'>Internal Feilds</span>
-                           <div className='mt-1 rounded-3 p-2'>
-                              {internalFields.map((col, index) => (
-                                 <div key={index}>
-                                    <div className={`internal-column-container ${col.mappingFields ? 'mapped ' : ' '} me-2 p-3 rounded-3 mt-3 mb-3 d-flex flex-column justify-content-between text-start`}
-                                       onDragOver={(e) => e.preventDefault()}
-                                       onDrop={() => {
-                                          if (draggedColumn) {
-                                             const updated = [...internalFields];
-                                             updated[index].mappingFields = draggedColumn;
-                                             setInternalFields(updated);
-                                             setDraggedColumn(null);
-                                          }
-                                       }}>
-                                       <div className='d-flex justify-content-between'>
-                                          <span className='mb-1'>{col.label}</span>
-                                          <span className={`mapping-condition ${!col.mappingFields ? (col.importance === 'Required' ? 'required' : 'optional') : 'mapped'}`}>
-                                             {col.mappingFields ? 'Mapped' : col.importance}
-                                          </span>
-                                       </div>
-                                       {col?.mappingFields &&
-                                          <div className='d-flex justify-content-between bg-white w-100 rounded'>
-                                             <div>
-                                                <span className='ms-2'><Mapping /></span>
-                                                <span className='ms-2'>{col.mappingFields}</span>
-                                             </div>
-                                             <span className='me-2' style={{ cursor: 'pointer' }}>
-                                                <X color='#C33D1B' size={14} onClick={() => {
-                                                   const updated = [...internalFields];
-                                                   updated[index].mappingFields = '';
-                                                   setInternalFields(updated);
-                                                }} />
-                                             </span>
-                                          </div>}
-                                    </div>
-                                 </div>
-                              ))}
-                           </div>
-                        </div>
-                     </div>
-                  </div>)}
-                  {!selectedTemplate && (
-                     <div className='mt-4'>
-                        <div className='fw-bold text-start mb-4'>Save as Template</div>
-                        <div className='d-flex justify-content-between'>
-                           <div className='col-lg-6 col-md-6 col-sm-12 mb-4'>
-                              <div className='p-2'>
-                                 <label className="projectform-select text-start d-block">
-                                    Template Name
-                                 </label>
-                                 <input type="text" className="form-input w-100" placeholder="Enter Template Name" value={template.templateName}
-                                    onChange={(e) => { setTemplate({ ...template, templateName: e.target.value }) }}
-                                 />
-                              </div>
-                           </div>
-                           <div className='col-lg-6 col-md-6 col-sm-12 mb-4'>
-                              <div className='p-2'>
-                                 <label className="projectform-select text-start d-block">
-                                    Template code
-                                 </label>
-                                 <input type="text" className="form-input w-100" placeholder="Enter Template Code" value={template.templateCode}
-                                    onChange={(e) => { setTemplate({ ...template, templateCode: e.target.value }) }}
-                                 />
-                              </div>
-
-                           </div>
-                        </div>
-                        <div className='col-12 mb-4'>
-                           <div className='p-2'>
-                              <label className="projectform-select text-start d-block">
-                                 Template Description
-                              </label>
-                              <input type="text" className="form-input w-100" placeholder="Enter Template Description" value={template.description}
-                                 onChange={(e) => { setTemplate({ ...template, description: e.target.value }) }}
-                              />
-                           </div>
-                        </div>
-                        <div className='d-flex justify-content-end'>
-                           <button className='btn template-button' onClick={templateSave}><Template /> <span className='ms-2'>Save Template</span></button>
-                        </div>
-                     </div>
-                  )}
-
-               </>)}
+                  <div className='d-flex justify-content-end'>
+                     <button className='btn template-button' onClick={templateSave}><Template /> <span className='ms-2'>Save Template</span></button>
+                  </div>
+               </div>
+            )}
+            <div className='d-flex justify-content-end mt-4'>
+               <button className='btn action-button mt-2 fs-6' onClick={() => fetchExcelData(currentPage, pageSize)}><ArrowRight size={18} /> <span className='ms-1'>Next</span></button>
             </div>
+         </div>
+      )
+   }
+   const mappingConfig = () => {
+      const renderSection = (section) => {
+         switch (section) {
+            case 'columnMapping':
+               return columnMapping();
+            case 'levelMapping':
+               return levelMapping();
+            default:
+               return null;
+         }
+      }
+      return (
+         <>
+            <div className='rounded-3 bg-white p-3 ms-3 me-3' style={{ border: '0.5px solid #0051973D' }}>
+               <div className='d-flex justify-content-between mt-1'>
+                  <div className='col-lg-6 col-md-6 col-sm-12'>
+                     <div className='file-preview d-flex align-items-center justify-content-between mb-2'>
+                        <div>
+                           <span className='ms-2'><FileIcon /></span>
+                           <span className='ms-2'>{BOQfile ? BOQfile.name : 'No file selected'}</span>
+                        </div>
+                        <span className='me-2' style={{ cursor: 'pointer' }}><X color='#C33D1B' size={20} onClick={removeFile} /></span>
+                     </div>
+                  </div>
+                  <div className='col-lg-6 col-md-6 col-sm-12'>
+                     <label className="projectform-select text-start d-block">
+                        Excel Sheet
+                     </label>
+                     <Select placeholder="Select Excel Sheet"
+                        options={sheetOption}
+                        className="w-100"
+                        classNamePrefix="select"
+                        value={sheetOption.find(option => option.value === selectedSheet)}
+                        isClearable
+                        menuPlacement='auto'
+                        onChange={(option) => {
+                           const sheetValue = option?.value ?? null;
+                           setSelectedSheet(sheetValue);
+                           if (sheetValue) {
+                              loadSheetColumn(sheetValue);
+                           }
+                        }}
+                        isDisabled={fileType === 'pdf'}
+                     />
+                  </div>
+               </div>
+            </div>
+            <div className="d-flex ms-3 mt-5">
+               <button className={`btn ${section === 'columnMapping' ? 'activeView' : 'bg-white'} px-3 py-2 border border-end-0 rounded-start rounded-0`} onClick={() => setSection('columnMapping')}>
+                  <FileSymlink size={20} color={`${section === 'columnMapping' ? '#FFFFFF' : '#005197'}`} />
+                  <span className="ms-2 fs-6">Column Mapping</span>
+               </button>
+               <button className={`btn ${section === 'levelMapping' ? 'activeView' : 'bg-white'} px-3 py-2 border border-start-0 rounded-end rounded-0`} onClick={() => { setSection('levelMapping'); }}>
+                  <SlidersHorizontal size={20} color={`${section === 'levelMapping' ? '#FFFFFF' : '#005197'}`} />
+                  <span className="ms-2 fs-6">Level Configuraton</span>
+               </button>
+            </div>
+            {renderSection(section)}
+         </>
+      );
+   }
+   const renderContent = (section) => {
+      switch (section) {
+         case 'fileUpload':
+            return fileUpload();
+         case 'mappingConfig':
+            return mappingConfig();
+         default:
+            return null;
+      }
+   }
+   return (
+      <div className='container-fluid min-vh-100'>
+         <div className="text-start fw-bold ms-1 mt-2 mb-4">
+            <ArrowLeft size={20} onClick={() => setUploadScreen(false)} /><span className='ms-2'>BOQ Definition</span>
+         </div>
+         {!BOQfile && (
+            <div className='ms-2 mt-3 rounded-3 bg-white' style={{ border: '0.5px solid #0051973D' }}>
+               <div className='tab-info col-12 h-100'>Upload BOQ File</div>
+               <div className='text-start p-3 ms-4 mt-2 me-4'>
+                  <p className='fw-bold'>{projectName}</p>
+                  {renderContent('fileUpload')}
+               </div>
 
-         </div>
-         <div className='d-flex justify-content-end mt-4'>
-            <button className='btn cancel-button mt-2 me-4'>Cancel</button>
-            <button className='btn action-button mt-2 fs-6' onClick={mapFields}>{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : (<span>Import BOQ Data</span>)}</button>
-         </div>
+            </div>
+         )}
+         {BOQfile && (renderContent('mappingConfig'))}
       </div>
    );
 }

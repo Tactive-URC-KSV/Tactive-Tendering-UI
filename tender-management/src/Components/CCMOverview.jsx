@@ -28,7 +28,7 @@ const CCMOverview = () => {
     const [parentTree, setParentTree] = useState([]);
     const [expandedParentIds, setExpandedParentIds] = useState(new Set());
 
-    const [selectedBOQs, setSelectedBOQs] = useState(new Set());   // leaf boq.id
+    const [selectedBOQs, setSelectedBOQs] = useState(new Set());   
     const [selectedActivities, setSelectedActivities] = useState(new Set());
     const [selectedMappingType, setSelectedMappingType] = useState("1 : M");
 
@@ -256,30 +256,18 @@ const CCMOverview = () => {
             leafChildren = childrenStatus.filter(c => c.lastLevel);
             nonLeafChildren = childrenStatus.filter(c => !c.lastLevel);
         }
-
-        const allLeafIds = leafChildren.map(c => c.id);
-        const allLeafSelected = allLeafIds.length > 0 && allLeafIds.every(id => selectedBOQs.has(id));
         const boqNameDisplay = boq.boqName && boq.boqName.length > 30
             ? boq.boqName.substring(0, 30) + '...'
             : boq.boqName;
 
-        const indentation = level * 10;
         const Icon = isExpanded ? DropDown : ClosedList;
 
         if (boq.lastLevel) {
             return (
                 <div className="d-flex align-items-center py-2">
-                    <input
-                        type="checkbox"
-                        className="form-check-input"
-                        style={{ borderColor: '#005197' }}
-                        checked={selectedBOQs.has(boq.id)}
-                        onChange={() => toggleBOQSelection(boq.id)}
-                    />
-                    <div className="d-flex align-items-center flex-grow-1 pt-1">
-                        <span style={{ width: '16px' }}></span>
-                        <SmallFolder style={{ minWidth: '16px' }} />
-                        <div className="d-flex flex-grow-1 ms-2" style={{ minWidth: 0 }}>
+                    <div className="d-flex align-items-center p-2 rounded-2" onClick={() => toggleBOQSelection(boq.id)} style={{ backgroundColor: `${selectedBOQs.has(boq.id) ? '#EFF6FFCC' : 'transparent'}`, border: `${selectedBOQs.has(boq.id) ? '1px solid #2563EB' : 'none'}`}}>
+                        <SmallFolder  />
+                        <div className="d-flex flex-grow-1 ms-2" >
                             <div className="d-flex justify-content-between">
                                 <span className="me-2 text-nowrap">{boq.boqCode}</span>
                                 <span>-</span>
@@ -348,10 +336,19 @@ const CCMOverview = () => {
     const fetchActivityGroups = () => {
         setLoading(p => ({ ...p, activityGroups: true }));
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/activityGroups`, {
-            headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' }
-        }).then(r => { if (r.status === 200) setActivityGroups(r.data || []); })
-            .catch(e => { if (e?.response?.status === 401) handleUnauthorized(); })
-            .finally(() => setLoading(p => ({ ...p, activityGroups: false })));
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        }).then(r => {
+            if (r.status === 200)
+                setActivityGroups(r.data || []);
+        }).catch(e => {
+            if (e?.response?.status === 401)
+                handleUnauthorized();
+        }).finally(() =>
+            setLoading(p => ({ ...p, activityGroups: false }))
+        );
     };
 
     const fetchCostCodeActivities = () => {
@@ -412,6 +409,7 @@ const CCMOverview = () => {
 
         const boqCode = Array.from(selectedBOQs)[0];
         const boqItem = findBOQItem(boqCode);
+        console.debug(boqItem);
         const activityGroupId = Array.from(selectedActivities)[0];
         const activityGroup = activityGroups.find(group => group.id === activityGroupId);
 
@@ -450,11 +448,23 @@ const CCMOverview = () => {
             setShowMappingPopover(true);
         }
     };
-
     const handleLeftArrowClick = () => {
+        if (selectedActivities.size > 0) {
+            const activitiesToRemove = Array.from(selectedActivities);
+
+            setCostCodeActivities(prev =>
+                prev.filter(activity => !activitiesToRemove.includes(activity.id))
+            );
+
+            setPendingMappings(prev =>
+                prev.filter(mapping => !activitiesToRemove.includes(mapping.id))
+            );
+        }
+
         setSelectedActivities(new Set());
         setSelectedCostCodeType(null);
     };
+
 
     const handleActivitySelection = (actId, checked) => {
         setSelectedActivities(prev => {
@@ -544,7 +554,8 @@ const CCMOverview = () => {
                     amountSplitPercentage: parseFloat(activity.amountpercentage),
                 });
             });
-        } else if (selectedMappingType === "M : 1") {
+        } 
+        else if (selectedMappingType === "M : 1") {
             const activity = mappingActivities[0];
             const boqItems = Array.from(selectedBOQs).map((boqCode) => findBOQItem(boqCode));
 
@@ -591,7 +602,7 @@ const CCMOverview = () => {
         const newMappings = costCodeDtos.map(dto => ({
             id: `pending-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             ...dto,
-            boq: findBOQItemByCode(dto.boqId[0]),
+            boq: findBOQItem(dto.boqId[0]),
             activityGroup: activityGroups.find(group => group.id === dto.activityGroupId) || null,
             isPending: true
         }));
@@ -783,9 +794,9 @@ const CCMOverview = () => {
         return (
             <div className="mb-2">
                 <div
-                    className={`d-flex align-items-center cursor-pointer py-2 ${isSelected ? 'bg-primary bg-opacity-10 border border-primary rounded' : ''}`}
+                    className={`d-flex align-items-center cursor-pointer py-2 rounded-2`}
                     onClick={handleActivityGroupClick}
-                    style={{ cursor: 'pointer' }}
+                    style={{ backgroundColor: `${selectedActivities.has(group.id) ? '#EFF6FFCC' : 'transparent'}`, border: `${selectedActivities.has(group.id) ? '1px solid #2563EB' : 'none'}`}}
                 >
                     <span className="me-2" onClick={handleFolderToggle}>
                         {isExpanded ? <span className="d-flex"><DropDown /> <MediumFolder className="mt-2" /> </span> : <span className="d-flex"><ClosedList /> <MediumFolder className="mt-2" /> </span>}
@@ -853,6 +864,117 @@ const CCMOverview = () => {
             </div>
         );
     };
+     const addMappingActivity = () => {
+        const boqCode = Array.from(selectedBOQs)[0];
+        const boqItem = findBOQItem(boqCode);
+        const remainingPercentage = 100 - totalPercentageUsed;
+        const activityGroupId = Array.from(selectedActivities)[0];
+        const activityGroup = activityGroups.find(group => group.id === activityGroupId);
+
+        if (remainingPercentage <= 0) {
+            showAlert("Cannot add more activities - total percentage already reached 100%", "error");
+            return;
+        }
+
+        setMappingActivities([
+            ...mappingActivities,
+            {
+                activityCode: activityGroup?.activityCode,
+                activityName: activityGroup?.activityName,
+                quantity: 0,
+                rate: 0,
+                splitType: "quantity",
+                qtypercentage: "",
+                qtyvalue: "",
+                ratepercentage: "",
+                ratevalue: "",
+                amountpercentage: "",
+                amountvalue: ""
+            }
+        ]);
+    };
+    const removeMappingActivity = (index) => {
+        if ((selectedMappingType === "1 : 1" || selectedMappingType === "M : 1") && mappingActivities.length <= 1) {
+            showAlert(`Cannot remove the only activity for ${selectedMappingType} mapping`, "error");
+            return;
+        }
+
+        const updatedActivities = [...mappingActivities];
+        const removedPercentage = parseFloat(updatedActivities[index].percentage) || 0;
+        updatedActivities.splice(index, 1);
+        setMappingActivities(updatedActivities);
+        setTotalPercentageUsed(prev => prev - removedPercentage);
+    };
+    const updateMappingActivity = (index, field, value) => {
+        const updatedActivities = [...mappingActivities];
+        const boqCode = Array.from(selectedBOQs)[0];
+        const boqItem = findBOQItem(boqCode);
+
+        let newPercentage = parseFloat(value) || 0;
+
+        if (['qtypercentage', 'ratepercentage', 'amountpercentage'].includes(field)) {
+            if (newPercentage > 100) {
+                showAlert("Percentage cannot exceed 100%", "error");
+                return;
+            }
+
+            let currentTotal = updatedActivities.reduce((sum, act, i) => {
+                if (i === index) {
+                    return sum + newPercentage;
+                }
+                return sum +
+                    (parseFloat(act.qtypercentage) || 0) +
+                    (parseFloat(act.ratepercentage) || 0) +
+                    (parseFloat(act.amountpercentage) || 0);
+            }, 0);
+
+            if (currentTotal > 100) {
+                showAlert("Total percentage cannot exceed 100%", "error");
+                return;
+            }
+
+            setTotalPercentageUsed(currentTotal);
+
+            let calculatedValue = 0;
+            if (field === 'qtypercentage') {
+                calculatedValue = (boqItem.quantity * newPercentage / 100) || 0;
+                updatedActivities[index].qtyvalue = calculatedValue.toFixed(2);
+            }
+            if (field === 'ratepercentage') {
+                calculatedValue = (boqItem.totalRate * newPercentage / 100) || 0;
+                updatedActivities[index].ratevalue = calculatedValue.toFixed(2);
+            }
+            if (field === 'amountpercentage') {
+                calculatedValue = (boqItem.totalAmount * newPercentage / 100) || 0;
+                updatedActivities[index].amountvalue = calculatedValue.toFixed(2);
+            }
+        }
+
+        if (['qtyvalue', 'ratevalue', 'amountvalue'].includes(field)) {
+            const numericValue = parseFloat(value) || 0;
+            let calculatedPercentage = 0;
+
+            if (field === 'qtyvalue') {
+                calculatedPercentage = (numericValue / boqItem.quantity) * 100 || 0;
+                updatedActivities[index].qtypercentage = calculatedPercentage.toFixed(2);
+            }
+            if (field === 'ratevalue') {
+                calculatedPercentage = (numericValue / boqItem.totalRate) * 100 || 0;
+                updatedActivities[index].ratepercentage = calculatedPercentage.toFixed(2);
+            }
+            if (field === 'amountvalue') {
+                calculatedPercentage = (numericValue / boqItem.totalAmount) * 100 || 0;
+                updatedActivities[index].amountpercentage = calculatedPercentage.toFixed(2);
+            }
+        }
+        updatedActivities[index] = {
+            ...updatedActivities[index],
+            [field]: value
+        };
+
+        setMappingActivities(updatedActivities);
+    };
+
 
     const [expandedActivityFolders, setExpandedActivityFolders] = useState(new Set());
     const toggleActivityFolder = (id) => {
@@ -1464,5 +1586,4 @@ const CCMOverview = () => {
         </div>
     );
 };
-
 export default CCMOverview;
