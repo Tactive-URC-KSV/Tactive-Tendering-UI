@@ -161,7 +161,6 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         <input type="text" className="form-input w-100" placeholder="Enter email address"
                             value={project.email}
                             onChange={(e) => setProject({ ...project, email: e.target.value })}
-
                         />
                     </div>
                 </div>
