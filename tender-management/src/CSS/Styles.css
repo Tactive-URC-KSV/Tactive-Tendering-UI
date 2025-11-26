@@ -724,6 +724,7 @@ label {
   align-items: center;
   padding-left: 8px;
   border-radius: 50px;
+  outline: none;
 }
 
 .btn.pagination:focus {
@@ -734,9 +735,15 @@ label {
   outline: none;
   border: none;
 }
-
+.btn.pagination-bottom:hover,
 .btn.pagination:hover {
   background-color: #EFF6FF;
+}
+.btn.pagination-bottom {
+  border: none;
+  outline: none;
+  border-radius: 25px;
+  padding: 10px;
 }
 
 .btn.level1:hover {
@@ -747,7 +754,7 @@ label {
 
 .btn.level1 {
   font-size: 14px;
-  background: #faf5ffc9;
+  background: #faf5ff;
   color: #9333EA;
 }
 
@@ -798,25 +805,81 @@ label {
   background: #00000014;
   color: #00000099;
 }
+
 .boq-data.table-responsive table thead th {
   background-color: #005197 !important;
   color: #fff;
-  font-weight: 600;
+  font-weight: 500;
+  padding-bottom: 15px;
+  padding-top: 15px;
 }
-/* .boq-data.table-responsive table tbody tr.last-level {
+
+.boq-data.table-responsive table tbody tr td {
+  font-size: 15px;
+  border: transparent;
+  padding-bottom: 15px;
+  padding-top: 15px;
+}
+
+.boq-data.table-responsive table tbody tr.last-level td {
   background-color: #F0FDF4 !important;
 }
 
-.boq-data.table-responsive table tbody tr.level1 {
+.boq-data.table-responsive table tbody tr.level1 td {
   background-color: #9333EA1A !important;
 }
 
-.boq-data.table-responsive table tbody tr.level2 {
+.boq-data.table-responsive table tbody tr.level2 td {
   background-color: #2563EB1A !important;
 }
 
-.boq-data.table-responsive table tbody tr.level3 {
+.boq-data.table-responsive table tbody tr.level3 td {
   background-color: #CA8A041A !important;
-} */
+}
+.btn.parent{
+  background-color: #005197;
+  color: white;
+}
+.btn.parent:hover{
+  background-color: #005197;
+  opacity: 60%;
+  color: #FFFFFF;
+}
+.structure-preview {
+  max-height: fit-content;
+  overflow-y: auto;
+}
 
+.structure-preview div {
+  line-height: 1.4rem;
+}
+.tree-node {
+  position: relative;
+  padding-left: 20px;
+  margin-left: 8px;
+}
 
+.tree-node::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-left: 1px solid #999;
+  border-bottom: 1px solid #999;
+  width: 12px;
+  height: 14px;
+}
+
+.tree-root {
+  padding-left: 0;
+}
+
+.tree-children {
+  margin-left: 20px;
+  border-left: 1px dashed #ccc;
+  padding-left: 20px;
+}
+.btn.clear{
+  background-color: #EFF6FF;
+  color: #005197;
+}

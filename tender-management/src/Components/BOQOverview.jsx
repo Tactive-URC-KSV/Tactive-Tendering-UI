@@ -365,7 +365,7 @@ function BOQOverview({ projectId }) {
         }
     };
     const BOQNode = ({ boq, level = 0 }) => {
-        const canExpand = boq.level === 1 || boq.level === 2;
+        const canExpand = boq.lastLevel === false;
         const isExpanded = expandedParentIds.has(boq.id);
         const childrenStatus = boq.children;
         const isLoading = isExpanded && childrenStatus === 'pending';
@@ -482,6 +482,9 @@ function BOQOverview({ projectId }) {
                             {hasNoChildren && (
                                 <div className="no-items-message text-muted p-2 text-center mt-2">
                                     No items found.
+                                    {/* <button type="button" className="btn btn-danger" onClick={() => {toggleSelection(boq.id); handleDeleteClick();}}>
+                                        Delete
+                                    </button> */}
                                 </div>
                             )}
                         </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Select from "react-select";
-import { ArrowLeft, BookOpenText, ChevronDown, AlignLeft, DollarSign, Calculator, Settings, Info } from "lucide-react";
+import { ArrowLeft, BookOpenText, ChevronDown, Info } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -110,7 +110,7 @@ function AddResource() {
                 totalCostCompanyCurrency: cost.totalCostCompanyCurrency ?? 0,
                 rateLock: tender.rateLock ?? false,
                 resourceTypeId: tender.resourceType?.id || "",
-                quantityTypeId: resource?.quantityType?.id || "",
+                quantityTypeId: tender?.quantityType?.id || "",
                 resourceNatureId: tender.resourceNature?.id || "",
                 uomId: tender.uom?.id || "",
                 currencyId: tender.currency?.id || "",
@@ -118,6 +118,13 @@ function AddResource() {
                 boqId: boqId,
                 projectId: projectId
             }));
+            setSelectedCurrency(tender.currency?.id);
+            setSelectedNature(tender.resourceNature?.id);
+            setSelectedQuantityType(tender?.quantityType?.id);
+            setSelectedResource(resource?.id);
+            setSelectedUom(tender.uom?.id);
+            setSelectedResourceType(tender.resourceType?.id);
+
         }
     }).catch(err => {
         console.error("Error fetching tender resource:", err);
@@ -629,7 +636,6 @@ function AddResource() {
                             <small className="text-muted">per {boq?.uom?.uomCode}</small>
                         </div>
                     </div>
-
                     <div className="col-md-4">
                         <div className="p-3" style={{ backgroundColor: '#EFF6FF' }}>
                             <div className="text-muted">Total Cost (Company Currency)</div>
@@ -637,7 +643,6 @@ function AddResource() {
                             <small className="text-muted">per {boq?.uom?.uomCode}</small>
                         </div>
                     </div>
-
                     <div className="col-md-4">
                         <div className="p-3" style={{ backgroundColor: '#F0FDF4' }}>
                             <div className="text-muted">Total Cost (Resource Currency)</div>
@@ -646,16 +651,14 @@ function AddResource() {
                         </div>
                     </div>
                 </div>
-
             </div>
-
             <div className="d-flex justify-content-end pt-3 me-3">
                 <button
                     className="btn"
                     style={{ backgroundColor: darkBlue, color: 'white', border: 'none', padding: '0.5rem 1.5rem', borderRadius: '0.5rem' }}
                     onClick={handleAddResource}
                 >
-                    Add Resource
+                    {tenderEstimationId ? 'Edit' : 'Add Resource'}
                 </button>
             </div>
 
