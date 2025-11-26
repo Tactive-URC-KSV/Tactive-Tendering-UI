@@ -23,6 +23,14 @@ function TFProcess({ projectId }) {
     const padded = String(randomNum).padStart(6, '0');
     return `TF-${year}-${padded}`;
     };
+
+    const CustomMultiValueContainer = () => null; 
+    const CustomDropdownIndicator = () => null;  
+    const CustomIndicatorSeparator = () => null;
+    const CustomClearIndicator = () => null;
+    const handleRemoveScope = (idToRemove) => {
+    setSelectedScopes(prevScopes => prevScopes.filter(id => id !== idToRemove));
+};
     
 
     const getCurrentDate = () => {
@@ -43,7 +51,6 @@ function TFProcess({ projectId }) {
         contactEmail: userData?.email || 'admin@gmail.com',
         contactMobile: userData?.phoneNumber || '9876543210',
         scopeOfPackage: '',
-        scopeOfWork: '',
         boqIds: Array.from(selectedBoq),
         contractorIds: ''
     });
@@ -174,7 +181,6 @@ function TFProcess({ projectId }) {
         }
     };
 
-    
     const updateNodeInTree = (tree, nodeId, newProps) => {
         return tree.map(node => {
             if (node.id === nodeId) {
@@ -232,8 +238,6 @@ function TFProcess({ projectId }) {
             return newSet;
         });
     };
-
-    
 
     const getSelectedLeafBoqs = (tree) => {
         let result = [];
@@ -566,36 +570,43 @@ function TFProcess({ projectId }) {
                         />
                     </div>
                 </div>
+
+        
                 <div className="row align-items-center ms-1 mt-5">
-                    <div className="col-md-4 col-lg-4 ">
-                        <label className="projectform-select text-start d-block">Scope of Package</label>
-
-                        <Select
-                            options={scopeOptions}
-                            isMulti
-                            placeholder="Select Scope of Package"
-                            className="w-100"
-                            classNamePrefix="select"
-                            value={scopeOptions.filter(opt => selectedScopes.includes(opt.value))}
-                            onChange={(selected) => setSelectedScopes(selected ? selected.map(s => s.value) : [])}
-                        />
-                    </div>
-
-                    <div className="col-md-4 col-lg-4">
-                        <label className="projectform text-start d-block">Scope of Work</label>
-                        <input 
-    type="text"
-    className="form-input w-100"
-    placeholder="Enter Scope of Work"
-    value={tenderDetail.scopeOfWork}
-    onChange={(e) =>
-        setTenderDetail({ ...tenderDetail, scopeOfWork: e.target.value })
-    }
-/>
-
-                    </div>
-                </div>
-            </div>
+                <div className="col-md-4 col-lg-12 ">
+                    <label className="projectform-select text-start d-block">Scope of Package</label>
+                    <Select options={scopeOptions} isMulti placeholder="Select Scope of Package" className="w-100" classNamePrefix="select"
+                        value={scopeOptions.filter(opt => selectedScopes.includes(opt.value))}
+                        onChange={(selected) => setSelectedScopes(selected ? selected.map(s => s.value) : [])}
+                        components={{
+                            MultiValueContainer: CustomMultiValueContainer,
+                            IndicatorSeparator: CustomIndicatorSeparator,
+                            DropdownIndicator: CustomDropdownIndicator,
+                            ClearIndicator: CustomClearIndicator,
+                    }}
+                />
+                <div className="mt-2 d-flex flex-wrap gap-2"> 
+                {scopeOptions .filter(opt => selectedScopes.includes(opt.value)) 
+                .map(selectedOpt => (
+                    <span key={selectedOpt.value} className="select__multi-value">
+                        <span className="select__multi-value__label">
+                            {selectedOpt.label}
+                        </span>
+                        <span
+                            className="select__multi-value__remove"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleRemoveScope(selectedOpt.value); 
+                            }}
+                        >
+                            &times;
+                        </span>
+                    </span>
+                ))}
+        </div>
+    </div>
+</div>
+</div>
         );
     }
 
@@ -631,14 +642,13 @@ function TFProcess({ projectId }) {
                         </div>
                     </div>
                     <div className="d-flex gap-5">
-                       <button
-    className="btn btn-sm"
-    style={{ border: '1px solid #dc3545', color: '#dc3545' }}
-    onClick={handleRemoveSelectedBoqs}
-    disabled={boqForRemoval.size === 0}  
->
-    <X size={18} /> <span className="fw-medium ms-1">Remove</span>
-</button>
+                       <button className="btn btn-sm"
+                    style={{ border: '1px solid #dc3545', color: '#dc3545' }}
+                         onClick={handleRemoveSelectedBoqs}
+                        disabled={boqForRemoval.size === 0}  
+                        >
+                        <X size={18} /> <span className="fw-medium ms-1">Remove</span>
+                        </button>
 
                         <button
                             className="btn btn-sm"
@@ -968,6 +978,8 @@ const getFriendlyFileType = (mimeType) => {
     return 'Document';
 };
 
+
+
   const reviewTender = () => {
         const boqArray = getSelectedLeafBoqs(parentTree);
         const contractorsList = []; 
@@ -1063,10 +1075,7 @@ const getFriendlyFileType = (mimeType) => {
             <span className="text-muted d-block">Contact Email ID</span>
             <span className="fw-medium">{tenderDetail.contactEmail || 'N/A'}</span>
         </div>
-        <div className="col-md-12 text-start">
-            <span className="text-muted d-block">Scope of Work</span>
-            <span className="fw-medium">{tenderDetail.scopeOfWork || 'N/A'}</span>
-        </div>
+        
         
         <div className="col-md-12 text-start">
             <span className="text-muted d-block">Scope of Packages</span>
