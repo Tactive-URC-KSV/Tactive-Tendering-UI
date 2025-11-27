@@ -1,5 +1,5 @@
 import axios from "axios";
-import { ArrowLeft, ArrowRight, Check, FileText } from 'lucide-react';
+import { ArrowLeft, ArrowRight, FileText } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Select from 'react-select';
@@ -18,20 +18,24 @@ import '../CSS/Styles.css';
 const handleUnauthorized = () => {
     const navigate = useNavigate();
     navigate('/login');
-}
-
+};
 
 const CCMOverview = () => {
-    const [project, setProject] = useState();
+    const navigate = useNavigate();
     const { projectId } = useParams();
-    const [boqTree, setBoqTree] = useState([]);
-    const [selectedBOQs, setSelectedBOQs] = useState(new Set());
+    const [project, setProject] = useState(null);
+    const [parentBoq, setParentBoq] = useState([]);
+    const [parentTree, setParentTree] = useState([]);
+    const [expandedParentIds, setExpandedParentIds] = useState(new Set());
+
+    const [selectedBOQs, setSelectedBOQs] = useState(new Set());   
     const [selectedActivities, setSelectedActivities] = useState(new Set());
     const [selectedMappingType, setSelectedMappingType] = useState("1 : M");
+
+
     const [searchQuery, setSearchQuery] = useState("");
-    const [expandedFolders, setExpandedFolders] = useState(new Set());
     const [activitySearchQuery, setActivitySearchQuery] = useState("");
-    const [expandedActivityFolders, setExpandedActivityFolders] = useState(new Set());
+
     const [costCodeTypes, setCostCodeTypes] = useState([]);
     const [activityGroups, setActivityGroups] = useState([]);
     const [costCodeActivities, setCostCodeActivities] = useState([]);
@@ -40,8 +44,9 @@ const CCMOverview = () => {
         activityGroups: true,
         costCodeActivities: true
     });
+
     const [showAddActivityForm, setShowAddActivityForm] = useState(false);
-    const [showMappingPopover, setShowMappingPopover] = useState(false);
+    const addActivityFormRef = useRef(null);
     const [newActivity, setNewActivity] = useState({
         costCodeTypeId: "",
         activityGroupId: "",
@@ -52,6 +57,8 @@ const CCMOverview = () => {
         uomId: ""
     });
     const [selectedCostCodeType, setSelectedCostCodeType] = useState(null);
+
+    const [showMappingPopover, setShowMappingPopover] = useState(false);
     const [mappingActivities, setMappingActivities] = useState([]);
     const [totalPercentageUsed, setTotalPercentageUsed] = useState(0);
     const [boqTotalAmount, setBoqTotalAmount] = useState(0);
@@ -59,194 +66,298 @@ const CCMOverview = () => {
     const [boqTotalQuantity, setBoqTotalQuantity] = useState(0);
     const [splitType, setSplitType] = useState("quantity");
 
-    const addActivityFormRef = useRef(null);
+    const [pendingMappings, setPendingMappings] = useState([]);
     const [notification, setNotification] = useState(null);
     const [showNotification, setShowNotification] = useState(false);
-    const [pendingMappings, setPendingMappings] = useState([]);
 
     const showAlert = (message, type = "info") => {
         switch (type) {
-            case "error":
-                toast.error(message);
-                break;
-            case "success":
-                toast.success(message);
-                break;
-            case "warning":
-                toast.warning(message);
-                break;
-            default:
-                toast.info(message);
+            case "error": toast.error(message); break;
+            case "success": toast.success(message); break;
+            case "warning": toast.warning(message); break;
+            default: toast.info(message);
         }
     };
-
     const mappingTypes = [
-        {
-            key: "1 : M",
-            title: "One to Many (1 : M)",
-            desc: "Map 1 BOQ item to multiple activities",
-            footer: "BOQ → Activities",
-        },
-        {
-            key: "1 : 1",
-            title: "One to One (1 : 1)",
-            desc: "Map 1 BOQ item to 1 activity",
-            footer: "BOQ → Activity",
-        },
-        {
-            key: "M : 1",
-            title: "Many to One (M : 1)",
-            desc: "Map multiple BOQ items to 1 activity",
-            footer: "BOQ → Activity",
-        },
+        { key: "1 : M", title: "One to Many (1 : M)", desc: "Map 1 BOQ item to multiple activities", footer: "BOQ → Activities" },
+        { key: "1 : 1", title: "One to One (1 : 1)", desc: "Map 1 BOQ item to 1 activity", footer: "BOQ → Activity" },
+        { key: "M : 1", title: "Many to One (M : 1)", desc: "Map multiple BOQ items to 1 activity", footer: "BOQ → Activity" },
     ];
-
     const splitTypes = [
         { id: "rate", name: "Rate" },
         { id: "amount", name: "Amount" },
         { id: "quantity", name: "Quantity" },
         { id: "qty_rate", name: "Quantity & Rate" }
     ];
-    const splitOption = splitTypes.map(type => ({
-        value: type.id,
-        label: type.name
-    }));
-
+    const splitOption = splitTypes.map(t => ({ value: t.id, label: t.name }));
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (showAddActivityForm && addActivityFormRef.current && !addActivityFormRef.current.contains(event.target)) {
+        const handler = (e) => {
+            if (showAddActivityForm && addActivityFormRef.current && !addActivityFormRef.current.contains(e.target)) {
                 handleCancelAddActivity();
             }
         };
-
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
     }, [showAddActivityForm]);
-
-    const getCostCodeTypeFromActivityGroup = (activityGroupId) => {
-        if (!activityGroupId) return "";
-
-        const activityGroup = activityGroups.find(group => group.id === activityGroupId);
-        return activityGroup?.costCodeType?.id || "";
-    };
 
     useEffect(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${projectId}`, {
-            headers: {
-                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                'Content-Type': 'application/json',
-            }
-        }).then(res => {
-            if (res.status === 200) {
-                setProject(res.data);
-            } else {
-                console.error('Failed to fetch project info:', res.status);
-            }
-        }).catch(err => {
-            if (err?.response?.status === 401) {
-                handleUnauthorized();
-            }
-            console.error('Error fetching project info:', err);
-        });
-
-        fetchBOQData();
+            headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' }
+        }).then(r => { if (r.status === 200) setProject(r.data); })
+            .catch(e => { if (e?.response?.status === 401) handleUnauthorized(); });
+        fetchParentBOQData();
         fetchCostCodeTypes();
         fetchActivityGroups();
         fetchCostCodeActivities();
     }, [projectId]);
 
-    const fetchBOQData = () => {
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllBOQ/${projectId}`, {
-            headers: {
-                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            }
-        }).then(res => {
+    const fetchParentBOQData = async () => {
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getParentBoq/${projectId}`, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' }
+            });
             if (res.status === 200) {
-                const allBOQ = res.data || [];
-                processBOQData(allBOQ);
+                setParentBoq(res.data || []);
+                handleParentBoqTree(res.data || []);
             } else {
-                console.error('Failed to fetch BOQ data:', res.status);
+                setParentBoq([]);
             }
-        }).catch(err => {
-            if (err?.response?.status === 401) {
-                handleUnauthorized();
-            }
-            console.error('Error fetching BOQ data:', err);
+        } catch (e) {
+            if (e?.response?.status === 401) handleUnauthorized();
+            setParentBoq([]);
+        }
+    };
+
+    const handleParentBoqTree = (data = parentBoq) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        const map = new Map();
+        data.forEach(p => {
+            map.set(p.id, {
+                ...p,
+                children: p.lastLevel === false ? null : []
+            });
         });
+        setParentTree(Array.from(map.values()));
+    };
+
+    const handleToggle = (parentId) => {
+        setExpandedParentIds(prev => {
+            const n = new Set(prev);
+            if (n.has(parentId)) {
+                n.delete(parentId);
+            } else {
+                n.add(parentId);
+                fetchChildrenBoq(parentId);
+            }
+            return n;
+        });
+    };
+
+    const updateNodeInTree = (tree, nodeId, newProps) => {
+        return tree.map(node => {
+            if (node.id === nodeId) return { ...node, ...newProps };
+            if (Array.isArray(node.children)) {
+                return { ...node, children: updateNodeInTree(node.children, nodeId, newProps) };
+            }
+            return node;
+        });
+    };
+
+    const fetchChildrenBoq = async (parentId) => {
+        const findNode = (tree) => {
+            for (const n of tree) {
+                if (n.id === parentId) return n;
+                if (Array.isArray(n.children)) {
+                    const f = findNode(n.children);
+                    if (f) return f;
+                }
+            }
+            return null;
+        };
+        const node = findNode(parentTree);
+        if (node && node.children !== null) return;
+
+        setParentTree(prev => updateNodeInTree(prev, parentId, { children: 'pending' }));
+
+        try {
+            const res = await axios.get(
+                `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${projectId}/${parentId}`,
+                { headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' } }
+            );
+            if (res.status === 200) {
+                const children = (res.data || []).map(c => ({
+                    ...c,
+                    children: c.lastLevel === false ? null : []
+                }));
+                setParentTree(prev => updateNodeInTree(prev, parentId, { children }));
+            } else {
+                setParentTree(prev => updateNodeInTree(prev, parentId, { children: [] }));
+            }
+        } catch (e) {
+            if (e?.response?.status === 401) navigate('/login');
+            setParentTree(prev => updateNodeInTree(prev, parentId, { children: [] }));
+        }
+    };
+
+    const findBOQItem = (boqId) => {
+        const search = (nodes) => {
+            for (const n of nodes) {
+                if (n.id === boqId) return n;
+                if (Array.isArray(n.children)) {
+                    const f = search(n.children);
+                    if (f) return f;
+                }
+            }
+            return null;
+        };
+        return search(parentTree);
+    };
+
+    const toggleBOQSelection = (boqId) => {
+        if (selectedMappingType === "1 : M" && selectedBOQs.size >= 1 && !selectedBOQs.has(boqId)) {
+            showAlert("One to Many mapping allows only one BOQ item to be selected", "error");
+            return;
+        }
+        setSelectedBOQs(prev => {
+            const n = new Set(prev);
+            n.has(boqId) ? n.delete(boqId) : n.add(boqId);
+            return n;
+        });
+    };
+
+    const filteredBOQTree = useMemo(() => {
+        if (!searchQuery.trim()) return parentTree;
+        const q = searchQuery.toLowerCase().trim();
+        const filter = (nodes) => nodes
+            .map(n => ({ ...n }))
+            .filter(n => {
+                const match = n.boqCode.toLowerCase().includes(q) ||
+                    (n.boqName && n.boqName.toLowerCase().includes(q));
+                if (match) return true;
+                if (Array.isArray(n.children)) {
+                    const fc = filter(n.children);
+                    n.children = fc;
+                    return fc.length > 0;
+                }
+                return false;
+            });
+        return filter(parentTree);
+    }, [parentTree, searchQuery]);
+    const BOQNode = ({ boq, level = 0 }) => {
+        const canExpand = boq.level === 1 || boq.level === 2;
+        const isExpanded = expandedParentIds.has(boq.id);
+        const childrenStatus = boq.children;
+        const isLoading = isExpanded && childrenStatus === 'pending';
+        const hasFetched = Array.isArray(childrenStatus) && childrenStatus.length > 0;
+        const hasNoChildren = Array.isArray(childrenStatus) && childrenStatus.length === 0;
+
+        let leafChildren = [], nonLeafChildren = [];
+        if (hasFetched) {
+            leafChildren = childrenStatus.filter(c => c.lastLevel);
+            nonLeafChildren = childrenStatus.filter(c => !c.lastLevel);
+        }
+        const boqNameDisplay = boq.boqName && boq.boqName.length > 30
+            ? boq.boqName.substring(0, 30) + '...'
+            : boq.boqName;
+
+        const Icon = isExpanded ? DropDown : ClosedList;
+
+        if (boq.lastLevel) {
+            return (
+                <div className="d-flex align-items-center py-2">
+                    <div className="d-flex align-items-center p-2 rounded-2" onClick={() => toggleBOQSelection(boq.id)} style={{ backgroundColor: `${selectedBOQs.has(boq.id) ? '#EFF6FFCC' : 'transparent'}`, border: `${selectedBOQs.has(boq.id) ? '1px solid #2563EB' : 'none'}`}}>
+                        <SmallFolder  />
+                        <div className="d-flex flex-grow-1 ms-2" >
+                            <div className="d-flex justify-content-between">
+                                <span className="me-2 text-nowrap">{boq.boqCode}</span>
+                                <span>-</span>
+                                <span className="ms-2 text-nowrap" title={boq.boqName}>{boqNameDisplay}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div
+                className={`mb-1 ${level === 0 ? "" : "border-start"} border-1 ps-3 py-2 pe-3 w-100`}
+                style={{ borderColor: '#0051973D' }}
+            >
+                <div
+                    className="d-flex justify-content-between align-items-center cursor-pointer"
+                    onClick={() => canExpand && handleToggle(boq.id)}
+                    style={{ cursor: canExpand ? 'pointer' : 'default' }}
+                >
+                    <div className="d-flex align-items-center">
+                        <span className="me-2">{canExpand ? <Icon /> : <span style={{ width: 20 }}></span>}</span>
+                        {boq.level === 1 ? <LargeFolder /> : <MediumFolder />}
+                        <span className="fw-bold me-md-2 ms-2 text-nowrap" style={{ maxWidth: "80px" }}>
+                            {boq.boqCode}
+                        </span>
+                        <span>-</span>
+                        <span className="flex-start fw-bold ms-2 text-nowrap" style={{ maxWidth: "400px" }} title={boq.boqName}>
+                            {boqNameDisplay}
+                        </span>
+                    </div>
+                </div>
+
+                {isExpanded && canExpand && (
+                    <div className="ms-3">
+                        {isLoading && <div className="text-muted py-2">Loading...</div>}
+                        {hasFetched && (
+                            <>
+                                {leafChildren.length > 0 && (
+                                    leafChildren.map(c => (
+                                        <BOQNode key={c.id} boq={c} level={level + 1} />
+                                    ))
+                                )}
+                                {nonLeafChildren.map(c => (
+                                    <BOQNode key={c.id} boq={c} level={level + 1} />
+                                ))}
+                            </>
+                        )}
+                        {hasNoChildren && <div className="text-muted py-2">No items found.</div>}
+                    </div>
+                )}
+            </div>
+        );
     };
 
     const fetchCostCodeTypes = () => {
-        setLoading(prev => ({ ...prev, costCodes: true }));
+        setLoading(p => ({ ...p, costCodes: true }));
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/costCodeTypes`, {
-            headers: {
-                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            }
-        }).then(res => {
-            if (res.status === 200) {
-                setCostCodeTypes(res.data || []);
-            } else {
-                console.error('Failed to fetch cost code types:', res.status);
-            }
-        }).catch(err => {
-            if (err?.response?.status === 401) {
-                handleUnauthorized();
-            }
-            console.error('Error fetching cost code types:', err);
-        }).finally(() => {
-            setLoading(prev => ({ ...prev, costCodes: false }));
-        });
+            headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' }
+        }).then(r => { if (r.status === 200) setCostCodeTypes(r.data || []); })
+            .catch(e => { if (e?.response?.status === 401) handleUnauthorized(); })
+            .finally(() => setLoading(p => ({ ...p, costCodes: false })));
     };
 
     const fetchActivityGroups = () => {
-        setLoading(prev => ({ ...prev, activityGroups: true }));
+        setLoading(p => ({ ...p, activityGroups: true }));
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/activityGroups`, {
             headers: {
                 Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                 'Content-Type': 'application/json'
             }
-        }).then(res => {
-            if (res.status === 200) {
-                setActivityGroups(res.data || []);
-            } else {
-                console.error('Failed to fetch activity groups:', res.status);
-            }
-        }).catch(err => {
-            if (err?.response?.status === 401) {
+        }).then(r => {
+            if (r.status === 200)
+                setActivityGroups(r.data || []);
+        }).catch(e => {
+            if (e?.response?.status === 401)
                 handleUnauthorized();
-            }
-            console.error('Error fetching activity groups:', err);
-        }).finally(() => {
-            setLoading(prev => ({ ...prev, activityGroups: false }));
-        });
+        }).finally(() =>
+            setLoading(p => ({ ...p, activityGroups: false }))
+        );
     };
 
     const fetchCostCodeActivities = () => {
-        setLoading(prev => ({ ...prev, costCodeActivities: true }));
+        setLoading(p => ({ ...p, costCodeActivities: true }));
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/costCodeActivity/${projectId}`, {
-            headers: {
-                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            }
-        }).then(res => {
-            if (res.status === 200) {
-                setCostCodeActivities(res.data || []);
-            } else {
-                console.error('Failed to fetch cost code activities:', res.status);
-                setCostCodeActivities([]);
-            }
-        }).catch(err => {
-            if (err?.response?.status === 401) {
-                handleUnauthorized();
-            }
-            console.error('Error fetching cost code activities:', err);
-            setCostCodeActivities([]);
-        }).finally(() => {
-            setLoading(prev => ({ ...prev, costCodeActivities: false }));
-        });
+            headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' }
+        }).then(r => { if (r.status === 200) setCostCodeActivities(r.data || []); })
+            .catch(e => { if (e?.response?.status === 401) handleUnauthorized(); })
+            .finally(() => setLoading(p => ({ ...p, costCodeActivities: false })));
     };
 
     const addActivityGroup = () => {
@@ -254,43 +365,123 @@ const CCMOverview = () => {
             showAlert("Please fill all required fields", "error");
             return;
         }
-
-        const activityGroupData = {
+        const payload = {
             costCodeType: { id: newActivity.costCodeTypeId },
             activityCode: newActivity.activityCode,
             activityName: newActivity.activityName,
         };
-
-        axios.post(`${import.meta.env.VITE_API_BASE_URL}/activityGroup/add`, activityGroupData, {
-            headers: {
-                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            }
-        }).then(res => {
-            if (res.status === 200) {
-                setNewActivity({
-                    costCodeTypeId: "",
-                    activityGroupId: "",
-                    activityCode: "",
-                    activityName: "",
-                    quantity: 0,
-                    rate: 0,
-                    uomId: ""
-                });
+        axios.post(`${import.meta.env.VITE_API_BASE_URL}/activityGroup/add`, payload, {
+            headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' }
+        }).then(r => {
+            if (r.status === 200) {
+                setNewActivity({ costCodeTypeId: "", activityGroupId: "", activityCode: "", activityName: "", quantity: 0, rate: 0, uomId: "" });
                 setShowAddActivityForm(false);
                 fetchActivityGroups();
                 showAlert('Activity group added successfully!', "success");
-            } else {
-                console.error('Failed to add activity group:', res.status);
-                showAlert('Failed to add activity group', "error");
             }
-        }).catch(err => {
-            if (err?.response?.status === 401) {
-                handleUnauthorized();
-            }
-            console.error('Error adding activity group:', err);
-            showAlert('Error adding activity group: ' + (err.response?.data?.message || err.message), "error");
+        }).catch(e => {
+            if (e?.response?.status === 401) handleUnauthorized();
+            showAlert('Error adding activity group: ' + (e.response?.data?.message || e.message), "error");
         });
+    };
+
+    const handleCancelAddActivity = () => {
+        setShowAddActivityForm(false);
+        setNewActivity({ costCodeTypeId: "", activityGroupId: "", activityCode: "", activityName: "", quantity: 0, rate: 0, uomId: "" });
+        setSelectedCostCodeType(null);
+    };
+
+    const handleRightArrowClick = () => {
+        if (selectedBOQs.size === 0) {
+            showAlert("Please select at least one BOQ item to map", "error");
+            return;
+        }
+
+        if (selectedMappingType === "1 : M" && selectedBOQs.size !== 1) {
+            showAlert("One to Many mapping requires exactly one BOQ item to be selected", "error");
+            return;
+        }
+
+        if (selectedActivities.size !== 1) {
+            showAlert("Please select exactly one activity group", "error");
+            return;
+        }
+
+        const boqCode = Array.from(selectedBOQs)[0];
+        const boqItem = findBOQItem(boqCode);
+        console.debug(boqItem);
+        const activityGroupId = Array.from(selectedActivities)[0];
+        const activityGroup = activityGroups.find(group => group.id === activityGroupId);
+
+        setBoqTotalAmount(boqItem.totalAmount || 0);
+        setBoqTotalQuantity(boqItem.quantity || 1);
+        setBoqTotalRate(boqItem.totalRate || 0);
+
+        if (selectedMappingType === "1 : 1") {
+            saveCostCodeMapping();
+        } else if (selectedMappingType === "1 : M") {
+            setMappingActivities([{
+                activityCode: activityGroup.activityCode,
+                activityName: activityGroup.activityName,
+                quantity: 0,
+                rate: 0,
+                splitType: "quantity",
+                qtypercentage: "",
+                qtyvalue: "",
+                ratepercentage: "",
+                ratevalue: "",
+                amountpercentage: "",
+                amountvalue: ""
+            }]);
+            setTotalPercentageUsed(0);
+            setShowMappingPopover(true);
+        } else if (selectedMappingType === "M : 1") {
+            setMappingActivities([{
+                activityCode: activityGroup.activityCode,
+                activityName: activityGroup.activityName,
+                quantity: 1,
+                rate: 0,
+                splitType: "",
+                percentage: "",
+                value: ""
+            }]);
+            setShowMappingPopover(true);
+        }
+    };
+    const handleLeftArrowClick = () => {
+        if (selectedActivities.size > 0) {
+            const activitiesToRemove = Array.from(selectedActivities);
+
+            setCostCodeActivities(prev =>
+                prev.filter(activity => !activitiesToRemove.includes(activity.id))
+            );
+
+            setPendingMappings(prev =>
+                prev.filter(mapping => !activitiesToRemove.includes(mapping.id))
+            );
+        }
+
+        setSelectedActivities(new Set());
+        setSelectedCostCodeType(null);
+    };
+
+
+    const handleActivitySelection = (actId, checked) => {
+        setSelectedActivities(prev => {
+            const n = new Set(prev);
+            checked ? n.add(actId) : n.delete(actId);
+            return n;
+        });
+    };
+
+    const handleCostCodeTypeSelection = (cctId) => {
+        setSelectedActivities(new Set());
+        setSelectedCostCodeType(prev => prev === cctId ? null : cctId);
+    };
+
+    const getCostCodeTypeFromActivityGroup = (agId) => {
+        const g = activityGroups.find(x => x.id === agId);
+        return g?.costCodeType?.id || "";
     };
 
     const saveCostCodeMapping = () => {
@@ -363,8 +554,9 @@ const CCMOverview = () => {
                     amountSplitPercentage: parseFloat(activity.amountpercentage),
                 });
             });
-        } else if (selectedMappingType === "M : 1") {
-            const activity = mappingActivities[0]; 
+        } 
+        else if (selectedMappingType === "M : 1") {
+            const activity = mappingActivities[0];
             const boqItems = Array.from(selectedBOQs).map((boqCode) => findBOQItem(boqCode));
 
             const uniqueUoms = [...new Set(boqItems.map(item => item.uom.id))];
@@ -379,15 +571,15 @@ const CCMOverview = () => {
                 avgQty = boqItems.reduce((sum, item) => sum + (item.quantity || 0), 0) / boqItems.length;
                 uomId = boqItems[0].uom.id;
             } else {
-                
+
                 avgRate = 0;
                 avgQty = 0;
-                uomId = null; 
+                uomId = null;
             }
 
             costCodeDtos.push({
                 projectId: projectId,
-                boqId: boqItems.map(item => item.id),   
+                boqId: boqItems.map(item => item.id),
                 activityCode: activity.activityCode,
                 activityName: activity.activityName,
                 quantity: avgQty,
@@ -410,7 +602,7 @@ const CCMOverview = () => {
         const newMappings = costCodeDtos.map(dto => ({
             id: `pending-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             ...dto,
-            boq: findBOQItemByCode(dto.boqId[0]),
+            boq: findBOQItem(dto.boqId[0]),
             activityGroup: activityGroups.find(group => group.id === dto.activityGroupId) || null,
             isPending: true
         }));
@@ -426,270 +618,7 @@ const CCMOverview = () => {
         showAlert(`Cost code mapping configured for ${selectedBOQs.size} BOQ items!`, "success");
     };
 
-    const findBOQItemByCode = (boqCode) => {
-        const findInTree = (nodes) => {
-            for (const node of nodes) {
-                if (node.boqCode === boqCode) return node;
-                if (node.children && node.children.length > 0) {
-                    const found = findInTree(node.children);
-                    if (found) return found;
-                }
-            }
-            return null;
-        };
-
-        return findInTree(boqTree);
-    };
-
-    const findBOQItem = (boqCode) => {
-        const findInTree = (nodes) => {
-            for (const node of nodes) {
-                if (node.boqCode === boqCode) return node;
-                if (node.children && node.children.length > 0) {
-                    const found = findInTree(node.children);
-                    if (found) return found;
-                }
-            }
-            return null;
-        };
-
-        return findInTree(boqTree);
-    };
-
-    const deleteCostCodeActivity = (costCodeId) => {
-        if (costCodeId.startsWith('pending-')) {
-            setCostCodeActivities(prev => prev.filter(activity => activity.id !== costCodeId));
-            setPendingMappings(prev => prev.filter(mapping => mapping.id !== costCodeId));
-            showAlert("Pending mapping removed successfully!", "success");
-            return;
-        }
-
-        setNotification({
-            message: "Are you sure you want to delete this cost code activity?",
-            type: "confirm",
-            onConfirm: () => {
-                axios.delete(`${import.meta.env.VITE_API_BASE_URL}/costCode/delete/${costCodeId}`, {
-                    headers: {
-                        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                        'Content-Type': 'application/json'
-                    }
-                }).then(res => {
-                    if (res.status === 200) {
-                        showAlert("Cost code activity deleted successfully!", "success");
-                        fetchCostCodeActivities();
-                    } else {
-                        console.error('Failed to delete cost code activity:', res.status);
-                        showAlert('Failed to delete cost code activity', "error");
-                    }
-                }).catch(err => {
-                    if (err?.response?.status === 401) {
-                        handleUnauthorized();
-                    }
-                    console.error('Error deleting cost code activity:', err);
-                    showAlert('Error deleting cost code activity: ' + (err.response?.data?.message || err.message), "error");
-                });
-            },
-            onCancel: () => setShowNotification(false)
-        });
-        setShowNotification(true);
-    };
-
-    const handleCancelAddActivity = () => {
-        setShowAddActivityForm(false);
-        setNewActivity({
-            costCodeTypeId: "",
-            activityGroupId: "",
-            activityCode: "",
-            activityName: "",
-            quantity: 0,
-            rate: 0,
-            uomId: ""
-        });
-        setSelectedCostCodeType(null);
-    };
-
-    const handleRightArrowClick = () => {
-        if (selectedBOQs.size === 0) {
-            showAlert("Please select at least one BOQ item to map", "error");
-            return;
-        }
-
-        if (selectedMappingType === "1 : M" && selectedBOQs.size !== 1) {
-            showAlert("One to Many mapping requires exactly one BOQ item to be selected", "error");
-            return;
-        }
-
-        if (selectedActivities.size !== 1) {
-            showAlert("Please select exactly one activity group", "error");
-            return;
-        }
-
-        const boqCode = Array.from(selectedBOQs)[0];
-        const boqItem = findBOQItem(boqCode);
-        const activityGroupId = Array.from(selectedActivities)[0];
-        const activityGroup = activityGroups.find(group => group.id === activityGroupId);
-
-        setBoqTotalAmount(boqItem.totalAmount || 0);
-        setBoqTotalQuantity(boqItem.quantity || 1);
-        setBoqTotalRate(boqItem.totalRate || 0);
-
-        if (selectedMappingType === "1 : 1") {
-            saveCostCodeMapping();
-        } else if (selectedMappingType === "1 : M") {
-            setMappingActivities([{
-                activityCode: activityGroup.activityCode,
-                activityName: activityGroup.activityName,
-                quantity: 0,
-                rate: 0,
-                splitType: "quantity",
-                qtypercentage: "",
-                qtyvalue: "",
-                ratepercentage: "",
-                ratevalue: "",
-                amountpercentage: "",
-                amountvalue: ""
-            }]);
-            setTotalPercentageUsed(0);
-            setShowMappingPopover(true);
-        } else if (selectedMappingType === "M : 1") {
-            setMappingActivities([{
-                activityCode: activityGroup.activityCode,
-                activityName: activityGroup.activityName,
-                quantity: 1,
-                rate: 0,
-                splitType: "",
-                percentage: "",
-                value: ""
-            }]);
-            setShowMappingPopover(true);
-        }
-    };
-
-    const handleLeftArrowClick = () => {
-        if (selectedActivities.size > 0) {
-            const activitiesToRemove = Array.from(selectedActivities);
-
-            setCostCodeActivities(prev =>
-                prev.filter(activity => !activitiesToRemove.includes(activity.id))
-            );
-
-            setPendingMappings(prev =>
-                prev.filter(mapping => !activitiesToRemove.includes(mapping.id))
-            );
-        }
-
-        setSelectedActivities(new Set());
-        setSelectedCostCodeType(null);
-    };
-
-    const handleActivitySelection = (activityId, isSelected) => {
-        setSelectedActivities(prev => {
-            const newSet = new Set(prev);
-            if (isSelected) {
-                newSet.add(activityId);
-                setSelectedCostCodeType(null);
-            } else {
-                newSet.delete(activityId);
-            }
-            return newSet;
-        });
-    };
-
-    const handleCostCodeTypeSelection = (costCodeTypeId) => {
-        setSelectedActivities(new Set());
-
-        if (selectedCostCodeType === costCodeTypeId) {
-            setSelectedCostCodeType(null);
-        } else {
-            setSelectedCostCodeType(costCodeTypeId);
-        }
-    };
-
-    const handleActivityGroupSelection = (activityGroupId) => {
-        setSelectedActivities(prev => {
-            const newSet = new Set();
-            setSelectedCostCodeType(null);
-
-            if (prev.has(activityGroupId)) {
-                return newSet;
-            }
-
-            newSet.add(activityGroupId);
-            return newSet;
-        });
-    };
-
-    const processBOQData = (allBOQ) => {
-        const codeToBOQ = new Map();
-        allBOQ.forEach(b => codeToBOQ.set(b.boqCode, { ...b, children: [] }));
-
-        allBOQ.forEach(b => {
-            if (b.parentBOQ && b.parentBOQ.boqCode) {
-                const parent = codeToBOQ.get(b.parentBOQ.boqCode);
-                if (parent) {
-                    parent.children.push(codeToBOQ.get(b.boqCode));
-                }
-            }
-        });
-
-        const roots = allBOQ.filter(b => !b.parentBOQ).map(b => codeToBOQ.get(b.boqCode));
-
-        const calculateTotals = (node) => {
-            if (node.children && node.children.length > 0) {
-                node.calculatedTotal = node.children.reduce((sum, child) => sum + calculateTotals(child), 0);
-            } else {
-                node.calculatedTotal = node.totalAmount || 0;
-            }
-            return node.calculatedTotal;
-        };
-
-        roots.forEach(root => calculateTotals(root));
-
-        setBoqTree(roots);
-    };
-
-    const handleBOQSelection = (boqCode, isSelected) => {
-        if (selectedMappingType === "1 : M" && isSelected && selectedBOQs.size >= 1) {
-            showAlert("One to Many mapping allows only one BOQ item to be selected", "error");
-            return;
-        }
-
-        setSelectedBOQs(prev => {
-            const newSet = new Set(prev);
-            if (isSelected) {
-                newSet.add(boqCode);
-            } else {
-                newSet.delete(boqCode);
-            }
-            return newSet;
-        });
-    };
-
-    const toggleFolder = (boqCode) => {
-        setExpandedFolders(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(boqCode)) {
-                newSet.delete(boqCode);
-            } else {
-                newSet.add(boqCode);
-            }
-            return newSet;
-        });
-    };
-
-    const toggleActivityFolder = (folderId) => {
-        setExpandedActivityFolders(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(folderId)) {
-                newSet.delete(folderId);
-            } else {
-                newSet.add(folderId);
-            }
-            return newSet;
-        });
-    };
-
-    const handleSaveMapping = () => {
+    const handleSaveMapping = async () => {
         if (pendingMappings.length === 0) {
             showAlert("No pending mappings to save. Please configure mappings first.", "error");
             return;
@@ -721,70 +650,80 @@ const CCMOverview = () => {
             });
         });
 
-
         const savePromises = [];
 
         if (mappingsByType["1 : 1"].length > 0) {
-            console.log("1 : 1 Mappings to save.");
             savePromises.push(
-                axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/saveOneToOne`, mappingsByType["1 : 1"], {
-                    headers: {
-                        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                        'Content-Type': 'application/json'
+                axios.post(
+                    `${import.meta.env.VITE_API_BASE_URL}/costCode/saveOneToOne`,
+                    mappingsByType["1 : 1"],
+                    {
+                        headers: {
+                            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                            "Content-Type": "application/json"
+                        }
                     }
-                })
+                )
             );
         }
 
         if (mappingsByType["1 : M"].length > 0) {
-            console.log("1 : M Mappings to save.");
             savePromises.push(
-                axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/saveOneToMany`, mappingsByType["1 : M"], {
-                    headers: {
-                        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                        'Content-Type': 'application/json'
+                axios.post(
+                    `${import.meta.env.VITE_API_BASE_URL}/costCode/saveOneToMany`,
+                    mappingsByType["1 : M"],
+                    {
+                        headers: {
+                            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                            "Content-Type": "application/json"
+                        }
                     }
-                })
+                )
             );
         }
 
         if (mappingsByType["M : 1"].length > 0) {
-            console.log("M : 1 Mappings to save.");
             savePromises.push(
-                axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/saveManyToOne`, mappingsByType["M : 1"], {
-                    headers: {
-                        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                        'Content-Type': 'application/json'
+                axios.post(
+                    `${import.meta.env.VITE_API_BASE_URL}/costCode/saveManyToOne`,
+                    mappingsByType["M : 1"],
+                    {
+                        headers: {
+                            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                            "Content-Type": "application/json"
+                        }
                     }
-                })
+                )
             );
         }
 
-        Promise.all(savePromises)
-            .then(responses => {
-                const allSuccess = responses.every(res => res.status === 200);
-                if (allSuccess) {
-                    showAlert(`All cost code activities saved successfully!`, "success");
-                    setCostCodeActivities(prev =>
-                        prev.map(activity => ({ ...activity, isPending: false }))
-                    );
-                    setPendingMappings([]);
-                    fetchCostCodeActivities();
-                } else {
+        try {
+            const responses = await Promise.all(savePromises);
+            const allSuccess = responses.every(r => r.status === 200 || r.status === 201);
 
-                    console.error('Failed to save some cost code mappings');
-                    showAlert('Failed to save some cost code mappings', "error");
-                }
-            })
-            .catch(err => {
-                if (err?.response?.status === 401) {
-                    handleUnauthorized();
-                }
-                console.error('Error saving cost code mappings:', err);
-                showAlert('Error saving cost code mappings: ' + (err.response?.data?.message || err.message), "error");
-            });
+            if (allSuccess) {
+                showAlert("All cost code activities saved successfully!", "success");
+                setCostCodeActivities(prev =>
+                    prev.map(act => ({ ...act, isPending: false }))
+                );
+
+                setPendingMappings([]);
+                fetchCostCodeActivities();
+            } else {
+                showAlert("Failed to save some cost code mappings", "error");
+            }
+        } catch (err) {
+            if (err?.response?.status === 401) {
+                handleUnauthorized();
+            }
+            console.error("Error saving cost code mappings:", err);
+            showAlert(
+                "Error saving cost code mappings: " +
+                (err.response?.data?.message || err.message),
+                "error"
+            );
+        }
     };
-
     const handleReset = () => {
         setSelectedMappingType("1 : M");
         setSelectedBOQs(new Set());
@@ -796,10 +735,136 @@ const CCMOverview = () => {
         setSelectedCostCodeType(null);
         setMappingActivities([]);
         setPendingMappings([]);
-        setCostCodeActivities(prev => prev.filter(activity => !activity.isPending));
+        setCostCodeActivities(prev =>
+            prev.filter(activity => !activity.isPending)
+        );
+    };
+    const CostCodeTypeNode = ({ costCodeTypeId, data }) => {
+        const isExpanded = expandedActivityFolders.has(costCodeTypeId);
+        const isSelected = selectedCostCodeType === costCodeTypeId;
+
+        return (
+            <div className="mb-3">
+                <div
+                    className={`d-flex align-items-center cursor-pointer py-2 ${isSelected ? 'bg-primary bg-opacity-10 border border-primary rounded' : ''}`}
+                    onClick={() => handleCostCodeTypeSelection(costCodeTypeId)}
+                >
+                    <span className="me-2" onClick={e => { e.stopPropagation(); toggleActivityFolder(costCodeTypeId); }}>
+                        {isExpanded ? <DropDown /> : <ClosedList />}
+                    </span>
+                    <LargeFolder />
+                    <div className="d-flex flex-grow-1 ms-2">
+                        <span className="fw-bold">{data.costCodeType?.costCodeName || 'Uncategorized'}</span>
+                    </div>
+                </div>
+                {isExpanded && data.activityGroups.map(g => <ActivityGroupNode key={g.id} group={g} />)}
+            </div>
+        );
+    };
+    const handleActivityGroupSelection = (activityGroupId) => {
+        setSelectedActivities(prev => {
+            const newSet = new Set();
+            setSelectedCostCodeType(null);
+
+            if (prev.has(activityGroupId)) {
+                return newSet;
+            }
+
+            newSet.add(activityGroupId);
+            return newSet;
+        });
+    };
+    const ActivityGroupNode = ({ group }) => {
+        const isExpanded = expandedActivityFolders.has(group.id);
+        const isSelected = selectedActivities.has(group.id);
+        const groupActivities = costCodeActivities.filter(activity =>
+            activity.activityGroup && activity.activityGroup.id === group.id
+        );
+
+        const handleFolderToggle = (e) => {
+            e.stopPropagation();
+            toggleActivityFolder(group.id);
+        };
+
+        const handleActivityGroupClick = (e) => {
+            e.stopPropagation();
+            handleActivityGroupSelection(group.id);
+        };
+
+        return (
+            <div className="mb-2">
+                <div
+                    className={`d-flex align-items-center cursor-pointer py-2 rounded-2`}
+                    onClick={handleActivityGroupClick}
+                    style={{ backgroundColor: `${selectedActivities.has(group.id) ? '#EFF6FFCC' : 'transparent'}`, border: `${selectedActivities.has(group.id) ? '1px solid #2563EB' : 'none'}`}}
+                >
+                    <span className="me-2" onClick={handleFolderToggle}>
+                        {isExpanded ? <span className="d-flex"><DropDown /> <MediumFolder className="mt-2" /> </span> : <span className="d-flex"><ClosedList /> <MediumFolder className="mt-2" /> </span>}
+                    </span>
+                    <div className="d-flex flex-grow-1 ms-2" style={{ minWidth: 0 }}>
+                        <div className="d-flex justify-content-between">
+                            <span className="me-2 text-nowrap">{group.activityCode}</span>
+                            <span>-</span>
+                            <span className="ms-2 text-nowrap">{group.activityName}</span>
+                        </div>
+                    </div>
+                </div>
+                {isExpanded && groupActivities.length > 0 && (
+                    <div className="ms-4 mt-2">
+                        {groupActivities.map((activity) => (
+                            <CostCodeActivityNode key={activity.id} activity={activity} />
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
     };
 
-    const addMappingActivity = () => {
+    const CostCodeActivityNode = ({ activity }) => {
+        const isSelected = selectedActivities.has(activity.id);
+        const isMapped = !activity.isPending;
+
+        const handleCheckboxChange = (e) => {
+            if (!isMapped) {
+                handleActivitySelection(activity.id, e.target.checked);
+            }
+        };
+
+        return (
+            <div className="d-flex align-items-center py-2">
+                {!isMapped && (
+                    <input
+                        type="checkbox"
+                        className="form-check-input flex-shrink-0 me-2"
+                        style={{ borderColor: '#0051973D', width: '18px', height: '18px' }}
+                        checked={isSelected}
+                        onChange={handleCheckboxChange}
+                    />
+                )}
+                {isMapped && <span style={{ width: '30px' }}></span>}
+                <div className="d-flex align-items-center flex-grow-1">
+                    <FileText size={16} className="text-muted me-2" />
+                    <div className="d-flex flex-grow-1" style={{ minWidth: 0 }}>
+                        <div className="d-flex justify-content-between">
+                            <span className="me-2 text-nowrap">{activity.activityCode}</span>
+                            <span>-</span>
+                            <span className="ms-2 text-nowrap">{activity.activityName}</span>
+                        </div>
+                    </div>
+                    {isMapped && (
+                        <button
+                            className="btn btn-sm ms-2"
+                            onClick={() => deleteCostCodeActivity(activity.id)}
+                            title="Delete mapping"
+                        >
+                            <DeleteIcon size={14} />
+                        </button>
+                    )}
+                </div>
+            </div>
+        );
+    };
+     const addMappingActivity = () => {
         const boqCode = Array.from(selectedBOQs)[0];
         const boqItem = findBOQItem(boqCode);
         const remainingPercentage = 100 - totalPercentageUsed;
@@ -828,8 +893,6 @@ const CCMOverview = () => {
             }
         ]);
     };
-
-
     const removeMappingActivity = (index) => {
         if ((selectedMappingType === "1 : 1" || selectedMappingType === "M : 1") && mappingActivities.length <= 1) {
             showAlert(`Cannot remove the only activity for ${selectedMappingType} mapping`, "error");
@@ -842,7 +905,6 @@ const CCMOverview = () => {
         setMappingActivities(updatedActivities);
         setTotalPercentageUsed(prev => prev - removedPercentage);
     };
-
     const updateMappingActivity = (index, field, value) => {
         const updatedActivities = [...mappingActivities];
         const boqCode = Array.from(selectedBOQs)[0];
@@ -914,321 +976,29 @@ const CCMOverview = () => {
     };
 
 
-    const filteredBOQTree = useMemo(() => {
-        if (!searchQuery.trim()) {
-            return boqTree;
-        }
-
-        const query = searchQuery.toLowerCase().trim();
-
-        const filterTree = (nodes) => {
-            return nodes
-                .map(node => ({ ...node }))
-                .filter(node => {
-                    if (
-                        node.boqCode.toLowerCase().includes(query) ||
-                        (node.boqName && node.boqName.toLowerCase().includes(query))
-                    ) {
-                        return true;
-                    }
-
-                    if (node.children && node.children.length > 0) {
-                        const filteredChildren = filterTree(node.children);
-                        node.children = filteredChildren;
-                        return filteredChildren.length > 0;
-                    }
-
-                    return false;
-                });
-        };
-
-        return filterTree(boqTree);
-    }, [boqTree, searchQuery]);
-
-    const filteredCostCodeActivities = useMemo(() => {
-        if (!activitySearchQuery.trim()) {
-            return costCodeActivities;
-        }
-
-        const query = activitySearchQuery.toLowerCase().trim();
-
-        return costCodeActivities.filter(activity =>
-            (activity.activityCode && activity.activityCode.toLowerCase().includes(query)) ||
-            (activity.activityName && activity.activityName.toLowerCase().includes(query)) ||
-            (activity.activityGroup && activity.activityGroup.activityCode &&
-                activity.activityGroup.activityCode.toLowerCase().includes(query)) ||
-            (activity.activityGroup && activity.activityGroup.activityName &&
-                activity.activityGroup.activityName.toLowerCase().includes(query))
-        );
-    }, [costCodeActivities, activitySearchQuery]);
+    const [expandedActivityFolders, setExpandedActivityFolders] = useState(new Set());
+    const toggleActivityFolder = (id) => {
+        setExpandedActivityFolders(prev => {
+            const n = new Set(prev);
+            n.has(id) ? n.delete(id) : n.add(id);
+            return n;
+        });
+    };
 
     const activityGroupsByCostCodeType = useMemo(() => {
         const grouped = {};
-
-        costCodeTypes.forEach(type => {
-            grouped[type.id] = {
-                costCodeType: type,
-                activityGroups: []
-            };
+        costCodeTypes.forEach(t => grouped[t.id] = { costCodeType: t, activityGroups: [] });
+        activityGroups.forEach(g => {
+            const key = g.costCodeType?.id || 'uncategorized';
+            if (!grouped[key]) grouped[key] = { costCodeType: g.costCodeType || { id: 'uncategorized', costCodeName: 'Uncategorized' }, activityGroups: [] };
+            grouped[key].activityGroups.push(g);
         });
-
-        activityGroups.forEach(group => {
-            const costCodeTypeId = group.costCodeType?.id || 'uncategorized';
-
-            if (!grouped[costCodeTypeId]) {
-                grouped[costCodeTypeId] = {
-                    costCodeType: group.costCodeType || { id: 'uncategorized', costCodeName: 'Uncategorized' },
-                    activityGroups: []
-                };
-            }
-
-            grouped[costCodeTypeId].activityGroups.push(group);
-        });
-
         return grouped;
     }, [activityGroups, costCodeTypes]);
 
-    const BOQNode = ({ boq, level = 0 }) => {
-        const hasChildren = boq.children && boq.children.length > 0;
-        const isSelected = selectedBOQs.has(boq.boqCode);
-        const isExpanded = expandedFolders.has(boq.boqCode);
-        const isMapped = costCodeActivities.some(activity => activity.boq && activity.boq.boqCode === boq.boqCode);
-
-        const handleCheckboxChange = (e) => {
-            handleBOQSelection(boq.boqCode, e.target.checked);
-        };
-
-        const handleFolderToggle = (e) => {
-            e.stopPropagation();
-            if (hasChildren) {
-                toggleFolder(boq.boqCode);
-            }
-        };
-
-        const getIcon = () => {
-            if (!hasChildren) return <FileText size={16} className="text-muted me-1" />;
-
-            if (level === 0) {
-                return <LargeFolder />;
-            } else if (level === 1) {
-                return <MediumFolder />;
-            } else {
-                return <SmallFolder />;
-            }
-        };
-
-        if (hasChildren) {
-            return (
-                <div
-                    className={`mb-1 ${level === 0 ? " " : "border-start"} border-1 ps-3 py-2 pe-3 w-100`}
-                    style={{ borderColor: '#0051973D' }}
-                >
-                    <div
-                        className="d-flex justify-content-between align-items-center cursor-pointer"
-                        onClick={handleFolderToggle}
-                        style={{ cursor: 'pointer' }}
-                    >
-                        <div className="d-flex justify-content-between align-items-center">
-                            <div className="d-flex align-items-center mb-1">
-                                <span className="me-2">
-                                    {isExpanded ? <DropDown /> : <ClosedList />}
-                                </span>
-                                <span>{getIcon()}</span>
-                                <span className="fw-bold me-md-2 ms-2 text-nowrap" style={{ maxWidth: "80px" }}>
-                                    {boq.boqCode}
-                                </span>
-                                <span>-</span>
-                                <span className="flex-start fw-bold ms-2 text-nowrap" style={{ maxWidth: "400px" }}>
-                                    {boq.boqName}
-                                </span>
-                                {isMapped && <Check size={16} className="text-success ms-2" />}
-                            </div>
-                        </div>
-                    </div>
-                    {isExpanded && (
-                        <div className="ms-3">
-                            {boq.children.map((child, index) => (
-                                <BOQNode key={index} boq={child} level={level + 1} />
-                            ))}
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        return (
-            <div className="d-flex align-items-center py-2">
-                <input
-                    type="checkbox"
-                    className="form-check-input flex-shrink-0"
-                    style={{ borderColor: '#0051973D', width: '18px', height: '18px' }}
-                    checked={isSelected}
-                    onChange={handleCheckboxChange}
-                />
-                <div className="d-flex align-items-center flex-grow-1 pt-1">
-                    <span style={{ width: '16px' }}></span>
-                    <SmallFolder style={{ minWidth: '16px' }} />
-                    <div className="d-flex flex-grow-1 ms-2" style={{ minWidth: 0 }}>
-                        <div className="d-flex justify-content-between">
-                            <span className=" me-2 text-nowrap" >{boq.boqCode}</span>
-                            <span>-</span>
-                            <span className="ms-2 text-nowrap">{boq.boqName}</span>
-                            {isMapped && <Check size={16} className="text-success ms-2" />}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    const CostCodeTypeNode = ({ costCodeTypeId, data }) => {
-        const isExpanded = expandedActivityFolders.has(costCodeTypeId);
-        const costCodeType = data.costCodeType;
-        const activityGroups = data.activityGroups;
-        const isSelected = selectedCostCodeType === costCodeTypeId;
-
-        const handleFolderToggle = (e) => {
-            e.stopPropagation();
-            toggleActivityFolder(costCodeTypeId);
-        };
-
-        const handleCostCodeTypeClick = (e) => {
-            e.stopPropagation();
-            handleCostCodeTypeSelection(costCodeTypeId);
-        };
-
-        return (
-            <div className="mb-3">
-                <div
-                    className={`d-flex align-items-center cursor-pointer py-2 ${isSelected ? 'bg-primary bg-opacity-10 border border-primary rounded' : ''}`}
-                    onClick={handleCostCodeTypeClick}
-                    style={{ cursor: 'pointer' }}
-                >
-                    <span className="me-2" onClick={handleFolderToggle}>
-                        {isExpanded ? <DropDown /> : <ClosedList />}
-                    </span>
-                    <LargeFolder />
-                    <div className="d-flex flex-grow-1 ms-2">
-                        <span className="fw-bold">{costCodeType?.costCodeName || 'Uncategorized'}</span>
-                    </div>
-                </div>
-                {isExpanded && (
-                    <div className="ms-4 mt-2">
-                        {activityGroups.map((group) => (
-                            <ActivityGroupNode key={group.id} group={group} />
-                        ))}
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    const ActivityGroupNode = ({ group }) => {
-        const isExpanded = expandedActivityFolders.has(group.id);
-        const isSelected = selectedActivities.has(group.id);
-        const groupActivities = costCodeActivities.filter(activity =>
-            activity.activityGroup && activity.activityGroup.id === group.id
-        );
-
-        const handleFolderToggle = (e) => {
-            e.stopPropagation();
-            toggleActivityFolder(group.id);
-        };
-
-        const handleActivityGroupClick = (e) => {
-            e.stopPropagation();
-            handleActivityGroupSelection(group.id);
-        };
-
-        return (
-            <div className="mb-2">
-                <div
-                    className={`d-flex align-items-center cursor-pointer py-2 ${isSelected ? 'bg-primary bg-opacity-10 border border-primary rounded' : ''}`}
-                    onClick={handleActivityGroupClick}
-                    style={{ cursor: 'pointer' }}
-                >
-                    <span className="me-2" onClick={handleFolderToggle}>
-                        {isExpanded ? <span className="d-flex"><DropDown /> <MediumFolder className="mt-2" /> </span> : <span className="d-flex"><ClosedList /> <MediumFolder className="mt-2" /> </span>}
-                    </span>
-                    <div className="d-flex flex-grow-1 ms-2" style={{ minWidth: 0 }}>
-                        <div className="d-flex justify-content-between">
-                            <span className="me-2 text-nowrap">{group.activityCode}</span>
-                            <span>-</span>
-                            <span className="ms-2 text-nowrap">{group.activityName}</span>
-                        </div>
-                    </div>
-                </div>
-                {isExpanded && groupActivities.length > 0 && (
-                    <div className="ms-4 mt-2">
-                        {groupActivities.map((activity) => (
-                            <CostCodeActivityNode key={activity.id} activity={activity} />
-                        ))}
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    const CostCodeActivityNode = ({ activity }) => {
-        const isSelected = selectedActivities.has(activity.id);
-        const isMapped = !activity.isPending;
-
-        const handleCheckboxChange = (e) => {
-            if (!isMapped) {
-                handleActivitySelection(activity.id, e.target.checked);
-            }
-        };
-
-        return (
-            <div className="d-flex align-items-center py-2">
-                {!isMapped && (
-                    <input
-                        type="checkbox"
-                        className="form-check-input flex-shrink-0 me-2"
-                        style={{ borderColor: '#0051973D', width: '18px', height: '18px' }}
-                        checked={isSelected}
-                        onChange={handleCheckboxChange}
-                    />
-                )}
-                {isMapped && <span style={{ width: '30px' }}></span>}
-                <div className="d-flex align-items-center flex-grow-1">
-                    <FileText size={16} className="text-muted me-2" />
-                    <div className="d-flex flex-grow-1" style={{ minWidth: 0 }}>
-                        <div className="d-flex justify-content-between">
-                            <span className="me-2 text-nowrap">{activity.activityCode}</span>
-                            <span>-</span>
-                            <span className="ms-2 text-nowrap">{activity.activityName}</span>
-                        </div>
-                    </div>
-                    {isMapped && (
-                        <button
-                            className="btn btn-sm ms-2"
-                            onClick={() => deleteCostCodeActivity(activity.id)}
-                            title="Delete mapping"
-                        >
-                            <DeleteIcon size={14} />
-                        </button>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
     return (
         <div className="container-fluid">
-            <ToastContainer
-                position="top-right"
-                autoClose={3000}
-                hideProgressBar={false}
-                newestOnTop={false}
-                closeOnClick
-                rtl={false}
-                pauseOnFocusLoss
-                draggable
-                pauseOnHover
-                theme="light"
-            />
-
+            <ToastContainer position="top-right" autoClose={3000} />
             {showNotification && notification && notification.type === "confirm" && (
                 <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                     <div className="modal-dialog modal-dialog-centered">
@@ -1543,7 +1313,6 @@ const CCMOverview = () => {
                     </div>
                 </div>
             )}
-
             <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-3 mt-2 mb-3">
                 <div className="ms-3">
                     <ArrowLeft size={20} onClick={() => window.history.back()} style={{ cursor: 'pointer' }} />
@@ -1552,13 +1321,12 @@ const CCMOverview = () => {
                     <span className="fw-bold text-start ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</span>
                 </div>
             </div>
-
-            <div className="row bg-white rounded-3 ms-4 me-4 py-4 ps-4 mt-3 pe-4 mb-4 " style={{ border: '0.5px solid #0051973D' }}>
+            <div className="row bg-white rounded-3 ms-4 me-4 py-4 ps-4 mt-3 pe-4 mb-4" style={{ border: '0.5px solid #0051973D' }}>
                 <h5 className="card-title text-start fs-6 ms-1 mb-3">Select Mapping Type</h5>
-                {mappingTypes.map((type) => (
-                    <div className="col-md-6 col-lg-4 mb-3 text-start" key={type.key}>
+                {mappingTypes.map((t) => (
+                    <div className="col-md-6 col-lg-4 mb-3 text-start" key={t.key}>
                         <div
-                            className={`text-start p-3 m-2 rounded h-100 d-flex flex-column ${selectedMappingType === type.key
+                            className={`text-start p-3 m-2 rounded h-100 d-flex flex-column ${selectedMappingType === t.key
                                 ? "border-primary bg-primary bg-opacity-10"
                                 : "border"
                                 }`}
@@ -1568,17 +1336,17 @@ const CCMOverview = () => {
                                 transition: "all 0.2s ease",
                                 border: '0.5px solid #0051973D'
                             }}
-                            onClick={() => setSelectedMappingType(type.key)}
+                            onClick={() => setSelectedMappingType(t.key)}
                         >
                             <div className="d-flex flex-column h-100">
                                 <div className="mb-2">
-                                    <h6 className="mb-1">{type.title}</h6>
-                                    <p className="text-muted small mb-2">{type.desc}</p>
+                                    <h6 className="mb-1">{t.title}</h6>
+                                    <p className="text-muted small mb-2">{t.desc}</p>
                                 </div>
                                 <div className="mt-auto">
                                     <div className="text-start">
                                         <small className="text-muted">
-                                            {type.key === "1 : M" ? (
+                                            {t.key === "1 : M" ? (
                                                 <span className="d-flex align-items-center">
                                                     <span className="d-flex align-items-center me-2 ">
                                                         <span className="bg-primary me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
@@ -1592,7 +1360,7 @@ const CCMOverview = () => {
                                                         Activities
                                                     </span>
                                                 </span>
-                                            ) : type.key === "1 : 1" ? (
+                                            ) : t.key === "1 : 1" ? (
                                                 <span className="d-flex align-items-center">
                                                     <span className="d-flex align-items-center me-2">
                                                         <span className="bg-primary me-1" style={{ width: '10px', height: '10px', borderRadius: "2px" }}></span>
@@ -1627,7 +1395,6 @@ const CCMOverview = () => {
                     </div>
                 ))}
             </div>
-
             <div className="row ms-1 py-4 ps-4 mt-3 pe-4 mb-4">
                 <div className="col-md-5 bg-white rounded-3 p-3" style={{ border: '0.5px solid #0051973D' }}>
                     <div className="card border-0 bg-transparent">
@@ -1637,33 +1404,29 @@ const CCMOverview = () => {
                                 Selected: {selectedBOQs.size} {selectedMappingType === "1 : M" ? "(Max: 1)" : ""}
                             </div>
                         </div>
-
                         <div className="position-relative mb-3 pb-1">
                             <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" />
                             <input
                                 type="text"
                                 className="search form-input w-100 ps-5"
-                                placeholder="Search BOQ items..." style={{ border: '0.5px solid #0051973D', fontSize: "15px" }}
+                                placeholder="Search BOQ items..."
+                                style={{ border: '0.5px solid #0051973D', fontSize: "15px" }}
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={e => setSearchQuery(e.target.value)}
                             />
                         </div>
-
                         <div className="card-body boq-scroll-container" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                            {filteredBOQTree.length > 0 ? (
-                                filteredBOQTree.map((boq, index) => (
-                                    <BOQNode key={index} boq={boq} />
-                                ))
-                            ) : (
+                            {filteredBOQTree.length > 0 ? filteredBOQTree.map(b => (
+                                <BOQNode key={b.id} boq={b} />
+                            )) : (
                                 <div className="text-center text-muted py-4">
-                                    {boqTree.length > 0 ? "No matching BOQ items found" : "No BOQ data available"}
+                                    {parentTree.length > 0 ? "No matching BOQ items found" : "No BOQ data available"}
                                 </div>
                             )}
                         </div>
                     </div>
                 </div>
-
-                <div className="col-md-2 d-flex justify-content-center align-items-center ">
+                <div className="col-md-2 d-flex justify-content-center align-items-center">
                     <div className="card text-center border-0 bg-transparent">
                         <div className="d-flex justify-content-center mb-2">
                             <ArrowRight
@@ -1673,21 +1436,18 @@ const CCMOverview = () => {
                                 onClick={handleRightArrowClick}
                             />
                         </div>
-
-                        <small className="text-nowrap mt-2 mb-1 ">Selected Type:</small>
+                        <small className="text-nowrap mt-2 mb-1">Selected Type:</small>
                         <div className="fs-6 text-nowrap mb-2 text-primary">{selectedMappingType} Mapping</div>
-
                         <div className="d-flex justify-content-center">
                             <ArrowLeft
                                 size={28}
-                                className="p-3 rounded-circle bg-primary bg-opacity-10 text-primary shadow "
+                                className="p-3 rounded-circle bg-primary bg-opacity-10 text-primary shadow"
                                 style={{ width: "60px", height: "60px", cursor: "pointer" }}
                                 onClick={handleLeftArrowClick}
                             />
                         </div>
                     </div>
                 </div>
-
                 <div className="col-md-5 bg-white rounded-3 p-3" style={{ border: '0.5px solid #0051973D' }}>
                     <div className="card border-0 bg-transparent h-100">
                         <div className="card-header d-flex justify-content-between align-items-center border-0 bg-transparent pb-3">
@@ -1711,7 +1471,6 @@ const CCMOverview = () => {
                                 </button>
                             )}
                         </div>
-
                         <div className="position-relative mb-3 pb-1">
                             <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" />
                             <input
@@ -1722,7 +1481,6 @@ const CCMOverview = () => {
                                 onChange={(e) => setActivitySearchQuery(e.target.value)}
                             />
                         </div>
-
                         <div className="card-body boq-scroll-container" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                             {showAddActivityForm ? (
                                 <div ref={addActivityFormRef} className="mb-4 p-3 border rounded" style={{ borderColor: '#0051973D' }}>
@@ -1808,7 +1566,6 @@ const CCMOverview = () => {
                     </div>
                 </div>
             </div>
-
             <div className="row ">
                 <div className="col-md-12">
                     <div className="card border-0 bg-light">
@@ -1829,5 +1586,4 @@ const CCMOverview = () => {
         </div>
     );
 };
-
 export default CCMOverview;

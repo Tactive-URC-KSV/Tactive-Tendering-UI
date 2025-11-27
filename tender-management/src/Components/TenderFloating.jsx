@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import ProjectSelection from './ProjectInfo';
-import TenderEstView from "./TenderEstView";
+import TFProcess from "./TFProcess.jsx";
 import axios from "axios";
 
-function TenderEstimation(){
+function TenderFloating(){
     const projectId = useParams().projectId;
     const [projects, setProjects] = useState([]);
 
@@ -29,15 +29,15 @@ function TenderEstimation(){
         <div className="container-fluid">
             {!projectId && (
                 <>
-                    <div className="text-start fw-bold ms-1 mt-1 mb-3">Tender Estimation</div>
+                    <div className="text-start fw-bold ms-1 mt-1 mb-3">Tender Floating</div>
                     <ProjectSelection 
                         projects={projects} 
-                        continueRoute="/tenderestimation" 
+                        continueRoute="/tenderfloating" 
                     />
                 </>
             )}
-            {projectId && <TenderEstView projectId={projectId}/>}
+            {projectId && <TFProcess projectId={projectId}/>}
         </div>
     )
 }
-export default TenderEstimation;
+export default TenderFloating;

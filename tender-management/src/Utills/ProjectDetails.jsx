@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import Flatpickr from "react-flatpickr";
 import { FaCalendarAlt, FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import Select from 'react-select';
+import Select, { components } from 'react-select'; // Import 'components' for customization
 import 'react-toastify/dist/ReactToastify.css';
 import '../CSS/custom-flatpickr.css';
 import { useRegions } from "../Context/RegionsContext";
@@ -15,12 +15,17 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
 
     const navigate = useNavigate();
     const datePickerRef = useRef();
+
     const openCalendar = (id) => {
         const input = document.querySelector(`#${id}`);
         if (input && input._flatpickr) {
             input._flatpickr.open();
         }
     };
+    const CustomMultiValueContainer = () => null;
+    const CustomDropdownIndicator = () => null;
+    const CustomIndicatorSeparator = () => null;
+    const CustomClearIndicator = () => null; 
 
     const regionOptions = useRegions().map(region => ({
         value: region.id,
@@ -48,6 +53,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
         setProject({ ...project, startDate: date });
     };
 
+
     const handleEndDateChange = (date) => {
         if (project.startDate && date < project.startDate) {
             // alert("End date cannot be earlier than start date");
@@ -55,6 +61,12 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
         }
         setProject({ ...project, endDate: date });
     };
+    
+    // Function to handle removal of an external scope tag
+    const handleScopeRemove = (idToRemove) => {
+        setScopePack(scopePack.filter(id => id !== idToRemove));
+    };
+
     return (
         <div className="project-info-input">
 
@@ -64,7 +76,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                 </div>
                 <div className="row align-items-center ms-4 me-4 ">
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform   text-start d-block">
+                        <label className="projectform text-start d-block">
                             Project Name <span style={{ color: 'red' }}>*</span>
                         </label>
                         <input type="text" className="form-input w-100" placeholder="Enter Project Name"
@@ -74,7 +86,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform   text-start d-block">
+                        <label className="projectform  text-start d-block">
                             Short Name <span style={{ color: 'red' }}>*</span>
                         </label>
                         <input type="text" className="form-input w-100" placeholder="Enter Short Name"
@@ -86,7 +98,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                 </div>
                 <div className="row align-items-center ms-4 me-4 ">
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform   text-start d-block">Agreement date</label>
+                        <label className="projectform  text-start d-block">Agreement date</label>
                         <Flatpickr
                             id="agreementDate"
                             className="form-input w-100"
@@ -99,7 +111,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         <span className='calender-icon' onClick={() => openCalendar('agreementDate')}><FaCalendarAlt size={18} color='#005197' /></span>
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform   text-start d-block">Agreement number </label>
+                        <label className="projectform  text-start d-block">Agreement number </label>
                         <input type="text" className="form-input w-100" placeholder="Enter Agreement number"
                             value={project.agreementNumber}
                             onChange={(e) => setProject({ ...project, agreementNumber: e.target.value })}
@@ -109,7 +121,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                 </div>
                 <div className="row align-items-center ms-4 me-4 ">
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform   text-start d-block"> Start date </label>
+                        <label className="projectform text-start d-block"> Start date </label>
                         <Flatpickr
                             id="startDate"
                             className="form-input w-100"
@@ -122,7 +134,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         <span className='calender-icon' onClick={() => openCalendar('startDate')}><FaCalendarAlt size={18} color='#005197' /></span>
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform   text-start d-block">End date</label>
+                        <label className="projectform text-start d-block">End date</label>
                         <Flatpickr
                             id="endDate"
                             className="form-input w-100"
@@ -137,7 +149,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                 </div>
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform  text-start d-block"> Phone no </label>
+                        <label className="projectform text-start d-block"> Phone no </label>
                         <input type="text" className="form-input w-100" placeholder="Enter Phone Number"
                             value={project.phoneNo}
                             onChange={(e) => setProject({ ...project, phoneNo: e.target.value })}
@@ -145,17 +157,16 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform  text-start d-block">E-mail</label>
+                        <label className="projectform text-start d-block">E-mail</label>
                         <input type="text" className="form-input w-100" placeholder="Enter email address"
                             value={project.email}
                             onChange={(e) => setProject({ ...project, email: e.target.value })}
-
                         />
                     </div>
                 </div>
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform   text-start d-block"> City </label>
+                        <label className="projectform  text-start d-block"> City </label>
                         <input type="text" className="form-input w-100" placeholder="Enter City"
                             value={project.city}
                             onChange={(e) => setProject({ ...project, city: e.target.value })}
@@ -163,7 +174,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform   text-start d-block">Address</label>
+                        <label className="projectform text-start d-block">Address</label>
                         <input type="text" className="form-input w-100" placeholder="Enter Address"
                             value={project.address}
                             onChange={(e) => setProject({ ...project, address: e.target.value })}
@@ -188,7 +199,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                     </div>
 
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform-select   text-start d-block">
+                        <label className="projectform-select  text-start d-block">
                             Sector
                         </label>
                         <Select options={sectorOptions} placeholder="Select Sector" className="w-100" classNamePrefix="select"
@@ -202,13 +213,44 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         <label className="projectform-select text-start d-block">
                             Scope of Packages
                         </label>
-                        <Select options={scopeOptions} placeholder="Select Scope of Packages" isMulti className="w-100" classNamePrefix="select"
+                        <Select
+                            options={scopeOptions}
+                            placeholder="Select Scope of Packages"
+                            isMulti
+                            className="w-100"
+                            classNamePrefix="select"
+                            components={{
+                                MultiValueContainer: CustomMultiValueContainer,
+                                IndicatorSeparator: CustomIndicatorSeparator,
+                                DropdownIndicator: CustomDropdownIndicator,
+                                ClearIndicator: CustomClearIndicator, 
+                            }}
                             value={scopeOptions.filter(opt => scopePack.includes(opt.value))}
                             onChange={(option) =>
                                 setScopePack(option ? option.map(o => o.value) : [])
                             }
-
                         />
+
+                        <div className="mt-2 d-flex flex-wrap gap-2">
+                            {scopeOptions
+                                .filter(opt => scopePack.includes(opt.value))
+                                .map(selectedOpt => (
+                                    <span key={selectedOpt.value} className="select__multi-value">
+                                        <span className="select__multi-value__label">
+                                            {selectedOpt.label}
+                                        </span>
+                                        <span
+                                            className="select__multi-value__remove"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                handleScopeRemove(selectedOpt.value);
+                                            }}
+                                        >
+                                            &times;
+                                        </span>
+                                    </span>
+                                ))}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -226,7 +268,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         />
                     </div>
                     <div className="col-md-6 mb-4">
-                        <label className="projectform   text-start d-block">Car Parking Floors</label>
+                        <label className="projectform  text-start d-block">Car Parking Floors</label>
                         <input type="number" className="form-input w-100" placeholder="Enter Car Parking Floors"
                             value={project.carParkingFloors}
                             onChange={(e) => setProject({ ...project, carParkingFloors: parseInt(e.target.value) })}
@@ -236,7 +278,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                 </div>
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform   text-start d-block">Above Ground</label>
+                        <label className="projectform  text-start d-block">Above Ground</label>
                         <input type="number" className="form-input w-100" placeholder="Enter Above Ground"
                             value={project.numberOfAboveGround}
                             onChange={(e) => setProject({ ...project, numberOfAboveGround: parseInt(e.target.value) })}
@@ -244,7 +286,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform   text-start d-block">Below Ground</label>
+                        <label className="projectform text-start d-block">Below Ground</label>
                         <input type="number" className="form-input w-100" placeholder="Enter Below Ground"
                             value={project.numberOfBelowGround}
                             onChange={(e) => setProject({ ...project, numberOfBelowGround: parseInt(e.target.value) })}
@@ -254,7 +296,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                 </div>
                 <div className="row align-items-center ms-4 me-4">
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform-select   text-start d-block">
+                        <label className="projectform-select text-start d-block">
                             UOM
                         </label>
                         <Select options={uomOptions} placeholder="Select Unit of Measurements" className="w-100" classNamePrefix="select" isClearable
@@ -263,7 +305,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform   text-start d-block">Total Area</label>
+                        <label className="projectform text-start d-block">Total Area</label>
                         <input type="number" step="any" className="form-input w-100" placeholder="Enter Total Area"
                             value={project.buildingArea}
                             onChange={(e) => setProject({ ...project, buildingArea: parseFloat(e.target.value) })}
@@ -273,7 +315,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                 </div>
                 <div className="row align-items-center ms-4 me-4 mb-3">
                     <div className="col-md-6 mt-3 mb-2">
-                        <label className="projectform   text-start d-block">Other Amenities</label>
+                        <label className="projectform text-start d-block">Other Amenities</label>
                         <input type="text" className="form-input w-100" placeholder="Enter Other Amenities"
                             value={
                                 Array.isArray(project.otherAmenities) ? project.otherAmenities.join(', ') : project.otherAmenities
@@ -283,7 +325,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-2">
-                        <label className="projectform   text-start d-block">Rate Per Units</label>
+                        <label className="projectform text-start d-block">Rate Per Units</label>
                         <input type="number" step="any" className="form-input w-100" placeholder="Enter Rate Per Units"
                             value={project.ratePerUnit}
                             onChange={(e) => setProject({ ...project, ratePerUnit: parseFloat(e.target.value) })}
@@ -300,12 +342,9 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                     <div className='col-12 text-center mt-2'>
                         Optional Documents
                     </div>
-                    <div className='col-12 text-center mt-2'>
+                    <div className='col-12 text-center mt-2 py-2'>
                         <button className='btn action-button mt-2' onClick={() => { fileInputRef.current.click() }}>Choose File</button>
                         <input type="file" ref={fileInputRef} multiple style={{ display: 'none' }} onChange={handleFileChange} />
-                    </div>
-                    <div className='col-12 text-center mt-4' style={{ fontSize: '12px' }}>
-                        Any format up to 20MB
                     </div>
                     {uploadedFiles.length > 0 && (
                         <div className="mt-3 px-3 text-start">

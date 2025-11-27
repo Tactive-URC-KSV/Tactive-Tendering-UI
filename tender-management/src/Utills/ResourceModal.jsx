@@ -1,5 +1,4 @@
-import React from 'react';
-import { X, Plus, Info } from 'lucide-react';
+import { X, Plus, Info, Edit } from 'lucide-react';
 import Area from '../assest/Area.svg?react';
 import Select from 'react-select';
 
@@ -19,9 +18,15 @@ const ResourceModal = ({
   handleQuantityTypeChange,
   handleCalculations,
   handleAddResource,
+  handleEditResource,
   fetchResource,
+  idType,
 }) => {
   if (!showModal) return null;
+  const safeToFixed = (value, decimals = 2) => {
+    const numValue = Number(value) || 0;
+    return numValue.toFixed(decimals);
+  };
 
   return (
     <div className="modal show fade d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
@@ -60,6 +65,7 @@ const ResourceModal = ({
                   currencyId: '',
                   resourceId: '',
                   costCodeActivityId: '',
+                  activityGroupId: '',
                   projectId: resourceData.projectId,
                 });
               }}
@@ -75,7 +81,7 @@ const ResourceModal = ({
               </div>
               <div className="row align-items-center p-2 mb-2">
                 <div className="col-lg-4 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Resource type</label>
+                  <label className="resource-label text-start d-block">Resource type<span className='ms-1 text-danger'>*</span></label>
                   <Select
                     options={resourceTypesOption}
                     placeholder="Select Resource Type"
@@ -83,11 +89,14 @@ const ResourceModal = ({
                     classNamePrefix="resource-select"
                     isClearable
                     value={resourceTypesOption.find((option) => option.value === resourceData.resourceTypeId)}
-                    onChange={(option) => handleResourceTypeChange(option ? option.value : '')}
+                    onChange={(option) => {
+                      setResourceData({ ...resourceData, resourceTypeId: option.value });
+                      handleResourceTypeChange(option ? option.value : '')
+                    }}
                   />
                 </div>
                 <div className="col-lg-4 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Nature</label>
+                  <label className="resource-label text-start d-block">Nature<span className='ms-1 text-danger'>*</span></label>
                   <Select
                     options={resourceNatureOption}
                     placeholder="Select Nature"
@@ -99,7 +108,7 @@ const ResourceModal = ({
                   />
                 </div>
                 <div className="col-lg-4 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Resource Name</label>
+                  <label className="resource-label text-start d-block">Resource Name<span className='ms-1 text-danger'>*</span></label>
                   <Select
                     options={resourceOption}
                     placeholder="Select Resource Name"
@@ -119,7 +128,7 @@ const ResourceModal = ({
               </div>
               <div className="row align-items-center p-2 mb-2">
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">UOM</label>
+                  <label className="resource-label text-start d-block">UOM<span className='ms-1 text-danger'>*</span></label>
                   <Select
                     options={uomOption}
                     placeholder="Select UOM"
@@ -131,7 +140,7 @@ const ResourceModal = ({
                   />
                 </div>
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Quantity Type</label>
+                  <label className="resource-label text-start d-block">Quantity Type<span className='ms-1 text-danger'>*</span></label>
                   <Select
                     options={quantityTypeOption}
                     placeholder="Select Quantity Type"
@@ -145,7 +154,7 @@ const ResourceModal = ({
               </div>
               <div className="row align-items-center p-2 mb-2">
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Co-Efficient</label>
+                  <label className="resource-label text-start d-block">Co-Efficient<span className='ms-1 text-danger'>*</span></label>
                   <input
                     type="number"
                     className="resource-input w-100"
@@ -161,12 +170,12 @@ const ResourceModal = ({
                   />
                 </div>
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Calculated Quantity</label>
+                  <label className="resource-label text-start d-block">Calculated Quantity<span className='ms-1 text-danger'>*</span></label>
                   <input
                     type="text"
                     className="resource-input w-100"
                     placeholder="Calculated Quantity"
-                    value={resourceData.calculatedQuantity.toFixed(3)}
+                    value={safeToFixed(resourceData.calculatedQuantity, 3)}
                     readOnly
                   />
                 </div>
@@ -199,17 +208,17 @@ const ResourceModal = ({
                     type="text"
                     className="resource-input w-100"
                     placeholder="Wastage Quantity"
-                    value={resourceData.wasteQuantity.toFixed(3)}
+                    value={safeToFixed(resourceData.wasteQuantity, 3)}
                     readOnly
                   />
                 </div>
                 <div className="col-lg-4 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Net Quantity</label>
+                  <label className="resource-label text-start d-block">Net Quantity<span className='ms-1 text-danger'>*</span></label>
                   <input
                     type="text"
                     className="resource-input w-100"
                     placeholder="Net Quantity"
-                    value={resourceData.netQuantity.toFixed(3)}
+                    value={safeToFixed(resourceData.netQuantity, 3)}
                     readOnly
                   />
                 </div>
@@ -222,7 +231,7 @@ const ResourceModal = ({
               </div>
               <div className="row align-items-center p-2 mb-2">
                 <div className="col-lg-4 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Rate</label>
+                  <label className="resource-label text-start d-block">Rate<span className='ms-1 text-danger'>*</span></label>
                   <input
                     type="number"
                     className="resource-input w-100"
@@ -269,7 +278,7 @@ const ResourceModal = ({
               </div>
               <div className="row align-items-center p-2 mb-2">
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Currency</label>
+                  <label className="resource-label text-start d-block">Currency<span className='ms-1 text-danger'>*</span></label>
                   <Select
                     options={currencyOption}
                     placeholder="Select Currency"
@@ -281,7 +290,7 @@ const ResourceModal = ({
                   />
                 </div>
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Exchange Rate</label>
+                  <label className="resource-label text-start d-block">Exchange Rate<span className='ms-1 text-danger'>*</span></label>
                   <input
                     type="number"
                     className="resource-input w-100"
@@ -304,34 +313,34 @@ const ResourceModal = ({
               </div>
               <div className="row align-items-center p-2 mb-2">
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Cost Unit Rate</label>
+                  <label className="resource-label text-start d-block">Cost Unit Rate<span className='ms-1 text-danger'>*</span></label>
                   <input
                     type="text"
                     className="resource-input w-100"
                     placeholder="Enter Cost unit rate"
-                    value={resourceData.costUnitRate.toFixed(2)}
+                    value={safeToFixed(resourceData.costUnitRate)}
                     readOnly
                   />
                 </div>
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Resource Total Cost</label>
+                  <label className="resource-label text-start d-block">Resource Total Cost<span className='ms-1 text-danger'>*</span></label>
                   <input
                     type="text"
                     className="resource-input w-100"
                     placeholder="Resource Total cost"
-                    value={resourceData.resourceTotalCost.toFixed(2)}
+                    value={safeToFixed(resourceData.resourceTotalCost)}
                     readOnly
                   />
                 </div>
               </div>
               <div className="row align-items-center p-2 mb-2">
                 <div className="col-lg-6 col-md-6 mt-2">
-                  <label className="resource-label text-start d-block">Resource Total Cost (Company Currency)</label>
+                  <label className="resource-label text-start d-block">Resource Total Cost (Company Currency)<span className='ms-1 text-danger'>*</span></label>
                   <input
                     type="text"
                     className="resource-input w-100"
                     placeholder="Resource Total Cost (Company Currency)"
-                    value={resourceData.totalCostCompanyCurrency.toFixed(2)}
+                    value={safeToFixed(resourceData.totalCostCompanyCurrency)}
                     readOnly
                   />
                 </div>
@@ -343,16 +352,24 @@ const ResourceModal = ({
                       checked={resourceData.rateLock}
                       onChange={(e) => setResourceData({ ...resourceData, rateLock: e.target.checked })}
                     />
-                    <label className="resource-label text-start d-block ms-2">Rate Lock</label>
+                    <label className="resource-label text-start d-block ms-2">Rate Lock<span className='ms-1 text-danger'>*</span></label>
                   </div>
                 </div>
               </div>
             </div>
             <div className="d-flex justify-content-end mt-3">
-              <button className="btn action-button" onClick={handleAddResource}>
-                <Plus />
-                <span className="ms-2">Add Resource</span>
-              </button>
+              {resourceData.id ? (
+                <button className="btn action-button" onClick={handleEditResource}>
+                  <Edit size={16} />
+                  <span className="ms-2">Edit Resource</span>
+                </button>
+              )
+                :
+                (
+                  <button className="btn action-button" onClick={handleAddResource}>
+                    <Plus />
+                    <span className="ms-2">Add Resource</span>
+                  </button>)}
             </div>
           </div>
         </div>

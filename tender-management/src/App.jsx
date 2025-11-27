@@ -25,7 +25,9 @@ import "@fontsource/poppins/500.css";
 import "@fontsource/poppins/600.css";
 import { ProjectStatusProvider } from './Context/ProjectStatusContext';
 import ProtectedRoute from './Components/ProtectedRoute';
-import ResourceAdding from './Components/ResourceAdding';
+import Contractor from './Components/Contractor';
+import AddResource from './Components/AddResource';
+import TenderFloating from './Components/TenderFloating';
 
 function App() {
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 768);
@@ -90,13 +92,16 @@ function App() {
                             <Route path="/costcodemapping/:projectId" element={<CCMOverview />} caseSensitive={false} />
                             <Route path="/tenderestimation" element={<TenderEstimation />} caseSensitive={false} />
                             <Route path="/tenderestimation/:projectId" element={<TenderEstimation />} caseSensitive={false} />
-                            <Route path="/tenderestimation/:projectId/resourceadding/:costCodeId" element={<TenderResource />} caseSensitive={false} />
-                            <Route path="/tenderestimation/resourceadding/:activityGroupId" element={<ResourceAdding />} caseSensitive={false} />
-                            <Route path="/TenderFloating" element={<h1>Tender Floating</h1>} />
+                            <Route path="/tenderestimation/:projectId/resourceadding/:boqId" element={<TenderResource />} caseSensitive={false} />
+                            {/* <Route path="/tenderestimation/resourceadding/:activityGroupId" element={<ResourceAdding />} caseSensitive={false} /> */}
+                            <Route path="/tenderfloating" element={<TenderFloating />} caseSensitive={false}/>
+                            <Route path="/tenderfloating/:projectId" element={<TenderFloating />} caseSensitive={false}/>
                             <Route path="/TenderTracking" element={<h1>Tender Tracking</h1>} />
                             <Route path="/ReceivingOffers" element={<h1>Receiving Offers</h1>} />
                             <Route path="/TenderComparison" element={<h1>Tender Comparison</h1>} />
-                            <Route path="/ContractorOnboarding" element={<h1>Contractor Onboarding</h1>} />
+                            <Route path="/ContractorOnboarding" element={<Contractor />} caseSensitive={false}/>
+                            <Route path="/add-resource/:projectId/:boqId" element={<AddResource />} caseSensitive={false} />
+                            <Route path="/add-resource/:projectId/:boqId/:tenderEstimationId" element={<AddResource />} caseSensitive={false} />
                           </Routes>
                         </Sidebar>
                       </ProjectStatusProvider>
