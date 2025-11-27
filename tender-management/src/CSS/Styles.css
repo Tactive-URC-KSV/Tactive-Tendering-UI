@@ -825,16 +825,19 @@ label {
   background-color: #F0FDF4 !important;
 }
 
-.boq-data.table-responsive table tbody tr.level1 td {
-  background-color: #9333EA1A !important;
+.boq-data.table-responsive table tbody tr.disabled-parent-row td {
+  opacity: 60%;
+  pointer-events: none;
 }
 
-.boq-data.table-responsive table tbody tr.level2 td {
-  background-color: #2563EB1A !important;
+.boq-data.table-responsive table tbody tr.parent-selecting td {
+  opacity: 60%;
 }
 
-.boq-data.table-responsive table tbody tr.level3 td {
-  background-color: #CA8A041A !important;
+.boq-data.table-responsive table tbody tr.parent-selectable-row {
+  border-left: 4px solid #2563EB;
+  cursor: pointer;
+
 }
 .btn.parent{
   background-color: #005197;
@@ -881,5 +884,11 @@ label {
 }
 .btn.clear{
   background-color: #EFF6FF;
+  color: #005197;
+  font-size: 14px;
+}
+.btn.clear:hover{
+  background-color: #EFF6FF;
+  opacity: 60%;
   color: #005197;
 }

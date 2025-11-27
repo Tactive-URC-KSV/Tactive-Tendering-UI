@@ -37,8 +37,6 @@ const handleUnauthorized = () => {
 const throttledAutoScroll = throttle(autoScrollWhileDragging, 50);
 
 function BOQUpload({ projectId, projectName, setUploadScreen }) {
-
-
    const [section, setSection] = useState('columnMapping');
    const [loading, setLoading] = useState(false);
    const fileInputRef = useRef(null);
@@ -76,6 +74,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [lastLevelMap, setLastLevelMap] = useState({});
    const [parentMap, setParentMap] = useState({});
    const [isParentSelecting, setIsParentSelecting] = useState(false);
+   const [selectedChildLevel, setSelectedChildLevel] = useState(null);
 
    useEffect(() => {
       axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllTemplate`, {
@@ -561,7 +560,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                selectedRow.has(item.sno) ? { ...item, level: level } : item
             )
          );
-         
+
       };
       const clearLevel = () => {
          setLevelMap(prev => {
@@ -629,9 +628,28 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
          return <span>-</span>;
       };
+      const startParentSelection = () => {
+         if (selectedRow.size === 0) {
+            toast.error("Please select at least one BOQ item.");
+            return;
+         }
+         const levels = [...selectedRow].map(sno => excelData.find(i => i.sno === sno)?.level || 0);
+         const uniqueLevels = [...new Set(levels)];
+         if (uniqueLevels.length > 1) {
+            toast.error("Please select BOQs with the SAME level to assign a parent.");
+            return;
+         }
+         const childLevel = uniqueLevels[0];
+         if (childLevel === 0) {
+            toast.error("Level 0 items cannot have a parent. Assign a level first.");
+            return;
+         }
+         setSelectedChildLevel(childLevel);
+         setIsParentSelecting(true);
+      };
+
       const handleParentAssign = (parentSno) => {
          const updated = { ...parentMap };
-
          selectedRow.forEach(childSno => {
             if (childSno !== parentSno) {
                updated[childSno] = parentSno;
@@ -722,21 +740,36 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                  </thead>
                                  <tbody>
                                     {excelData.map((item) => (
-                                       <tr key={item.sno} className={item.lastLevel ? "last-level" : item.level === 1 ? "level1" : item.level === 2 ? "level2" : item.level === 3 ? "level3" : ""}
+                                       <tr
+                                          key={item.sno}
+                                          className={
+                                             `${item.lastLevel
+                                             && "last-level "}
+                                                 ${isParentSelecting && selectedRow.has(item.sno)
+                                                ? "parent-selecting"
+                                                : isParentSelecting && (
+                                                   item.level === 0 ||
+                                                   item.lastLevel ||
+                                                   item.level >= selectedChildLevel ||
+                                                   item.sno === [...selectedRow][0]
+                                                )
+                                                   ? "disabled-parent-row"
+                                                   : ""} ${isParentSelecting && !item.lastLevel && item.level !== 0 && item.level < selectedChildLevel && "parent-selectable-row"}`
+                                          }
                                           onClick={() => {
-                                             if (isParentSelecting) {
+                                             if (!isParentSelecting) return;
+                                             if (!item.lastLevel && item.level < selectedChildLevel) {
                                                 handleParentAssign(item.sno);
                                              }
                                           }}
                                        >
-                                          <td>
-                                             <input
-                                                type="checkbox"
-                                                className="form-check-input"
-                                                style={{ borderColor: '#005197' }}
-                                                checked={selectedRow.has(item.sno)}
-                                                onChange={() => toggleSelection(item.sno)}
-                                             />
+                                          <td>{isParentSelecting && !item.lastLevel && item.level !== 0 && item.level < selectedChildLevel ? (<span></span>) : (<input
+                                             type="checkbox"
+                                             className="form-check-input"
+                                             style={{ borderColor: '#005197' }}
+                                             checked={selectedRow.has(item.sno)}
+                                             onChange={() => toggleSelection(item.sno)}
+                                          />)}
                                           </td>
                                           <td className="text-center text-nowrap">{item.sno}</td>
                                           <td className='text-nowrap' title={item.boqCode}>
@@ -812,7 +845,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                      </div>
                      <div className='ms-2 mt-3' style={{ borderBottom: '1px solid #0051973D' }}>
                         <div className='text-start fw-bold mb-3'>Parent Mapping</div>
-                        <button className='btn parent rounded-2 p-2 mb-2 w-100' disabled={isParentSelecting} onClick={() => setIsParentSelecting(true)}>
+                        <button className='btn parent rounded-2 p-2 mb-2 w-100' disabled={isParentSelecting} onClick={startParentSelection}>
                            <Link size={16} /><span className='ms-2'>Assign Parent</span>
                         </button>
                         <button className='btn cancel rounded-2 p-2 mb-3 w-100' disabled={selectedRow.length < 0} onClick={clearParent}>
