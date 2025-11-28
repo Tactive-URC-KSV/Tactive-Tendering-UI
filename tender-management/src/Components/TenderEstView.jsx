@@ -523,7 +523,7 @@ function AbstractView({ projectId }) {
       }
     } catch (err) {
       if (err?.response?.status === 401) {
-        navigate('/login');
+        // navigate('/login');
       }
       setParentBoq([]);
     }

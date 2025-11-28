@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import '../CSS/Styles.css'
-import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, FileSymlink, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, FileSymlink, Link, SlidersHorizontal, X } from 'lucide-react';
 import { useEffect } from 'react';
 import axios from 'axios';
 import { FaCloudUploadAlt } from 'react-icons/fa';
@@ -37,8 +37,6 @@ const handleUnauthorized = () => {
 const throttledAutoScroll = throttle(autoScrollWhileDragging, 50);
 
 function BOQUpload({ projectId, projectName, setUploadScreen }) {
-
-
    const [section, setSection] = useState('columnMapping');
    const [loading, setLoading] = useState(false);
    const fileInputRef = useRef(null);
@@ -74,6 +72,10 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [selectedRow, setSelectedRow] = useState(new Set());
    const [levelMap, setLevelMap] = useState({});
    const [lastLevelMap, setLastLevelMap] = useState({});
+   const [parentMap, setParentMap] = useState({});
+   const [isParentSelecting, setIsParentSelecting] = useState(false);
+   const [selectedChildLevel, setSelectedChildLevel] = useState(null);
+
    useEffect(() => {
       axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllTemplate`, {
          headers: {
@@ -292,13 +294,13 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                }
             }
          );
-         let updatedPage = response.data.data.map(item => ({
+         const merged = response.data.data.map(item => ({
             ...item,
             level: levelMap[item.sno] ?? item.level,
-            lastLevel: lastLevelMap[item.sno] ?? item.lastLevel
+            lastLevel: lastLevelMap[item.sno] ?? item.lastLevel,
+            parentSno: parentMap[item.sno] ?? item.parentSno,
          }));
-
-         setExcelData(updatedPage);
+         setExcelData(merged);
          setCurrentPage(response.data.currentPage);
          setTotalPages(response.data.totalPages);
          setPageSize(response.data.pageSize);
@@ -312,61 +314,104 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       }
    };
 
-   const mapFields = () => {
-      setLoading(true);
-      const mapping = {};
-      const formData = new FormData();
-      formData.append('file', BOQfile);
-      internalFields.forEach(field => {
-         if (field.mappingFields) {
-            mapping[field.fields] = field.mappingFields;
+   // const mapFields = () => {
+   //    setLoading(true);
+   //    const mapping = {};
+   //    const formData = new FormData();
+   //    formData.append('file', BOQfile);
+   //    internalFields.forEach(field => {
+   //       if (field.mappingFields) {
+   //          mapping[field.fields] = field.mappingFields;
+   //       }
+   //    })
+   //    const mappingBlob = new Blob(
+   //       [JSON.stringify(mapping)],
+   //       { type: 'application/json' }
+   //    );
+   //    formData.append('columnMapping', mappingBlob);
+   //    axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/mapBOQ/${selectedSheet ? selectedSheet : 'null'}/${projectId}`, formData,
+   //       {
+   //          headers: {
+   //             Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+   //          }
+   //       }
+   //    ).then((res) => {
+   //       if (res.status === 200) {
+   //          setSheetOption(prev =>
+   //             prev.filter(option => option.value !== selectedSheet)
+   //          );
+   //          setSelectedSheet(null);
+   //          setColumns([]);
+   //          setDraggedColumn(null);
+   //          const updatedInternalFields = internalFields.map(field => ({
+   //             ...field,
+   //             mappingFields: ''
+   //          }));
+   //          setInternalFields(updatedInternalFields);
+   //          setSelectedTemplate();
+   //          toast.success("BOQ Data imported SuccessFully");
+   //          sheetOption.length === 1 && (setTimeout(() => {
+   //             window.location.href = `/boqdefinition/${projectId}`;
+   //          }, 3000));
+   //          if (fileType === 'pdf') {
+   //             (setTimeout(() => {
+   //                window.location.href = `/boqdefinition/${projectId}`;
+   //             }, 3000))
+   //          }
+   //       }
+   //    }
+   //    ).catch(err => {
+   //       if (err?.response?.status === 401) {
+   //          handleUnauthorized();
+   //       }
+   //       toast.error("Something went wrong");
+   //    }).finally(() => {
+   //       setLoading(false);
+   //    })
+   // }
+   const saveMappedBOQ = async () => {
+      try {
+         if (!BOQfile) {
+            toast.error("Please upload a BOQ file");
+            return;
          }
-      })
-      const mappingBlob = new Blob(
-         [JSON.stringify(mapping)],
-         { type: 'application/json' }
-      );
-      formData.append('columnMapping', mappingBlob);
-      axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/mapBOQ/${selectedSheet ? selectedSheet : 'null'}/${projectId}`, formData,
-         {
-            headers: {
-               Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+
+         if (!selectedSheet) {
+            toast.error("Sheet name required");
+            return;
+         }
+         const formData = new FormData();
+         formData.append("file", BOQfile);
+         formData.append("sheetName", selectedSheet);
+         formData.append("columnMapping", JSON.stringify(
+            internalFields.reduce((acc, item) => {
+               acc[item.fields] = item.mappingFields;
+               return acc;
+            }, {})
+         ));
+
+         formData.append("parentChildMapping", JSON.stringify(parentMap));
+         formData.append("lastLevelMapping", JSON.stringify(lastLevelMap));
+         formData.append("levelMapping", JSON.stringify(levelMap));
+
+         const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/mapBOQ/${projectId}`,
+            formData,
+            {
+               headers: {
+                  Authorization: `Bearer ${sessionStorage.getItem('token')}`
+               }
             }
+         );
+         if (response.status === 200) {
+            toast.success("BOQ mapping saved successfully!");
          }
-      ).then((res) => {
-         if (res.status === 200) {
-            setSheetOption(prev =>
-               prev.filter(option => option.value !== selectedSheet)
-            );
-            setSelectedSheet(null);
-            setColumns([]);
-            setDraggedColumn(null);
-            const updatedInternalFields = internalFields.map(field => ({
-               ...field,
-               mappingFields: ''
-            }));
-            setInternalFields(updatedInternalFields);
-            setSelectedTemplate();
-            toast.success("BOQ Data imported SuccessFully");
-            sheetOption.length === 1 && (setTimeout(() => {
-               window.location.href = `/boqdefinition/${projectId}`;
-            }, 3000));
-            if (fileType === 'pdf') {
-               (setTimeout(() => {
-                  window.location.href = `/boqdefinition/${projectId}`;
-               }, 3000))
-            }
-         }
+
+      } catch (error) {
+         console.error("Failed to save mapped BOQ:", error);
+         toast.error("Error saving BOQ mapping");
       }
-      ).catch(err => {
-         if (err?.response?.status === 401) {
-            handleUnauthorized();
-         }
-         toast.error("Something went wrong");
-      }).finally(() => {
-         setLoading(false);
-      })
-   }
+   };
+
    const templateSave = () => {
       if (!template.templateName || !template.templateCode) {
          toast.error("Template Name and Code are required");
@@ -409,6 +454,39 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          toast.error("Error saving template");
       });
    }
+   const buildTree = (data, parentMap) => {
+      const map = {};
+      const roots = [];
+      data.forEach(item => {
+         map[item.sno] = { ...item, children: [] };
+      });
+      data.forEach(item => {
+         const parentSno = parentMap[item.sno];
+         if (parentSno && map[parentSno]) {
+            map[parentSno].children.push(map[item.sno]);
+         } else {
+            roots.push(map[item.sno]);
+         }
+      });
+      return roots;
+   };
+   const renderTree = (node, isRoot = false) => {
+      return (
+         <div key={node.sno} className={`tree-node ${isRoot ? "tree-root" : ""}`}>
+            <div className="d-flex align-items-center mb-1">
+               <span>{node.boqCode || "Untitled"}</span>
+            </div>
+            {node.children && node.children.length > 0 && (
+               <div className="tree-children">
+                  {node.children.map(child =>
+                     renderTree(child, false)
+                  )}
+               </div>
+            )}
+         </div>
+      );
+   };
+
    const fileUpload = () => {
       return (
          <>
@@ -442,6 +520,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       );
    }
    const levelMapping = () => {
+      const tree = buildTree(excelData, parentMap);
       const goToPreviousPage = () => {
          if (currentPage > 0) {
             fetchExcelData(currentPage - 1);
@@ -481,7 +560,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                selectedRow.has(item.sno) ? { ...item, level: level } : item
             )
          );
-         setSelectedRow(new Set());
+
       };
       const clearLevel = () => {
          setLevelMap(prev => {
@@ -549,135 +628,250 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
          return <span>-</span>;
       };
+      const startParentSelection = () => {
+         if (selectedRow.size === 0) {
+            toast.error("Please select at least one BOQ item.");
+            return;
+         }
+         const levels = [...selectedRow].map(sno => excelData.find(i => i.sno === sno)?.level || 0);
+         const uniqueLevels = [...new Set(levels)];
+         if (uniqueLevels.length > 1) {
+            toast.error("Please select BOQs with the SAME level to assign a parent.");
+            return;
+         }
+         const childLevel = uniqueLevels[0];
+         if (childLevel === 0) {
+            toast.error("Level 0 items cannot have a parent. Assign a level first.");
+            return;
+         }
+         setSelectedChildLevel(childLevel);
+         setIsParentSelecting(true);
+      };
+
+      const handleParentAssign = (parentSno) => {
+         const updated = { ...parentMap };
+         selectedRow.forEach(childSno => {
+            if (childSno !== parentSno) {
+               updated[childSno] = parentSno;
+            }
+         });
+         setParentMap(updated);
+         setIsParentSelecting(false);
+         setExcelData(prev =>
+            prev.map(item => ({
+               ...item,
+               parentSno: updated[item.sno] ?? item.parentSno
+            }))
+         );
+         setSelectedRow(new Set());
+      };
+      const clearParent = () => {
+         const updated = { ...parentMap };
+         selectedRow.forEach(sno => delete updated[sno]);
+         setParentMap(updated);
+
+         setExcelData(prev =>
+            prev.map(item =>
+               selectedRow.has(item.sno)
+                  ? { ...item, parentSno: 0 }
+                  : item
+            )
+         );
+         setSelectedRow(new Set());
+      };
+
       return (
-         <div className='row g-3 ms-1 me-2 mt-4'>
-            <div className='col-lg-9 col-md-8 col-sm-12 p-2'>
-               <div className='bg-white rounded-3 h-100' style={{ border: '1px solid #0051973D' }}>
-                  <div className='row g-2 p-3 align-items-end'>
-                     <div className='col-lg-8 col-md-8 col-sm-8'>
-                        <label className="text-start d-block">Search BOQ</label>
-                        <input
-                           type="text"
-                           className="form-search-input w-100"
-                           placeholder="Search by BOQ Code or Description..."
-                           value={searchTerm}
-                           onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                     </div>
-                     {excelData.length > 0 && (
-                        <div className='col-lg-4 col-md-4 col-sm-4 text-end'>
-                           <div className='d-flex justify-content-around align-items-center'>
-                              <span className="text-muted small">
-                                 {((currentPage) * pageSize) + 1} - {Math.min((currentPage + 1) * pageSize, totalItems)} of {totalItems.toLocaleString()} items
-                              </span>
-                              <div className='d-flex align-items-center'>
-                                 <button
-                                    className="btn pagination btn-sm border-none me-2"
-                                    onClick={goToPreviousPage}
-                                    disabled={currentPage === 0}
-                                 >
-                                    <ChevronLeft size={18} />
-                                 </button>
-                                 <button
-                                    className="btn pagination btn-sm border-none"
-                                    onClick={goToNextPage}
-                                    disabled={currentPage >= totalPages - 1}
-                                 >
-                                    <ChevronRight size={18} />
-                                 </button>
+         <>
+            <div className='row g-3 ms-1 me-2 mt-4'>
+               <div className='col-lg-9 col-md-8 col-sm-12 p-2'>
+                  <div className='bg-white rounded-3 h-100' style={{ border: '1px solid #0051973D' }}>
+                     <div className='row g-2 p-3 align-items-end'>
+                        <div className='col-lg-8 col-md-8 col-sm-8'>
+                           <label className="text-start d-block">Search BOQ</label>
+                           <input
+                              type="text"
+                              className="form-search-input w-100"
+                              placeholder="Search by BOQ Code or Description..."
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                           />
+                        </div>
+                        {excelData.length > 0 && (
+                           <div className='col-lg-4 col-md-4 col-sm-4 text-end'>
+                              <div className='d-flex justify-content-around align-items-center'>
+                                 <span className="text-muted small">
+                                    {((currentPage) * pageSize) + 1} - {Math.min((currentPage + 1) * pageSize, totalItems)} of {totalItems.toLocaleString()} items
+                                 </span>
+                                 <div className='d-flex align-items-center'>
+                                    <button
+                                       className="btn pagination btn-sm border-none me-2"
+                                       onClick={goToPreviousPage}
+                                       disabled={currentPage === 0}
+                                    >
+                                       <ChevronLeft size={18} />
+                                    </button>
+                                    <button
+                                       className="btn pagination btn-sm border-none"
+                                       onClick={goToNextPage}
+                                       disabled={currentPage >= totalPages - 1}
+                                    >
+                                       <ChevronRight size={18} />
+                                    </button>
+                                 </div>
                               </div>
                            </div>
-                        </div>
-                     )}
-                  </div>
-                  <div className='p-3'>
-                     {excelData.length > 0 ? (
-                        <div className="boq-data table-responsive">
-                           <table className="table align-middle">
-                              <thead className="text-white">
-                                 <tr>
-                                    <th></th>
-                                    <th className="text-center text-nowrap" style={{ width: '80px' }}>S.No</th>
-                                    <th style={{ width: '100px' }} className='text-nowrap'>BOQ Code</th>
-                                    <th className='text-nowrap'>BOQ Description</th>
-                                    <th className="text-center text-nowrap" style={{ width: '100px' }}>Unit</th>
-                                    <th className="text-end text-nowrap" style={{ width: '80px' }}>Quantity</th>
-                                    <th className="text-center text-nowrap" style={{ width: '140px' }}>Level</th>
-                                    <th className="text-center text-nowrap" style={{ width: '100px' }}>Parent</th>
-                                 </tr>
-                              </thead>
-                              <tbody>
-                                 {excelData.map((item) => (
-                                    <tr key={item.sno} className={item.lastLevel ? "last-level" : item.level === 1 ? "level1" : item.level === 2 ? "level2" : item.level === 3 ? "level3" : ""}>
-                                       <td>
-                                          <input
+                        )}
+                     </div>
+                     <div className='p-3'>
+                        {excelData.length > 0 ? (
+                           <div className="boq-data table-responsive">
+                              <table className="table align-middle">
+                                 <thead className="text-white">
+                                    <tr>
+                                       <th></th>
+                                       <th className="text-center text-nowrap" style={{ width: '80px' }}>S.No</th>
+                                       <th style={{ width: '100px' }} className='text-nowrap'>BOQ Code</th>
+                                       <th className='text-nowrap'>BOQ Description</th>
+                                       <th className="text-center text-nowrap" style={{ width: '100px' }}>Unit</th>
+                                       <th className="text-end text-nowrap" style={{ width: '80px' }}>Quantity</th>
+                                       <th className="text-center text-nowrap" style={{ width: '140px' }}>Level</th>
+                                       <th className="text-center text-nowrap" style={{ width: '100px' }}>Parent</th>
+                                    </tr>
+                                 </thead>
+                                 <tbody>
+                                    {excelData.map((item) => (
+                                       <tr
+                                          key={item.sno}
+                                          className={
+                                             `${item.lastLevel
+                                             && "last-level "}
+                                                 ${isParentSelecting && selectedRow.has(item.sno)
+                                                ? "parent-selecting"
+                                                : isParentSelecting && (
+                                                   item.level === 0 ||
+                                                   item.lastLevel ||
+                                                   item.level >= selectedChildLevel ||
+                                                   item.sno === [...selectedRow][0]
+                                                )
+                                                   ? "disabled-parent-row"
+                                                   : ""} ${isParentSelecting && !item.lastLevel && item.level !== 0 && item.level < selectedChildLevel && "parent-selectable-row"}`
+                                          }
+                                          onClick={() => {
+                                             if (!isParentSelecting) return;
+                                             if (!item.lastLevel && item.level < selectedChildLevel) {
+                                                handleParentAssign(item.sno);
+                                             }
+                                          }}
+                                       >
+                                          <td>{isParentSelecting && !item.lastLevel && item.level !== 0 && item.level < selectedChildLevel ? (<span></span>) : (<input
                                              type="checkbox"
                                              className="form-check-input"
                                              style={{ borderColor: '#005197' }}
                                              checked={selectedRow.has(item.sno)}
                                              onChange={() => toggleSelection(item.sno)}
-                                          />
-                                       </td>
-                                       <td className="text-center text-nowrap">{item.sno}</td>
-                                       <td className='text-nowrap' title={item.boqCode}>
-                                          {boqNameDisplay(item.boqCode, 9)}
-                                       </td>
-                                       <td className='text-nowrap' title={item.boqName}>
-                                          {boqNameDisplay(item.boqName, 15)}
-                                       </td>
-                                       <td className="text-center text-nowrap">{item.uom || '-'}</td>
-                                       <td className="text-end text-nowrap">
-                                          {item.quantity && item.quantity !== 0 ? item.quantity.toFixed(3) : "-"}
-                                       </td>
-                                       <td className="text-center text-nowrap">{levelDisplay(item.level, item.lastLevel)}</td>
-                                       <td className="text-center text-muted small text-nowrap">
-                                          {item.parentSno > 0 ? item.parentSno : 'Not Assigned'}
-                                       </td>
-                                    </tr>
-                                 ))}
-                              </tbody>
-                           </table>
+                                          />)}
+                                          </td>
+                                          <td className="text-center text-nowrap">{item.sno}</td>
+                                          <td className='text-nowrap' title={item.boqCode}>
+                                             {boqNameDisplay(item.boqCode, 9)}
+                                          </td>
+                                          <td className='text-nowrap' title={item.boqName}>
+                                             {boqNameDisplay(item.boqName, 15)}
+                                          </td>
+                                          <td className="text-center text-nowrap">{item.uom || '-'}</td>
+                                          <td className="text-end text-nowrap">
+                                             {item.quantity && item.quantity !== 0 ? item.quantity.toFixed(3) : "-"}
+                                          </td>
+                                          <td className="text-center text-nowrap">{levelDisplay(item.level, item.lastLevel)}</td>
+                                          <td className="text-center text-muted small text-nowrap">
+                                             {item.parentSno > 0 ? item.parentSno : 'Not Assigned'}
+                                          </td>
+                                       </tr>
+                                    ))}
+                                 </tbody>
+                              </table>
+                              <div className='d-flex justify-content-between align-items-center mt-3'>
+                                 <button
+                                    className="btn pagination-bottom btn-sm border-none me-2"
+                                    onClick={goToPreviousPage}
+                                    disabled={currentPage === 0}
+                                 >
+                                    <ChevronLeft size={20} /> Previous
+                                 </button>
+                                 <span className='text-muted' style={{ fontSize: '13px' }}>{currentPage + 1 + " of " + totalPages + " Pages "}</span>
+                                 <button
+                                    className="btn pagination-bottom btn-sm border-none"
+                                    onClick={goToNextPage}
+                                    disabled={currentPage >= totalPages - 1}
+                                 >
+                                    Next <ChevronRight size={20} />
+                                 </button>
+                              </div>
+                           </div>
+                        ) : (
+                           <div className="text-center py-5 text-muted">
+                              <h5>No BOQ items extracted</h5>
+                              <p>Please upload an Excel file and map the columns.</p>
+                           </div>
+                        )}
+                     </div>
+                  </div>
+               </div>
+               <div className='col-lg-3 col-md-4 col-sm-12 p-2'>
+                  <div className='bg-white p-2 rounded-2 pt-3 h-100' style={{ border: '1px solid #0051973D' }}>
+                     <div className='ms-2' style={{ borderBottom: '1px solid #0051973D' }}>
+                        <div className='text-start fw-bold'>Assign Levels</div>
+                        <div className='text-start text-muted pb-1 pt-1' style={{ fontSize: '13px' }}>Assign selected rows to a level</div>
+                     </div>
+                     <div className='d-flex ms-2 flex-column mt-3 align-items-around' style={{ borderBottom: '1px solid #0051973D' }}>
+                        <button className='btn level1 rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={() => assignLevel(1)}>
+                           <span className=''></span>Level 1
+                        </button>
+                        <button className='btn level2 rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={() => assignLevel(2)}>
+                           Level 2
+                        </button>
+                        <button className='btn level3 rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={() => assignLevel(3)}>
+                           Level 3
+                        </button>
+                        <button className='btn lastLevel rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={() => assignLastLevel()}>
+                           Last Level
+                        </button>
+                        <button className='btn cancel rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={clearLevel}>
+                           <X size={16} /><span className='ms-2'>Clear Level</span>
+                        </button>
+                        <button className='btn clear rounded-2 p-2 mb-3' disabled={selectedRow.length < 0} onClick={() => setSelectedRow(new Set())}>
+                           <X size={16} /><span className='ms-2'>Clear selection</span>
+                        </button>
+                     </div>
+                     <div className='ms-2 mt-3' style={{ borderBottom: '1px solid #0051973D' }}>
+                        <div className='text-start fw-bold mb-3'>Parent Mapping</div>
+                        <button className='btn parent rounded-2 p-2 mb-2 w-100' disabled={isParentSelecting} onClick={startParentSelection}>
+                           <Link size={16} /><span className='ms-2'>Assign Parent</span>
+                        </button>
+                        <button className='btn cancel rounded-2 p-2 mb-3 w-100' disabled={selectedRow.length < 0} onClick={clearParent}>
+                           <X size={16} /><span className='ms-2'>Remove Parent</span>
+                        </button>
+                     </div>
+                     <div className='ms-2 mt-3'>
+                        <div className='text-start fw-bold mb-3'>Structure Preview</div>
+                        <div className="structure-preview">
+                           {tree.length === 0 ? (
+                              <div className="text-muted small">No structure assigned.</div>
+                           ) : (
+                              tree.map(node => renderTree(node))
+                           )}
                         </div>
-                     ) : (
-                        <div className="text-center py-5 text-muted">
-                           <h5>No BOQ items extracted</h5>
-                           <p>Please upload an Excel file and map the columns.</p>
-                        </div>
-                     )}
+                     </div>
                   </div>
                </div>
             </div>
-            <div className='col-lg-3 col-md-4 col-sm-12 p-2'>
-               <div className='bg-white p-2 rounded-2 pt-3 h-100' style={{ border: '1px solid #0051973D' }}>
-                  <div className='ms-2' style={{ borderBottom: '1px solid #0051973D' }}>
-                     <div className='text-start fw-bold'>Assign Levels</div>
-                     <div className='text-start text-muted pb-1 pt-1' style={{ fontSize: '13px' }}>Assign selected rows to a level</div>
-                  </div>
-                  <div className='d-flex ms-2 flex-column mt-3 align-items-around'>
-                     <button className='btn level1 rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={() => assignLevel(1)}>
-                        <span className=''></span>Level 1
-                     </button>
-                     <button className='btn level2 rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={() => assignLevel(2)}>
-                        Level 2
-                     </button>
-                     <button className='btn level3 rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={() => assignLevel(3)}>
-                        Level 3
-                     </button>
-                     <button className='btn lastLevel rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={() => assignLastLevel()}>
-                        Last Level
-                     </button>
-                     <button className='btn cancel rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={clearLevel}>
-                        <X size={16} /><span className='ms-2'>Clear Level</span>
-                     </button>
-                  </div>
-               </div>
+            <div className='d-flex justify-content-end mt-4'>
+               <button className='btn cancel-button mt-2 me-4'>Cancel</button>
+               <button className='btn action-button mt-2 fs-6' onClick={saveMappedBOQ}>{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : (<span>Import BOQ Data</span>)}</button>
             </div>
-         </div>
+         </>
       );
-      {/* <div className='d-flex justify-content-end mt-4'>
-   <button className='btn cancel-button mt-2 me-4'>Cancel</button>
-   <button className='btn action-button mt-2 fs-6' onClick={mapFields}>{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : (<span>Import BOQ Data</span>)}</button>
-</div> */}
+
    }
    const columnMapping = () => {
       return (
@@ -901,7 +1095,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                   <p className='fw-bold'>{projectName}</p>
                   {renderContent('fileUpload')}
                </div>
-
             </div>
          )}
          {BOQfile && (renderContent('mappingConfig'))}
