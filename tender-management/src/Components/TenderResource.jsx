@@ -311,12 +311,12 @@ function TenderResource() {
                           onChange={() => handleCheckboxChange(item.tenderEstimation.id)}
                         />
                       </td>
-                      <td>{item.tenderEstimation.resourceType.resourceTypeName}</td>
-                      <td>{item.tenderEstimation.resource.resourceName}</td>
-                      <td>{item.tenderEstimation.uom.uomCode}</td>
-                      <td>{(item.costDetails.netQuantity).toFixed(3)}</td>
-                      <td>{(item.costDetails.costUnitRate).toFixed(2)}</td>
-                      <td>{(item.costDetails.totalCostCompanyCurrency).toFixed(2)}</td>
+                      <td>{item.tenderEstimation?.resourceType?.resourceTypeName}</td>
+                      <td>{item.tenderEstimation?.resource?.resourceName}</td>
+                      <td>{item.tenderEstimation?.uom?.uomCode}</td>
+                      <td>{(item.costDetails?.netQuantity).toFixed(3)}</td>
+                      <td>{(item.costDetails?.costUnitRate).toFixed(2)}</td>
+                      <td>{(item.costDetails?.totalCostCompanyCurrency).toFixed(2)}</td>
                       <td>
                         <EyeIcon size={20} color="#005197" className="me-2" style={{ cursor: 'pointer' }} onClick={() => handleViewResource(item.tenderEstimation.id)} />
                         <Trash2 size={20} color="red" className="me-2" style={{ cursor: 'pointer' }} onClick={() => handleDeleteResource(item.tenderEstimation.id)} />
