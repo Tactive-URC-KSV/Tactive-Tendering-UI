@@ -543,17 +543,17 @@ function AbstractView({ projectId }) {
           <thead>
             <tr style={{ borderBottom: '0.5px solid #0051973D', color: '#005197' }}>
               <th className="px-2">S.no</th>
-              <th className="px-2">BOQ Code</th>
-              <th className="px-2">BOQ Name</th>
+              <th className="px-2 text-start">BOQ Code</th>
+              <th className="px-2 text-start">BOQ Name</th>
               <th className="px-2">Amount</th>
             </tr>
           </thead>
           <tbody>
             {parentBoq.map((boq, index) => (
               <tr className="boq-leaf-row bg-white" key={index}>
-                <td className="px-2">{'-'}</td>
-                <td className="px-2">{'-'}</td>
-                <td className="px-2" title={boq.boqCode}>{() => boqNameDisplay(boq.boqCode)}</td>
+                <td className="px-2">{index + 1}</td>
+                <td className="px-2 text-start" title={boq.boqCode}>{boqNameDisplay(boq.boqCode)}</td>
+                <td className="px-2 text-start" title={boq.boqName}>{boq.boqName ? boqNameDisplay(boq.boqName) : '-'}</td>
                 <td className="px-2">{boq.totalAmount?.toFixed(2) || 0}</td>
               </tr>
             ))}
