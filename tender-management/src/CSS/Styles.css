@@ -257,10 +257,6 @@ label {
   color: black !important;
 }
 
-.select__placeholder {
-  color: #00519780 !important;
-  font-size: 13px !important;
-}
 
 .select__option {
   cursor: pointer !important;
@@ -274,6 +270,7 @@ label {
 .select__option--is-selected {
   background-color: #005197 !important;
   color: white !important;
+  
 }
 
 .select__multi-value {
@@ -281,7 +278,10 @@ label {
   color: white !important;
   border-radius: 6px !important;
   margin-right: 5px;
+  padding: 4px 6px;
+  font-size: 12px;
 }
+
 
 .select__multi-value__label {
   color: white !important;
@@ -290,6 +290,14 @@ label {
 .select__multi-value__remove:hover {
   background-color: #005197 !important;
   color: white !important;
+  cursor: pointer;
+}
+
+.select__multi-value__remove {
+    cursor: pointer;
+    margin-left: 8px; 
+    font-weight: bold;
+    font-size: 12px;
 }
 
 .form-check-input {
