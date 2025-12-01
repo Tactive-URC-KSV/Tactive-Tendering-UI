@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, ArrowRight, BoxesIcon, ChevronDown, ChevronRight, IndianRupee, Info, Paperclip, Plus, User2, X, Download } from 'lucide-react'; 
+import { ArrowLeft, ArrowRight, BoxesIcon, ChevronDown, ChevronRight, IndianRupee, Info, Paperclip, Plus, User2, X, Download } from 'lucide-react';
 import axios from "axios";
 import Flatpickr from "react-flatpickr";
-import { FaCalendarAlt,FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
+import { FaCalendarAlt, FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
 import Select from "react-select";
-import { useScope } from "../Context/ScopeContext"; 
+import { useScope } from "../Context/ScopeContext";
 
 
 function TFProcess({ projectId }) {
@@ -13,39 +13,40 @@ function TFProcess({ projectId }) {
     const [currentTab, setCurrentTab] = useState('boq');
     const [tab, setTab] = useState('general');
     const [selectedBoq, setSelectedBoq] = useState(new Set());
-    const [boqForRemoval, setBoqForRemoval] = useState(new Set()); 
+    const [boqForRemoval, setBoqForRemoval] = useState(new Set());
     const [parentBoq, setParentBoq] = useState([]);
     const [parentTree, setParentTree] = useState([]);
     const [expandedParentIds, setExpandedParentIds] = useState(new Set());
     const generateTenderNumber = () => {
-    const year = new Date().getFullYear();
-    const randomNum = Math.floor(Math.random() * 999999) + 1;
-    const padded = String(randomNum).padStart(6, '0');
-    return `TF-${year}-${padded}`;
+        const year = new Date().getFullYear();
+        const randomNum = Math.floor(Math.random() * 999999) + 1;
+        const padded = String(randomNum).padStart(6, '0');
+        return `TF-${year}-${padded}`;
     };
-    
-
     const getCurrentDate = () => {
         const today = new Date();
-        return today.toISOString().split("T")[0]; 
+        return today.toISOString().split("T")[0];
     }
-
-    const [userData, setUserData] = useState();
     const [tenderDetail, setTenderDetail] = useState({
         tenderFloatingNo: generateTenderNumber(),
         tenderFloatingDate: getCurrentDate(),
         projectId: projectId,
         offerSubmissionMode: '',
         offerSubmissionDate: '',
-        submissionLastDate:'',
+        submissionLastDate: '',
         bidOpeningDate: '',
-        contactPerson: userData?.name || 'admin',
-        contactEmail: userData?.email || 'admin@gmail.com',
-        contactMobile: userData?.phoneNumber || '9876543210',
+        contactPerson: '',
+        contactEmail: '',
+        contactMobile: '',
         scopeOfPackage: '',
-        scopeOfWork: '',
         boqIds: Array.from(selectedBoq),
         contractorIds: ''
+    });
+    const [attachments, setAttachments] = useState({
+        technical: { files: [], notes: '' },
+        drawings: { files: [], notes: '' },
+        commercial: { files: [], notes: '' },
+        others: { files: [], notes: '' },
     });
 
     const handleUnauthorized = () => {
@@ -79,7 +80,13 @@ function TFProcess({ projectId }) {
             }
         }).then(res => {
             if (res.status === 200) {
-                setUserData(res.data);
+                const user = res.data;
+                setTenderDetail(prev => ({
+                    ...prev,
+                    contactPerson: user?.name ?? "",
+                    contactEmail: user?.email ?? "",
+                    contactMobile: user?.phoneNumber ?? ""
+                }));
             }
         }).catch(err => {
             if (err.response.status === 401) {
@@ -174,7 +181,7 @@ function TFProcess({ projectId }) {
         }
     };
 
-    
+
     const updateNodeInTree = (tree, nodeId, newProps) => {
         return tree.map(node => {
             if (node.id === nodeId) {
@@ -233,7 +240,7 @@ function TFProcess({ projectId }) {
         });
     };
 
-    
+
 
     const getSelectedLeafBoqs = (tree) => {
         let result = [];
@@ -266,10 +273,10 @@ function TFProcess({ projectId }) {
             boqForRemoval.forEach(id => newSet.delete(id));
             return newSet;
         });
-        setBoqForRemoval(new Set()); 
+        setBoqForRemoval(new Set());
     };
-    
-    const scopes = useScope() || []; 
+
+    const scopes = useScope() || [];
     const scopeOptions = scopes.map(s => ({ value: s.id, label: s.scope }));
 
     const [selectedScopes, setSelectedScopes] = useState([]);
@@ -471,21 +478,21 @@ function TFProcess({ projectId }) {
                 <div className="row align-items-center justify-content-between ms-1 mt-5">
                     <div className="col-md-4 col-lg-4 ">
                         <label className="projectform text-start d-block">Tender Floating No </label>
-                        <input type="text" className="form-input w-100" 
+                        <input type="text" className="form-input w-100"
                             value={tenderDetail.tenderFloatingNo}
                             readOnly
                         />
                     </div>
                     <div className="col-md-4 col-lg-4 ">
                         <label className="projectform text-start d-block">Tender Floating Date </label>
-                        <input type="text" className="form-input w-100" 
+                        <input type="text" className="form-input w-100"
                             value={tenderDetail.tenderFloatingDate}
                             readOnly
                         />
                     </div>
                     <div className="col-md-4 col-lg-4">
                         <label className="projectform text-start d-block">Project Name </label>
-                        <input type="text" className="form-input w-100" 
+                        <input type="text" className="form-input w-100"
                             value={project.projectName}
                             readOnly
                         />
@@ -546,14 +553,14 @@ function TFProcess({ projectId }) {
                 <div className="row align-items-center justify-content-between ms-1 mt-5">
                     <div className="col-md-4 col-lg-4 ">
                         <label className="projectform text-start d-block">Contact Person</label>
-                        <input type="text" className="form-input w-100" 
+                        <input type="text" className="form-input w-100"
                             value={tenderDetail.contactPerson}
                             readOnly
                         />
                     </div>
                     <div className="col-md-4 col-lg-4">
                         <label className="projectform text-start d-block">Contact Email</label>
-                        <input type="text" className="form-input w-100" 
+                        <input type="text" className="form-input w-100"
                             value={tenderDetail.contactEmail}
                             readOnly
                         />
@@ -569,7 +576,6 @@ function TFProcess({ projectId }) {
                 <div className="row align-items-center ms-1 mt-5">
                     <div className="col-md-4 col-lg-4 ">
                         <label className="projectform-select text-start d-block">Scope of Package</label>
-
                         <Select
                             options={scopeOptions}
                             isMulti
@@ -582,17 +588,8 @@ function TFProcess({ projectId }) {
                     </div>
 
                     <div className="col-md-4 col-lg-4">
-                        <label className="projectform text-start d-block">Scope of Work</label>
-                        <input 
-    type="text"
-    className="form-input w-100"
-    placeholder="Enter Scope of Work"
-    value={tenderDetail.scopeOfWork}
-    onChange={(e) =>
-        setTenderDetail({ ...tenderDetail, scopeOfWork: e.target.value })
-    }
-/>
-
+                        <label className="projectform text-start d-block"></label>
+                       
                     </div>
                 </div>
             </div>
@@ -605,7 +602,7 @@ function TFProcess({ projectId }) {
                 ? boqName.substring(0, 20) + '...'
                 : boqName;
         }
-        
+
         const isAllSelectedForRemoval = selectedBoqArray.length > 0 && selectedBoqArray.every(boq => boqForRemoval.has(boq.id));
 
         const toggleAllRemovalSelection = (checked) => {
@@ -631,14 +628,14 @@ function TFProcess({ projectId }) {
                         </div>
                     </div>
                     <div className="d-flex gap-5">
-                       <button
-    className="btn btn-sm"
-    style={{ border: '1px solid #dc3545', color: '#dc3545' }}
-    onClick={handleRemoveSelectedBoqs}
-    disabled={boqForRemoval.size === 0}  
->
-    <X size={18} /> <span className="fw-medium ms-1">Remove</span>
-</button>
+                        <button
+                            className="btn btn-sm"
+                            style={{ border: '1px solid #dc3545', color: '#dc3545' }}
+                            onClick={handleRemoveSelectedBoqs}
+                            disabled={boqForRemoval.size === 0}
+                        >
+                            <X size={18} /> <span className="fw-medium ms-1">Remove</span>
+                        </button>
 
                         <button
                             className="btn btn-sm"
@@ -710,149 +707,142 @@ function TFProcess({ projectId }) {
             </div>
         );
     }
-    
-const [attachments, setAttachments] = useState({
-    technical: { files: [], notes: '' },
-    drawings: { files: [], notes: '' },
-    commercial: { files: [], notes: '' },
-    others: { files: [], notes: '' },
-});
-const handleFileUpload = (e, key) => {
-    const uploadedFiles = Array.from(e.target.files);
+    const handleFileUpload = (e, key) => {
+        const uploadedFiles = Array.from(e.target.files);
 
-    setAttachments(prev => ({
-        ...prev,
-        [key]: {
-            ...prev[key],
-            files: [...prev[key].files, ...uploadedFiles]
-        }
-    }));
-};
-
-const handleNoteChange = (key, value) => {
-    setAttachments(prev => ({
-        ...prev,
-        [key]: {
-            ...prev[key],
-            notes: value
-        }
-    }));
-};
-
-    const attachmentDetails = () => {
-    const attachmentTypes = [
-        { key: "technical", title: "Technical Specification", noteLabel: "Additional notes for technical specification" },
-        { key: "drawings", title: "Drawings", noteLabel: "Additional notes for drawings" },
-        { key: "commercial", title: "Commercial Conditions", noteLabel: "Additional notes for commercial conditions" },
-        { key: "others", title: "Others", noteLabel: "Additional notes for others" }
-    ];
-
-    const handleRemoveFile = (fileKey, index) => {
-        const updatedFiles = attachments[fileKey].files.filter((_, idx) => idx !== index);
-        setAttachments(prevState => ({
-            ...prevState,
-            [fileKey]: { ...prevState[fileKey], files: updatedFiles }
+        setAttachments(prev => ({
+            ...prev,
+            [key]: {
+                ...prev[key],
+                files: [...prev[key].files, ...uploadedFiles]
+            }
         }));
     };
 
-    return (
-        <div className="p-4">
-            <div className="text-start ms-1 mt-3 d-flex align-items-center">
-                <Paperclip size={20} color="#005197" />
-                <span className="ms-2 fw-bold" style={{ color: "#005197" }}>Attachments</span>
-            </div>
+    const handleNoteChange = (key, value) => {
+        setAttachments(prev => ({
+            ...prev,
+            [key]: {
+                ...prev[key],
+                notes: value
+            }
+        }));
+    };
 
-            <p className="text-muted ms-1 mt-2" style={{ fontSize: "14px", textAlign: "left" }}>
-                Upload required documents
-            </p>
+    const attachmentDetails = () => {
+        const attachmentTypes = [
+            { key: "technical", title: "Technical Specification", noteLabel: "Additional notes for technical specification" },
+            { key: "drawings", title: "Drawings", noteLabel: "Additional notes for drawings" },
+            { key: "commercial", title: "Commercial Conditions", noteLabel: "Additional notes for commercial conditions" },
+            { key: "others", title: "Others", noteLabel: "Additional notes for others" }
+        ];
 
-            <div className="outer-container" style={{
-                borderRadius: "10px", 
-                padding: "15px", 
-            }}>
-                <div className="row mt-4">
-                    {attachmentTypes.map((item) => (
-                        <div className="col-md-6 mb-4" key={item.key}>
-                            <div className="attachment-container p-4" style={{
-                                border: "2px solid #B0C4DE",  
-                                borderRadius: "10px", 
-                                backgroundColor: "transparent"  
-                            }}>
-                                <label
-                                    className="w-100 d-flex flex-column justify-content-center align-items-center"
-                                    style={{
-                                        border: "2px dashed #B0C4DE",
-                                        textAlign: "center",
-                                        cursor: "pointer",
-                                        transition: "all 0.3s ease",
-                                        backgroundColor: "transparent", 
-                                    }}
-                                    onMouseEnter={(e) => e.target.style.borderColor = '#005197'}
-                                    onMouseLeave={(e) => e.target.style.borderColor = '#B0C4DE'}
-                                >
-                                    <input
-                                        type="file"
-                                        multiple
-                                        hidden
-                                        onChange={(e) => handleFileUpload(e, item.key)}
-                                    />
+        const handleRemoveFile = (fileKey, index) => {
+            const updatedFiles = attachments[fileKey].files.filter((_, idx) => idx !== index);
+            setAttachments(prevState => ({
+                ...prevState,
+                [fileKey]: { ...prevState[fileKey], files: updatedFiles }
+            }));
+        };
 
-                                    <div className="d-flex justify-content-center mb-3">
-                                        <div
-                                            className="rounded-circle d-flex justify-content-center align-items-center"
-                                            style={{
-                                                width: "50px",
-                                                height: "50px",
-                                            }}
-                                        >
-                                            <FaCloudUploadAlt size={38} color="#005197" />
+        return (
+            <div className="p-4">
+                <div className="text-start ms-1 mt-3 d-flex align-items-center">
+                    <Paperclip size={20} color="#005197" />
+                    <span className="ms-2 fw-bold" style={{ color: "#005197" }}>Attachments</span>
+                </div>
+
+                <p className="text-muted ms-1 mt-2" style={{ fontSize: "14px", textAlign: "left" }}>
+                    Upload required documents
+                </p>
+
+                <div className="outer-container" style={{
+                    borderRadius: "10px",
+                    padding: "15px",
+                }}>
+                    <div className="row mt-4">
+                        {attachmentTypes.map((item) => (
+                            <div className="col-md-6 mb-4" key={item.key}>
+                                <div className="attachment-container p-4" style={{
+                                    border: "2px solid #B0C4DE",
+                                    borderRadius: "10px",
+                                    backgroundColor: "transparent"
+                                }}>
+                                    <label
+                                        className="w-100 d-flex flex-column justify-content-center align-items-center"
+                                        style={{
+                                            border: "2px dashed #B0C4DE",
+                                            textAlign: "center",
+                                            cursor: "pointer",
+                                            transition: "all 0.3s ease",
+                                            backgroundColor: "transparent",
+                                        }}
+                                        onMouseEnter={(e) => e.target.style.borderColor = '#005197'}
+                                        onMouseLeave={(e) => e.target.style.borderColor = '#B0C4DE'}
+                                    >
+                                        <input
+                                            type="file"
+                                            multiple
+                                            hidden
+                                            onChange={(e) => handleFileUpload(e, item.key)}
+                                        />
+
+                                        <div className="d-flex justify-content-center mb-3">
+                                            <div
+                                                className="rounded-circle d-flex justify-content-center align-items-center"
+                                                style={{
+                                                    width: "50px",
+                                                    height: "50px",
+                                                }}
+                                            >
+                                                <FaCloudUploadAlt size={38} color="#005197" />
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <h6 className="fw-bold" style={{ color: "#005197" }}>{item.title}</h6>
-                                    <p className="text-muted" style={{ fontSize: "13px", color: "#005197CC" }}>
-                                        Click to upload or drag and drop
-                                    </p>
-                                </label>
+                                        <h6 className="fw-bold" style={{ color: "#005197" }}>{item.title}</h6>
+                                        <p className="text-muted" style={{ fontSize: "13px", color: "#005197CC" }}>
+                                            Click to upload or drag and drop
+                                        </p>
+                                    </label>
 
-                                {attachments[item.key].files.length > 0 && (
-                                    <ul className="mt-2" style={{ fontSize: "13px" }}>
-                                        {attachments[item.key].files.map((file, index) => (
-                                            <li key={index} className="d-flex align-items-center">
-                                                📄 {file.name}
-                                                <FaTimes
-                                                    size={16}
-                                                    color="#FF4F4F" 
-                                                    style={{ cursor: "pointer", marginLeft: "8px" }}
-                                                    onClick={() => handleRemoveFile(item.key, index)} 
-                                                />
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
+                                    {attachments[item.key].files.length > 0 && (
+                                        <ul className="mt-2" style={{ fontSize: "13px" }}>
+                                            {attachments[item.key].files.map((file, index) => (
+                                                <li key={index} className="d-flex align-items-center">
+                                                    📄 {file.name}
+                                                    <FaTimes
+                                                        size={16}
+                                                        color="#FF4F4F"
+                                                        style={{ cursor: "pointer", marginLeft: "8px" }}
+                                                        onClick={() => handleRemoveFile(item.key, index)}
+                                                    />
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
 
-                                <textarea
-                                    className="form-control mt-3"
-                                    placeholder={item.noteLabel}
-                                    rows="2"
-                                    value={attachments[item.key].notes}
-                                    onChange={(e) => handleNoteChange(item.key, e.target.value)}
-                                    style={{
-                                        borderRadius: "8px",
-                                        fontSize: "14px",
-                                        border: "1px solid #B0C4DE",
-                                        padding: "10px",
-                                        color: "#333",
-                                    }}
-                                />
+                                    <textarea
+                                        className="form-control mt-3"
+                                        placeholder={item.noteLabel}
+                                        rows="2"
+                                        value={attachments[item.key].notes}
+                                        onChange={(e) => handleNoteChange(item.key, e.target.value)}
+                                        style={{
+                                            borderRadius: "8px",
+                                            fontSize: "14px",
+                                            border: "1px solid #B0C4DE",
+                                            padding: "10px",
+                                            color: "#333",
+                                        }}
+                                    />
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             </div>
-        </div>
-    );
-};
+        );
+    };
 
     const tenderDetails = () => {
         const selectedBoqArray = getSelectedLeafBoqs(parentTree);
@@ -921,58 +911,58 @@ const handleNoteChange = (key, value) => {
             </div>
         );
     }
-const AttachmentRow = ({ title, files, notes }) => (
-    <div className="d-flex justify-content-between py-2" style={{ borderBottom: '1px solid #eee' }}>
-        <div className="text-start">
-            <span className="fw-medium" style={{ color: '#333' }}>{title}</span>
-            <p className="text-muted mb-0" style={{ fontSize: '13px' }}>
-                {files.length > 0 ? `${files.length} file(s) attached.` : 'No files attached.'}
-                {notes && ` (Notes: ${notes})`}
-            </p>
+    const AttachmentRow = ({ title, files, notes }) => (
+        <div className="d-flex justify-content-between py-2" style={{ borderBottom: '1px solid #eee' }}>
+            <div className="text-start">
+                <span className="fw-medium" style={{ color: '#333' }}>{title}</span>
+                <p className="text-muted mb-0" style={{ fontSize: '13px' }}>
+                    {files.length > 0 ? `${files.length} file(s) attached.` : 'No files attached.'}
+                    {notes && ` (Notes: ${notes})`}
+                </p>
+            </div>
         </div>
-    </div>
-);
-const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-};
+    );
+    const formatFileSize = (bytes) => {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    };
 
 
-const getFriendlyFileType = (mimeType) => {
-    if (!mimeType) return 'File';
-    
-    if (mimeType.includes('image/')) {
-        return mimeType.split('/')[1].toUpperCase() || 'Image'; 
-    }
-    if (mimeType.includes('pdf')) {
-        return 'PDF';
-    }
-    if (mimeType.includes('word')) {
-        return 'Word';
-    }
-    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) {
-        return 'Excel';
-    }
-    if (mimeType.includes('zip') || mimeType.includes('rar')) {
-        return 'Archive';
-    }
-    
-    const parts = mimeType.split('.');
-    if (parts.length > 1) {
-        return parts.pop().toUpperCase();
-    }
+    const getFriendlyFileType = (mimeType) => {
+        if (!mimeType) return 'File';
 
-    return 'Document';
-};
+        if (mimeType.includes('image/')) {
+            return mimeType.split('/')[1].toUpperCase() || 'Image';
+        }
+        if (mimeType.includes('pdf')) {
+            return 'PDF';
+        }
+        if (mimeType.includes('word')) {
+            return 'Word';
+        }
+        if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) {
+            return 'Excel';
+        }
+        if (mimeType.includes('zip') || mimeType.includes('rar')) {
+            return 'Archive';
+        }
 
-  const reviewTender = () => {
+        const parts = mimeType.split('.');
+        if (parts.length > 1) {
+            return parts.pop().toUpperCase();
+        }
+
+        return 'Document';
+    };
+
+    const reviewTender = () => {
         const boqArray = getSelectedLeafBoqs(parentTree);
-        const contractorsList = []; 
-        
-        const getDisplayMode = (mode) => 
+        const contractorsList = [];
+
+        const getDisplayMode = (mode) =>
             mode ? mode.charAt(0).toUpperCase() + mode.slice(1) : '-';
 
         const getAttachmentTitle = (key) => {
@@ -990,284 +980,277 @@ const getFriendlyFileType = (mimeType) => {
         }
 
         return (
-    <div className="p-4">
-        
-        <div className="p-4 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-            <div className="text-start ms-1 mt-2 mb-4">
-                <h5 className="fw-bold mb-1" style={{ color: '#333' }}>Review & Float Tender</h5>
-                <p className="text-muted" style={{ fontSize: '14px' }}>Review tender details and float to selected contractors</p>
-            </div>
-            <div className="d-flex justify-content-between">
-                <div className="text-start">
-                    <span className="text-muted d-block" style={{ fontSize: '14px' }}>Tender Floating No</span>
-                    <span className="fw-medium" style={{ fontSize: '16px' }}>{tenderDetail.tenderFloatingNo || 'N/A'}</span>
-                </div>
-                <div className="text-end">
-                    <span className="text-muted d-block" style={{ fontSize: '14px' }}>Floating Date</span>
-                    <span className="fw-medium" style={{ fontSize: '16px' }}>
-                        {tenderDetail.floatingDate 
-                           ? new Date(tenderDetail.floatingDate).toLocaleDateString('en-US', { 
-    month: 'long', 
-    day: 'numeric', 
-    year: 'numeric' 
-})
-                            : 'N/A'}
-                    </span>
-                </div>
-            </div>
-        </div>
-        
-<div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-    <div className="text-start ms-1 mt-2 mb-3">
-        <Info size={20} color="#2BA95A" />
-        <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>General Details</span>
-    </div>
-    <div className="row g-4 ms-1">
-        <div className="col-md-4 text-start">
-            <span className="text-muted d-block">Project Name</span>
-            <span className="fw-medium">{project?.projectName || 'N/A'}</span>
-        </div>
-        <div className="col-md-4 text-start">
-            <span className="text-muted d-block">Offer Submission Mode</span>
-            <span className="fw-medium">{getDisplayMode(tenderDetail.offerSubmissionMode)}</span>
-        </div>
-        <div className="col-md-4 text-start">
-            <span className="text-muted d-block">Submission Last Date</span>
-            <span 
-                className="fw-medium" 
-                style={{ color: '#dc3545' }} 
-            >
-                {tenderDetail.submissionLastDate
-                    ? new Date(tenderDetail.submissionLastDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-                    : 'N/A'} 
-            </span>
-        </div>
-        <div className="col-md-4 text-start">
-            <span className="text-muted d-block">Bid Opening</span>
-            <span className="fw-medium">
-                {tenderDetail.bidOpeningDate 
-                    ? new Date(tenderDetail.bidOpeningDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-                    : 'N/A'} 
-            </span>
-        </div>
-        
-        <div className="col-md-4 text-start">
-            <span className="text-muted d-block">Contact Person</span>
-            <span className="fw-medium">{tenderDetail.contactPerson || 'N/A'}</span>
-        </div>
-        <div className="col-md-4 text-start">
-            <span className="text-muted d-block">Contact Number</span>
-            <span className="fw-medium">{tenderDetail.contactMobile || 'N/A'}</span>
-        </div>
-        <div className="col-md-4 text-start">
-            <span className="text-muted d-block">Contact Email ID</span>
-            <span className="fw-medium">{tenderDetail.contactEmail || 'N/A'}</span>
-        </div>
-        <div className="col-md-12 text-start">
-            <span className="text-muted d-block">Scope of Work</span>
-            <span className="fw-medium">{tenderDetail.scopeOfWork || 'N/A'}</span>
-        </div>
-        
-        <div className="col-md-12 text-start">
-            <span className="text-muted d-block">Scope of Packages</span>
-            <div className="d-flex flex-wrap gap-2 mt-1">
-                {Array.isArray(tenderDetail.scopeOfPackage) && tenderDetail.scopeOfPackage.length > 0 ? (
-                    tenderDetail.scopeOfPackage.map((scopeId, index) => {
-                        const scopeObj = scopeOptions.find(opt => opt.value === scopeId);
-                        return (
-                            <span key={index} className="badge p-2"
-                                style={{ backgroundColor: '#EAF2FE', color: '#2563EBCC', fontSize: '11px', borderRadius:'15px' }}>
-                                {scopeObj ? scopeObj.label : scopeId}
-                            </span>
-                        );
-                    })
-                ) : (
-                    <span className="text-muted" style={{ fontSize: '14px' }}>No scopes selected</span>
-                )}
-            </div>
-        </div>
-    </div>
-</div>
-        <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-    <div className="text-start ms-1 mb-3">
-        <BoxesIcon size={20} color="#2BA95A" />
-        <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>Package Details </span>
-    </div>
-    <div className="table-responsive ms-1 me-1">
-        <table className="table table-borderless"> 
-            <thead style={{ color: '#005197', borderBottom: '2px solid #0051973D' }}>
-                <tr>
-                    <th className="fw-bold">BOQ Code</th>
-                    <th className="fw-bold">BOQ Name</th>
-                    <th className="fw-bold">Unit</th>
-                    <th className="fw-bold text-end">Quantity</th>
-                </tr>
-            </thead>
-            <tbody>
-                {boqArray.length > 0 ? (
-                    boqArray.map((boq) => (
-                        <tr key={boq.id}>
-                            <td>{boq.boqCode}</td>
-                            <td title={boq.boqName}>{boqNameDisplay(boq.boqName)}</td>
-                            <td>{boq.uom?.uomCode || '-'}</td>
-                            <td className="text-end">{boq.quantity?.toFixed(4) || 0}</td>
-                        </tr>
-                    ))
-                ) : (
-                    <tr><td colSpan="4" className="text-center text-muted">No BOQ items selected.</td></tr>
-                )}
-            </tbody>
-        </table>
-    </div>
-</div>
-        <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-            <div className="text-start ms-1 mb-3">
-                <User2 size={20} color="#dc3545" />
-                <span className="ms-2 fw-bold" style={{ color: '#dc3545' }}>Contractor Details</span>
-                <p className="text-muted mt-1" style={{ fontSize: '14px' }}>{contractorsList.length} contractors selected for tender invitation</p>
-            </div>
-            <div className="d-flex flex-wrap gap-3 ms-1">
-                {contractorsList.map((contractor, index) => (
-                    <div key={index} className="p-3" style={{ border: '1px solid #ccc', borderRadius: '8px', minWidth: '300px' }}>
-                        <div className="d-flex justify-content-between align-items-start">
-                            <span className="fw-bold" style={{ color: '#333' }}>{contractor.name}</span>
-                            <span style={{ color: '#dc3545', cursor: 'pointer' }}>
-                                <X size={16} />
+            <div className="p-4">
+                <div className="p-4 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+                    <div className="text-start ms-1 mt-2 mb-4">
+                        <h5 className="fw-bold mb-1" style={{ color: '#333' }}>Review & Float Tender</h5>
+                        <p className="text-muted" style={{ fontSize: '14px' }}>Review tender details and float to selected contractors</p>
+                    </div>
+                    <div className="d-flex justify-content-between">
+                        <div className="text-start">
+                            <span className="text-muted d-block" style={{ fontSize: '14px' }}>Tender Floating No</span>
+                            <span className="fw-medium" style={{ fontSize: '16px' }}>{tenderDetail.tenderFloatingNo || 'N/A'}</span>
+                        </div>
+                        <div className="text-end">
+                            <span className="text-muted d-block" style={{ fontSize: '14px' }}>Floating Date</span>
+                            <span className="fw-medium" style={{ fontSize: '16px' }}>
+                                {tenderDetail.floatingDate
+                                    ? new Date(tenderDetail.floatingDate).toLocaleDateString('en-US', {
+                                        month: 'long',
+                                        day: 'numeric',
+                                        year: 'numeric'
+                                    })
+                                    : 'N/A'}
                             </span>
                         </div>
-                        <p className="text-muted mb-0" style={{ fontSize: '13px' }}>{contractor.contact}</p>
                     </div>
-                ))}
-            </div>
-        </div>
-<div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-    <div className="text-start ms-1 mb-3">
-        <Paperclip size={20} color="#005197" /> 
-        <span className="ms-2 fw-bold" style={{ color: '#005197' }}>Attachments</span>
-    </div>
+                </div>
+                <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+                    <div className="text-start ms-1 mt-2 mb-3">
+                        <Info size={20} color="#2BA95A" />
+                        <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>General Details</span>
+                    </div>
+                    <div className="row g-4 ms-1">
+                        <div className="col-md-4 text-start">
+                            <span className="text-muted d-block">Project Name</span>
+                            <span className="fw-medium">{project?.projectName || 'N/A'}</span>
+                        </div>
+                        <div className="col-md-4 text-start">
+                            <span className="text-muted d-block">Offer Submission Mode</span>
+                            <span className="fw-medium">{getDisplayMode(tenderDetail.offerSubmissionMode)}</span>
+                        </div>
+                        <div className="col-md-4 text-start">
+                            <span className="text-muted d-block">Submission Last Date</span>
+                            <span
+                                className="fw-medium"
+                                style={{ color: '#dc3545' }}
+                            >
+                                {tenderDetail.submissionLastDate
+                                    ? new Date(tenderDetail.submissionLastDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                                    : 'N/A'}
+                            </span>
+                        </div>
+                        <div className="col-md-4 text-start">
+                            <span className="text-muted d-block">Bid Opening</span>
+                            <span className="fw-medium">
+                                {tenderDetail.bidOpeningDate
+                                    ? new Date(tenderDetail.bidOpeningDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                                    : 'N/A'}
+                            </span>
+                        </div>
 
-    <div className="ms-1 me-1">
-        {Object.keys(attachments).map((key, index) => {
-            const attachmentData = attachments[key];
-            const title = getAttachmentTitle(key);
-            const files = attachmentData.files || [];
-            const notes = attachmentData.notes || '';
-            
-            const fileInfo = files.length > 0 ? files[0] : null;
-
-            return (
-                <div 
-                    key={key} 
-                    className="p-3 rounded-3 mb-3" 
-                    style={{ 
-                        backgroundColor: '#FAFAFA', 
-                    }}
-                >
-                    <div className="d-flex justify-content-between align-items-start">
-                        
-                        <div className="text-start me-4 flex-grow-1">
-                            <span className="fw-medium d-block mb-1" style={{ color: '#333' }}>{title}</span>
-                            {fileInfo ? (
-                                <div className="d-block mt-1">
-                                    <span style={{ fontSize: '13px', color: '#00000080' }}> 
-                                        {getFriendlyFileType(fileInfo.type || fileInfo.extension)} {formatFileSize(fileInfo.size) || fileInfo.id || 'N/A'}
+                        <div className="col-md-4 text-start">
+                            <span className="text-muted d-block">Contact Person</span>
+                            <span className="fw-medium">{tenderDetail.contactPerson || 'N/A'}</span>
+                        </div>
+                        <div className="col-md-4 text-start">
+                            <span className="text-muted d-block">Contact Number</span>
+                            <span className="fw-medium">{tenderDetail.contactMobile || 'N/A'}</span>
+                        </div>
+                        <div className="col-md-4 text-start">
+                            <span className="text-muted d-block">Contact Email ID</span>
+                            <span className="fw-medium">{tenderDetail.contactEmail || 'N/A'}</span>
+                        </div>
+                        <div className="col-md-12 text-start">
+                            <span className="text-muted d-block">Scope of Packages</span>
+                            <div className="d-flex flex-wrap gap-2 mt-1">
+                                {Array.isArray(tenderDetail.scopeOfPackage) && tenderDetail.scopeOfPackage.length > 0 ? (
+                                    tenderDetail.scopeOfPackage.map((scopeId, index) => {
+                                        const scopeObj = scopeOptions.find(opt => opt.value === scopeId);
+                                        return (
+                                            <span key={index} className="badge p-2"
+                                                style={{ backgroundColor: '#EAF2FE', color: '#2563EBCC', fontSize: '11px', borderRadius: '15px' }}>
+                                                {scopeObj ? scopeObj.label : scopeId}
+                                            </span>
+                                        );
+                                    })
+                                ) : (
+                                    <span className="text-muted" style={{ fontSize: '14px' }}>No scopes selected</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+                    <div className="text-start ms-1 mb-3">
+                        <BoxesIcon size={20} color="#2BA95A" />
+                        <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>Package Details </span>
+                    </div>
+                    <div className="table-responsive ms-1 me-1">
+                        <table className="table table-borderless">
+                            <thead style={{ color: '#005197', borderBottom: '2px solid #0051973D' }}>
+                                <tr>
+                                    <th className="fw-bold">BOQ Code</th>
+                                    <th className="fw-bold">BOQ Name</th>
+                                    <th className="fw-bold">Unit</th>
+                                    <th className="fw-bold text-end">Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {boqArray.length > 0 ? (
+                                    boqArray.map((boq) => (
+                                        <tr key={boq.id}>
+                                            <td>{boq.boqCode}</td>
+                                            <td title={boq.boqName}>{boqNameDisplay(boq.boqName)}</td>
+                                            <td>{boq.uom?.uomCode || '-'}</td>
+                                            <td className="text-end">{boq.quantity?.toFixed(4) || 0}</td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan="4" className="text-center text-muted">No BOQ items selected.</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+                    <div className="text-start ms-1 mb-3">
+                        <User2 size={20} color="#dc3545" />
+                        <span className="ms-2 fw-bold" style={{ color: '#dc3545' }}>Contractor Details</span>
+                        <p className="text-muted mt-1" style={{ fontSize: '14px' }}>{contractorsList.length} contractors selected for tender invitation</p>
+                    </div>
+                    <div className="d-flex flex-wrap gap-3 ms-1">
+                        {contractorsList.map((contractor, index) => (
+                            <div key={index} className="p-3" style={{ border: '1px solid #ccc', borderRadius: '8px', minWidth: '300px' }}>
+                                <div className="d-flex justify-content-between align-items-start">
+                                    <span className="fw-bold" style={{ color: '#333' }}>{contractor.name}</span>
+                                    <span style={{ color: '#dc3545', cursor: 'pointer' }}>
+                                        <X size={16} />
                                     </span>
                                 </div>
-                            ) : (
-                                <span className="text-muted" style={{ fontSize: '13px' }}>No file uploaded</span>
-                            )}
-                            <span 
-                                className="d-block mt-1" 
-                                style={{ 
-                                    fontSize: '13px', 
-                                    color: 'rgba(0, 0, 0, 0.5)'
-                                }}
-                            >
-                                {notes}
-                            </span>
-                        </div>
-                        {fileInfo && (
-                            <span 
-                                className="p-2 rounded-circle flex-shrink-0" 
-                                style={{ cursor: 'pointer', color: '#005197' }}
-                            >
-                                <Download size={18} />
-                            </span>
-                        )}
+                                <p className="text-muted mb-0" style={{ fontSize: '13px' }}>{contractor.contact}</p>
+                            </div>
+                        ))}
                     </div>
                 </div>
-            );
-        })}
-    </div>
-</div>
-<div className="mt-5 mb-5">
-    
-    <div 
-        className="p-4 d-flex flex-column rounded-3" 
-        style={{ 
-            backgroundColor: '#EAF2FE', 
-            border: '1px solid #C0D9FF', 
-        }}
-    >
-        <div className="mb-3 fw-bold text-start" style={{ color: '#005197' }}> 
-            Tender Summary
-        </div>
-        <div className="d-flex flex-column" style={{ color: '#005197', fontSize: '14px' }}> 
-            <div className="d-flex mb-2"> 
-                <div 
-                    className="d-flex justify-content-between pe-2 me-4" 
-                    style={{ 
-                        width: '50%', 
-                        borderRight: '1px solid #D2E3F4',
-                    }}
-                > 
-                    <span>Total Packages</span> <span style={{ color: '#005197' }}>{boqArray.length > 0 ? 1 : 0}</span> 
-                </div> 
-                <div className="d-flex justify-content-between ps-4" style={{ width: '50%' }}>
-                    <span>Selected Contractors</span> <span style={{ color: '#005197' }}>{contractorsList.length}</span> 
+                <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+                    <div className="text-start ms-1 mb-3">
+                        <Paperclip size={20} color="#005197" />
+                        <span className="ms-2 fw-bold" style={{ color: '#005197' }}>Attachments</span>
+                    </div>
+
+                    <div className="ms-1 me-1">
+                        {Object.keys(attachments).map((key, index) => {
+                            const attachmentData = attachments[key];
+                            const title = getAttachmentTitle(key);
+                            const files = attachmentData.files || [];
+                            const notes = attachmentData.notes || '';
+
+                            const fileInfo = files.length > 0 ? files[0] : null;
+
+                            return (
+                                <div
+                                    key={key}
+                                    className="p-3 rounded-3 mb-3"
+                                    style={{
+                                        backgroundColor: '#FAFAFA',
+                                    }}
+                                >
+                                    <div className="d-flex justify-content-between align-items-start">
+
+                                        <div className="text-start me-4 flex-grow-1">
+                                            <span className="fw-medium d-block mb-1" style={{ color: '#333' }}>{title}</span>
+                                            {fileInfo ? (
+                                                <div className="d-block mt-1">
+                                                    <span style={{ fontSize: '13px', color: '#00000080' }}>
+                                                        {getFriendlyFileType(fileInfo.type || fileInfo.extension)} {formatFileSize(fileInfo.size) || fileInfo.id || 'N/A'}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-muted" style={{ fontSize: '13px' }}>No file uploaded</span>
+                                            )}
+                                            <span
+                                                className="d-block mt-1"
+                                                style={{
+                                                    fontSize: '13px',
+                                                    color: 'rgba(0, 0, 0, 0.5)'
+                                                }}
+                                            >
+                                                {notes}
+                                            </span>
+                                        </div>
+                                        {fileInfo && (
+                                            <span
+                                                className="p-2 rounded-circle flex-shrink-0"
+                                                style={{ cursor: 'pointer', color: '#005197' }}
+                                            >
+                                                <Download size={18} />
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
-            
-            <div className="d-flex">
-                <div 
-                    className="d-flex justify-content-between pe-2 me-4" 
-                    style={{ 
-                        width: '50%',
-                        borderRight: '1px solid #D2E3F4' 
-                    }}
-                >
-                    <span>Attachments</span> <span style={{ color: '#005197' }}>{Object.keys(attachments).filter(key => attachments[key].files?.length > 0 || attachments[key].notes).length}</span>
-                </div>
-                <div className="d-flex justify-content-between ps-4" style={{ width: '50%' }}>
-                    <span>Submission Deadline</span> 
-                    <span 
-                        style={{ 
-                            color: '#dc3545' 
+                <div className="mt-5 mb-5">
+
+                    <div
+                        className="p-4 d-flex flex-column rounded-3"
+                        style={{
+                            backgroundColor: '#EAF2FE',
+                            border: '1px solid #C0D9FF',
                         }}
                     >
-                        {tenderDetail.offerSubmissionDate || 'Not Set'}
-                    </span>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div className="d-flex justify-content-end mt-3">
-        <button 
-            className="btn fw-bold" 
-            style={{ 
-                backgroundColor: '#005197CC', 
-                color: 'white', 
-                padding: '10px 20px' 
-            }}
-        >
-            Float Tender
-        </button>
-    </div>
-</div>
+                        <div className="mb-3 fw-bold text-start" style={{ color: '#005197' }}>
+                            Tender Summary
+                        </div>
+                        <div className="d-flex flex-column" style={{ color: '#005197', fontSize: '14px' }}>
+                            <div className="d-flex mb-2">
+                                <div
+                                    className="d-flex justify-content-between pe-2 me-4"
+                                    style={{
+                                        width: '50%',
+                                        borderRight: '1px solid #D2E3F4',
+                                    }}
+                                >
+                                    <span>Total Packages</span> <span style={{ color: '#005197' }}>{boqArray.length > 0 ? 1 : 0}</span>
+                                </div>
+                                <div className="d-flex justify-content-between ps-4" style={{ width: '50%' }}>
+                                    <span>Selected Contractors</span> <span style={{ color: '#005197' }}>{contractorsList.length}</span>
+                                </div>
+                            </div>
 
-    </div>
-);
+                            <div className="d-flex">
+                                <div
+                                    className="d-flex justify-content-between pe-2 me-4"
+                                    style={{
+                                        width: '50%',
+                                        borderRight: '1px solid #D2E3F4'
+                                    }}
+                                >
+                                    <span>Attachments</span> <span style={{ color: '#005197' }}>{Object.keys(attachments).filter(key => attachments[key].files?.length > 0 || attachments[key].notes).length}</span>
+                                </div>
+                                <div className="d-flex justify-content-between ps-4" style={{ width: '50%' }}>
+                                    <span>Submission Deadline</span>
+                                    <span
+                                        style={{
+                                            color: '#dc3545'
+                                        }}
+                                    >
+                                        {tenderDetail.offerSubmissionDate || 'Not Set'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="d-flex justify-content-end mt-3">
+                        <button
+                            className="btn fw-bold"
+                            style={{
+                                backgroundColor: '#005197CC',
+                                color: 'white',
+                                padding: '10px 20px'
+                            }}
+                        >
+                            Float Tender
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        );
     };
 
     const renderContent = () => {
