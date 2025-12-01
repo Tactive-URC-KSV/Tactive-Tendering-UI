@@ -123,6 +123,18 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       setSelectedTemplate(null);
       setFileType('');
       setSheetOption([]);
+      excelData([]);
+      setCurrentPage(0);
+      setPageSize(50);
+      setTotalPages(0);
+      setTotalItems(0);
+      setSearchTerm('');
+      setLevelMap({});
+      setLastLevelMap({});
+      setParentMap({});
+      setSelectedRow(new Set());
+      setSection('columnMapping');
+      setUploadScreen(false);
    };
    const getExcelSheets = (event) => {
       const file = event.target.files[0];
@@ -256,10 +268,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const fetchExcelData = async (page = 0, size = 50) => {
       if (!BOQfile) {
          toast.error("Please upload a BOQ file");
-         return;
-      }
-      if (!selectedSheet || selectedSheet.trim() === "") {
-         toast.error("Please select a sheet");
          return;
       }
       const columnMapping = internalFields.reduce((acc, item) => {
