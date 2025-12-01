@@ -23,6 +23,16 @@ function TFProcess({ projectId }) {
         const padded = String(randomNum).padStart(6, '0');
         return `TF-${year}-${padded}`;
     };
+
+    const CustomMultiValueContainer = () => null; 
+    const CustomDropdownIndicator = () => null;  
+    const CustomIndicatorSeparator = () => null;
+    const CustomClearIndicator = () => null;
+    const handleRemoveScope = (idToRemove) => {
+    setSelectedScopes(prevScopes => prevScopes.filter(id => id !== idToRemove));
+};
+    
+
     const getCurrentDate = () => {
         const today = new Date();
         return today.toISOString().split("T")[0];
@@ -181,7 +191,6 @@ function TFProcess({ projectId }) {
         }
     };
 
-
     const updateNodeInTree = (tree, nodeId, newProps) => {
         return tree.map(node => {
             if (node.id === nodeId) {
@@ -239,8 +248,6 @@ function TFProcess({ projectId }) {
             return newSet;
         });
     };
-
-
 
     const getSelectedLeafBoqs = (tree) => {
         let result = [];
@@ -573,26 +580,43 @@ function TFProcess({ projectId }) {
                         />
                     </div>
                 </div>
-                <div className="row align-items-center ms-1 mt-5">
-                    <div className="col-md-4 col-lg-4 ">
-                        <label className="projectform-select text-start d-block">Scope of Package</label>
-                        <Select
-                            options={scopeOptions}
-                            isMulti
-                            placeholder="Select Scope of Package"
-                            className="w-100"
-                            classNamePrefix="select"
-                            value={scopeOptions.filter(opt => selectedScopes.includes(opt.value))}
-                            onChange={(selected) => setSelectedScopes(selected ? selected.map(s => s.value) : [])}
-                        />
-                    </div>
 
-                    <div className="col-md-4 col-lg-4">
-                        <label className="projectform text-start d-block"></label>
-                       
-                    </div>
-                </div>
-            </div>
+        
+                <div className="row align-items-center ms-1 mt-5">
+                <div className="col-md-4 col-lg-12 ">
+                    <label className="projectform-select text-start d-block">Scope of Package</label>
+                    <Select options={scopeOptions} isMulti placeholder="Select Scope of Package" className="w-100" classNamePrefix="select"
+                        value={scopeOptions.filter(opt => selectedScopes.includes(opt.value))}
+                        onChange={(selected) => setSelectedScopes(selected ? selected.map(s => s.value) : [])}
+                        components={{
+                            MultiValueContainer: CustomMultiValueContainer,
+                            IndicatorSeparator: CustomIndicatorSeparator,
+                            DropdownIndicator: CustomDropdownIndicator,
+                            ClearIndicator: CustomClearIndicator,
+                    }}
+                />
+                <div className="mt-2 d-flex flex-wrap gap-2"> 
+                {scopeOptions .filter(opt => selectedScopes.includes(opt.value)) 
+                .map(selectedOpt => (
+                    <span key={selectedOpt.value} className="select__multi-value">
+                        <span className="select__multi-value__label">
+                            {selectedOpt.label}
+                        </span>
+                        <span
+                            className="select__multi-value__remove"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleRemoveScope(selectedOpt.value); 
+                            }}
+                        >
+                            &times;
+                        </span>
+                    </span>
+                ))}
+        </div>
+    </div>
+</div>
+</div>
         );
     }
 
@@ -628,13 +652,12 @@ function TFProcess({ projectId }) {
                         </div>
                     </div>
                     <div className="d-flex gap-5">
-                        <button
-                            className="btn btn-sm"
-                            style={{ border: '1px solid #dc3545', color: '#dc3545' }}
-                            onClick={handleRemoveSelectedBoqs}
-                            disabled={boqForRemoval.size === 0}
+                       <button className="btn btn-sm"
+                    style={{ border: '1px solid #dc3545', color: '#dc3545' }}
+                         onClick={handleRemoveSelectedBoqs}
+                        disabled={boqForRemoval.size === 0}  
                         >
-                            <X size={18} /> <span className="fw-medium ms-1">Remove</span>
+                        <X size={18} /> <span className="fw-medium ms-1">Remove</span>
                         </button>
 
                         <button
@@ -950,15 +973,9 @@ function TFProcess({ projectId }) {
             return 'Archive';
         }
 
-        const parts = mimeType.split('.');
-        if (parts.length > 1) {
-            return parts.pop().toUpperCase();
-        }
 
-        return 'Document';
-    };
 
-    const reviewTender = () => {
+  const reviewTender = () => {
         const boqArray = getSelectedLeafBoqs(parentTree);
         const contractorsList = [];
 
@@ -980,27 +997,146 @@ function TFProcess({ projectId }) {
         }
 
         return (
-            <div className="p-4">
-                <div className="p-4 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-                    <div className="text-start ms-1 mt-2 mb-4">
-                        <h5 className="fw-bold mb-1" style={{ color: '#333' }}>Review & Float Tender</h5>
-                        <p className="text-muted" style={{ fontSize: '14px' }}>Review tender details and float to selected contractors</p>
-                    </div>
-                    <div className="d-flex justify-content-between">
-                        <div className="text-start">
-                            <span className="text-muted d-block" style={{ fontSize: '14px' }}>Tender Floating No</span>
-                            <span className="fw-medium" style={{ fontSize: '16px' }}>{tenderDetail.tenderFloatingNo || 'N/A'}</span>
-                        </div>
-                        <div className="text-end">
-                            <span className="text-muted d-block" style={{ fontSize: '14px' }}>Floating Date</span>
-                            <span className="fw-medium" style={{ fontSize: '16px' }}>
-                                {tenderDetail.floatingDate
-                                    ? new Date(tenderDetail.floatingDate).toLocaleDateString('en-US', {
-                                        month: 'long',
-                                        day: 'numeric',
-                                        year: 'numeric'
-                                    })
-                                    : 'N/A'}
+    <div className="p-4">
+        
+        <div className="p-4 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+            <div className="text-start ms-1 mt-2 mb-4">
+                <h5 className="fw-bold mb-1" style={{ color: '#333' }}>Review & Float Tender</h5>
+                <p className="text-muted" style={{ fontSize: '14px' }}>Review tender details and float to selected contractors</p>
+            </div>
+            <div className="d-flex justify-content-between">
+                <div className="text-start">
+                    <span className="text-muted d-block" style={{ fontSize: '14px' }}>Tender Floating No</span>
+                    <span className="fw-medium" style={{ fontSize: '16px' }}>{tenderDetail.tenderFloatingNo || 'N/A'}</span>
+                </div>
+                <div className="text-end">
+                    <span className="text-muted d-block" style={{ fontSize: '14px' }}>Floating Date</span>
+                    <span className="fw-medium" style={{ fontSize: '16px' }}>
+                        {tenderDetail.floatingDate 
+                           ? new Date(tenderDetail.floatingDate).toLocaleDateString('en-US', { 
+    month: 'long', 
+    day: 'numeric', 
+    year: 'numeric' 
+})
+                            : 'N/A'}
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+<div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+    <div className="text-start ms-1 mt-2 mb-3">
+        <Info size={20} color="#2BA95A" />
+        <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>General Details</span>
+    </div>
+    <div className="row g-4 ms-1">
+        <div className="col-md-4 text-start">
+            <span className="text-muted d-block">Project Name</span>
+            <span className="fw-medium">{project?.projectName || 'N/A'}</span>
+        </div>
+        <div className="col-md-4 text-start">
+            <span className="text-muted d-block">Offer Submission Mode</span>
+            <span className="fw-medium">{getDisplayMode(tenderDetail.offerSubmissionMode)}</span>
+        </div>
+        <div className="col-md-4 text-start">
+            <span className="text-muted d-block">Submission Last Date</span>
+            <span 
+                className="fw-medium" 
+                style={{ color: '#dc3545' }} 
+            >
+                {tenderDetail.submissionLastDate
+                    ? new Date(tenderDetail.submissionLastDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                    : 'N/A'} 
+            </span>
+        </div>
+        <div className="col-md-4 text-start">
+            <span className="text-muted d-block">Bid Opening</span>
+            <span className="fw-medium">
+                {tenderDetail.bidOpeningDate 
+                    ? new Date(tenderDetail.bidOpeningDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                    : 'N/A'} 
+            </span>
+        </div>
+        
+        <div className="col-md-4 text-start">
+            <span className="text-muted d-block">Contact Person</span>
+            <span className="fw-medium">{tenderDetail.contactPerson || 'N/A'}</span>
+        </div>
+        <div className="col-md-4 text-start">
+            <span className="text-muted d-block">Contact Number</span>
+            <span className="fw-medium">{tenderDetail.contactMobile || 'N/A'}</span>
+        </div>
+        <div className="col-md-4 text-start">
+            <span className="text-muted d-block">Contact Email ID</span>
+            <span className="fw-medium">{tenderDetail.contactEmail || 'N/A'}</span>
+        </div>
+        
+        
+        <div className="col-md-12 text-start">
+            <span className="text-muted d-block">Scope of Packages</span>
+            <div className="d-flex flex-wrap gap-2 mt-1">
+                {Array.isArray(tenderDetail.scopeOfPackage) && tenderDetail.scopeOfPackage.length > 0 ? (
+                    tenderDetail.scopeOfPackage.map((scopeId, index) => {
+                        const scopeObj = scopeOptions.find(opt => opt.value === scopeId);
+                        return (
+                            <span key={index} className="badge p-2"
+                                style={{ backgroundColor: '#EAF2FE', color: '#2563EBCC', fontSize: '11px', borderRadius:'15px' }}>
+                                {scopeObj ? scopeObj.label : scopeId}
+                            </span>
+                        );
+                    })
+                ) : (
+                    <span className="text-muted" style={{ fontSize: '14px' }}>No scopes selected</span>
+                )}
+            </div>
+        </div>
+    </div>
+</div>
+        <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+    <div className="text-start ms-1 mb-3">
+        <BoxesIcon size={20} color="#2BA95A" />
+        <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>Package Details </span>
+    </div>
+    <div className="table-responsive ms-1 me-1">
+        <table className="table table-borderless"> 
+            <thead style={{ color: '#005197', borderBottom: '2px solid #0051973D' }}>
+                <tr>
+                    <th className="fw-bold">BOQ Code</th>
+                    <th className="fw-bold">BOQ Name</th>
+                    <th className="fw-bold">Unit</th>
+                    <th className="fw-bold text-end">Quantity</th>
+                </tr>
+            </thead>
+            <tbody>
+                {boqArray.length > 0 ? (
+                    boqArray.map((boq) => (
+                        <tr key={boq.id}>
+                            <td>{boq.boqCode}</td>
+                            <td title={boq.boqName}>{boqNameDisplay(boq.boqName)}</td>
+                            <td>{boq.uom?.uomCode || '-'}</td>
+                            <td className="text-end">{boq.quantity?.toFixed(4) || 0}</td>
+                        </tr>
+                    ))
+                ) : (
+                    <tr><td colSpan="4" className="text-center text-muted">No BOQ items selected.</td></tr>
+                )}
+            </tbody>
+        </table>
+    </div>
+</div>
+        <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+            <div className="text-start ms-1 mb-3">
+                <User2 size={20} color="#dc3545" />
+                <span className="ms-2 fw-bold" style={{ color: '#dc3545' }}>Contractor Details</span>
+                <p className="text-muted mt-1" style={{ fontSize: '14px' }}>{contractorsList.length} contractors selected for tender invitation</p>
+            </div>
+            <div className="d-flex flex-wrap gap-3 ms-1">
+                {contractorsList.map((contractor, index) => (
+                    <div key={index} className="p-3" style={{ border: '1px solid #ccc', borderRadius: '8px', minWidth: '300px' }}>
+                        <div className="d-flex justify-content-between align-items-start">
+                            <span className="fw-bold" style={{ color: '#333' }}>{contractor.name}</span>
+                            <span style={{ color: '#dc3545', cursor: 'pointer' }}>
+                                <X size={16} />
                             </span>
                         </div>
                     </div>
