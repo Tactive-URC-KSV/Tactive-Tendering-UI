@@ -463,7 +463,6 @@ function TFProcess({ projectId }) {
                 </div>
             </div>
         );
-
     }
 
     const generalDetails = () => {
@@ -578,10 +577,38 @@ function TFProcess({ projectId }) {
                         />
                     </div>
                 </div>
-
-
+                <div className="row align-items-center justify-content-between ms-1 mt-5">
+                    <div className="col-md-4 col-lg-4 ">
+                        <label className="projectform text-start d-block">Contact Person</label>
+                        <input type="text" className="form-input w-100"
+                            value={tenderDetail.contactPerson}
+                            readOnly
+                        />
+                    </div>
+                    <div className="col-md-4 col-lg-4">
+                        <label className="projectform text-start d-block">Contact Email</label>
+                        <input type="text" className="form-input w-100"
+                            value={tenderDetail.contactEmail}
+                            readOnly
+                        />
+                    </div>
+                    <div className="col-md-4 col-lg-4">
+                        <label className="projectform text-start d-block">Contact Number</label>
+                        <input type="text" className="form-input w-100"
+                            value={tenderDetail.contactMobile}
+                            readOnly
+                        />
+                    </div>
+                </div>
                 <div className="row align-items-center ms-1 mt-5">
-                    <div className="col-md-4 col-lg-12 ">
+                    <div className="col-md-6 col-lg-6">
+                        <label className="projectform text-start d-block">Contact Number</label>
+                        <input type="text" className="form-input w-100"
+                            value={tenderDetail.contactMobile}
+                            readOnly
+                        />
+                    </div>
+                    <div className="col-md-6 col-lg-6 ">
                         <label className="projectform-select text-start d-block">Scope of Package</label>
                         <Select options={scopeOptions} isMulti placeholder="Select Scope of Package" className="w-100" classNamePrefix="select"
                             value={scopeOptions.filter(opt => selectedScopes.includes(opt.value))}
@@ -969,487 +996,487 @@ function TFProcess({ projectId }) {
 
     }
 
-        const reviewTender = () => {
-            const boqArray = getSelectedLeafBoqs(parentTree);
-            const contractorsList = [];
+    const reviewTender = () => {
+        const boqArray = getSelectedLeafBoqs(parentTree);
+        const contractorsList = [];
 
-            const getDisplayMode = (mode) =>
-                mode ? mode.charAt(0).toUpperCase() + mode.slice(1) : '-';
+        const getDisplayMode = (mode) =>
+            mode ? mode.charAt(0).toUpperCase() + mode.slice(1) : '-';
 
-            const getAttachmentTitle = (key) => {
-                if (key === 'others') return 'Others';
-                if (key === 'technical') return 'Technical Specifications';
-                if (key === 'drawings') return 'Drawings';
-                if (key === 'commercial') return 'Commercial Conditions';
-                return key;
-            };
-
-            const boqNameDisplay = (boqName) => {
-                return boqName && boqName.length > 20
-                    ? boqName.substring(0, 20) + '...'
-                    : boqName;
-            }
-
-            return (
-                <div className="p-4">
-
-                    <div className="p-4 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-                        <div className="text-start ms-1 mt-2 mb-4">
-                            <h5 className="fw-bold mb-1" style={{ color: '#333' }}>Review & Float Tender</h5>
-                            <p className="text-muted" style={{ fontSize: '14px' }}>Review tender details and float to selected contractors</p>
-                        </div>
-                        <div className="d-flex justify-content-between">
-                            <div className="text-start">
-                                <span className="text-muted d-block" style={{ fontSize: '14px' }}>Tender Floating No</span>
-                                <span className="fw-medium" style={{ fontSize: '16px' }}>{tenderDetail.tenderFloatingNo || 'N/A'}</span>
-                            </div>
-                            <div className="text-end">
-                                <span className="text-muted d-block" style={{ fontSize: '14px' }}>Floating Date</span>
-                                <span className="fw-medium" style={{ fontSize: '16px' }}>
-                                    {tenderDetail.floatingDate
-                                        ? new Date(tenderDetail.floatingDate).toLocaleDateString('en-US', {
-                                            month: 'long',
-                                            day: 'numeric',
-                                            year: 'numeric'
-                                        })
-                                        : 'N/A'}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-                        <div className="text-start ms-1 mt-2 mb-3">
-                            <Info size={20} color="#2BA95A" />
-                            <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>General Details</span>
-                        </div>
-                        <div className="row g-4 ms-1">
-                            <div className="col-md-4 text-start">
-                                <span className="text-muted d-block">Project Name</span>
-                                <span className="fw-medium">{project?.projectName || 'N/A'}</span>
-                            </div>
-                            <div className="col-md-4 text-start">
-                                <span className="text-muted d-block">Offer Submission Mode</span>
-                                <span className="fw-medium">{getDisplayMode(tenderDetail.offerSubmissionMode)}</span>
-                            </div>
-                            <div className="col-md-4 text-start">
-                                <span className="text-muted d-block">Submission Last Date</span>
-                                <span
-                                    className="fw-medium"
-                                    style={{ color: '#dc3545' }}
-                                >
-                                    {tenderDetail.submissionLastDate
-                                        ? new Date(tenderDetail.submissionLastDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-                                        : 'N/A'}
-                                </span>
-                            </div>
-                            <div className="col-md-4 text-start">
-                                <span className="text-muted d-block">Bid Opening</span>
-                                <span className="fw-medium">
-                                    {tenderDetail.bidOpeningDate
-                                        ? new Date(tenderDetail.bidOpeningDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-                                        : 'N/A'}
-                                </span>
-                            </div>
-
-                            <div className="col-md-4 text-start">
-                                <span className="text-muted d-block">Contact Person</span>
-                                <span className="fw-medium">{tenderDetail.contactPerson || 'N/A'}</span>
-                            </div>
-                            <div className="col-md-4 text-start">
-                                <span className="text-muted d-block">Contact Number</span>
-                                <span className="fw-medium">{tenderDetail.contactMobile || 'N/A'}</span>
-                            </div>
-                            <div className="col-md-4 text-start">
-                                <span className="text-muted d-block">Contact Email ID</span>
-                                <span className="fw-medium">{tenderDetail.contactEmail || 'N/A'}</span>
-                            </div>
-
-
-                            <div className="col-md-12 text-start">
-                                <span className="text-muted d-block">Scope of Packages</span>
-                                <div className="d-flex flex-wrap gap-2 mt-1">
-                                    {Array.isArray(tenderDetail.scopeOfPackage) && tenderDetail.scopeOfPackage.length > 0 ? (
-                                        tenderDetail.scopeOfPackage.map((scopeId, index) => {
-                                            const scopeObj = scopeOptions.find(opt => opt.value === scopeId);
-                                            return (
-                                                <span key={index} className="badge p-2"
-                                                    style={{ backgroundColor: '#EAF2FE', color: '#2563EBCC', fontSize: '11px', borderRadius: '15px' }}>
-                                                    {scopeObj ? scopeObj.label : scopeId}
-                                                </span>
-                                            );
-                                        })
-                                    ) : (
-                                        <span className="text-muted" style={{ fontSize: '14px' }}>No scopes selected</span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-                        <div className="text-start ms-1 mb-3">
-                            <BoxesIcon size={20} color="#2BA95A" />
-                            <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>Package Details </span>
-                        </div>
-                        <div className="table-responsive ms-1 me-1">
-                            <table className="table table-borderless">
-                                <thead style={{ color: '#005197', borderBottom: '2px solid #0051973D' }}>
-                                    <tr>
-                                        <th className="fw-bold">BOQ Code</th>
-                                        <th className="fw-bold">BOQ Name</th>
-                                        <th className="fw-bold">Unit</th>
-                                        <th className="fw-bold text-end">Quantity</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {boqArray.length > 0 ? (
-                                        boqArray.map((boq) => (
-                                            <tr key={boq.id}>
-                                                <td>{boq.boqCode}</td>
-                                                <td title={boq.boqName}>{boqNameDisplay(boq.boqName)}</td>
-                                                <td>{boq.uom?.uomCode || '-'}</td>
-                                                <td className="text-end">{boq.quantity?.toFixed(4) || 0}</td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr><td colSpan="4" className="text-center text-muted">No BOQ items selected.</td></tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-                        <div className="text-start ms-1 mb-3">
-                            <User2 size={20} color="#dc3545" />
-                            <span className="ms-2 fw-bold" style={{ color: '#dc3545' }}>Contractor Details</span>
-                            <p className="text-muted mt-1" style={{ fontSize: '14px' }}>{contractorsList.length} contractors selected for tender invitation</p>
-                        </div>
-                        <div className="d-flex flex-wrap gap-3 ms-1">
-                            {contractorsList.map((contractor, index) => (
-                                <div key={index} className="p-3" style={{ border: '1px solid #ccc', borderRadius: '8px', minWidth: '300px' }}>
-                                    <div className="d-flex justify-content-between align-items-start">
-                                        <span className="fw-bold" style={{ color: '#333' }}>{contractor.name}</span>
-                                        <span style={{ color: '#dc3545', cursor: 'pointer' }}>
-                                            <X size={16} />
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
-                            <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-                                <div className="text-start ms-1 mt-2 mb-3">
-                                    <Info size={20} color="#2BA95A" />
-                                    <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>General Details</span>
-                                </div>
-                                <div className="row g-4 ms-1">
-                                    <div className="col-md-4 text-start">
-                                        <span className="text-muted d-block">Project Name</span>
-                                        <span className="fw-medium">{project?.projectName || 'N/A'}</span>
-                                    </div>
-                                    <div className="col-md-4 text-start">
-                                        <span className="text-muted d-block">Offer Submission Mode</span>
-                                        <span className="fw-medium">{getDisplayMode(tenderDetail.offerSubmissionMode)}</span>
-                                    </div>
-                                    <div className="col-md-4 text-start">
-                                        <span className="text-muted d-block">Submission Last Date</span>
-                                        <span
-                                            className="fw-medium"
-                                            style={{ color: '#dc3545' }}
-                                        >
-                                            {tenderDetail.submissionLastDate
-                                                ? new Date(tenderDetail.submissionLastDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-                                                : 'N/A'}
-                                        </span>
-                                    </div>
-                                    <div className="col-md-4 text-start">
-                                        <span className="text-muted d-block">Bid Opening</span>
-                                        <span className="fw-medium">
-                                            {tenderDetail.bidOpeningDate
-                                                ? new Date(tenderDetail.bidOpeningDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-                                                : 'N/A'}
-                                        </span>
-                                    </div>
-
-                                    <div className="col-md-4 text-start">
-                                        <span className="text-muted d-block">Contact Person</span>
-                                        <span className="fw-medium">{tenderDetail.contactPerson || 'N/A'}</span>
-                                    </div>
-                                    <div className="col-md-4 text-start">
-                                        <span className="text-muted d-block">Contact Number</span>
-                                        <span className="fw-medium">{tenderDetail.contactMobile || 'N/A'}</span>
-                                    </div>
-                                    <div className="col-md-4 text-start">
-                                        <span className="text-muted d-block">Contact Email ID</span>
-                                        <span className="fw-medium">{tenderDetail.contactEmail || 'N/A'}</span>
-                                    </div>
-                                    <div className="col-md-12 text-start">
-                                        <span className="text-muted d-block">Scope of Packages</span>
-                                        <div className="d-flex flex-wrap gap-2 mt-1">
-                                            {Array.isArray(tenderDetail.scopeOfPackage) && tenderDetail.scopeOfPackage.length > 0 ? (
-                                                tenderDetail.scopeOfPackage.map((scopeId, index) => {
-                                                    const scopeObj = scopeOptions.find(opt => opt.value === scopeId);
-                                                    return (
-                                                        <span key={index} className="badge p-2"
-                                                            style={{ backgroundColor: '#EAF2FE', color: '#2563EBCC', fontSize: '11px', borderRadius: '15px' }}>
-                                                            {scopeObj ? scopeObj.label : scopeId}
-                                                        </span>
-                                                    );
-                                                })
-                                            ) : (
-                                                <span className="text-muted" style={{ fontSize: '14px' }}>No scopes selected</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-                                <div className="text-start ms-1 mb-3">
-                                    <BoxesIcon size={20} color="#2BA95A" />
-                                    <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>Package Details </span>
-                                </div>
-                                <div className="table-responsive ms-1 me-1">
-                                    <table className="table table-borderless">
-                                        <thead style={{ color: '#005197', borderBottom: '2px solid #0051973D' }}>
-                                            <tr>
-                                                <th className="fw-bold">BOQ Code</th>
-                                                <th className="fw-bold">BOQ Name</th>
-                                                <th className="fw-bold">Unit</th>
-                                                <th className="fw-bold text-end">Quantity</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {boqArray.length > 0 ? (
-                                                boqArray.map((boq) => (
-                                                    <tr key={boq.id}>
-                                                        <td>{boq.boqCode}</td>
-                                                        <td title={boq.boqName}>{boqNameDisplay(boq.boqName)}</td>
-                                                        <td>{boq.uom?.uomCode || '-'}</td>
-                                                        <td className="text-end">{boq.quantity?.toFixed(4) || 0}</td>
-                                                    </tr>
-                                                ))
-                                            ) : (
-                                                <tr><td colSpan="4" className="text-center text-muted">No BOQ items selected.</td></tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-                                <div className="text-start ms-1 mb-3">
-                                    <User2 size={20} color="#dc3545" />
-                                    <span className="ms-2 fw-bold" style={{ color: '#dc3545' }}>Contractor Details</span>
-                                    <p className="text-muted mt-1" style={{ fontSize: '14px' }}>{contractorsList.length} contractors selected for tender invitation</p>
-                                </div>
-                                <div className="d-flex flex-wrap gap-3 ms-1">
-                                    {contractorsList.map((contractor, index) => (
-                                        <div key={index} className="p-3" style={{ border: '1px solid #ccc', borderRadius: '8px', minWidth: '300px' }}>
-                                            <div className="d-flex justify-content-between align-items-start">
-                                                <span className="fw-bold" style={{ color: '#333' }}>{contractor.name}</span>
-                                                <span style={{ color: '#dc3545', cursor: 'pointer' }}>
-                                                    <X size={16} />
-                                                </span>
-                                            </div>
-                                            <p className="text-muted mb-0" style={{ fontSize: '13px' }}>{contractor.contact}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-                                <div className="text-start ms-1 mb-3">
-                                    <Paperclip size={20} color="#005197" />
-                                    <span className="ms-2 fw-bold" style={{ color: '#005197' }}>Attachments</span>
-                                </div>
-
-                                <div className="ms-1 me-1">
-                                    {Object.keys(attachments).map((key, index) => {
-                                        const attachmentData = attachments[key];
-                                        const title = getAttachmentTitle(key);
-                                        const files = attachmentData.files || [];
-                                        const notes = attachmentData.notes || '';
-
-                                        const fileInfo = files.length > 0 ? files[0] : null;
-
-                                        return (
-                                            <div
-                                                key={key}
-                                                className="p-3 rounded-3 mb-3"
-                                                style={{
-                                                    backgroundColor: '#FAFAFA',
-                                                }}
-                                            >
-                                                <div className="d-flex justify-content-between align-items-start">
-
-                                                    <div className="text-start me-4 flex-grow-1">
-                                                        <span className="fw-medium d-block mb-1" style={{ color: '#333' }}>{title}</span>
-                                                        {fileInfo ? (
-                                                            <div className="d-block mt-1">
-                                                                <span style={{ fontSize: '13px', color: '#00000080' }}>
-                                                                    {getFriendlyFileType(fileInfo.type || fileInfo.extension)} {formatFileSize(fileInfo.size) || fileInfo.id || 'N/A'}
-                                                                </span>
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-muted" style={{ fontSize: '13px' }}>No file uploaded</span>
-                                                        )}
-                                                        <span
-                                                            className="d-block mt-1"
-                                                            style={{
-                                                                fontSize: '13px',
-                                                                color: 'rgba(0, 0, 0, 0.5)'
-                                                            }}
-                                                        >
-                                                            {notes}
-                                                        </span>
-                                                    </div>
-                                                    {fileInfo && (
-                                                        <span
-                                                            className="p-2 rounded-circle flex-shrink-0"
-                                                            style={{ cursor: 'pointer', color: '#005197' }}
-                                                        >
-                                                            <Download size={18} />
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                            <div className="mt-5 mb-5">
-
-                                <div
-                                    className="p-4 d-flex flex-column rounded-3"
-                                    style={{
-                                        backgroundColor: '#EAF2FE',
-                                        border: '1px solid #C0D9FF',
-                                    }}
-                                >
-                                    <div className="mb-3 fw-bold text-start" style={{ color: '#005197' }}>
-                                        Tender Summary
-                                    </div>
-                                    <div className="d-flex flex-column" style={{ color: '#005197', fontSize: '14px' }}>
-                                        <div className="d-flex mb-2">
-                                            <div
-                                                className="d-flex justify-content-between pe-2 me-4"
-                                                style={{
-                                                    width: '50%',
-                                                    borderRight: '1px solid #D2E3F4',
-                                                }}
-                                            >
-                                                <span>Total Packages</span> <span style={{ color: '#005197' }}>{boqArray.length > 0 ? 1 : 0}</span>
-                                            </div>
-                                            <div className="d-flex justify-content-between ps-4" style={{ width: '50%' }}>
-                                                <span>Selected Contractors</span> <span style={{ color: '#005197' }}>{contractorsList.length}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="d-flex">
-                                            <div
-                                                className="d-flex justify-content-between pe-2 me-4"
-                                                style={{
-                                                    width: '50%',
-                                                    borderRight: '1px solid #D2E3F4'
-                                                }}
-                                            >
-                                                <span>Attachments</span> <span style={{ color: '#005197' }}>{Object.keys(attachments).filter(key => attachments[key].files?.length > 0 || attachments[key].notes).length}</span>
-                                            </div>
-                                            <div className="d-flex justify-content-between ps-4" style={{ width: '50%' }}>
-                                                <span>Submission Deadline</span>
-                                                <span
-                                                    style={{
-                                                        color: '#dc3545'
-                                                    }}
-                                                >
-                                                    {tenderDetail.offerSubmissionDate || 'Not Set'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="d-flex justify-content-end mt-3">
-                                    <button
-                                        className="btn fw-bold"
-                                        style={{
-                                            backgroundColor: '#005197CC',
-                                            color: 'white',
-                                            padding: '10px 20px'
-                                        }}
-                                    >
-                                        Float Tender
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
+        const getAttachmentTitle = (key) => {
+            if (key === 'others') return 'Others';
+            if (key === 'technical') return 'Technical Specifications';
+            if (key === 'drawings') return 'Drawings';
+            if (key === 'commercial') return 'Commercial Conditions';
+            return key;
         };
 
-        const renderContent = () => {
-            switch (currentTab) {
-                case 'boq':
-                    return boqSelection();
-                case 'tender':
-                    return tenderDetails();
-                case 'review':
-                    return reviewTender();
-                default:
-                    return null;
-            }
+        const boqNameDisplay = (boqName) => {
+            return boqName && boqName.length > 20
+                ? boqName.substring(0, 20) + '...'
+                : boqName;
         }
 
-        const handleNextTabChange = () => {
-            if (currentTab === 'boq') {
-                setCurrentTab('tender');
-            } else if (currentTab === 'tender') {
-                setCurrentTab('review');
-            }
-        }
+        return (
+            <div className="p-4">
 
-        const handlePreviousTabChange = () => {
-            if (currentTab === 'tender') {
-                setCurrentTab('boq');
-            } else if (currentTab === 'review') {
-                setCurrentTab('tender');
-            }
-        }
-    
-    return (
-            <div className='container-fluid min-vh-100'>
-                <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-3 mt-2 mb-3">
-                    <div className="ms-3">
-                        <ArrowLeft size={20} onClick={() => window.history.back()} style={{ cursor: 'pointer' }} />
-                        <span className='ms-2'>Tender Floating</span>
-                        <span className='ms-2'>-</span>
-                        <span className="fw-bold text-start ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</span>
+                <div className="p-4 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+                    <div className="text-start ms-1 mt-2 mb-4">
+                        <h5 className="fw-bold mb-1" style={{ color: '#333' }}>Review & Float Tender</h5>
+                        <p className="text-muted" style={{ fontSize: '14px' }}>Review tender details and float to selected contractors</p>
                     </div>
-                </div>
-                <div className="bg-white rounded-3 ms-3 me-3 p-3 mt-4 mb-3" style={{ border: '1px solid #0051973D' }}>
-                    <div className="text-start fw-bold ms-2 mb-2">Tender Floating Process</div>
-                    <div className="d-flex align-items-center justify-content-between mt-3 p-3">
-                        <div className="text-white">
-                            <span className="py-2 px-3" style={{ background: '#005197', borderRadius: '30px' }}>1</span>
-                            <span className="ms-2 fw-bold" style={{ color: '#005197' }}>Select BOQ's</span>
+                    <div className="d-flex justify-content-between">
+                        <div className="text-start">
+                            <span className="text-muted d-block" style={{ fontSize: '14px' }}>Tender Floating No</span>
+                            <span className="fw-medium" style={{ fontSize: '16px' }}>{tenderDetail.tenderFloatingNo || 'N/A'}</span>
                         </div>
-                        <div className="rounded" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}`, height: '5px', width: '15%' }}></div>
-                        <div className="text-white">
-                            <span className="py-2 px-3" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}`, borderRadius: '30px' }}>2</span>
-                            <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}` }}>Tender details</span>
-                        </div>
-                        <div className="rounded" style={{ background: `${currentTab === 'review' ? '#005197' : '#00000052'}`, height: '5px', width: '15%' }}></div>
-                        <div className="text-white">
-                            <span className="py-2 px-3" style={{ background: `${currentTab === 'review' ? '#005197' : '#00000052'}`, borderRadius: '30px' }}>3</span>
-                            <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'review' ? '#005197' : '#00000052'}` }}>Review & Float</span>
+                        <div className="text-end">
+                            <span className="text-muted d-block" style={{ fontSize: '14px' }}>Floating Date</span>
+                            <span className="fw-medium" style={{ fontSize: '16px' }}>
+                                {tenderDetail.floatingDate
+                                    ? new Date(tenderDetail.floatingDate).toLocaleDateString('en-US', {
+                                        month: 'long',
+                                        day: 'numeric',
+                                        year: 'numeric'
+                                    })
+                                    : 'N/A'}
+                            </span>
                         </div>
                     </div>
                 </div>
-                {renderContent()}
-                <div className={`d-flex justify-content-${currentTab === 'boq' ? 'end' : 'between'} align-items-center mt-5 me-3 ms-3 mb-4`}>
-                    {currentTab !== 'boq' && <button className="btn cancel-button" onClick={handlePreviousTabChange}>Previous</button>}
-                    <button className="btn action-button" disabled={selectedBoq.size === 0} onClick={handleNextTabChange}><span className="fw-bold me-2">Confirm & Proceed</span><ArrowRight size={18} /></button>
+
+                <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+                    <div className="text-start ms-1 mt-2 mb-3">
+                        <Info size={20} color="#2BA95A" />
+                        <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>General Details</span>
+                    </div>
+                    <div className="row g-4 ms-1">
+                        <div className="col-md-4 text-start">
+                            <span className="text-muted d-block">Project Name</span>
+                            <span className="fw-medium">{project?.projectName || 'N/A'}</span>
+                        </div>
+                        <div className="col-md-4 text-start">
+                            <span className="text-muted d-block">Offer Submission Mode</span>
+                            <span className="fw-medium">{getDisplayMode(tenderDetail.offerSubmissionMode)}</span>
+                        </div>
+                        <div className="col-md-4 text-start">
+                            <span className="text-muted d-block">Submission Last Date</span>
+                            <span
+                                className="fw-medium"
+                                style={{ color: '#dc3545' }}
+                            >
+                                {tenderDetail.submissionLastDate
+                                    ? new Date(tenderDetail.submissionLastDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                                    : 'N/A'}
+                            </span>
+                        </div>
+                        <div className="col-md-4 text-start">
+                            <span className="text-muted d-block">Bid Opening</span>
+                            <span className="fw-medium">
+                                {tenderDetail.bidOpeningDate
+                                    ? new Date(tenderDetail.bidOpeningDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                                    : 'N/A'}
+                            </span>
+                        </div>
+
+                        <div className="col-md-4 text-start">
+                            <span className="text-muted d-block">Contact Person</span>
+                            <span className="fw-medium">{tenderDetail.contactPerson || 'N/A'}</span>
+                        </div>
+                        <div className="col-md-4 text-start">
+                            <span className="text-muted d-block">Contact Number</span>
+                            <span className="fw-medium">{tenderDetail.contactMobile || 'N/A'}</span>
+                        </div>
+                        <div className="col-md-4 text-start">
+                            <span className="text-muted d-block">Contact Email ID</span>
+                            <span className="fw-medium">{tenderDetail.contactEmail || 'N/A'}</span>
+                        </div>
+
+
+                        <div className="col-md-12 text-start">
+                            <span className="text-muted d-block">Scope of Packages</span>
+                            <div className="d-flex flex-wrap gap-2 mt-1">
+                                {Array.isArray(tenderDetail.scopeOfPackage) && tenderDetail.scopeOfPackage.length > 0 ? (
+                                    tenderDetail.scopeOfPackage.map((scopeId, index) => {
+                                        const scopeObj = scopeOptions.find(opt => opt.value === scopeId);
+                                        return (
+                                            <span key={index} className="badge p-2"
+                                                style={{ backgroundColor: '#EAF2FE', color: '#2563EBCC', fontSize: '11px', borderRadius: '15px' }}>
+                                                {scopeObj ? scopeObj.label : scopeId}
+                                            </span>
+                                        );
+                                    })
+                                ) : (
+                                    <span className="text-muted" style={{ fontSize: '14px' }}>No scopes selected</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+                    <div className="text-start ms-1 mb-3">
+                        <BoxesIcon size={20} color="#2BA95A" />
+                        <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>Package Details </span>
+                    </div>
+                    <div className="table-responsive ms-1 me-1">
+                        <table className="table table-borderless">
+                            <thead style={{ color: '#005197', borderBottom: '2px solid #0051973D' }}>
+                                <tr>
+                                    <th className="fw-bold">BOQ Code</th>
+                                    <th className="fw-bold">BOQ Name</th>
+                                    <th className="fw-bold">Unit</th>
+                                    <th className="fw-bold text-end">Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {boqArray.length > 0 ? (
+                                    boqArray.map((boq) => (
+                                        <tr key={boq.id}>
+                                            <td>{boq.boqCode}</td>
+                                            <td title={boq.boqName}>{boqNameDisplay(boq.boqName)}</td>
+                                            <td>{boq.uom?.uomCode || '-'}</td>
+                                            <td className="text-end">{boq.quantity?.toFixed(4) || 0}</td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan="4" className="text-center text-muted">No BOQ items selected.</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+                    <div className="text-start ms-1 mb-3">
+                        <User2 size={20} color="#dc3545" />
+                        <span className="ms-2 fw-bold" style={{ color: '#dc3545' }}>Contractor Details</span>
+                        <p className="text-muted mt-1" style={{ fontSize: '14px' }}>{contractorsList.length} contractors selected for tender invitation</p>
+                    </div>
+                    <div className="d-flex flex-wrap gap-3 ms-1">
+                        {contractorsList.map((contractor, index) => (
+                            <div key={index} className="p-3" style={{ border: '1px solid #ccc', borderRadius: '8px', minWidth: '300px' }}>
+                                <div className="d-flex justify-content-between align-items-start">
+                                    <span className="fw-bold" style={{ color: '#333' }}>{contractor.name}</span>
+                                    <span style={{ color: '#dc3545', cursor: 'pointer' }}>
+                                        <X size={16} />
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                        <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+                            <div className="text-start ms-1 mt-2 mb-3">
+                                <Info size={20} color="#2BA95A" />
+                                <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>General Details</span>
+                            </div>
+                            <div className="row g-4 ms-1">
+                                <div className="col-md-4 text-start">
+                                    <span className="text-muted d-block">Project Name</span>
+                                    <span className="fw-medium">{project?.projectName || 'N/A'}</span>
+                                </div>
+                                <div className="col-md-4 text-start">
+                                    <span className="text-muted d-block">Offer Submission Mode</span>
+                                    <span className="fw-medium">{getDisplayMode(tenderDetail.offerSubmissionMode)}</span>
+                                </div>
+                                <div className="col-md-4 text-start">
+                                    <span className="text-muted d-block">Submission Last Date</span>
+                                    <span
+                                        className="fw-medium"
+                                        style={{ color: '#dc3545' }}
+                                    >
+                                        {tenderDetail.submissionLastDate
+                                            ? new Date(tenderDetail.submissionLastDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                                            : 'N/A'}
+                                    </span>
+                                </div>
+                                <div className="col-md-4 text-start">
+                                    <span className="text-muted d-block">Bid Opening</span>
+                                    <span className="fw-medium">
+                                        {tenderDetail.bidOpeningDate
+                                            ? new Date(tenderDetail.bidOpeningDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                                            : 'N/A'}
+                                    </span>
+                                </div>
+
+                                <div className="col-md-4 text-start">
+                                    <span className="text-muted d-block">Contact Person</span>
+                                    <span className="fw-medium">{tenderDetail.contactPerson || 'N/A'}</span>
+                                </div>
+                                <div className="col-md-4 text-start">
+                                    <span className="text-muted d-block">Contact Number</span>
+                                    <span className="fw-medium">{tenderDetail.contactMobile || 'N/A'}</span>
+                                </div>
+                                <div className="col-md-4 text-start">
+                                    <span className="text-muted d-block">Contact Email ID</span>
+                                    <span className="fw-medium">{tenderDetail.contactEmail || 'N/A'}</span>
+                                </div>
+                                <div className="col-md-12 text-start">
+                                    <span className="text-muted d-block">Scope of Packages</span>
+                                    <div className="d-flex flex-wrap gap-2 mt-1">
+                                        {Array.isArray(tenderDetail.scopeOfPackage) && tenderDetail.scopeOfPackage.length > 0 ? (
+                                            tenderDetail.scopeOfPackage.map((scopeId, index) => {
+                                                const scopeObj = scopeOptions.find(opt => opt.value === scopeId);
+                                                return (
+                                                    <span key={index} className="badge p-2"
+                                                        style={{ backgroundColor: '#EAF2FE', color: '#2563EBCC', fontSize: '11px', borderRadius: '15px' }}>
+                                                        {scopeObj ? scopeObj.label : scopeId}
+                                                    </span>
+                                                );
+                                            })
+                                        ) : (
+                                            <span className="text-muted" style={{ fontSize: '14px' }}>No scopes selected</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+                            <div className="text-start ms-1 mb-3">
+                                <BoxesIcon size={20} color="#2BA95A" />
+                                <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>Package Details </span>
+                            </div>
+                            <div className="table-responsive ms-1 me-1">
+                                <table className="table table-borderless">
+                                    <thead style={{ color: '#005197', borderBottom: '2px solid #0051973D' }}>
+                                        <tr>
+                                            <th className="fw-bold">BOQ Code</th>
+                                            <th className="fw-bold">BOQ Name</th>
+                                            <th className="fw-bold">Unit</th>
+                                            <th className="fw-bold text-end">Quantity</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {boqArray.length > 0 ? (
+                                            boqArray.map((boq) => (
+                                                <tr key={boq.id}>
+                                                    <td>{boq.boqCode}</td>
+                                                    <td title={boq.boqName}>{boqNameDisplay(boq.boqName)}</td>
+                                                    <td>{boq.uom?.uomCode || '-'}</td>
+                                                    <td className="text-end">{boq.quantity?.toFixed(4) || 0}</td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr><td colSpan="4" className="text-center text-muted">No BOQ items selected.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+                            <div className="text-start ms-1 mb-3">
+                                <User2 size={20} color="#dc3545" />
+                                <span className="ms-2 fw-bold" style={{ color: '#dc3545' }}>Contractor Details</span>
+                                <p className="text-muted mt-1" style={{ fontSize: '14px' }}>{contractorsList.length} contractors selected for tender invitation</p>
+                            </div>
+                            <div className="d-flex flex-wrap gap-3 ms-1">
+                                {contractorsList.map((contractor, index) => (
+                                    <div key={index} className="p-3" style={{ border: '1px solid #ccc', borderRadius: '8px', minWidth: '300px' }}>
+                                        <div className="d-flex justify-content-between align-items-start">
+                                            <span className="fw-bold" style={{ color: '#333' }}>{contractor.name}</span>
+                                            <span style={{ color: '#dc3545', cursor: 'pointer' }}>
+                                                <X size={16} />
+                                            </span>
+                                        </div>
+                                        <p className="text-muted mb-0" style={{ fontSize: '13px' }}>{contractor.contact}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+                            <div className="text-start ms-1 mb-3">
+                                <Paperclip size={20} color="#005197" />
+                                <span className="ms-2 fw-bold" style={{ color: '#005197' }}>Attachments</span>
+                            </div>
+
+                            <div className="ms-1 me-1">
+                                {Object.keys(attachments).map((key, index) => {
+                                    const attachmentData = attachments[key];
+                                    const title = getAttachmentTitle(key);
+                                    const files = attachmentData.files || [];
+                                    const notes = attachmentData.notes || '';
+
+                                    const fileInfo = files.length > 0 ? files[0] : null;
+
+                                    return (
+                                        <div
+                                            key={key}
+                                            className="p-3 rounded-3 mb-3"
+                                            style={{
+                                                backgroundColor: '#FAFAFA',
+                                            }}
+                                        >
+                                            <div className="d-flex justify-content-between align-items-start">
+
+                                                <div className="text-start me-4 flex-grow-1">
+                                                    <span className="fw-medium d-block mb-1" style={{ color: '#333' }}>{title}</span>
+                                                    {fileInfo ? (
+                                                        <div className="d-block mt-1">
+                                                            <span style={{ fontSize: '13px', color: '#00000080' }}>
+                                                                {getFriendlyFileType(fileInfo.type || fileInfo.extension)} {formatFileSize(fileInfo.size) || fileInfo.id || 'N/A'}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-muted" style={{ fontSize: '13px' }}>No file uploaded</span>
+                                                    )}
+                                                    <span
+                                                        className="d-block mt-1"
+                                                        style={{
+                                                            fontSize: '13px',
+                                                            color: 'rgba(0, 0, 0, 0.5)'
+                                                        }}
+                                                    >
+                                                        {notes}
+                                                    </span>
+                                                </div>
+                                                {fileInfo && (
+                                                    <span
+                                                        className="p-2 rounded-circle flex-shrink-0"
+                                                        style={{ cursor: 'pointer', color: '#005197' }}
+                                                    >
+                                                        <Download size={18} />
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="mt-5 mb-5">
+
+                            <div
+                                className="p-4 d-flex flex-column rounded-3"
+                                style={{
+                                    backgroundColor: '#EAF2FE',
+                                    border: '1px solid #C0D9FF',
+                                }}
+                            >
+                                <div className="mb-3 fw-bold text-start" style={{ color: '#005197' }}>
+                                    Tender Summary
+                                </div>
+                                <div className="d-flex flex-column" style={{ color: '#005197', fontSize: '14px' }}>
+                                    <div className="d-flex mb-2">
+                                        <div
+                                            className="d-flex justify-content-between pe-2 me-4"
+                                            style={{
+                                                width: '50%',
+                                                borderRight: '1px solid #D2E3F4',
+                                            }}
+                                        >
+                                            <span>Total Packages</span> <span style={{ color: '#005197' }}>{boqArray.length > 0 ? 1 : 0}</span>
+                                        </div>
+                                        <div className="d-flex justify-content-between ps-4" style={{ width: '50%' }}>
+                                            <span>Selected Contractors</span> <span style={{ color: '#005197' }}>{contractorsList.length}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="d-flex">
+                                        <div
+                                            className="d-flex justify-content-between pe-2 me-4"
+                                            style={{
+                                                width: '50%',
+                                                borderRight: '1px solid #D2E3F4'
+                                            }}
+                                        >
+                                            <span>Attachments</span> <span style={{ color: '#005197' }}>{Object.keys(attachments).filter(key => attachments[key].files?.length > 0 || attachments[key].notes).length}</span>
+                                        </div>
+                                        <div className="d-flex justify-content-between ps-4" style={{ width: '50%' }}>
+                                            <span>Submission Deadline</span>
+                                            <span
+                                                style={{
+                                                    color: '#dc3545'
+                                                }}
+                                            >
+                                                {tenderDetail.offerSubmissionDate || 'Not Set'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="d-flex justify-content-end mt-3">
+                                <button
+                                    className="btn fw-bold"
+                                    style={{
+                                        backgroundColor: '#005197CC',
+                                        color: 'white',
+                                        padding: '10px 20px'
+                                    }}
+                                >
+                                    Float Tender
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-
         );
+    };
+
+    const renderContent = () => {
+        switch (currentTab) {
+            case 'boq':
+                return boqSelection();
+            case 'tender':
+                return tenderDetails();
+            case 'review':
+                return reviewTender();
+            default:
+                return null;
+        }
+    }
+
+    const handleNextTabChange = () => {
+        if (currentTab === 'boq') {
+            setCurrentTab('tender');
+        } else if (currentTab === 'tender') {
+            setCurrentTab('review');
+        }
+    }
+
+    const handlePreviousTabChange = () => {
+        if (currentTab === 'tender') {
+            setCurrentTab('boq');
+        } else if (currentTab === 'review') {
+            setCurrentTab('tender');
+        }
+    }
+
+    return (
+        <div className='container-fluid min-vh-100 overflow-y-hidden'>
+            <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-3 mt-2 mb-3">
+                <div className="ms-3">
+                    <ArrowLeft size={20} onClick={() => window.history.back()} style={{ cursor: 'pointer' }} />
+                    <span className='ms-2'>Tender Floating</span>
+                    <span className='ms-2'>-</span>
+                    <span className="fw-bold text-start ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</span>
+                </div>
+            </div>
+            <div className="bg-white rounded-3 ms-3 me-3 p-3 mt-4 mb-3" style={{ border: '1px solid #0051973D' }}>
+                <div className="text-start fw-bold ms-2 mb-2">Tender Floating Process</div>
+                <div className="d-flex align-items-center justify-content-between mt-3 p-3">
+                    <div className="text-white">
+                        <span className="py-2 px-3" style={{ background: '#005197', borderRadius: '30px' }}>1</span>
+                        <span className="ms-2 fw-bold" style={{ color: '#005197' }}>Select BOQ's</span>
+                    </div>
+                    <div className="rounded" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}`, height: '5px', width: '15%' }}></div>
+                    <div className="text-white">
+                        <span className="py-2 px-3" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}`, borderRadius: '30px' }}>2</span>
+                        <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}` }}>Tender details</span>
+                    </div>
+                    <div className="rounded" style={{ background: `${currentTab === 'review' ? '#005197' : '#00000052'}`, height: '5px', width: '15%' }}></div>
+                    <div className="text-white">
+                        <span className="py-2 px-3" style={{ background: `${currentTab === 'review' ? '#005197' : '#00000052'}`, borderRadius: '30px' }}>3</span>
+                        <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'review' ? '#005197' : '#00000052'}` }}>Review & Float</span>
+                    </div>
+                </div>
+            </div>
+            {renderContent()}
+            <div className={`d-flex justify-content-${currentTab === 'boq' ? 'end' : 'between'} align-items-center mt-5 me-3 ms-3 mb-4`}>
+                {currentTab !== 'boq' && <button className="btn cancel-button" onClick={handlePreviousTabChange}>Previous</button>}
+                <button className="btn action-button" disabled={selectedBoq.size === 0} onClick={handleNextTabChange}><span className="fw-bold me-2">Confirm & Proceed</span><ArrowRight size={18} /></button>
+            </div>
+        </div>
+
+    );
     //  return (
     //     <div className='container-fluid min-vh-100'>
     //         <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-3 mt-2 mb-3">

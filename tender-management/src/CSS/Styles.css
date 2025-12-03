@@ -834,12 +834,12 @@ label {
 }
 
 .boq-data.table-responsive table tbody tr.disabled-parent-row td {
-  opacity: 60%;
+  opacity: 50%;
   pointer-events: none;
 }
 
 .boq-data.table-responsive table tbody tr.parent-selecting td {
-  opacity: 60%;
+  opacity: 50%;
 }
 
 .boq-data.table-responsive table tbody tr.parent-selectable-row {
@@ -849,11 +849,14 @@ label {
 }
 .btn.parent{
   background-color: #005197;
+  font-weight: medium;
+  opacity: 80%;
   color: white;
 }
 .btn.parent:hover{
   background-color: #005197;
-  opacity: 60%;
+  opacity: 100%;
+   font-weight: medium;
   color: #FFFFFF;
 }
 .structure-preview {
