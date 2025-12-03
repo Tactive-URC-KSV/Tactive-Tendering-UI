@@ -48,7 +48,7 @@ function Documents({ project, setActiveTab }) {
                     <FaCloudUploadAlt size={48} />
                 </div>
                 <div className='col-12 text-center mt-2'>
-                    Optional Documents
+                    Drawings & Documents
                 </div>
                 <div className='col-12 text-center mt-2'>
                     <button className='btn action-button mt-2' onClick={() => { fileInputRef.current.click() }}>Choose File</button>
