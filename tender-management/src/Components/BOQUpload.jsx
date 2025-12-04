@@ -197,12 +197,15 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       ghost.style.top = "-9999px";
       ghost.style.left = "-9999px";
       ghost.style.padding = "8px 12px";
-      ghost.style.background = "#f0f0f0";
-      ghost.style.border = "1px solid #ccc";
+      ghost.style.background = "#F0FDF4";
+      ghost.style.border = "0.5px solid #2BA95A";
       ghost.style.borderRadius = "6px";
       ghost.style.fontSize = "14px";
+      ghost.style.minWidth = "10%";
+      ghost.style.textAlign = "center";
+      ghost.style.maxWidth = "30%";
       ghost.innerHTML = column;
-      ghost.style.color = "#F0FDF4";
+      ghost.style.color = "#2BA95A";
       document.body.appendChild(ghost);
       e.dataTransfer.setDragImage(ghost, 0, 0);
 
