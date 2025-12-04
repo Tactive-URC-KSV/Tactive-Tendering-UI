@@ -117,9 +117,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       setSelectedSheet(null);
       setColumns([]);
       setDraggedColumn(null);
-      setInternalFields(prev =>
-         prev.map(f => ({ ...f, mappingFields: '' }))
-      );
       setSelectedTemplate(null);
       setFileType('');
       setSheetOption([]);
@@ -132,9 +129,12 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       setLevelMap({});
       setLastLevelMap({});
       setParentMap({});
-      setSelectedRow(new Set());
       setSection('columnMapping');
       setUploadScreen(false);
+      setSelectedRow(new Set());
+      setInternalFields(prev =>
+         prev.map(f => ({ ...f, mappingFields: '' }))
+      );
    };
    const getExcelSheets = (event) => {
       const file = event.target.files[0];
@@ -936,7 +936,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                </div>
             </div>
             <div className='d-flex justify-content-end mt-4'>
-               <button className='btn cancel-button mt-2 me-4'>Cancel</button>
+               <button className='btn cancel-button mt-2 me-4' onClick={removeFile}>Cancel</button>
                <button className='btn action-button mt-2 fs-6' onClick={saveMappedBOQ}>{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : (<span>Import BOQ Data</span>)}</button>
             </div>
          </>
