@@ -31,8 +31,8 @@ function Sidebar({ children }) {
     { label: "Tender Estimation", path: "tenderestimation", icon: <FaCalculator /> },
     { label: "Cost Code Mapping", path: "costcodemapping", icon: <FaMapSigns /> },
     { label: "Tender Floating", path: "tenderfloating", icon: <FaPaperPlane /> },
-    { label: "Tender Tracking", path: "TenderTracking", icon: <FaSearch /> },
     { label: "Receiving Offers", path: "ReceivingOffers", icon: <FaInbox /> },
+    { label: "Tender Tracking", path: "TenderTracking", icon: <FaSearch /> },
     { label: "Tender Comparison", path: "TenderComparison", icon: <FaChartBar /> },
     { label: "Contractor Onboarding", path: "ContractorOnboarding", icon: <FaUserPlus /> },
   ];
