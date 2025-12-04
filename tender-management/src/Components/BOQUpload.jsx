@@ -348,7 +348,12 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    //          setSheetOption(prev =>
    //             prev.filter(option => option.value !== selectedSheet)
    //          );
-   //          setSelectedSheet(null);
+   //          plate();
+   //          toast.success("BOQ Data imported SuccessFully");
+   //          sheetOption.length === 1 && (setTimeout(() => {
+   //             window.location.href = `/boqdefinition/${projectId}`;
+   //          }, 3000));
+   //          if (fileType === 'pdsetSelectedSheet(null);
    //          setColumns([]);
    //          setDraggedColumn(null);
    //          const updatedInternalFields = internalFields.map(field => ({
@@ -356,12 +361,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    //             mappingFields: ''
    //          }));
    //          setInternalFields(updatedInternalFields);
-   //          setSelectedTemplate();
-   //          toast.success("BOQ Data imported SuccessFully");
-   //          sheetOption.length === 1 && (setTimeout(() => {
-   //             window.location.href = `/boqdefinition/${projectId}`;
-   //          }, 3000));
-   //          if (fileType === 'pdf') {
+   //          setSelectedTemf') {
    //             (setTimeout(() => {
    //                window.location.href = `/boqdefinition/${projectId}`;
    //             }, 3000))
@@ -412,9 +412,49 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          );
          if (response.status === 200) {
             toast.success("BOQ mapping saved successfully!");
-         }
 
-      } catch (error) {
+            setSheetOption(prev =>
+               prev.filter(option => option.value !== selectedSheet)
+            );
+
+            plate();
+            setExcelData([]);
+            setCurrentPage(0);
+            setTotalPages(0);
+            setPageSize(50);
+            setTotalItems(0);
+            setLastLevelMap({});
+            setParentMap({});
+            setLevelMap({});
+            setSelectedRow(new Set());
+            setSection('columnMapping');
+            setSearchTerm('');
+            toast.success("BOQ Data imported Successfully");
+
+            if (sheetOption.length === 1) {
+               setTimeout(() => {
+                  window.location.href = `/boqdefinition/${projectId}`;
+               }, 3000);
+            }
+
+            if (fileType === 'pdf') {
+               setSelectedSheet(null);
+               setColumns([]);
+               setDraggedColumn(null);
+
+               const updatedInternalFields = internalFields.map(field => ({
+                  ...field,
+                  mappingFields: ''
+               }));
+               setInternalFields(updatedInternalFields);
+               setSelectedTemplate(null);
+               setTimeout(() => {
+                  window.location.href = `/boqdefinition/${projectId}`;
+               }, 3000);
+            }
+         }
+      }
+      catch (error) {
          console.error("Failed to save mapped BOQ:", error);
          toast.error("Error saving BOQ mapping");
       }
@@ -500,15 +540,15 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       const marginClass = node.children === null
          ? "ms-3"
          : `ms-${(node.level - 1) * 2}`;
-      const icon = node.level === 1 ? <Folder size={16} color={'#9333EA'} /> 
-      : node.level === 2 ? <Folder size={16} color={'#2563EB'} /> 
-      : node.level === 3 ? <Folder size={16} color={'#CA8A04'} />
-      : node.lastLevel ? <FileText size={16} color={'#2BA95A'} />
-      : null;
+      const icon = node.level === 1 ? <Folder size={16} color={'#9333EA'} />
+         : node.level === 2 ? <Folder size={16} color={'#2563EB'} />
+            : node.level === 3 ? <Folder size={16} color={'#CA8A04'} />
+               : node.lastLevel ? <FileText size={16} color={'#2BA95A'} />
+                  : null;
       return (
          <div key={node.sno}>
             <div className={marginClass}>
-               {icon}<span className='ms-1' style={{fontSize : '14px'}}>{boqNameDisplay(node.boqCode || node.boqName, 10)}</span>
+               {icon}<span className='ms-1' style={{ fontSize: '14px' }}>{boqNameDisplay(node.boqCode || node.boqName, 10)}</span>
             </div>
             {Array.isArray(node.children) &&
                node.children.map(child => renderNode(child))}
@@ -541,7 +581,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                   <li>Pdf must contains data in table format</li>
                   <li>First row of excel file should contain column headers</li>
                   <li>Required columns: BOQ Code,Item Description (or) BOQ Name, Unit, Quantity</li>
-                  <li>Level 1 BOQ must be either BOQ Code or BOQ Name</li>
                   <li>Ensured that the BOQ table contains only BOQ-related details</li>
                </ul>
             </div>
