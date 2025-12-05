@@ -620,6 +620,30 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          });
       };
       const assignLevel = (level) => {
+         if (level === 3) {
+            let canAssign = true;
+            excelData.forEach(item => {
+               if (item.level === 2) {
+                  const parent = parentMap[item.sno];
+                  if (!parent) {
+                     canAssign = false;
+                  }
+               }
+            })
+            Object.keys(levelMap).forEach(sno => {
+               if (levelMap[sno] === 2) {
+                  const parent = parentMap[sno];
+                  if (!parent) {
+                     canAssign = false;
+                  }
+               }
+            })
+            if (!canAssign) {
+               toast.error("Cannot assign level 3 without assigning parents to all level 2 items.");
+               return;
+            }
+         }
+
          setLevelMap(prev => {
             const updated = { ...prev };
             selectedRow.forEach(sno => {
@@ -632,6 +656,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                selectedRow.has(item.sno) ? { ...item, level: level } : item
             )
          );
+
          setSelectedRow(new Set());
       };
       const clearLevel = () => {
@@ -705,16 +730,26 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             toast.error("Please select at least one BOQ item.");
             return;
          }
-         const levels = [...selectedRow].map(sno => excelData.find(i => i.sno === sno)?.level || 0);
-         const uniqueLevels = [...new Set(levels)];
-         if (uniqueLevels.length > 1) {
-            toast.error("Please select BOQs with the SAME level to assign a parent.");
-            return;
-         }
-         const childLevel = uniqueLevels[0];
-         if (childLevel === 0) {
-            toast.error("Level 0 items cannot have a parent. Assign a level first.");
-            return;
+         const selectedItems = [...selectedRow].map(sno =>
+            excelData.find(item => item.sno === sno)
+         );
+         const nonLastLevelItems = selectedItems.filter(item => !item?.lastLevel);
+         let childLevel;
+         if (nonLastLevelItems.length === 0) {
+            childLevel = 999;
+         } else {
+            const levels = nonLastLevelItems.map(item => item?.level || 0);
+            const uniqueLevels = [...new Set(levels)];
+
+            if (uniqueLevels.length > 1) {
+               toast.error("Please select BOQs with the SAME level (Last level items ignored).");
+               return;
+            }
+            childLevel = uniqueLevels[0];
+            if (childLevel === 0) {
+               toast.error("Level 0 items cannot have a parent. Assign a level first.");
+               return;
+            }
          }
          setSelectedChildLevel(childLevel);
          setIsParentSelecting(true);
@@ -815,18 +850,29 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                        <tr
                                           key={item.sno}
                                           className={
-                                             `${item.lastLevel
-                                             && "last-level "}
-                                                 ${isParentSelecting && selectedRow.has(item.sno)
-                                                ? "parent-selecting"
-                                                : isParentSelecting && (
-                                                   item.level === 0 ||
-                                                   item.lastLevel ||
-                                                   item.level >= selectedChildLevel ||
+                                             `${item.lastLevel ? "last-level " : ""}` +
+                                             (isParentSelecting &&
+                                                (
+                                                   item.lastLevel || item.level === 0 ||
+                                                   (selectedChildLevel !== 999 &&
+                                                      item.level !== selectedChildLevel - 1) ||
                                                    item.sno === [...selectedRow][0]
                                                 )
-                                                   ? "disabled-parent-row"
-                                                   : ""} ${isParentSelecting && !item.lastLevel && item.level !== 0 && item.level < selectedChildLevel && "parent-selectable-row"}`
+                                                ? " disabled-parent-row"
+                                                : ""
+                                             ) +
+                                             (isParentSelecting &&
+                                                (
+                                                   !item.lastLevel && 
+                                                   (
+                                                      selectedChildLevel === 999 
+                                                         ? (item.level > 0) 
+                                                         : (item.level === selectedChildLevel - 1) 
+                                                   )
+                                                )
+                                                ? " parent-selectable-row"
+                                                : ""
+                                             )
                                           }
                                           onClick={() => {
                                              if (!isParentSelecting) return;
