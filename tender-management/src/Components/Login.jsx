@@ -76,7 +76,7 @@ function Login() {
           </div>
           <div className='w-100'>
             <p className='login-section-text-1 mt-5'>
-              Tenant Management Module
+              Tender Management Module
             </p>
           </div>
           <div className='w-100'>
