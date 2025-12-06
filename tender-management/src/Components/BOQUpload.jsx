@@ -717,6 +717,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             toast.error("Please select at least one BOQ item.");
             return;
          }
+         const isnoLevelItems = excelData.filter(item =>  item.level !== 0);
+         if (isnoLevelItems.length === 0) {
+            toast.error("Level 0 items cannot be assigned as parent. Assign a level first.");
+            return;
+         }
          const selectedItems = [...selectedRow].map(sno =>
             excelData.find(item => item.sno === sno)
          );
