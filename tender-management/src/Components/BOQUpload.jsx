@@ -507,35 +507,31 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    }
 
    const buildTree = () => {
-      const nodes = new Map();
+      if (!excelData) return [];
+      const nodeMap = new Map();
       const roots = [];
-      excelData?.forEach(item => {
-         if (!item.lastLevel) {
-            nodes.set(item.sno, { ...item, children: [] });
-         }
+      excelData.forEach(item => {
+         nodeMap.set(item.sno, {
+            ...item,
+            children: item.lastLevel ? null : []
+         });
       });
-      excelData?.forEach(item => {
+      excelData.forEach(item => {
+         const node = nodeMap.get(item.sno);
          const parentId = item.parentSno || parentMap[item.sno];
-         const parentNode = nodes.get(parentId);
-
          if (!parentId) {
-            if (!item.lastLevel) {
-               roots.push(nodes.get(item.sno));
-            }
-         }
-         else if (parentNode) {
-            if (!item.lastLevel) {
-               parentNode.children.push(nodes.get(item.sno));
-            }
-            else {
-               parentNode.children.push({
-                  ...item,
-                  children: null
-               });
+            roots.push(node);
+         } else {
+            const parent = nodeMap.get(parentId);
+            if (parent) {
+               if (!item.lastLevel) {
+                  parent.children.push(node);
+               } else {
+                  parent.children.push(node);
+               }
             }
          }
       });
-
       return roots;
    };
 
@@ -597,6 +593,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    }
    const levelMapping = () => {
       const treeData = buildTree();
+      console.log(treeData);
       const goToPreviousPage = () => {
          if (currentPage > 0) {
             fetchExcelData(currentPage - 1);
@@ -620,45 +617,35 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          });
       };
       const assignLevel = (level) => {
-         if (level === 3) {
-            let canAssign = true;
-            excelData.forEach(item => {
-               if (item.level === 2) {
-                  const parent = parentMap[item.sno];
-                  if (!parent) {
-                     canAssign = false;
-                  }
-               }
-            })
-            Object.keys(levelMap).forEach(sno => {
-               if (levelMap[sno] === 2) {
-                  const parent = parentMap[sno];
-                  if (!parent) {
-                     canAssign = false;
-                  }
-               }
-            })
-            if (!canAssign) {
-               toast.error("Cannot assign level 3 without assigning parents to all level 2 items.");
-               return;
+        if (level === 3) {
+            let violationExists = false;
+            violationExists = excelData.some(item => {
+                return item.level === 2 && !parentMap[item.sno];
+            });
+            if (!violationExists) {
+                violationExists = Object.keys(levelMap).some(sno => {
+                    return levelMap[sno] === 2 && !parentMap[sno];
+                });
             }
-         }
-
-         setLevelMap(prev => {
+            if (violationExists) {
+                toast.error("Cannot assign level 3 without assigning parents to all level 2 items.");
+                return;
+            }
+        }
+        setLevelMap(prev => {
             const updated = { ...prev };
             selectedRow.forEach(sno => {
-               updated[sno] = level;
+                updated[sno] = level;
             });
             return updated;
-         });
-         setExcelData(prev =>
+        });
+        setExcelData(prev =>
             prev.map(item =>
-               selectedRow.has(item.sno) ? { ...item, level: level } : item
+                selectedRow.has(item.sno) ? { ...item, level: level } : item
             )
-         );
-
-         setSelectedRow(new Set());
-      };
+        );
+        setSelectedRow(new Set());
+    };
       const clearLevel = () => {
          setLevelMap(prev => {
             const updated = { ...prev };
@@ -728,6 +715,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       const startParentSelection = () => {
          if (selectedRow.size === 0) {
             toast.error("Please select at least one BOQ item.");
+            return;
+         }
+         const isnoLevelItems = excelData.filter(item =>  item.level !== 0);
+         if (isnoLevelItems.length === 0) {
+            toast.error("Level 0 items cannot be assigned as parent. Assign a level first.");
             return;
          }
          const selectedItems = [...selectedRow].map(sno =>
@@ -863,11 +855,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                              ) +
                                              (isParentSelecting &&
                                                 (
-                                                   !item.lastLevel && 
+                                                   !item.lastLevel &&
                                                    (
-                                                      selectedChildLevel === 999 
-                                                         ? (item.level > 0) 
-                                                         : (item.level === selectedChildLevel - 1) 
+                                                      selectedChildLevel === 999
+                                                         ? (item.level > 0)
+                                                         : (item.level === selectedChildLevel - 1)
                                                    )
                                                 )
                                                 ? " parent-selectable-row"
