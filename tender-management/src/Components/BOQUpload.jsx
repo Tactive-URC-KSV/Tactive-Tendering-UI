@@ -507,35 +507,31 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    }
 
    const buildTree = () => {
-      const nodes = new Map();
+      if (!excelData) return [];
+      const nodeMap = new Map();
       const roots = [];
-      excelData?.forEach(item => {
-         if (!item.lastLevel) {
-            nodes.set(item.sno, { ...item, children: [] });
-         }
+      excelData.forEach(item => {
+         nodeMap.set(item.sno, {
+            ...item,
+            children: item.lastLevel ? null : []
+         });
       });
-      excelData?.forEach(item => {
+      excelData.forEach(item => {
+         const node = nodeMap.get(item.sno);
          const parentId = item.parentSno || parentMap[item.sno];
-         const parentNode = nodes.get(parentId);
-
          if (!parentId) {
-            if (!item.lastLevel) {
-               roots.push(nodes.get(item.sno));
-            }
-         }
-         else if (parentNode) {
-            if (!item.lastLevel) {
-               parentNode.children.push(nodes.get(item.sno));
-            }
-            else {
-               parentNode.children.push({
-                  ...item,
-                  children: null
-               });
+            roots.push(node);
+         } else {
+            const parent = nodeMap.get(parentId);
+            if (parent) {
+               if (!item.lastLevel) {
+                  parent.children.push(node);
+               } else {
+                  parent.children.push(node);
+               }
             }
          }
       });
-
       return roots;
    };
 
@@ -597,6 +593,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    }
    const levelMapping = () => {
       const treeData = buildTree();
+      console.log(treeData);
       const goToPreviousPage = () => {
          if (currentPage > 0) {
             fetchExcelData(currentPage - 1);
@@ -863,11 +860,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                              ) +
                                              (isParentSelecting &&
                                                 (
-                                                   !item.lastLevel && 
+                                                   !item.lastLevel &&
                                                    (
-                                                      selectedChildLevel === 999 
-                                                         ? (item.level > 0) 
-                                                         : (item.level === selectedChildLevel - 1) 
+                                                      selectedChildLevel === 999
+                                                         ? (item.level > 0)
+                                                         : (item.level === selectedChildLevel - 1)
                                                    )
                                                 )
                                                 ? " parent-selectable-row"

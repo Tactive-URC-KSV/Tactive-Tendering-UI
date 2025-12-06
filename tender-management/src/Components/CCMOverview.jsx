@@ -1,6 +1,6 @@
 import axios from "axios";
 import { ArrowLeft, ArrowRight, FileText } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Select from 'react-select';
 import { ToastContainer, toast } from 'react-toastify';
@@ -15,10 +15,7 @@ import Search from '../assest/Search.svg?react';
 import SmallFolder from '../assest/SmallFolder.svg?react';
 import '../CSS/Styles.css';
 
-const handleUnauthorized = () => {
-    const navigate = useNavigate();
-    navigate('/login');
-};
+
 
 const CCMOverview = () => {
     const navigate = useNavigate();
@@ -28,14 +25,14 @@ const CCMOverview = () => {
     const [parentTree, setParentTree] = useState([]);
     const [expandedParentIds, setExpandedParentIds] = useState(new Set());
 
-    const [selectedBOQs, setSelectedBOQs] = useState(new Set());   
+    const [selectedBOQs, setSelectedBOQs] = useState(new Set());
     const [selectedActivities, setSelectedActivities] = useState(new Set());
     const [selectedMappingType, setSelectedMappingType] = useState("1 : M");
-
 
     const [searchQuery, setSearchQuery] = useState("");
     const [activitySearchQuery, setActivitySearchQuery] = useState("");
 
+    const [pendingCounter, setPendingCounter] = useState(1);
     const [costCodeTypes, setCostCodeTypes] = useState([]);
     const [activityGroups, setActivityGroups] = useState([]);
     const [costCodeActivities, setCostCodeActivities] = useState([]);
@@ -57,7 +54,7 @@ const CCMOverview = () => {
         uomId: ""
     });
     const [selectedCostCodeType, setSelectedCostCodeType] = useState(null);
-
+    const [expandedActivityFolders, setExpandedActivityFolders] = useState(new Set());
     const [showMappingPopover, setShowMappingPopover] = useState(false);
     const [mappingActivities, setMappingActivities] = useState([]);
     const [totalPercentageUsed, setTotalPercentageUsed] = useState(0);
@@ -70,6 +67,10 @@ const CCMOverview = () => {
     const [notification, setNotification] = useState(null);
     const [showNotification, setShowNotification] = useState(false);
 
+    const [removedSavedIds, setRemovedSavedIds] = useState(new Set());
+    const handleUnauthorized = () => {
+        // navigate('/login');
+    };
     const showAlert = (message, type = "info") => {
         switch (type) {
             case "error": toast.error(message); break;
@@ -265,8 +266,8 @@ const CCMOverview = () => {
         if (boq.lastLevel) {
             return (
                 <div className="d-flex align-items-center py-2">
-                    <div className="d-flex align-items-center p-2 rounded-2" onClick={() => toggleBOQSelection(boq.id)} style={{ backgroundColor: `${selectedBOQs.has(boq.id) ? '#EFF6FFCC' : 'transparent'}`, border: `${selectedBOQs.has(boq.id) ? '1px solid #2563EB' : 'none'}`}}>
-                        <SmallFolder  />
+                    <div className="d-flex align-items-center p-2 rounded-2" onClick={() => toggleBOQSelection(boq.id)} style={{ backgroundColor: `${selectedBOQs.has(boq.id) ? '#EFF6FFCC' : 'transparent'}`, border: `${selectedBOQs.has(boq.id) ? '1px solid #2563EB' : 'none'}` }}>
+                        <SmallFolder />
                         <div className="d-flex flex-grow-1 ms-2" >
                             <div className="d-flex justify-content-between">
                                 <span className="me-2 text-nowrap">{boq.boqCode}</span>
@@ -451,20 +452,16 @@ const CCMOverview = () => {
     const handleLeftArrowClick = () => {
         if (selectedActivities.size > 0) {
             const activitiesToRemove = Array.from(selectedActivities);
-
-            setCostCodeActivities(prev =>
-                prev.filter(activity => !activitiesToRemove.includes(activity.id))
-            );
-
             setPendingMappings(prev =>
                 prev.filter(mapping => !activitiesToRemove.includes(mapping.id))
             );
+            setCostCodeActivities(prev =>
+                prev.filter(activity => !activitiesToRemove.includes(activity.id))
+            );
         }
-
         setSelectedActivities(new Set());
         setSelectedCostCodeType(null);
     };
-
 
     const handleActivitySelection = (actId, checked) => {
         setSelectedActivities(prev => {
@@ -483,6 +480,44 @@ const CCMOverview = () => {
         const g = activityGroups.find(x => x.id === agId);
         return g?.costCodeType?.id || "";
     };
+    const deleteCostCodeActivity = (costCodeId) => {
+        if (costCodeId.startsWith('pending-')) {
+            setCostCodeActivities(prev => prev.filter(activity => activity.id !== costCodeId));
+            setPendingMappings(prev => prev.filter(mapping => mapping.id !== costCodeId));
+            showAlert("Pending mapping removed successfully!", "success");
+            return;
+        }
+
+        setNotification({
+            message: "Are you sure you want to delete this cost code activity?",
+            type: "confirm",
+            onConfirm: () => {
+                axios.delete(`${import.meta.env.VITE_API_BASE_URL}/costCode/delete/${costCodeId}`, {
+                    headers: {
+                        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                    }
+                }).then(res => {
+                    if (res.status === 200) {
+                        showAlert("Cost code activity deleted successfully!", "success");
+                        fetchCostCodeActivities();
+                    } else {
+                        console.error('Failed to delete cost code activity:', res.status);
+                        showAlert('Failed to delete cost code activity', "error");
+                    }
+                }).catch(err => {
+                    if (err?.response?.status === 401) {
+                        handleUnauthorized();
+                    }
+                    console.error('Error deleting cost code activity:', err);
+                    showAlert('Error deleting cost code activity: ' + (err.response?.data?.message || err.message), "error");
+                });
+            },
+            onCancel: () => setShowNotification(false)
+        });
+        setShowNotification(true);
+    };
+
 
     const saveCostCodeMapping = () => {
         if (selectedMappingType === "1 : M") {
@@ -554,7 +589,7 @@ const CCMOverview = () => {
                     amountSplitPercentage: parseFloat(activity.amountpercentage),
                 });
             });
-        } 
+        }
         else if (selectedMappingType === "M : 1") {
             const activity = mappingActivities[0];
             const boqItems = Array.from(selectedBOQs).map((boqCode) => findBOQItem(boqCode));
@@ -594,18 +629,28 @@ const CCMOverview = () => {
         }
 
 
-        setPendingMappings(prev => [...prev, ...costCodeDtos.map(dto => ({
-            ...dto,
-            id: `pending-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-        }))]);
+        const newPendingMappings = costCodeDtos.map(dto => {
+            const serialId = `pending-${pendingCounter}`;
+            setPendingCounter(c => c + 1);           
+            return {
+                ...dto,
+                id: serialId
+            };
+        });
 
-        const newMappings = costCodeDtos.map(dto => ({
-            id: `pending-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            ...dto,
-            boq: findBOQItem(dto.boqId[0]),
-            activityGroup: activityGroups.find(group => group.id === dto.activityGroupId) || null,
-            isPending: true
-        }));
+        setPendingMappings(prev => [...prev, ...newPendingMappings]);
+
+        const newMappings = costCodeDtos.map(dto => {
+            const serialId = `pending-${pendingCounter}`;
+            setPendingCounter(c => c + 1);           
+            return {
+                id: serialId,
+                ...dto,
+                boq: findBOQItem(dto.boqId[0]),
+                activityGroup: activityGroups.find(g => g.id === dto.activityGroupId) || null,
+                isPending: true
+            };
+        });
 
         setCostCodeActivities(prev => [...prev, ...newMappings]);
 
@@ -617,8 +662,7 @@ const CCMOverview = () => {
 
         showAlert(`Cost code mapping configured for ${selectedBOQs.size} BOQ items!`, "success");
     };
-
-    const handleSaveMapping = async () => {
+    const handleSaveMapping = () => {
         if (pendingMappings.length === 0) {
             showAlert("No pending mappings to save. Please configure mappings first.", "error");
             return;
@@ -629,7 +673,6 @@ const CCMOverview = () => {
             "1 : M": [],
             "M : 1": []
         };
-
         pendingMappings.forEach(mapping => {
             mappingsByType[mapping.mappingType].push({
                 boqId: mapping.boqId,
@@ -653,92 +696,94 @@ const CCMOverview = () => {
         const savePromises = [];
 
         if (mappingsByType["1 : 1"].length > 0) {
+            console.log("1 : 1 Mappings to save.");
             savePromises.push(
-                axios.post(
-                    `${import.meta.env.VITE_API_BASE_URL}/costCode/saveOneToOne`,
-                    mappingsByType["1 : 1"],
-                    {
-                        headers: {
-                            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                            "Content-Type": "application/json"
-                        }
+                axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/saveOneToOne`, mappingsByType["1 : 1"], {
+                    headers: {
+                        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
                     }
-                )
+                })
             );
         }
 
         if (mappingsByType["1 : M"].length > 0) {
+            console.log("1 : M Mappings to save.");
             savePromises.push(
-                axios.post(
-                    `${import.meta.env.VITE_API_BASE_URL}/costCode/saveOneToMany`,
-                    mappingsByType["1 : M"],
-                    {
-                        headers: {
-                            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                            "Content-Type": "application/json"
-                        }
+                axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/saveOneToMany`, mappingsByType["1 : M"], {
+                    headers: {
+                        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
                     }
-                )
+                })
             );
         }
 
         if (mappingsByType["M : 1"].length > 0) {
+            console.log("M : 1 Mappings to save.");
             savePromises.push(
-                axios.post(
-                    `${import.meta.env.VITE_API_BASE_URL}/costCode/saveManyToOne`,
-                    mappingsByType["M : 1"],
-                    {
-                        headers: {
-                            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                            "Content-Type": "application/json"
-                        }
+                axios.post(`${import.meta.env.VITE_API_BASE_URL}/costCode/saveManyToOne`, mappingsByType["M : 1"], {
+                    headers: {
+                        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
                     }
-                )
+                })
             );
         }
 
-        try {
-            const responses = await Promise.all(savePromises);
-            const allSuccess = responses.every(r => r.status === 200 || r.status === 201);
+        Promise.all(savePromises)
+            .then(responses => {
+                const allSuccess = responses.every(res => res.status === 200);
+                if (allSuccess) {
+                    showAlert(`All cost code activities saved successfully!`, "success");
+                    setCostCodeActivities(prev =>
+                        prev.map(activity => ({ ...activity, isPending: false }))
+                    );
+                    setPendingMappings([]);
+                    fetchCostCodeActivities();
+                } else {
 
-            if (allSuccess) {
-                showAlert("All cost code activities saved successfully!", "success");
-                setCostCodeActivities(prev =>
-                    prev.map(act => ({ ...act, isPending: false }))
-                );
-
-                setPendingMappings([]);
-                fetchCostCodeActivities();
-            } else {
-                showAlert("Failed to save some cost code mappings", "error");
-            }
-        } catch (err) {
-            if (err?.response?.status === 401) {
-                handleUnauthorized();
-            }
-            console.error("Error saving cost code mappings:", err);
-            showAlert(
-                "Error saving cost code mappings: " +
-                (err.response?.data?.message || err.message),
-                "error"
-            );
-        }
+                    console.error('Failed to save some cost code mappings');
+                    showAlert('Failed to save some cost code mappings', "error");
+                }
+            })
+            .catch(err => {
+                if (err?.response?.status === 401) {
+                    handleUnauthorized();
+                }
+                console.error('Error saving cost code mappings:', err);
+                showAlert('Error saving cost code mappings: ' + (err.response?.data?.message || err.message), "error");
+            });
     };
     const handleReset = () => {
         setSelectedMappingType("1 : M");
         setSelectedBOQs(new Set());
         setSelectedActivities(new Set());
         setSearchQuery("");
-        setExpandedFolders(new Set());
         setActivitySearchQuery("");
         setExpandedActivityFolders(new Set());
         setSelectedCostCodeType(null);
         setMappingActivities([]);
+        setPendingCounter(1);
         setPendingMappings([]);
-        setCostCodeActivities(prev =>
-            prev.filter(activity => !activity.isPending)
-        );
+        setCostCodeActivities(prev => prev.filter(activity => !activity.isPending));
     };
+    const filteredCostCodeActivities = useMemo(() => {
+        if (!activitySearchQuery.trim()) {
+            return costCodeActivities;
+        }
+
+        const query = activitySearchQuery.toLowerCase().trim();
+
+        return costCodeActivities.filter(activity =>
+            (activity.activityCode && activity.activityCode.toLowerCase().includes(query)) ||
+            (activity.activityName && activity.activityName.toLowerCase().includes(query)) ||
+            (activity.activityGroup && activity.activityGroup.activityCode &&
+                activity.activityGroup.activityCode.toLowerCase().includes(query)) ||
+            (activity.activityGroup && activity.activityGroup.activityName &&
+                activity.activityGroup.activityName.toLowerCase().includes(query))
+        );
+    }, [costCodeActivities, activitySearchQuery]);
     const CostCodeTypeNode = ({ costCodeTypeId, data }) => {
         const isExpanded = expandedActivityFolders.has(costCodeTypeId);
         const isSelected = selectedCostCodeType === costCodeTypeId;
@@ -796,7 +841,7 @@ const CCMOverview = () => {
                 <div
                     className={`d-flex align-items-center cursor-pointer py-2 rounded-2`}
                     onClick={handleActivityGroupClick}
-                    style={{ backgroundColor: `${selectedActivities.has(group.id) ? '#EFF6FFCC' : 'transparent'}`, border: `${selectedActivities.has(group.id) ? '1px solid #2563EB' : 'none'}`}}
+                    style={{ backgroundColor: `${selectedActivities.has(group.id) ? '#EFF6FFCC' : 'transparent'}`, border: `${selectedActivities.has(group.id) ? '1px solid #2563EB' : 'none'}` }}
                 >
                     <span className="me-2" onClick={handleFolderToggle}>
                         {isExpanded ? <span className="d-flex"><DropDown /> <MediumFolder className="mt-2" /> </span> : <span className="d-flex"><ClosedList /> <MediumFolder className="mt-2" /> </span>}
@@ -829,6 +874,9 @@ const CCMOverview = () => {
                 handleActivitySelection(activity.id, e.target.checked);
             }
         };
+        const activityNameDisplay = activity.activityName && activity.activityName.length > 20
+            ? activity.activityName.substring(0, 20) + '...'
+            : activity.activityName;
 
         return (
             <div className="d-flex align-items-center py-2">
@@ -848,7 +896,7 @@ const CCMOverview = () => {
                         <div className="d-flex justify-content-between">
                             <span className="me-2 text-nowrap">{activity.activityCode}</span>
                             <span>-</span>
-                            <span className="ms-2 text-nowrap">{activity.activityName}</span>
+                            <span className="ms-2 text-nowrap" title={activity.activityName}>{activityNameDisplay}</span>
                         </div>
                     </div>
                     {isMapped && (
@@ -864,7 +912,7 @@ const CCMOverview = () => {
             </div>
         );
     };
-     const addMappingActivity = () => {
+    const addMappingActivity = () => {
         const boqCode = Array.from(selectedBOQs)[0];
         const boqItem = findBOQItem(boqCode);
         const remainingPercentage = 100 - totalPercentageUsed;
@@ -909,7 +957,9 @@ const CCMOverview = () => {
         const updatedActivities = [...mappingActivities];
         const boqCode = Array.from(selectedBOQs)[0];
         const boqItem = findBOQItem(boqCode);
-
+        if (field === 'splitType') {
+            setSplitType(value);
+        }
         let newPercentage = parseFloat(value) || 0;
 
         if (['qtypercentage', 'ratepercentage', 'amountpercentage'].includes(field)) {
@@ -974,9 +1024,6 @@ const CCMOverview = () => {
 
         setMappingActivities(updatedActivities);
     };
-
-
-    const [expandedActivityFolders, setExpandedActivityFolders] = useState(new Set());
     const toggleActivityFolder = (id) => {
         setExpandedActivityFolders(prev => {
             const n = new Set(prev);
