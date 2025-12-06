@@ -617,45 +617,35 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          });
       };
       const assignLevel = (level) => {
-         if (level === 3) {
-            let canAssign = true;
-            excelData.forEach(item => {
-               if (item.level === 2) {
-                  const parent = parentMap[item.sno];
-                  if (!parent) {
-                     canAssign = false;
-                  }
-               }
-            })
-            Object.keys(levelMap).forEach(sno => {
-               if (levelMap[sno] === 2) {
-                  const parent = parentMap[sno];
-                  if (!parent) {
-                     canAssign = false;
-                  }
-               }
-            })
-            if (!canAssign) {
-               toast.error("Cannot assign level 3 without assigning parents to all level 2 items.");
-               return;
+        if (level === 3) {
+            let violationExists = false;
+            violationExists = excelData.some(item => {
+                return item.level === 2 && !parentMap[item.sno];
+            });
+            if (!violationExists) {
+                violationExists = Object.keys(levelMap).some(sno => {
+                    return levelMap[sno] === 2 && !parentMap[sno];
+                });
             }
-         }
-
-         setLevelMap(prev => {
+            if (violationExists) {
+                toast.error("Cannot assign level 3 without assigning parents to all level 2 items.");
+                return;
+            }
+        }
+        setLevelMap(prev => {
             const updated = { ...prev };
             selectedRow.forEach(sno => {
-               updated[sno] = level;
+                updated[sno] = level;
             });
             return updated;
-         });
-         setExcelData(prev =>
+        });
+        setExcelData(prev =>
             prev.map(item =>
-               selectedRow.has(item.sno) ? { ...item, level: level } : item
+                selectedRow.has(item.sno) ? { ...item, level: level } : item
             )
-         );
-
-         setSelectedRow(new Set());
-      };
+        );
+        setSelectedRow(new Set());
+    };
       const clearLevel = () => {
          setLevelMap(prev => {
             const updated = { ...prev };
