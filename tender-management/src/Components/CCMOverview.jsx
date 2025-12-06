@@ -245,7 +245,7 @@ const CCMOverview = () => {
         return filter(parentTree);
     }, [parentTree, searchQuery]);
     const BOQNode = ({ boq, level = 0 }) => {
-        const canExpand = boq.level === 1 || boq.level === 2;
+        const canExpand = boq.lastLevel === false;
         const isExpanded = expandedParentIds.has(boq.id);
         const childrenStatus = boq.children;
         const isLoading = isExpanded && childrenStatus === 'pending';
