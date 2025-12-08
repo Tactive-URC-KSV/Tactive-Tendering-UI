@@ -26,6 +26,7 @@ import "@fontsource/poppins/600.css";
 import { ProjectStatusProvider } from './Context/ProjectStatusContext';
 import ProtectedRoute from './Components/ProtectedRoute';
 import Contractor from './Components/Contractor';
+import ContractorOverview from './Components/ContractorOverview';
 import AddResource from './Components/AddResource';
 import TenderFloating from './Components/TenderFloating';
 
@@ -102,6 +103,7 @@ function App() {
                             <Route path="/ContractorOnboarding" element={<Contractor />} caseSensitive={false}/>
                             <Route path="/add-resource/:projectId/:boqId" element={<AddResource />} caseSensitive={false} />
                             <Route path="/add-resource/:projectId/:boqId/:tenderEstimationId" element={<AddResource />} caseSensitive={false} />
+                            <Route path="/contractor-overview" element={<ContractorOverview />} caseSensitive={false} />
                           </Routes>
                         </Sidebar>
                       </ProjectStatusProvider>
