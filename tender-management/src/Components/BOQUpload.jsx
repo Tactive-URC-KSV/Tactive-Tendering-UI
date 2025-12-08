@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import '../CSS/Styles.css'
-import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, FileSymlink, Link, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, FileSymlink, FileText, Folder, Link, SlidersHorizontal, X } from 'lucide-react';
 import { useEffect } from 'react';
 import axios from 'axios';
 import { FaCloudUploadAlt } from 'react-icons/fa';
@@ -117,9 +117,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       setSelectedSheet(null);
       setColumns([]);
       setDraggedColumn(null);
-      setInternalFields(prev =>
-         prev.map(f => ({ ...f, mappingFields: '' }))
-      );
       setSelectedTemplate(null);
       setFileType('');
       setSheetOption([]);
@@ -132,9 +129,12 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       setLevelMap({});
       setLastLevelMap({});
       setParentMap({});
-      setSelectedRow(new Set());
       setSection('columnMapping');
       setUploadScreen(false);
+      setSelectedRow(new Set());
+      setInternalFields(prev =>
+         prev.map(f => ({ ...f, mappingFields: '' }))
+      );
    };
    const getExcelSheets = (event) => {
       const file = event.target.files[0];
@@ -197,12 +197,15 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       ghost.style.top = "-9999px";
       ghost.style.left = "-9999px";
       ghost.style.padding = "8px 12px";
-      ghost.style.background = "#f0f0f0";
-      ghost.style.border = "1px solid #ccc";
+      ghost.style.background = "#F0FDF4";
+      ghost.style.border = "0.5px solid #2BA95A";
       ghost.style.borderRadius = "6px";
       ghost.style.fontSize = "14px";
+      ghost.style.minWidth = "10%";
+      ghost.style.textAlign = "center";
+      ghost.style.maxWidth = "30%";
       ghost.innerHTML = column;
-      ghost.style.color = "#F0FDF4";
+      ghost.style.color = "#2BA95A";
       document.body.appendChild(ghost);
       e.dataTransfer.setDragImage(ghost, 0, 0);
 
@@ -348,7 +351,12 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    //          setSheetOption(prev =>
    //             prev.filter(option => option.value !== selectedSheet)
    //          );
-   //          setSelectedSheet(null);
+   //          plate();
+   //          toast.success("BOQ Data imported SuccessFully");
+   //          sheetOption.length === 1 && (setTimeout(() => {
+   //             window.location.href = `/boqdefinition/${projectId}`;
+   //          }, 3000));
+   //          if (fileType === 'pdsetSelectedSheet(null);
    //          setColumns([]);
    //          setDraggedColumn(null);
    //          const updatedInternalFields = internalFields.map(field => ({
@@ -356,12 +364,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    //             mappingFields: ''
    //          }));
    //          setInternalFields(updatedInternalFields);
-   //          setSelectedTemplate();
-   //          toast.success("BOQ Data imported SuccessFully");
-   //          sheetOption.length === 1 && (setTimeout(() => {
-   //             window.location.href = `/boqdefinition/${projectId}`;
-   //          }, 3000));
-   //          if (fileType === 'pdf') {
+   //          setSelectedTemf') {
    //             (setTimeout(() => {
    //                window.location.href = `/boqdefinition/${projectId}`;
    //             }, 3000))
@@ -412,9 +415,49 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          );
          if (response.status === 200) {
             toast.success("BOQ mapping saved successfully!");
-         }
 
-      } catch (error) {
+            setSheetOption(prev =>
+               prev.filter(option => option.value !== selectedSheet)
+            );
+
+            plate();
+            setExcelData([]);
+            setCurrentPage(0);
+            setTotalPages(0);
+            setPageSize(50);
+            setTotalItems(0);
+            setLastLevelMap({});
+            setParentMap({});
+            setLevelMap({});
+            setSelectedRow(new Set());
+            setSection('columnMapping');
+            setSearchTerm('');
+            toast.success("BOQ Data imported Successfully");
+
+            if (sheetOption.length === 1) {
+               setTimeout(() => {
+                  window.location.href = `/boqdefinition/${projectId}`;
+               }, 3000);
+            }
+
+            if (fileType === 'pdf') {
+               setSelectedSheet(null);
+               setColumns([]);
+               setDraggedColumn(null);
+
+               const updatedInternalFields = internalFields.map(field => ({
+                  ...field,
+                  mappingFields: ''
+               }));
+               setInternalFields(updatedInternalFields);
+               setSelectedTemplate(null);
+               setTimeout(() => {
+                  window.location.href = `/boqdefinition/${projectId}`;
+               }, 3000);
+            }
+         }
+      }
+      catch (error) {
          console.error("Failed to save mapped BOQ:", error);
          toast.error("Error saving BOQ mapping");
       }
@@ -462,35 +505,52 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          toast.error("Error saving template");
       });
    }
-   const buildTree = (data, parentMap) => {
-      const map = {};
+
+   const buildTree = () => {
+      if (!excelData) return [];
+      const nodeMap = new Map();
       const roots = [];
-      data.forEach(item => {
-         map[item.sno] = { ...item, children: [] };
+      excelData.forEach(item => {
+         nodeMap.set(item.sno, {
+            ...item,
+            children: item.lastLevel ? null : []
+         });
       });
-      data.forEach(item => {
-         const parentSno = parentMap[item.sno];
-         if (parentSno && map[parentSno]) {
-            map[parentSno].children.push(map[item.sno]);
+      excelData.forEach(item => {
+         const node = nodeMap.get(item.sno);
+         const parentId = item.parentSno || parentMap[item.sno];
+         if (!parentId) {
+            roots.push(node);
          } else {
-            roots.push(map[item.sno]);
+            const parent = nodeMap.get(parentId);
+            if (parent) {
+               if (!item.lastLevel) {
+                  parent.children.push(node);
+               } else {
+                  parent.children.push(node);
+               }
+            }
          }
       });
       return roots;
    };
-   const renderTree = (node, isRoot = false) => {
+
+   const renderNode = (node) => {
+      const marginClass = node.children === null
+         ? "ms-3"
+         : `ms-${(node.level - 1) * 2}`;
+      const icon = node.level === 1 ? <Folder size={16} color={'#9333EA'} />
+         : node.level === 2 ? <Folder size={16} color={'#2563EB'} />
+            : node.level === 3 ? <Folder size={16} color={'#CA8A04'} />
+               : node.lastLevel ? <FileText size={16} color={'#2BA95A'} />
+                  : null;
       return (
-         <div key={node.sno} className={`tree-node ${isRoot ? "tree-root" : ""}`}>
-            <div className="d-flex align-items-center mb-1">
-               <span>{node.boqCode || "Untitled"}</span>
+         <div key={node.sno}>
+            <div className={marginClass}>
+               {icon}<span className='ms-1' style={{ fontSize: '14px' }}>{boqNameDisplay(node.boqCode || node.boqName, 10)}</span>
             </div>
-            {node.children && node.children.length > 0 && (
-               <div className="tree-children">
-                  {node.children.map(child =>
-                     renderTree(child, false)
-                  )}
-               </div>
-            )}
+            {Array.isArray(node.children) &&
+               node.children.map(child => renderNode(child))}
          </div>
       );
    };
@@ -520,15 +580,20 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                   <li>Pdf must contains data in table format</li>
                   <li>First row of excel file should contain column headers</li>
                   <li>Required columns: BOQ Code,Item Description (or) BOQ Name, Unit, Quantity</li>
-                  <li>Level 1 BOQ must be either BOQ Code or BOQ Name</li>
                   <li>Ensured that the BOQ table contains only BOQ-related details</li>
                </ul>
             </div>
          </>
       );
    }
+   const boqNameDisplay = (boqName, length) => {
+      return boqName && boqName.length > length
+         ? boqName.substring(0, length) + '...'
+         : boqName;
+   }
    const levelMapping = () => {
-      const tree = buildTree(excelData, parentMap);
+      const treeData = buildTree();
+      console.log(treeData);
       const goToPreviousPage = () => {
          if (currentPage > 0) {
             fetchExcelData(currentPage - 1);
@@ -539,11 +604,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             fetchExcelData(currentPage + 1);
          }
       };
-      const boqNameDisplay = (boqName, length) => {
-         return boqName && boqName.length > length
-            ? boqName.substring(0, length) + '...'
-            : boqName;
-      }
+
       const toggleSelection = (sno) => {
          setSelectedRow(prev => {
             const updated = new Set(prev);
@@ -556,20 +617,35 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          });
       };
       const assignLevel = (level) => {
-         setLevelMap(prev => {
+        if (level === 3) {
+            let violationExists = false;
+            violationExists = excelData.some(item => {
+                return item.level === 2 && !parentMap[item.sno];
+            });
+            if (!violationExists) {
+                violationExists = Object.keys(levelMap).some(sno => {
+                    return levelMap[sno] === 2 && !parentMap[sno];
+                });
+            }
+            if (violationExists) {
+                toast.error("Cannot assign level 3 without assigning parents to all level 2 items.");
+                return;
+            }
+        }
+        setLevelMap(prev => {
             const updated = { ...prev };
             selectedRow.forEach(sno => {
-               updated[sno] = level;
+                updated[sno] = level;
             });
             return updated;
-         });
-         setExcelData(prev =>
+        });
+        setExcelData(prev =>
             prev.map(item =>
-               selectedRow.has(item.sno) ? { ...item, level: level } : item
+                selectedRow.has(item.sno) ? { ...item, level: level } : item
             )
-         );
-
-      };
+        );
+        setSelectedRow(new Set());
+    };
       const clearLevel = () => {
          setLevelMap(prev => {
             const updated = { ...prev };
@@ -641,16 +717,31 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             toast.error("Please select at least one BOQ item.");
             return;
          }
-         const levels = [...selectedRow].map(sno => excelData.find(i => i.sno === sno)?.level || 0);
-         const uniqueLevels = [...new Set(levels)];
-         if (uniqueLevels.length > 1) {
-            toast.error("Please select BOQs with the SAME level to assign a parent.");
+         const isnoLevelItems = excelData.filter(item =>  item.level !== 0);
+         if (isnoLevelItems.length === 0) {
+            toast.error("Level 0 items cannot be assigned as parent. Assign a level first.");
             return;
          }
-         const childLevel = uniqueLevels[0];
-         if (childLevel === 0) {
-            toast.error("Level 0 items cannot have a parent. Assign a level first.");
-            return;
+         const selectedItems = [...selectedRow].map(sno =>
+            excelData.find(item => item.sno === sno)
+         );
+         const nonLastLevelItems = selectedItems.filter(item => !item?.lastLevel);
+         let childLevel;
+         if (nonLastLevelItems.length === 0) {
+            childLevel = 999;
+         } else {
+            const levels = nonLastLevelItems.map(item => item?.level || 0);
+            const uniqueLevels = [...new Set(levels)];
+
+            if (uniqueLevels.length > 1) {
+               toast.error("Please select BOQs with the SAME level (Last level items ignored).");
+               return;
+            }
+            childLevel = uniqueLevels[0];
+            if (childLevel === 0) {
+               toast.error("Level 0 items cannot have a parent. Assign a level first.");
+               return;
+            }
          }
          setSelectedChildLevel(childLevel);
          setIsParentSelecting(true);
@@ -751,18 +842,29 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                        <tr
                                           key={item.sno}
                                           className={
-                                             `${item.lastLevel
-                                             && "last-level "}
-                                                 ${isParentSelecting && selectedRow.has(item.sno)
-                                                ? "parent-selecting"
-                                                : isParentSelecting && (
-                                                   item.level === 0 ||
-                                                   item.lastLevel ||
-                                                   item.level >= selectedChildLevel ||
+                                             `${item.lastLevel ? "last-level " : ""}` +
+                                             (isParentSelecting &&
+                                                (
+                                                   item.lastLevel || item.level === 0 ||
+                                                   (selectedChildLevel !== 999 &&
+                                                      item.level !== selectedChildLevel - 1) ||
                                                    item.sno === [...selectedRow][0]
                                                 )
-                                                   ? "disabled-parent-row"
-                                                   : ""} ${isParentSelecting && !item.lastLevel && item.level !== 0 && item.level < selectedChildLevel && "parent-selectable-row"}`
+                                                ? " disabled-parent-row"
+                                                : ""
+                                             ) +
+                                             (isParentSelecting &&
+                                                (
+                                                   !item.lastLevel &&
+                                                   (
+                                                      selectedChildLevel === 999
+                                                         ? (item.level > 0)
+                                                         : (item.level === selectedChildLevel - 1)
+                                                   )
+                                                )
+                                                ? " parent-selectable-row"
+                                                : ""
+                                             )
                                           }
                                           onClick={() => {
                                              if (!isParentSelecting) return;
@@ -832,28 +934,26 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                         <div className='text-start text-muted pb-1 pt-1' style={{ fontSize: '13px' }}>Assign selected rows to a level</div>
                      </div>
                      <div className='d-flex ms-2 flex-column mt-3 align-items-around' style={{ borderBottom: '1px solid #0051973D' }}>
-                        <button className='btn level1 rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={() => assignLevel(1)}>
+                        <button className='btn level1 rounded-2 p-2 mb-3' disabled={selectedRow.length < 0} onClick={() => assignLevel(1)}>
                            <span className=''></span>Level 1
                         </button>
-                        <button className='btn level2 rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={() => assignLevel(2)}>
+                        <button className='btn level2 rounded-2 p-2 mb-3' disabled={selectedRow.length < 0} onClick={() => assignLevel(2)}>
                            Level 2
                         </button>
-                        <button className='btn level3 rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={() => assignLevel(3)}>
+                        <button className='btn level3 rounded-2 p-2 mb-3' disabled={selectedRow.length < 0} onClick={() => assignLevel(3)}>
                            Level 3
                         </button>
-                        <button className='btn lastLevel rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={() => assignLastLevel()}>
+                        <button className='btn lastLevel rounded-2 p-2 mb-3' disabled={selectedRow.length < 0} onClick={() => assignLastLevel()}>
                            Last Level
                         </button>
-                        <button className='btn cancel rounded-2 p-2 mb-2' disabled={selectedRow.length < 0} onClick={clearLevel}>
+                        <button className='btn cancel rounded-2 p-2 mb-3' disabled={selectedRow.length < 0} onClick={clearLevel}>
                            <X size={16} /><span className='ms-2'>Clear Level</span>
                         </button>
-                        <button className='btn clear rounded-2 p-2 mb-3' disabled={selectedRow.length < 0} onClick={() => setSelectedRow(new Set())}>
-                           <X size={16} /><span className='ms-2'>Clear selection</span>
-                        </button>
+
                      </div>
                      <div className='ms-2 mt-3' style={{ borderBottom: '1px solid #0051973D' }}>
                         <div className='text-start fw-bold mb-3'>Parent Mapping</div>
-                        <button className='btn parent rounded-2 p-2 mb-2 w-100' disabled={isParentSelecting} onClick={startParentSelection}>
+                        <button className='btn parent rounded-2 p-2 mb-3 w-100' disabled={isParentSelecting} onClick={startParentSelection}>
                            <Link size={16} /><span className='ms-2'>Assign Parent</span>
                         </button>
                         <button className='btn cancel rounded-2 p-2 mb-3 w-100' disabled={selectedRow.length < 0} onClick={clearParent}>
@@ -861,12 +961,12 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                         </button>
                      </div>
                      <div className='ms-2 mt-3'>
-                        <div className='text-start fw-bold mb-3'>Structure Preview</div>
+                        <div className='text-start fw-bold mb-3'>Live Structure Preview</div>
                         <div className="structure-preview">
-                           {tree.length === 0 ? (
+                           {!excelData ? (
                               <div className="text-muted small">No structure assigned.</div>
                            ) : (
-                              tree.map(node => renderTree(node))
+                              <div className="text-start">{treeData.map(node => renderNode(node))}</div>
                            )}
                         </div>
                      </div>
@@ -874,7 +974,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                </div>
             </div>
             <div className='d-flex justify-content-end mt-4'>
-               <button className='btn cancel-button mt-2 me-4'>Cancel</button>
+               <button className='btn cancel-button mt-2 me-4' onClick={removeFile}>Cancel</button>
                <button className='btn action-button mt-2 fs-6' onClick={saveMappedBOQ}>{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : (<span>Import BOQ Data</span>)}</button>
             </div>
          </>
