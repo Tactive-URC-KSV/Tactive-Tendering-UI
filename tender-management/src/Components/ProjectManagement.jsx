@@ -84,10 +84,10 @@ function ProjectCreation() {
                 .then((res) => {
                     if (res.status === 200) {
                         setProject(res.data);
-                        setScopePack(res.data.scopeOfPackages?.map((pkg) => pkg.id) || []);
-                        setRegion(res.data.region?.id || "");
-                        setSector(res.data.sector?.id || "");
-                        setUom(res.data.uom?.id || "");
+                        setScopePack(res.data.scopeOfPackages?.map((pkg) => pkg) || []);
+                        setRegion(res.data.regionId || "");
+                        setSector(res.data.sectorId || "");
+                        setUom(res.data.uomId || "");
                     }
                 })
                 .catch((err) => {
