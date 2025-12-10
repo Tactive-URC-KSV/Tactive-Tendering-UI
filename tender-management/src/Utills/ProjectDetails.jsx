@@ -264,7 +264,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         <input type="number" className="form-input w-100" placeholder="Enter Number of Floors"
                             value={project.numberOfFloors}
                             onChange={(e) => setProject({ ...project, numberOfFloors: parseInt(e.target.value) })}
-
+                            onWheel={(e) => e.target.blur()}
                         />
                     </div>
                     <div className="col-md-6 mb-4">
@@ -272,7 +272,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         <input type="number" className="form-input w-100" placeholder="Enter Car Parking Floors"
                             value={project.carParkingFloors}
                             onChange={(e) => setProject({ ...project, carParkingFloors: parseInt(e.target.value) })}
-
+                            onWheel={(e) => e.target.blur()}
                         />
                     </div>
                 </div>
@@ -282,7 +282,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         <input type="number" className="form-input w-100" placeholder="Enter Above Ground"
                             value={project.numberOfAboveGround}
                             onChange={(e) => setProject({ ...project, numberOfAboveGround: parseInt(e.target.value) })}
-
+                            onWheel={(e) => e.target.blur()}
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
@@ -290,7 +290,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         <input type="number" className="form-input w-100" placeholder="Enter Below Ground"
                             value={project.numberOfBelowGround}
                             onChange={(e) => setProject({ ...project, numberOfBelowGround: parseInt(e.target.value) })}
-
+                            onWheel={(e) => e.target.blur()}
                         />
                     </div>
                 </div>
@@ -309,7 +309,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         <input type="number" step="any" className="form-input w-100" placeholder="Enter Total Area"
                             value={project.buildingArea}
                             onChange={(e) => setProject({ ...project, buildingArea: parseFloat(e.target.value) })}
-
+                            onWheel={(e) => e.target.blur()}
                         />
                     </div>
                 </div>
@@ -329,7 +329,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         <input type="number" step="any" className="form-input w-100" placeholder="Enter Rate Per Units"
                             value={project.ratePerUnit}
                             onChange={(e) => setProject({ ...project, ratePerUnit: parseFloat(e.target.value) })}
-
+                            onWheel={(e) => e.target.blur()}
                         />
                     </div>
                 </div>

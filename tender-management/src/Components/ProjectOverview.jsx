@@ -1,6 +1,6 @@
 import axios from "axios";
 import { ArrowLeft, Check, Eye, IndianRupee, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import "../CSS/Styles.css";
@@ -13,6 +13,10 @@ import FinOverview from "../assest/Financial_Overview.svg?react";
 import GeneralInfo from "../assest/GeneralInfo.svg?react";
 import TechnicalInfo from "../assest/TechDetails.svg?react";
 import Overview from "../assest/overview.svg?react";
+import { useSectors } from "../Context/SectorsContext";
+import { useRegions } from "../Context/RegionsContext";
+import { useScope } from "../Context/ScopeContext";
+import { useUom } from "../Context/UomContext";
 
 function ProjectOverview() {
     const { projectId } = useParams();
@@ -23,6 +27,10 @@ function ProjectOverview() {
     const [feasbilityStudy, setFeasbilityStudy] = useState();
     const [comments, setComments] = useState('');
     const projectStatus = useProjectStatus();
+    const sector = useSectors();
+    const region = useRegions();
+    const scopeOfPackages = useScope();
+    const uom = useUom();
     const [user, setUser] = useState('');
     const [approvalDoc, setApprovalDoc] = useState();
 
@@ -108,8 +116,22 @@ function ProjectOverview() {
 
         })
     }, [project])
-
-
+    const findSector = (sectorId) => {
+        const sectorName = sector.find((sector) => sector.id === sectorId);
+        return sectorName?.sectorName;
+    }
+    const findRegion = (regionId) => {
+        const regionName = region.find((region) => region.id === regionId);
+        return regionName?.regionName;
+    }
+    const findUom = (uomId) =>{
+        const uomCode = uom.find((uom) => uom.id === uomId);
+        return uomCode?.uomCode;
+    }
+    const findScope = (scopeId) => {
+        const scope = scopeOfPackages.find((scope) => scope.id === scopeId);
+        return scope?.scope
+    }
     if (loading) return <div>Loading...</div>;
     if (error) return <div>{error}</div>;
     if (!project) return <div>No project data available</div>;
@@ -122,23 +144,24 @@ function ProjectOverview() {
         { label: "Agreement Number", value: project.agreementNumber },
         { label: "Start Date", value: project.startDate },
         { label: "End Date", value: project.endDate },
-        { label: "Sector", value: project.sector?.sectorName || "N/A" },
+        { label: "Sector", value: findSector(project.sectorId)|| "N/A" },
         { label: "Address", value: project.address },
         { label: "City", value: project.city },
-        { label: "Region", value: project.region?.regionName || "N/A" },
+        { label: "Region", value: findRegion(project.regionId) || "N/A" },
         {
             label: "Scope of Packages",
             value:
-                project.scopeOfPackages?.map((pkg) => pkg.scope).join(", ") || "N/A",
+                project.scopeOfPackages?.map((pkg) => findScope(pkg)).join(", ") || "N/A",
         },
     ];
+    
 
     const technicalInfo = [
         { label: "Number of Floors", value: project.numberOfFloors || "N/A" },
         { label: "Car Parking Floors", value: project.carParkingFloors || "N/A" },
         { label: "Above Ground", value: project.numberOfAboveGround || "N/A" },
         { label: "Below Ground", value: project.numberOfBelowGround || "N/A" },
-        { label: "Unit of Measurement", value: project.uom?.uomName || "N/A" },
+        { label: "Unit of Measurement", value: findUom(project.uomId) || "N/A" },
         { label: "Building Area", value: project.buildingArea || "N/A" },
         { label: "Other Amenities", value: project.otherAmenities?.join(", ") || "N/A" },
         { label: "Rate Per Unit", value: project.ratePerUnit || "N/A" },
@@ -266,7 +289,7 @@ function ProjectOverview() {
                     </div>
                     <div className="text-end me-2">
                         {projectStatus
-                            .filter((state) => (state.id === project.projectStatus.id))
+                            .filter((state) => (state.id === project.projectStatusId))
                             .map((state, index) => (
                                 <span key={index} className="badge rounded-pill mb-1"
                                     style={{ backgroundColor: state.bgColor, color: state.textColor, fontSize: '14px' }}

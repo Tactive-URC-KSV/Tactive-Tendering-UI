@@ -166,6 +166,7 @@ const ResourceModal = ({
                       setResourceData(newResourceData);
                       handleCalculations(newResourceData);
                     }}
+                    onWheel={(e) => e.target.blur()}
                     disabled={coEffdisabled}
                   />
                 </div>
@@ -194,6 +195,7 @@ const ResourceModal = ({
                     className="resource-input w-100"
                     placeholder="Enter Wastage %"
                     value={resourceData.wastePercentage}
+                    onWheel={(e) => e.target.blur()}
                     onChange={(e) => {
                       const newValue = parseFloat(e.target.value);
                       const newResourceData = { ...resourceData, wastePercentage: newValue };
@@ -237,6 +239,7 @@ const ResourceModal = ({
                     className="resource-input w-100"
                     placeholder="Enter Rate"
                     value={resourceData.rate}
+                    onWheel={(e) => e.target.blur()}
                     onChange={(e) => {
                       const newValue = parseFloat(e.target.value);
                       const newResourceData = { ...resourceData, rate: newValue };
@@ -252,6 +255,7 @@ const ResourceModal = ({
                     className="resource-input w-100"
                     placeholder="Enter Additional rate"
                     value={resourceData.additionalRate}
+                    onWheel={(e) => e.target.blur()}
                     onChange={(e) => {
                       const newValue = parseFloat(e.target.value);
                       const newResourceData = { ...resourceData, additionalRate: newValue };
@@ -267,6 +271,7 @@ const ResourceModal = ({
                     className="resource-input w-100"
                     placeholder="Enter Shipping price"
                     value={resourceData.shippingPrice}
+                    onWheel={(e) => e.target.blur()}
                     onChange={(e) => {
                       const newValue = parseFloat(e.target.value);
                       const newResourceData = { ...resourceData, shippingPrice: newValue };
@@ -296,6 +301,7 @@ const ResourceModal = ({
                     className="resource-input w-100"
                     placeholder="Enter Exchange Rate"
                     value={resourceData.exchangeRate}
+                    onWheel={(e) => e.target.blur()}
                     onChange={(e) => {
                       const newValue = parseFloat(e.target.value);
                       const newResourceData = { ...resourceData, exchangeRate: newValue };
