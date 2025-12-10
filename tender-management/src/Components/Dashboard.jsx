@@ -326,7 +326,7 @@ function ProjectWorklist() {
                                             )}</td>
                                         <td>{project.sectorName}</td>
                                         <td>{projectStatus.map((state) => (
-                                            state.status === project.status && (
+                                            state.id === project.status && (
                                                 <span key={state.status} className="badge rounded-pill"
                                                     style={{ backgroundColor: state.bgColor, color: state.textColor, fontSize: '12px' }}
                                                 >
@@ -357,7 +357,7 @@ function ProjectWorklist() {
                                             {project.projectCode}
                                         </span>
                                         {projectStatus.map((state) => (
-                                            state.status === project.status && (
+                                            state.id === project.status && (
                                                 <span key={state.status} className="badge rounded-pill"
                                                     style={{ backgroundColor: state.bgColor, color: state.textColor, fontSize: '12px' }}
                                                 >
