@@ -154,18 +154,7 @@ function ContractorReview() {
                                                 </small>
                                             </div>
                                         </div>
-<button
-    className="btn btn-sm"
-    style={{ color: bluePrimary }}
-    onClick={() => {
-        const url = URL.createObjectURL(file.fileObject);
-        window.open(url, "_blank");
-    }}
->
-    View
-</button>
-
-
+                                        <button className="btn btn-sm" style={{ color: bluePrimary }}>View</button>
                                     </div>
                                 ))
                             ) : (
