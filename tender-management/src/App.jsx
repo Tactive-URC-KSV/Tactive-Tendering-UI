@@ -29,7 +29,6 @@ import Contractor from './Components/Contractor';
 import ContractorOverview from './Components/ContractorOverview';
 import AddResource from './Components/AddResource';
 import TenderFloating from './Components/TenderFloating';
-import ContractorReview from './Components/ContractorReview';
 
 function App() {
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 768);
@@ -105,7 +104,6 @@ function App() {
                             <Route path="/add-resource/:projectId/:boqId" element={<AddResource />} caseSensitive={false} />
                             <Route path="/add-resource/:projectId/:boqId/:tenderEstimationId" element={<AddResource />} caseSensitive={false} />
                             <Route path="/contractor-overview" element={<ContractorOverview />} caseSensitive={false} />
-                            <Route path="/contractor-review" element={<ContractorReview />} caseSensitive={false} />
                           </Routes>
                         </Sidebar>
                       </ProjectStatusProvider>
@@ -125,3 +123,9 @@ function App() {
 }
 
 export default App;
+
+
+
+
+
+
