@@ -1,13 +1,16 @@
-import React, { useState, useEffect, useLayoutEffect,useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Select from 'react-select';
-import { ArrowLeft, ArrowRight, Pencil, Mail, FileText, MapPin, User, Briefcase, DollarSign, Info,X, UploadCloud } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Pencil, Mail, FileText, MapPin, User, Briefcase, DollarSign, Info, X, UploadCloud } from 'lucide-react';
 import { FaCalendarAlt } from 'react-icons/fa';
-
+import Flatpickr from 'flatpickr';
+import '../CSS/custom-flatpickr.css';
+import '../CSS/Styles.css';
 const bluePrimary = "#005197";
 const bluePrimaryLight = "#005197CC";
 const labelTextColor = '#00000080';
 const STORAGE_KEY = 'contractorFormData';
+
 
 const entityTypeOptions = [
     { value: 'contractor', label: 'Contractor' },
@@ -28,8 +31,8 @@ const addressTypeOptions = [
     { value: 'Present Address', label: 'Present Address' },
 ];
 const countryOptions = [];
-const addresscityOptions = []; 
-const contactPositionOptions = []; 
+const addresscityOptions = [];
+const contactPositionOptions = [];
 const territoryTypeOptions = [
     { value: 'Country', label: 'Country' },
     { value: 'State', label: 'State' },
@@ -44,8 +47,8 @@ const taxTypeOptions = [
     { value: 'Trade License Un-Register', label: 'Trade License Un-Register' },
     { value: 'MSME Register', label: 'MSME Register' },
 ];
-const territoryOptions = []; 
-const taxCityOptions = []; 
+const territoryOptions = [];
+const taxCityOptions = [];
 const additionalInfoTypeOptions = [
     { value: 'PAN No', label: 'PAN No' },
     { value: 'TIN No', label: 'TIN No' },
@@ -76,10 +79,10 @@ const DetailItem = ({ label, value }) => {
     );
 };
 
-const ManualEntryForm = ({ formData,setFormData,handleChange,handleSelectChange,handleFileChange,handleRemoveFile}) => {
+const ManualEntryForm = ({ formData, setFormData, handleChange, handleSelectChange, handleFileChange, handleRemoveFile }) => {
 
     const fileInputRef = useRef(null);
-
+    
     const handleDragOver = (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -97,7 +100,12 @@ const ManualEntryForm = ({ formData,setFormData,handleChange,handleSelectChange,
     const handleUploadClick = () => {
         fileInputRef.current.click();
     };
-
+    const openCalendar = (id) => {
+        const input = document.querySelector(`#${id}`);
+        if (input && input._flatpickr) {
+            input._flatpickr.open();
+        }
+    };
     return (
         <>
             <div
@@ -148,22 +156,16 @@ const ManualEntryForm = ({ formData,setFormData,handleChange,handleSelectChange,
                     <label className="projectform-select text-start d-block">
                         Effective Date <span style={{ color: "red" }}>*</span>
                     </label>
-                    <div className="input-group">
-                        <input
-                            type="text"
-                            className="form-control"
-                            value={formData.effectiveDate}
-                            onChange={handleChange}
-                            placeholder="mm/dd/yy"
-                            style={{ height: "40px" }}
-                        />
-                        <span
-                            className="input-group-text bg-white"
-                            style={{ height: "40px" }}
-                        >
-                            <FaCalendarAlt size={18} className="text-muted" />
-                        </span>
-                    </div>
+                    <Flatpickr
+                        id="effectiveDate"
+                        className="form-input w-100"
+                        placeholder="Select Effective date"
+                        options={{ dateFormat: "d-m-Y" }}
+                        value={formData.effectiveDate}
+                        onChange={([date]) => setFormData({ ...formData, effectiveDate: date })}
+                        ref={datePickerRef}
+                    />
+                    <span className='calender-icon' onClick={() => openCalendar('effectiveDate')}><FaCalendarAlt size={18} color='#005197' /></span>
                 </div>
                 <div className="col-md-6 mt-3 mb-4">
                     <label className="projectform-select text-start d-block">
@@ -247,28 +249,28 @@ const ManualEntryForm = ({ formData,setFormData,handleChange,handleSelectChange,
                                 Click to upload or drag and drop
                             </p>
                             <p className="mb-0 small" style={{ color: bluePrimary }}>PDF, DOCX up to 10MB</p>
-                            </div>
-                          {formData.attachmentMetadata.length > 0 && (
-                            <div className="d-flex flex-wrap justify-content-center mt-3">
-                               {formData.attachmentMetadata.map((file) => (
-                                <div
-                                    key={file.id} 
-                                    className="d-flex align-items-center mx-2 mb-2 px-3 py-2 rounded"
-                                    style={{backgroundColor: "#fff",border: "1px solid #ced4da",fontSize: "0.9rem"}}
-                                >
-                                <FileText size={16} className="me-2 text-muted" />
-                                <span className="text-dark me-2">{file.name}</span>
-                                <X
-                                size={14}
-                                className="text-danger"
-                                onClick={() => handleRemoveFile(file.id)} 
-                                style={{ cursor: "pointer" }}
-                                />
-                            </div>
-                         ))}
-                         </div>
-                         )}
                         </div>
+                        {formData.attachmentMetadata.length > 0 && (
+                            <div className="d-flex flex-wrap justify-content-center mt-3">
+                                {formData.attachmentMetadata.map((file) => (
+                                    <div
+                                        key={file.id}
+                                        className="d-flex align-items-center mx-2 mb-2 px-3 py-2 rounded"
+                                        style={{ backgroundColor: "#fff", border: "1px solid #ced4da", fontSize: "0.9rem" }}
+                                    >
+                                        <FileText size={16} className="me-2 text-muted" />
+                                        <span className="text-dark me-2">{file.name}</span>
+                                        <X
+                                            size={14}
+                                            className="text-danger"
+                                            onClick={() => handleRemoveFile(file.id)}
+                                            style={{ cursor: "pointer" }}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </>
@@ -283,7 +285,7 @@ const EmailInviteForm = ({ formData, setFormData, handleSendInvitation }) => (
                 Invite Contractor via Email
             </h3>
             <p className="mb-4" style={{ color: '#6286A6' }}>
-                Send a secure link to the contractor. They will be able to fill out their details, 
+                Send a secure link to the contractor. They will be able to fill out their details,
                 upload documents, and submit.
             </p>
         </div>
@@ -389,7 +391,7 @@ const AddressDetailsContent = ({ formData, setFormData, handleSelectChange }) =>
                 <label htmlFor="addressType" className="projectform-select text-start d-block">Address Type <span className="text-danger">*</span></label>
                 <Select
                     name="addressType"
-                    options={addressTypeOptions} 
+                    options={addressTypeOptions}
                     onChange={handleSelectChange}
                     classNamePrefix="select"
                     value={addressTypeOptions.find(option => option.value === formData.addressType)}
@@ -420,7 +422,7 @@ const AddressDetailsContent = ({ formData, setFormData, handleSelectChange }) =>
                 <label htmlFor="country" className="projectform-select text-start d-block">Country <span className="text-danger">*</span></label>
                 <Select
                     name="country"
-                    options={countryOptions} 
+                    options={countryOptions}
                     onChange={handleSelectChange}
                     classNamePrefix="select"
                     value={countryOptions.find(option => option.value === formData.country)}
@@ -433,7 +435,7 @@ const AddressDetailsContent = ({ formData, setFormData, handleSelectChange }) =>
                 <label htmlFor="addresscity" className="projectform-select text-start d-block">City <span className="text-danger">*</span></label>
                 <Select
                     name="addresscity"
-                    options={addresscityOptions} 
+                    options={addresscityOptions}
                     onChange={handleSelectChange}
                     classNamePrefix="select"
                     value={addresscityOptions.find(option => option.value === formData.addresscity)}
@@ -473,7 +475,7 @@ const ContactDetailsContent = ({ formData, setFormData, handleSelectChange }) =>
                 <label htmlFor="contactPosition" className="projectform-select text-start d-block">Position <span className="text-danger">*</span></label>
                 <Select
                     name="contactPosition"
-                    options={contactPositionOptions} 
+                    options={contactPositionOptions}
                     onChange={handleSelectChange}
                     classNamePrefix="select"
                     value={contactPositionOptions.find(option => option.value === formData.contactPosition)}
@@ -516,7 +518,7 @@ const TaxDetailsContent = ({ formData, setFormData, handleChange, handleSelectCh
                 <label htmlFor="taxType" className="projectform-select text-start d-block">Tax Type <span className="text-danger">*</span></label>
                 <Select
                     name="taxType"
-                    options={taxTypeOptions} 
+                    options={taxTypeOptions}
                     onChange={handleSelectChange}
                     classNamePrefix="select"
                     value={taxTypeOptions.find(option => option.value === formData.taxType)}
@@ -527,7 +529,7 @@ const TaxDetailsContent = ({ formData, setFormData, handleChange, handleSelectCh
                 <label htmlFor="territoryType" className="projectform-select text-start d-block">Territory Type <span className="text-danger">*</span></label>
                 <Select
                     name="territoryType"
-                    options={territoryTypeOptions} 
+                    options={territoryTypeOptions}
                     onChange={handleSelectChange}
                     classNamePrefix="select"
                     value={territoryTypeOptions.find(option => option.value === formData.territoryType)}
@@ -540,7 +542,7 @@ const TaxDetailsContent = ({ formData, setFormData, handleChange, handleSelectCh
                 <label htmlFor="territory" className="projectform-select text-start d-block">Territory <span className="text-danger">*</span></label>
                 <Select
                     name="territory"
-                    options={territoryOptions} 
+                    options={territoryOptions}
                     onChange={handleSelectChange}
                     classNamePrefix="select"
                     value={territoryOptions.find(option => option.value === formData.territory)}
@@ -551,11 +553,16 @@ const TaxDetailsContent = ({ formData, setFormData, handleChange, handleSelectCh
                 <label className="projectform text-start d-block">
                     Tax Reg. No <span style={{ color: 'red' }}>*</span>
                 </label>
-                <input type="text" className="form-input w-100" placeholder="Enter tax registration no"
-                    value={formData.taxRegNo}
-                    onChange={(e) => setFormData({ ...formData, taxRegNo: e.target.value })}
-
-                />
+                <Flatpickr
+                        id="taxRegDate"
+                        className="form-input w-100"
+                        placeholder="Select Tax Registration date"
+                        options={{ dateFormat: "d-m-Y" }}
+                        value={formData.effectiveDate}
+                        onChange={([date]) => setFormData({ ...formData, taxRegDate: date })}
+                        ref={datePickerRef}
+                    />
+                    <span className='calender-icon' onClick={() => openCalendar('taxRegDate')}><FaCalendarAlt size={18} color='#005197' /></span>
             </div>
         </div>
         <div className="row">
@@ -592,7 +599,7 @@ const TaxDetailsContent = ({ formData, setFormData, handleChange, handleSelectCh
                 <label htmlFor="taxCity" className="projectform-select text-start d-block">City <span className="text-danger">*</span></label>
                 <Select
                     name="taxCity"
-                    options={taxCityOptions} 
+                    options={taxCityOptions}
                     onChange={handleSelectChange}
                     classNamePrefix="select"
                     value={taxCityOptions.find(option => option.value === formData.taxCity)}
@@ -707,7 +714,7 @@ const AdditionalInfoContent = ({ formData, setFormData, handleSelectChange }) =>
                 <label htmlFor="additionalInfoType" className="projectform-select text-start d-block">Type <span className="text-danger">*</span></label>
                 <Select
                     name="additionalInfoType"
-                    options={additionalInfoTypeOptions} 
+                    options={additionalInfoTypeOptions}
                     onChange={handleSelectChange}
                     classNamePrefix="select"
                     value={additionalInfoTypeOptions.find(option => option.value === formData.additionalInfoType)}
@@ -729,27 +736,27 @@ const AdditionalInfoContent = ({ formData, setFormData, handleSelectChange }) =>
 );
 
 const ReviewSummaryContent = ({ formData, handleGoBackToEntry, handleSubmitFinal }) => {
-const { entityCode, entityName, effectiveDate, entityType, natureOfBusiness, grade, attachmentMetadata = []} = formData;
-const {phoneNo, emailID, addressType, address1, address2,country, addresscity, zipCode,} = formData;
-const {contactName, contactPosition, contactPhoneNo, contactEmailID,} = formData;
-const {taxType, territoryType, territory, taxRegNo, taxRegDate, taxAddress1, taxAddress2, taxCity, taxZipCode, taxEmailID,} = formData;
-const {accountHolderName, accountNo, bankName, branchName, bankAddress,} = formData;
-const {additionalInfoType, registrationNo,} = formData;
-const hasAttachments = attachmentMetadata && attachmentMetadata.length > 0;
-const handleViewAttachment = (fileData) => {
+    const { entityCode, entityName, effectiveDate, entityType, natureOfBusiness, grade, attachmentMetadata = [] } = formData;
+    const { phoneNo, emailID, addressType, address1, address2, country, addresscity, zipCode, } = formData;
+    const { contactName, contactPosition, contactPhoneNo, contactEmailID, } = formData;
+    const { taxType, territoryType, territory, taxRegNo, taxRegDate, taxAddress1, taxAddress2, taxCity, taxZipCode, taxEmailID, } = formData;
+    const { accountHolderName, accountNo, bankName, branchName, bankAddress, } = formData;
+    const { additionalInfoType, registrationNo, } = formData;
+    const hasAttachments = attachmentMetadata && attachmentMetadata.length > 0;
+    const handleViewAttachment = (fileData) => {
         const file = fileData.fileObject;
-        
+
         if (file instanceof File || (typeof Blob !== 'undefined' && file instanceof Blob)) {
             const objectUrl = URL.createObjectURL(file);
             const newWindow = window.open(objectUrl, '_blank');
 
             if (newWindow) {
                 newWindow.onload = () => {
-                    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000); 
+                    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
                 };
             } else {
-                 alert("The file view window was blocked. Please enable pop-ups for this site.");
-                 URL.revokeObjectURL(objectUrl);
+                alert("The file view window was blocked. Please enable pop-ups for this site.");
+                URL.revokeObjectURL(objectUrl);
             }
         } else {
             console.error("File object not found or not a valid File/Blob:", fileData);
@@ -784,55 +791,55 @@ const handleViewAttachment = (fileData) => {
                     </div>
                 </div>
 
-               <div className="attachments-section">
-    <h5 className="fw-bold mb-3"
-        style={{
-            color: labelTextColor,
-            width: "66%",
-            marginLeft: "auto"
-        }}>
-        Attachments (Certificates/Licenses)
-    </h5>
+                <div className="attachments-section">
+                    <h5 className="fw-bold mb-3"
+                        style={{
+                            color: labelTextColor,
+                            width: "66%",
+                            marginLeft: "auto"
+                        }}>
+                        Attachments (Certificates/Licenses)
+                    </h5>
 
-    <div className="attachment-file-list px-3">
-        {hasAttachments ? (
-            attachmentMetadata.map((file) => ( 
-                <div
-                    key={file.id} 
-                    className="d-flex justify-content-between align-items-center p-3 rounded mb-2"
-                    style={{
-                        border: '1px solid #00000014',
-                        width: '66%',
-                        marginLeft: "auto",
-                        background: '#00000004'
-                    }}
-                >
-                    <div className="d-flex align-items-center">
-                        <FileText size={20} className="me-2 text-danger" />
-                        <div>
-                            <p className="mb-0 fw-medium">{file.name}</p>
-                            <small className="text-muted">
-                                {file.size ? `${(file.size / 1024).toFixed(2)} KB` : 'File'}
-                                {file.lastModified ? ` • Modified: ${new Date(file.lastModified).toLocaleDateString()}` : ''}
-                            </small>
-                        </div>
+                    <div className="attachment-file-list px-3">
+                        {hasAttachments ? (
+                            attachmentMetadata.map((file) => (
+                                <div
+                                    key={file.id}
+                                    className="d-flex justify-content-between align-items-center p-3 rounded mb-2"
+                                    style={{
+                                        border: '1px solid #00000014',
+                                        width: '66%',
+                                        marginLeft: "auto",
+                                        background: '#00000004'
+                                    }}
+                                >
+                                    <div className="d-flex align-items-center">
+                                        <FileText size={20} className="me-2 text-danger" />
+                                        <div>
+                                            <p className="mb-0 fw-medium">{file.name}</p>
+                                            <small className="text-muted">
+                                                {file.size ? `${(file.size / 1024).toFixed(2)} KB` : 'File'}
+                                                {file.lastModified ? ` • Modified: ${new Date(file.lastModified).toLocaleDateString()}` : ''}
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <button
+                                        className="btn btn-sm"
+                                        style={{ color: bluePrimary }}
+                                        onClick={() => handleViewAttachment(file)}
+                                    >
+                                        View
+                                    </button>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-muted p-3" style={{ width: "66%", marginLeft: "auto" }}>
+                                No attachments uploaded.
+                            </div>
+                        )}
                     </div>
-                    <button 
-                        className="btn btn-sm" 
-                        style={{ color: bluePrimary }} 
-                        onClick={() => handleViewAttachment(file)}
-                    >
-                        View
-                    </button>
                 </div>
-            ))
-        ) : (
-            <div className="text-muted p-3" style={{ width: "66%", marginLeft: "auto" }}>
-                No attachments uploaded.
-            </div>
-        )}
-    </div>
-</div>
 
                 <div className="pt-4 mt-4" style={{ borderTop: '1px solid #f0f0f0' }}>
                     <div className="row mt-3">
@@ -851,7 +858,7 @@ const handleViewAttachment = (fileData) => {
                             <div className="row">
                                 <DetailItem label="Address 1" value={address1} />
                                 <DetailItem label="Address 2" value={address2} />
-                                <DetailItem label="" value="" /> 
+                                <DetailItem label="" value="" />
                             </div>
                             <div className="row mb-3">
                                 <DetailItem label="Country" value={country} />
@@ -874,12 +881,12 @@ const handleViewAttachment = (fileData) => {
                             <div className="row">
                                 <DetailItem label="Name" value={contactName} />
                                 <DetailItem label="Position" value={contactPosition} />
-                                <DetailItem label="" value="" /> 
+                                <DetailItem label="" value="" />
                             </div>
                             <div className="row mb-3">
                                 <DetailItem label="Phone No" value={contactPhoneNo} />
                                 <DetailItem label="Email ID" value={contactEmailID} />
-                                <DetailItem label="" value="" /> 
+                                <DetailItem label="" value="" />
                             </div>
                         </div>
                     </div>
@@ -911,7 +918,7 @@ const handleViewAttachment = (fileData) => {
                             </div>
                             <div className="row mb-3">
                                 <DetailItem label="Zip/Postal Code" value={taxZipCode} />
-                                <DetailItem label="" value="" /> 
+                                <DetailItem label="" value="" />
                                 <DetailItem label="" value="" />
                             </div>
                         </div>
@@ -935,7 +942,7 @@ const handleViewAttachment = (fileData) => {
                             <div className="row mb-3">
                                 <DetailItem label="Branch Name" value={branchName} />
                                 <DetailItem label="Bank Address" value={bankAddress} />
-                                <DetailItem label="" value="" /> 
+                                <DetailItem label="" value="" />
                             </div>
                         </div>
                     </div>
@@ -953,7 +960,7 @@ const handleViewAttachment = (fileData) => {
                             <div className="row">
                                 <DetailItem label="Type" value={additionalInfoType} />
                                 <DetailItem label="Registration No" value={registrationNo} />
-                                <DetailItem label="" value="" /> 
+                                <DetailItem label="" value="" />
                             </div>
                         </div>
                     </div>
@@ -980,7 +987,7 @@ const handleViewAttachment = (fileData) => {
                     onClick={handleSubmitFinal}
                     className="btn px-4 fw-bold ms-3"
                     style={{
-                        backgroundColor: bluePrimary, 
+                        backgroundColor: bluePrimary,
                         color: "white",
                         borderRadius: "6px",
                         border: 'none'
@@ -996,6 +1003,10 @@ const handleViewAttachment = (fileData) => {
 function ContractorOverview() {
     const navigate = useNavigate();
     const location = useLocation();
+    const datePickerRef = useRef();
+    const handleGoBack = () => navigate(-1);
+    const [selectedView, setSelectedView] = useState('manual');
+    const [viewMode, setViewMode] = useState('entry');
 
     useLayoutEffect(() => {
         if ('scrollRestoration' in history) {
@@ -1011,88 +1022,84 @@ function ContractorOverview() {
             }
         };
 
-    }, [location.pathname]) 
+    }, [location.pathname])
 
-    const handleGoBack = () => navigate(-1);
-    const [selectedView, setSelectedView] = useState('manual'); 
-    const [viewMode, setViewMode] = useState('entry'); 
 
     const handleViewChange = (view) => {
         setSelectedView(view);
         setViewMode('entry');
     };
 
-    // Define default data for each section separately
-const defaultBasicInfo = {
-    entityCode: '', 
-    entityName: '', 
-    effectiveDate: '', 
-    entityType: '',
-    natureOfBusiness: '', 
-    grade: '',
-    attachments: [],
-    attachmentMetadata: []
-};
+    const defaultBasicInfo = {
+        entityCode: '',
+        entityName: '',
+        effectiveDate: '',
+        entityType: '',
+        natureOfBusiness: '',
+        grade: '',
+        attachments: [],
+        attachmentMetadata: []
+    };
 
-const defaultAddressDetails = {
-    phoneNo: '', 
-    emailID: '',
-    addressType: '', 
-    address1: '', 
-    address2: '', 
-    country: '', 
-    addresscity: '', 
-    zipCode: ''
-};
+    const defaultAddressDetails = {
+        phoneNo: '',
+        emailID: '',
+        addressType: '',
+        address1: '',
+        address2: '',
+        country: '',
+        addresscity: '',
+        zipCode: ''
+    };
 
-const defaultContactDetails = {
-    contactName: '', 
-    contactPosition: '', 
-    contactPhoneNo: '', 
-    contactEmailID: ''
-};
+    const defaultContactDetails = {
+        contactName: '',
+        contactPosition: '',
+        contactPhoneNo: '',
+        contactEmailID: ''
+    };
 
-const defaultTaxDetails = {
-    taxType: '', 
-    territoryType: '', 
-    territory: '', 
-    taxRegNo: '', 
-    taxRegDate: '',
-    taxAddress1: '', 
-    taxAddress2: '', 
-    taxCity: '', 
-    taxZipCode: '', 
-    taxEmailID: ''
-};
+    const defaultTaxDetails = {
+        taxType: '',
+        territoryType: '',
+        territory: '',
+        taxRegNo: '',
+        taxRegDate: '',
+        taxAddress1: '',
+        taxAddress2: '',
+        taxCity: '',
+        taxZipCode: '',
+        taxEmailID: ''
+    };
 
-const defaultBankAccounts = {
-    accountHolderName: '', 
-    accountNo: '', 
-    bankName: '', 
-    branchName: '', 
-    bankAddress: ''
-};
+    const defaultBankAccounts = {
+        accountHolderName: '',
+        accountNo: '',
+        bankName: '',
+        branchName: '',
+        bankAddress: ''
+    };
 
-const defaultAdditionalInfo = {
-    additionalInfoType: '', 
-    registrationNo: ''
-};
+    const defaultAdditionalInfo = {
+        additionalInfoType: '',
+        registrationNo: ''
+    };
 
-const defaultEmailInvite = {
-    contractorEmailId: '',
-    contractorName: '',
-    contractorMessage: ''
-};
+    const defaultEmailInvite = {
+        contractorEmailId: '',
+        contractorName: '',
+        contractorMessage: ''
+    };
 
-const defaultFormData = {
-    ...defaultBasicInfo,
-    ...defaultAddressDetails,
-    ...defaultContactDetails,
-    ...defaultTaxDetails,
-    ...defaultBankAccounts,
-    ...defaultAdditionalInfo,
-    ...defaultEmailInvite
-};
+    const defaultFormData = {
+        ...defaultBasicInfo,
+        ...defaultAddressDetails,
+        ...defaultContactDetails,
+        ...defaultTaxDetails,
+        ...defaultBankAccounts,
+        ...defaultAdditionalInfo,
+        ...defaultEmailInvite
+    };
 
     const loadFormData = () => {
         try {
@@ -1102,7 +1109,7 @@ const defaultFormData = {
                 return {
                     ...defaultFormData,
                     ...parsedData,
-                    attachments: [], 
+                    attachments: [],
                     attachmentMetadata: parsedData.attachmentMetadata || []
                 };
             }
@@ -1113,7 +1120,7 @@ const defaultFormData = {
     };
 
     const [formData, setFormData] = useState(loadFormData());
-    
+
     useEffect(() => {
         const serializableData = {
             ...formData,
@@ -1133,49 +1140,49 @@ const defaultFormData = {
         setFormData(prev => ({ ...prev, [name]: selectedOption ? selectedOption.value : '' }));
     };
 
-const handleFileChange = (e) => {
-    const newFiles = Array.from(e.target.files);
+    const handleFileChange = (e) => {
+        const newFiles = Array.from(e.target.files);
 
-    e.target.value = null; 
+        e.target.value = null;
 
-    const newMetadata = newFiles.map(file => ({
-        id: Date.now() + Math.random().toString(36).substring(2, 9), 
-        name: file.name,
-        size: file.size,
-        lastModified: file.lastModified,
-        fileObject: file, 
-    }));
+        const newMetadata = newFiles.map(file => ({
+            id: Date.now() + Math.random().toString(36).substring(2, 9),
+            name: file.name,
+            size: file.size,
+            lastModified: file.lastModified,
+            fileObject: file,
+        }));
 
-    setFormData(prev => ({
-        ...prev,
-        attachmentMetadata: [...prev.attachmentMetadata, ...newMetadata]
-    }));
-};
+        setFormData(prev => ({
+            ...prev,
+            attachmentMetadata: [...prev.attachmentMetadata, ...newMetadata]
+        }));
+    };
 
-const handleRemoveFile = (fileIdToRemove) => {
-    setFormData(prev => ({
-        ...prev,
-        attachmentMetadata: prev.attachmentMetadata.filter(
-            (meta) => meta.id !== fileIdToRemove
-        )
-    }));
-};
+    const handleRemoveFile = (fileIdToRemove) => {
+        setFormData(prev => ({
+            ...prev,
+            attachmentMetadata: prev.attachmentMetadata.filter(
+                (meta) => meta.id !== fileIdToRemove
+            )
+        }));
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
         console.log("Form data ready for review:", formData);
-        setViewMode('review'); 
-        window.scrollTo(0, 0); 
+        setViewMode('review');
+        window.scrollTo(0, 0);
     };
 
     const handleSubmitFinal = () => {
         console.log("FINAL SUBMISSION:", formData);
         sessionStorage.removeItem(STORAGE_KEY);
-        navigate('/ContractorOnboarding'); 
+        navigate('ContractorOnboarding');
     };
 
     const handleGoBackToEntry = () => {
-        setViewMode('entry'); 
+        setViewMode('entry');
         window.scrollTo(0, 0);
     };
 

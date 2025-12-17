@@ -3,13 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 const submissionsData = [
   { id: 1, name: "Mike Johnson", email: "mike.j@contractor.com", date: "08-12-2025", status: "Pending Review" },
-  { id: 2, name: "Jane Smith", email: "jane.smith@contractor.com", date: "08-12-2025", status: "Invited" },
-  { id: 3, name: "Carlos Roy", email: "carlos.roy@contractor.com", date: "09-12-2025", status: "Invited" },
-  { id: 4, name: "Anna Lee", email: "anna.lee@contractor.com", date: "10-12-2025", status: "Invited" },
-  { id: 5, name: "David Chen", email: "david.c@contractor.com", date: "11-12-2025", status: "Pending Review" },
-  { id: 6, name: "Emily White", email: "emily.w@contractor.com", date: "12-12-2025", status: "Invited" },
-  { id: 7, name: "Frank Green", email: "frank.g@contractor.com", date: "13-12-2025", status: "Invited" },
-  { id: 8, name: "Grace Hall", email: "grace.h@contractor.com", date: "14-12-2025", status: "Pending Review" },
+  { id: 2, name: "David Chen", email: "david.c@contractor.com", date: "11-12-2025", status: "Pending Review" },
+  { id: 3, name: "Grace Hall", email: "grace.h@contractor.com", date: "14-12-2025", status: "Pending Review" },
+  { id: 4, name: "Jane Smith", email: "jane.smith@contractor.com", date: "08-12-2025", status: "Invited" },
+  { id: 5, name: "Carlos Roy", email: "carlos.roy@contractor.com", date: "09-12-2025", status: "Invited" },
+  { id: 6, name: "Anna Lee", email: "anna.lee@contractor.com", date: "10-12-2025", status: "Invited" },
+  { id: 7, name: "Emily White", email: "emily.w@contractor.com", date: "12-12-2025", status: "Invited" },
+  { id: 8, name: "Frank Green", email: "frank.g@contractor.com", date: "13-12-2025", status: "Invited" },
 ];
 
 
@@ -91,8 +91,8 @@ function ContractorReviewMinimal() {
               }}
             >
               {submissionsData.map((c) => (
-               <div key={c.id}
-                 className={`border rounded p-3 mb-2 ${
+               <div key={c.id} 
+                 className={`border rounded p-3 mb-2 text-start${
                    selectedContractorId === c.id
                      ? "bg-light border-primary"
                      : "bg-white border-light"
@@ -113,8 +113,8 @@ function ContractorReviewMinimal() {
                      {c.status}
                    </span>
                  </div>
-                 <small className="text-muted d-block">{c.email}</small>
-                 <small className="text-muted">Invited On: {c.date}</small>
+                 <small className="text-muted d-block text-start">{c.email}</small>
+                 <small className="text-muted d-block text-start">Invited On: {c.date}</small>
                </div>
              ))}
             </div>
