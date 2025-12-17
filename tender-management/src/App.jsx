@@ -103,10 +103,10 @@ function App() {
                             <Route path="/ReceivingOffers" element={<h1>Receiving Offers</h1>} />
                             <Route path="/TenderComparison" element={<h1>Tender Comparison</h1>} />
                             <Route path="/ContractorOnboarding" element={<Contractor />} caseSensitive={false}/>
-                            <Route path="/review-submissions" element={<ContractorReview />} caseSensitive={false}/>
+                            <Route path="ContractorOnboarding/review-submissions" element={<ContractorReview />} caseSensitive={false}/>
                             <Route path="/add-resource/:projectId/:boqId" element={<AddResource />} caseSensitive={false} />
                             <Route path="/add-resource/:projectId/:boqId/:tenderEstimationId" element={<AddResource />} caseSensitive={false} />
-                            <Route path="/contractor-overview" element={<ContractorOverview />} caseSensitive={false} />
+                            <Route path="ContractorOnboarding/contractor-overview" element={<ContractorOverview />} caseSensitive={false} />
                           </Routes>
                         </Sidebar>
                       </ProjectStatusProvider>
