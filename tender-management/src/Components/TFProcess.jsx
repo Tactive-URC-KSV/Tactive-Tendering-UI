@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { ArrowLeft, ArrowRight, BoxesIcon, ChevronDown, ChevronRight, Folder, Info, Paperclip, Plus, User2, X, Download, Edit, Send, File } from 'lucide-react';
 import axios from "axios";
 import Flatpickr from "react-flatpickr";
@@ -560,21 +560,21 @@ function TFProcess({ projectId }) {
                 </div>
                 <div className="row align-items-center justify-content-between ms-1 mt-5">
                     <div className="col-md-4 col-lg-4 ">
-                        <label className="projectform text-start d-block">Contact Person</label>
+                        <label className="projectform text-start d-block">Pre Bid Meeting</label>
                         <input type="text" className="form-input w-100"
                             value={tenderDetail.contactPerson}
                             readOnly
                         />
                     </div>
                     <div className="col-md-4 col-lg-4">
-                        <label className="projectform text-start d-block">Contact Email</label>
+                        <label className="projectform text-start d-block">Pre Bid Meeting Date</label>
                         <input type="text" className="form-input w-100"
                             value={tenderDetail.contactEmail}
                             readOnly
                         />
                     </div>
                     <div className="col-md-4 col-lg-4">
-                        <label className="projectform text-start d-block">Contact Number</label>
+                        <label className="projectform text-start d-block">Site Investigation</label>
                         <input type="text" className="form-input w-100"
                             value={tenderDetail.contactMobile}
                             readOnly
@@ -583,7 +583,7 @@ function TFProcess({ projectId }) {
                 </div>
                 <div className="row align-items-center ms-1 mt-5">
                     <div className="col-md-6 col-lg-6">
-                        <label className="projectform text-start d-block">Contact Number</label>
+                        <label className="projectform text-start d-block">Site Investigation Date</label>
                         <input type="text" className="form-input w-100"
                             value={tenderDetail.contactMobile}
                             readOnly
@@ -634,7 +634,7 @@ function TFProcess({ projectId }) {
                 return updated;
             });
         };
-        const buildBoqTree = (selected) => {
+         const buildBoqTree = (selected) => {
             const nodes = new Map();
             const ensureNode = (boq) => {
                 if (!boq) return null;
@@ -654,68 +654,123 @@ function TFProcess({ projectId }) {
             return roots;
         };
         const boqStructure = buildBoqTree(selectedBoqArray);
+        const buildParentChildMap = (boqStructure) => {
+            const map = new Map();
+
+            const build = (nodes) => {
+                nodes.forEach(node => {
+                    if (node.children?.length) {
+                        map.set(
+                            node.id,
+                            node.children
+                                .filter(child => child.lastLevel === true)
+                                .map(child => child.id)
+                        );
+
+                        build(node.children.filter(child => !child.lastLevel));
+                    }
+                });
+            };
+
+            build(boqStructure);
+            return map;
+        };
+        const parentChildMap = buildParentChildMap(boqStructure);
         const boqNameDisplay = (boqName) => {
             return boqName && boqName.length > 20
                 ? boqName.substring(0, 20) + '...'
                 : boqName;
         };
-        const renderTreeRows = (nodes, depth = 0) => {
-            let rows = [];
-            nodes.forEach(node => {
-                const isParent = node.children && node.children.length > 0;
-                const isOpen = openNodes.has(node.id);
-                rows.push(
-                    <tr key={node.id}>
-                        <td>
-                            <input
-                                type="checkbox"
-                                className="form-check-input"
-                                style={{ borderColor: '#005197' }}
-                                checked={boqForRemoval.has(node.id)}
-                                onChange={() => toggleRemovalSelection(node.id)}
-                            />
-                        </td>
-                        <td>
-                            <div style={{ display: 'flex', alignItems: 'center', paddingLeft: depth * 24 }}>
-                                {isParent ? (
-                                    isOpen ? (
-                                        <ChevronDown size={16} className="me-2" onClick={() => toggleNode(node.id)} style={{ cursor: 'pointer' }} />
-                                    ) : (
-                                        <ChevronRight size={16} className="me-2" onClick={() => toggleNode(node.id)} style={{ cursor: 'pointer' }} />
-                                    )
-                                ) : (
-                                    <span style={{ width: '18px', display: 'inline-block' }}></span>
-                                )}
-                                {isParent ? (
-                                    <Folder size={18} color="#005197" className="me-2" />
-                                ) : (
-                                    <File size={18} color="#2BA95A" className="me-2" />
-                                )}
-
-                                <span>{node.boqCode}</span>
-                            </div>
-                        </td>
-                        <td title={node.boqName}>{boqNameDisplay(node.boqName)}</td>
-                        <td>{node.uom?.uomCode || '-'}</td>
-                        <td>{node.quantity?.toFixed(3) || 0}</td>
-                    </tr>
-                );
-                if (isParent && isOpen) {
-                    rows.push(...renderTreeRows(node.children, depth + 1));
-                }
-            });
-            return rows;
+        const getImmediateLastLevelChildren = (node) => {
+            return node.children?.filter(child => child.lastLevel === true) || [];
         };
-        const isAllSelectedForRemoval =
-            selectedBoqArray.length > 0 &&
-            selectedBoqArray.every(boq => boqForRemoval.has(boq.id));
-        const toggleAllRemovalSelection = (checked) => {
-            if (checked) {
-                setBoqForRemoval(new Set(selectedBoqArray.map(boq => boq.id)));
-            } else {
-                setBoqForRemoval(new Set());
+        const collectLastLevel = (node, isVisible) => {
+            let result = [];
+            const isOpen = openNodes.has(node.id);
+            if (node.lastLevel && isVisible) {
+                result.push(node);
             }
+            if (node.children?.length && isOpen) {
+                node.children.forEach(child => {
+                    result.push(...collectLastLevel(child, isVisible && isOpen));
+                });
+            }
+            return result;
         };
+        const renderParentSections = (nodes, depth = 0) => {
+            return nodes.map(node => {
+                if (node.lastLevel) return null;
+                const isOpen = openNodes.has(node.id);
+                const lastLevelChildren = getImmediateLastLevelChildren(node);
+                return (
+                    <div key={node.id} style={{ marginLeft: depth * 20 }}>
+                        <div
+                            className="d-flex align-items-center py-2"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => toggleNode(node.id)}
+                        >
+                            {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                            <Folder size={18} color="#005197" className="mx-2" />
+                            <strong>{node.boqCode}</strong>
+                            <span className="ms-2 text-muted">{node.boqName}</span>
+                        </div>
+                        {isOpen && lastLevelChildren.length > 0 && (
+                            <div className="table table-responsive mt-2 ms-4">
+                                <table className="table table-borderless">
+                                    <tbody>
+                                        {lastLevelChildren.map(child => (
+                                            <tr key={child.id}>
+                                                <td>
+                                                    <input
+                                                        type="checkbox"
+                                                        className="form-check-input"
+                                                        style={{ borderColor: '#005197' }}
+                                                        checked={boqForRemoval.has(child.id)}
+                                                        onChange={() => toggleRemovalSelection(child.id)}
+                                                    />
+
+                                                </td>
+                                                <td>{child.boqCode}</td>
+                                                <td title={child.boqName}>
+                                                    {boqNameDisplay(child.boqName)}
+                                                </td>
+                                                <td>{child.uom?.uomCode || '-'}</td>
+                                                <td>{child.quantity?.toFixed(3) || 0}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                        {isOpen && node.children?.length > 0 &&
+                            renderParentSections(
+                                node.children.filter(c => !c.lastLevel),
+                                depth + 1
+                            )
+                        }
+                    </div>
+                );
+            });
+        };
+        const toggleRemovalSelection = (boqId) => {
+            setBoqForRemoval(prev => {
+                const updated = new Set(prev);
+                if (updated.has(boqId)) {
+                    updated.delete(boqId);
+                } else {
+                    updated.add(boqId);
+                }
+                parentChildMap.forEach((children, parentId) => {
+                    const hasAnyChild = children.some(childId => updated.has(childId));
+
+                    if (!hasAnyChild) {
+                        updated.delete(parentId);
+                    }
+                });
+                return updated;
+            });
+        };
+
         return (
             <div className="p-2">
                 <div className="text-start ms-1 mt-4 d-flex justify-content-between align-items-center">
@@ -730,7 +785,6 @@ function TFProcess({ projectId }) {
                             </span>
                         </div>
                     </div>
-
                     <div className="d-flex gap-5">
                         <button
                             className="btn btn-sm"
@@ -750,38 +804,11 @@ function TFProcess({ projectId }) {
                         </button>
                     </div>
                 </div>
-                <div className="table table-responsive mt-4">
-                    <table className="table table-borderless">
-                        <thead style={{ color: '#005197' }}>
-                            <tr>
-                                <th style={{ width: '40px' }}>
-                                    <input
-                                        type="checkbox"
-                                        className="form-check-input"
-                                        style={{ borderColor: '#005197' }}
-                                        checked={isAllSelectedForRemoval}
-                                        onChange={(e) => toggleAllRemovalSelection(e.target.checked)}
-                                    />
-                                </th>
-                                <th>BOQ Code</th>
-                                <th>BOQ Name</th>
-                                <th>UOM</th>
-                                <th>Quantity</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {selectedBoqArray.length === 0 ? (
-                                <tr>
-                                    <td colSpan="5" className="text-center text-muted py-4">
-                                        No BOQ items selected for this package.
-                                    </td>
-                                </tr>
-                            ) : (
-                                renderTreeRows(boqStructure)
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                {selectedBoqArray.length > 0 && (
+                    <div className="mt-3">
+                        {renderParentSections(boqStructure)}
+                    </div>
+                )}
             </div>
         );
     };

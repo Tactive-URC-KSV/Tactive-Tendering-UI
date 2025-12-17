@@ -69,7 +69,7 @@ function Contractor() {
 
         <div className="d-flex">
           <button className="action-button me-4"
-            onClick={() => navigate("/review-submissions")}
+            onClick={() => navigate("review-submissions")}
             style={{ backgroundColor: "white",color: bluePrimary, border: `1px solid ${bluePrimary}`, boxShadow: "none", padding: "6px 12px", borderRadius: "6px", display: "flex", alignItems: "center", }}>
             <ClipboardCheck color={bluePrimary} size={18} />
             <span className="ms-2">Review Submissions</span>
@@ -77,7 +77,7 @@ function Contractor() {
 
           <button
             className="btn action-button"
-            onClick={() => navigate("/contractor-overview")}
+            onClick={() => navigate("contractor-overview")}
             style={{ backgroundColor: bluePrimary, color: "white" }}>
             <Plus color="#FFFFFF" size={18} />
             <span className="ms-2">Add New Contractor</span>
