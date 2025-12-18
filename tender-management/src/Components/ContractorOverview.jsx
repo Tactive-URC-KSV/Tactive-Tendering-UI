@@ -941,7 +941,7 @@ const ReviewSummaryContent = ({ formData, handleGoBackToEntry, handleSubmitFinal
     const isReviewMode = viewMode === 'review';
 
     return (
-        <div className="container-fluid min-vh-100 p-0">
+        <div className="container-fluid mt-3  min-vh-100 p-4">
             <div className="d-flex align-items-center py-3 px-4 mb-4">
                 <ArrowLeft size={24} className="me-3" onClick={handleGoBack} style={{ cursor: 'pointer', color: bluePrimary }} />
                 <h2 className="mb-0 fs-5 fw-bold">New Contractor</h2>
