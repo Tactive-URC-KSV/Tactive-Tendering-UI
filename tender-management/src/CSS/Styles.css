@@ -83,13 +83,13 @@
 .content-container {
   flex: 1;
   margin-left: 65px;
-  padding: 20px;
 }
 
 .content-container.collapsed,
 .content-container.expanded {
-  margin-top: 65px;
+  margin-top: 50px;
   background-color: #F9FAFB;
+  
 }
 
 .project-counts {
@@ -902,4 +902,24 @@ label {
   background-color: #EFF6FF;
   opacity: 60%;
   color: #005197;
+}
+/* Admin SideBar */
+.admin-sidebar{
+  background-color: #E3F2FF;
+  min-height: 100vh;
+}
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.admin-nav-btn {
+  font-size: 14px;
+  padding: 6px 12px;
+}
+.btn.admin-nav-btn.active:focus,
+.btn.admin-nav-btn.active {
+  background-color: white;
+  color: #005197;
+  font-weight: 600;
+  outline: transparent;
 }

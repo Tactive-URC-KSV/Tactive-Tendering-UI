@@ -30,7 +30,8 @@ import ContractorOverview from './Components/ContractorOverview';
 import AddResource from './Components/AddResource';
 import TenderFloating from './Components/TenderFloating';
 import ContractorReview from './Components/ContractorReview';
-
+import MasterDataController from './Admin/MasterDataController';
+import ResgionController from './Admin/RegionController';
 
 function App() {
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 768);
@@ -77,7 +78,7 @@ function App() {
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path='/*' element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={["ADMIN","USER"]}>
               <RegionsProvider>
                 <SectorsProvider>
                   <ScopeProvider>
@@ -95,19 +96,39 @@ function App() {
                             <Route path="/costcodemapping/:projectId" element={<CCMOverview />} caseSensitive={false} />
                             <Route path="/tenderestimation" element={<TenderEstimation />} caseSensitive={false} />
                             <Route path="/tenderestimation/:projectId" element={<TenderEstimation />} caseSensitive={false} />
-                            <Route path="/tenderestimation/:projectId/resourceadding/:boqId" element={<TenderResource />} caseSensitive={false} />
-                            {/* <Route path="/tenderestimation/resourceadding/:activityGroupId" element={<ResourceAdding />} caseSensitive={false} /> */}
-                            <Route path="/tenderfloating" element={<TenderFloating />} caseSensitive={false}/>
-                            <Route path="/tenderfloating/:projectId" element={<TenderFloating />} caseSensitive={false}/>
+                            <Route path="/tenderestimation/:projectId/resourceadding/:boqId" element={<TenderResource />} caseSensitive={false} />                            {/* <Route path="/tenderestimation/resourceadding/:activityGroupId" element={<ResourceAdding />} caseSensitive={false} /> */}
+                            <Route path="/tenderfloating" element={<TenderFloating />} caseSensitive={false} />
+                            <Route path="/tenderfloating/:projectId" element={<TenderFloating />} caseSensitive={false} />
                             <Route path="/TenderTracking" element={<h1>Tender Tracking</h1>} />
                             <Route path="/ReceivingOffers" element={<h1>Receiving Offers</h1>} />
                             <Route path="/TenderComparison" element={<h1>Tender Comparison</h1>} />
-                            <Route path="/ContractorOnboarding" element={<Contractor />} caseSensitive={false}/>
-                            <Route path="ContractorOnboarding/review-submissions" element={<ContractorReview />} caseSensitive={false}/>
+                            <Route path="/ContractorOnboarding" element={<Contractor />} caseSensitive={false} />
+                            <Route path="ContractorOnboarding/review-submissions" element={<ContractorReview />} caseSensitive={false} />
                             <Route path="/add-resource/:projectId/:boqId" element={<AddResource />} caseSensitive={false} />
                             <Route path="/add-resource/:projectId/:boqId/:tenderEstimationId" element={<AddResource />} caseSensitive={false} />
                             <Route path="ContractorOnboarding/contractor-overview" element={<ContractorOverview />} caseSensitive={false} />
                           </Routes>
+                        </Sidebar>
+                      </ProjectStatusProvider>
+                    </UomProvider>
+                  </ScopeProvider>
+                </SectorsProvider>
+              </RegionsProvider>
+            </ProtectedRoute>
+          } />
+          <Route path='/adminportal/*' element={
+            <ProtectedRoute roles={["ADMIN"]}>
+              <RegionsProvider>
+                <SectorsProvider>
+                  <ScopeProvider>
+                    <UomProvider>
+                      <ProjectStatusProvider>
+                        <Sidebar>
+                            <MasterDataController>
+                              <Routes>
+                                <Route path='region' element={<ResgionController />} caseSensitive={false} />
+                              </Routes>
+                            </MasterDataController>
                         </Sidebar>
                       </ProjectStatusProvider>
                     </UomProvider>

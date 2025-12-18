@@ -26,7 +26,7 @@ function TenderFloating(){
     }, []);
 
     return(
-        <div className="container-fluid">
+        <div className="container-fluid p-4 mt-3">
             {!projectId && (
                 <>
                     <div className="text-start fw-bold ms-1 mt-1 mb-3">Tender Floating</div>
