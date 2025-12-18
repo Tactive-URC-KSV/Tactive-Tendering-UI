@@ -1187,7 +1187,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       }
    }
    return (
-      <div className='container-fluid min-vh-100'>
+      <div className='container-fluid p-4 mt-3 min-vh-100'>
          <div className="text-start fw-bold ms-1 mt-2 mb-4">
             <ArrowLeft size={20} onClick={() => setUploadScreen(false)} /><span className='ms-2'>BOQ Definition</span>
          </div>

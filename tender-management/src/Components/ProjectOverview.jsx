@@ -267,7 +267,7 @@ function ProjectOverview() {
     };
     
     return (
-        <div className="container-fluid" style={{ fontSize: '14px' }}>
+        <div className="container-fluid mt-3 p-4" style={{ fontSize: '14px' }}>
             <div className="row align-items-center mb-4 ">
                 <div className="col-auto fw-bold" style={{ fontSize: '18px' }}>
                     <span onClick={() => navigate(-1)} className="text-decoration-none small cursor-pointer me-2">

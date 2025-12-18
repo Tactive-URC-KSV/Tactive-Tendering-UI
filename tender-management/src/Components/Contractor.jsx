@@ -61,7 +61,7 @@ function Contractor() {
   };
 
   return (
-    <div className="container-fluid min-vh-100">
+    <div className="container-fluid mt-3 p-4 min-vh-100">
       <div className="ms-3 me-3 d-flex justify-content-between align-items-center">
         <div className="text-start fw-bold fs-5">
           Contractor Onboarding
