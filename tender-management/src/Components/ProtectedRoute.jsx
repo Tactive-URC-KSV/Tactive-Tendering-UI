@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { decodeToken } from "../Utills/Jwt";
+import { decodeToken } from "../config/Jwt";
 
 function ProtectedRoute({ children, roles }) {
   const [redirect, setRedirect] = useState(false);

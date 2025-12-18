@@ -18,7 +18,7 @@ import {
 } from "react-icons/fa";
 import "../CSS/Styles.css";
 import { UserCog } from "lucide-react";
-import { getUserName, getUserRole } from "../Utills/Auth";
+import { getUserName, getUserRole } from "../config/Auth";
 import { canAccessMenu } from "../config/Permission";
 
 function Sidebar({ children }) {
