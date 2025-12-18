@@ -502,7 +502,7 @@ function BOQOverview({ projectId }) {
         uploadScreen ? (
             <BOQUpload projectId={projectId} projectName={project?.projectName + '(' + project?.projectCode + ')'} setUploadScreen={setUploadScreen} />
         ) : (
-            <div className="container-fluid min-vh-100">
+            <div className="container-fluid mt-3 p-4 min-vh-100">
                 <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-1 mt-1 mb-3">
                     <div className="ms-3">
                         <ArrowLeft size={20} onClick={() => window.history.back()} />

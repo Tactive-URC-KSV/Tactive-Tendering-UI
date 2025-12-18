@@ -220,13 +220,13 @@ function ProjectCreation() {
     };
 
     return (
-        <div className="container-fluid">
+        <div className="container-fluid mt-3 p-4">
             <div className="row align-items-center mb-4">
                 <div className="col-auto">
                     {projectId ? (
-                        <h5 className="fw-bold mb-0 ms-2">{project.projectName}</h5>
+                        <div className="fw-bold mb-0 ms-2">{project.projectName}</div>
                     ) : (
-                        <h5 className="fw-bold mb-0 ms-2">Project Creation</h5>
+                        <div className="fw-bold mb-0 ms-2">Project Creation</div>
                     )}
                 </div>
             </div>

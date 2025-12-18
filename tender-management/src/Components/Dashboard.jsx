@@ -107,7 +107,7 @@ function ProjectWorklist() {
     }
 
     const projectCounts = projects.reduce((acc, project) => {
-        acc[project.status] = (acc[project.status] || 0) + 1;
+        acc[project.status] = (acc[projectStatus.find((state)=> state.id === project.status)] || 0) + 1;
         return acc;
     }, {});
 
@@ -151,7 +151,7 @@ function ProjectWorklist() {
         return Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
     };
     return (
-        <div className="container-fluid mt-3 min-vh-100">
+        <div className="container-fluid mt-3 p-4 min-vh-100">
             <div className="row align-items-center mb-3 mt-3 ps-lg-2 ms-md-1">
                 <div className='d-flex justify-content-between'>
                     <div className="col-lg-4 col-md-4 col-sm-12 ms-3">
@@ -219,7 +219,7 @@ function ProjectWorklist() {
                                         width: '100%'
                                     }}
                                 >
-                                    <p className="status-count fw-bold fs-5 mb-1">{projectCounts[config.status] || 0}</p>
+                                    <p className="status-count fw-bold fs-5 mb-1">{projectCounts[config.id] || 0}</p>
                                     <p className="status-label mb-0" style={{ color: "black" }}>{config.status}</p>
                                 </div>
                             </div>

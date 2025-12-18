@@ -46,7 +46,7 @@ function Login() {
           <div className="w-50 sm:w-100">
             <div className='mb-5 d-flex flex-row '>
               <img src={logo} alt="logo" className='logo w-35 sm:w-30' />
-              <div className='logo-text me-3'><span style={{ color: '#005197' }}>Tender</span> Management<br />Module</div>
+              <div className='logo-text me-3 text-nowrap'><span style={{ color: '#005197' }}>Tender</span> Management<br />Module</div>
             </div>
             <div className='login-title mb-5 mt-5'>
               Login to your Account

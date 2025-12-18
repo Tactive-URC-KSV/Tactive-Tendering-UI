@@ -33,7 +33,7 @@ function BOQDefinition() {
     }, []);
 
     return (
-        <div className="container-fluid">
+        <div className="container-fluid mt-3 p-4">
             {!projectId && (
                 <>
                     <div className="text-start fw-bold ms-1 mt-1 mb-3">BOQ Definition</div>
