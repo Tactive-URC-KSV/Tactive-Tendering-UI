@@ -1,15 +1,28 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Select from 'react-select';
-import { ArrowLeft, ArrowRight, Pencil, Mail, FileText, MapPin, User, Briefcase, DollarSign, Info, X, UploadCloud } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Pencil, Mail, FileText, MapPin, User, Briefcase, DollarSign, Info, X, UploadCloud, CreditCard, Trash2} from 'lucide-react';
 import { FaCalendarAlt } from 'react-icons/fa';
-import Flatpickr from 'flatpickr';
-import '../CSS/custom-flatpickr.css';
+import Flatpickr from "react-flatpickr";
+import "flatpickr/dist/themes/material_blue.css";
 import '../CSS/Styles.css';
-const bluePrimary = "#005197";
-const bluePrimaryLight = "#005197CC";
-const labelTextColor = '#00000080';
-const STORAGE_KEY = 'contractorFormData';
+
+
+function ContractorOverview() {
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const effectiveDateRef = useRef();
+    const taxRegDateRef = useRef();
+    const datePickerRef = useRef(); 
+    const handleGoBack = () => navigate(-1);
+    const [selectedView, setSelectedView] = useState('manual');
+    const [viewMode, setViewMode] = useState('entry');
+
+    const bluePrimary = "#005197";
+    const bluePrimaryLight = "#005197CC";
+    const labelTextColor = '#00000080';
+    const STORAGE_KEY = 'contractorFormData';
 
 
 const entityTypeOptions = [
@@ -55,7 +68,39 @@ const additionalInfoTypeOptions = [
     { value: 'CIN No', label: 'CIN No' },
 ];
 
-const DetailItem = ({ label, value }) => {
+const defaultFormData = {
+    entityCode: '', entityName: '', effectiveDate: '', entityType: '', 
+    natureOfBusiness: '', grade: '', attachments: [], attachmentMetadata: [],
+    phoneNo: '', emailID: '', addressType: '', address1: '', address2: '', 
+    country: '', addresscity: '', zipCode: '',
+    contactName: '', contactPosition: '', contactPhoneNo: '', contactEmailID: '',
+    taxType: '', territoryType: '', territory: '', taxRegNo: '', 
+    taxRegDate: '', taxAddress1: '', taxAddress2: '', taxCity: '', 
+    taxZipCode: '', taxEmailID: '',
+    accountHolderName: '', accountNo: '', bankName: '', branchName: '', bankAddress: '',
+    additionalInfoType: '', registrationNo: '',
+    contractorEmailId: '', contractorName: '', contractorMessage: ''
+};
+
+    const [formData, setFormData] = useState(() => {
+        try {
+            const savedData = sessionStorage.getItem(STORAGE_KEY);
+            if (savedData) {
+                const parsedData = JSON.parse(savedData);
+                return {
+                    ...defaultFormData,
+                    ...parsedData,
+                    attachments: [],
+                    attachmentMetadata: parsedData.attachmentMetadata || []
+                };
+            }
+        } catch (error) {
+            console.error("Session storage error:", error);
+        }
+        return defaultFormData;
+    });
+
+    const DetailItem = ({ label, value }) => {
     const adjustedValue = value === undefined || value === null || value === '' ? undefined : value;
     const displayValue = adjustedValue ? adjustedValue : '\u00A0';
 
@@ -79,9 +124,21 @@ const DetailItem = ({ label, value }) => {
     );
 };
 
-const ManualEntryForm = ({ formData, setFormData, handleChange, handleSelectChange, handleFileChange, handleRemoveFile }) => {
-
+const ManualEntryForm = ({ 
+    formData, 
+    setFormData, 
+    handleChange, 
+    handleSelectChange, 
+    handleFileChange, 
+    handleRemoveFile,
+    effectiveDateRef, 
+    taxRegDateRef,    
+    
+}) => {
     const fileInputRef = useRef(null);
+    const datePickerRef = useRef(null);
+
+    const handleUploadClick = () => fileInputRef.current.click();
     
     const handleDragOver = (e) => {
         e.preventDefault();
@@ -97,179 +154,391 @@ const ManualEntryForm = ({ formData, setFormData, handleChange, handleSelectChan
         }
     };
 
-    const handleUploadClick = () => {
-        fileInputRef.current.click();
-    };
     const openCalendar = (id) => {
         const input = document.querySelector(`#${id}`);
         if (input && input._flatpickr) {
             input._flatpickr.open();
         }
     };
+
     return (
         <>
-            <div
-                className="p-3 mb-4 d-flex align-items-center justify-content-center"
-                style={{
-                    backgroundColor: bluePrimary,
-                    width: "calc(100% + 3rem)",
-                    marginLeft: "-1.5rem",
-                    marginRight: "-1.5rem",
-                    borderRadius: "8px 8px 0 0"
-                }}
-            >
-                <Briefcase size={20} className="me-2 text-white" />
-                <h3 className="mb-0 fs-6 fw-bold text-white">Basic Information</h3>
-            </div>
-            <div className="row">
-                <div className="col-md-6 mt-3 mb-4">
-                    <label className="projectform text-start d-block">
-                        Entity Code <span style={{ color: "red" }}>*</span>
-                    </label>
-                    <input
-                        type="text"
-                        className="form-input w-100"
-                        placeholder="Enter entity code"
-                        value={formData.entityCode}
-                        onChange={(e) =>
-                            setFormData({ ...formData, entityCode: e.target.value })
-                        }
-                    />
+            <div className="card text-start border-0 shadow-sm" style={{ borderRadius: "8px", padding: "0 1.5rem 1.5rem 1.5rem" }}>
+                <div className="p-3 mb-4 d-flex align-items-center justify-content-center" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
+                    <Briefcase size={20} className="me-2 text-white" />
+                    <h3 className="mb-0 fs-6 fw-bold text-white">Basic Information</h3>
                 </div>
-                <div className="col-md-6 mt-3 mb-4">
-                    <label className="projectform text-start d-block">
-                        Entity Name <span style={{ color: "red" }}>*</span>
-                    </label>
-                    <input
-                        type="text"
-                        className="form-input w-100"
-                        placeholder="Enter entity name"
-                        value={formData.entityName}
-                        onChange={(e) =>
-                            setFormData({ ...formData, entityName: e.target.value })
-                        }
-                    />
+                <div className="row">
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform text-start d-block">Entity Code <span style={{ color: "red" }}>*</span></label>
+                        <input type="text" name="entityCode" className="form-input w-100" placeholder="Enter entity code" value={formData.entityCode} onChange={handleChange} />
+                    </div>
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform text-start d-block">Entity Name <span style={{ color: "red" }}>*</span></label>
+                        <input type="text" name="entityName" className="form-input w-100" placeholder="Enter entity name" value={formData.entityName} onChange={handleChange} />
+                    </div>
                 </div>
-            </div>
-            <div className="row">
-                <div className="col-md-6 mt-3 mb-4">
-                    <label className="projectform-select text-start d-block">
-                        Effective Date <span style={{ color: "red" }}>*</span>
-                    </label>
-                    <Flatpickr
-                        id="effectiveDate"
-                        className="form-input w-100"
-                        placeholder="Select Effective date"
-                        options={{ dateFormat: "d-m-Y" }}
-                        value={formData.effectiveDate}
-                        onChange={([date]) => setFormData({ ...formData, effectiveDate: date })}
-                        ref={datePickerRef}
-                    />
-                    <span className='calender-icon' onClick={() => openCalendar('effectiveDate')}><FaCalendarAlt size={18} color='#005197' /></span>
+                <div className="row">
+       <div className="col-md-6 mt-3 mb-4">
+    <label className="projectform-select text-start d-block">
+        Effective Date <span style={{ color: "red" }}>*</span>
+    </label>
+    <div className="position-relative">
+      <Flatpickr
+    ref={effectiveDateRef}
+    name="effectiveDate"
+    className="form-input w-100"
+    placeholder="Select Effective date"
+    options={{
+        dateFormat: "d-m-Y",
+        allowInput: true
+    }}
+    onClose={(_, dateStr) => {
+        setFormData(prev => ({
+            ...prev,
+            effectiveDate: dateStr
+        }));
+    }}
+/>
+
+        <span
+            className='calendar-icon'
+            style={{ 
+                position: 'absolute', 
+                right: '12px', 
+                top: '50%', 
+                transform: 'translateY(-50%)', 
+                cursor: 'pointer' 
+            }}
+            onClick={() => {
+                if (effectiveDateRef.current?.flatpickr) {
+                    effectiveDateRef.current.flatpickr.open();
+                }
+            }}
+        >
+            <FaCalendarAlt size={18} color='#005197' />
+        </span>
+    </div>
+</div>
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform-select text-start d-block">Entity Type <span style={{ color: "red" }}>*</span></label>
+                        <Select name="entityType" options={entityTypeOptions} value={entityTypeOptions?.find(opt => opt.value === formData.entityType)} onChange={handleSelectChange} placeholder="Select entity type" classNamePrefix="select" />
+                    </div>
                 </div>
-                <div className="col-md-6 mt-3 mb-4">
-                    <label className="projectform-select text-start d-block">
-                        Entity Type <span style={{ color: "red" }}>*</span>
-                    </label>
-                    <Select
-                        name="entityType"
-                        options={entityTypeOptions}
-                        value={entityTypeOptions.find(
-                            (opt) => opt.value === formData.entityType
-                        )}
-                        onChange={handleSelectChange}
-                        placeholder="Select entity type"
-                        classNamePrefix="select"
-                    />
+                <div className="row">
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform-select text-start d-block">Nature of Business </label>
+                        <Select name="natureOfBusiness" options={natureOfBusinessOptions} value={natureOfBusinessOptions?.find(opt => opt.value === formData.natureOfBusiness)} onChange={handleSelectChange} placeholder="Select nature of business" classNamePrefix="select" />
+                    </div>
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform-select text-start d-block">Grade</label>
+                        <Select name="grade" options={gradeOptions} value={gradeOptions?.find(opt => opt.value === formData.grade)} onChange={handleSelectChange} placeholder="Select grade" classNamePrefix="select" />
+                    </div>
                 </div>
-            </div>
-            <div className="row">
-                <div className="col-md-6 mt-3 mb-4">
-                    <label className="projectform-select text-start d-block">
-                        Nature of Business <span style={{ color: "red" }}>*</span>
-                    </label>
-                    <Select
-                        name="natureOfBusiness"
-                        options={natureOfBusinessOptions}
-                        value={natureOfBusinessOptions.find(
-                            (opt) => opt.value === formData.natureOfBusiness
-                        )}
-                        onChange={handleSelectChange}
-                        placeholder="Select nature of business"
-                        classNamePrefix="select"
-                    />
-                </div>
-                <div className="col-md-6 mt-3 mb-4">
-                    <label className="projectform-select text-start d-block">
-                        Grade
-                    </label>
-                    <Select
-                        name="grade"
-                        options={gradeOptions}
-                        value={gradeOptions.find(
-                            (opt) => opt.value === formData.grade
-                        )}
-                        onChange={handleSelectChange}
-                        placeholder="Select grade"
-                        classNamePrefix="select"
-                    />
-                </div>
-            </div>
-            <div className="row">
-                <div className="col-md-12 mt-3">
-                    <label className="projectform text-start d-block">
-                        Attachments (Certificates/Licenses)
-                    </label>
-                </div>
-                <div className="col-md-12 mt-3 mb-4">
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        multiple
-                        onChange={handleFileChange}
-                        style={{ display: "none" }}
-                    />
-                    <div
-                        onDragOver={handleDragOver}
-                        onDrop={handleDrop}
-                        style={{
-                            border: `2px dashed ${bluePrimaryLight}`,
-                            borderRadius: "8px",
-                            padding: "20px",
-                            textAlign: "center",
-                            minHeight:
-                                formData.attachmentMetadata.length > 0
-                                    ? "auto"
-                                    : "150px"
-                        }}
-                    >
-                        <div onClick={handleUploadClick} style={{ cursor: "pointer" }}>
-                            <UploadCloud size={30} style={{ color: bluePrimaryLight }} />
-                            <p className="mb-0 fw-bold" style={{ color: bluePrimary }}>
-                                Click to upload or drag and drop
-                            </p>
-                            <p className="mb-0 small" style={{ color: bluePrimary }}>PDF, DOCX up to 10MB</p>
-                        </div>
-                        {formData.attachmentMetadata.length > 0 && (
+                <div className="row">
+                    <div className="col-md-12 mt-3 mb-4">
+                        <label className="projectform text-start d-block">Attachments (Certificates/Licenses)</label>
+                        <input type="file" ref={fileInputRef} multiple onChange={handleFileChange} style={{ display: "none" }} />
+                        <div onDragOver={handleDragOver} onDrop={handleDrop} style={{ border: `2px dashed ${bluePrimaryLight}`, borderRadius: "8px", padding: "20px", textAlign: "center" }}>
+                            <div onClick={handleUploadClick} style={{ cursor: "pointer" }}>
+                                <UploadCloud size={30} style={{ color: bluePrimaryLight }} />
+                                <p className="mb-0 fw-bold" style={{ color: bluePrimary }}>Click to upload or drag and drop</p>
+                                <p className="mb-0 small" style={{ color: bluePrimary }}>PDF, DOCX up to 10MB</p>
+                            </div>
                             <div className="d-flex flex-wrap justify-content-center mt-3">
                                 {formData.attachmentMetadata.map((file) => (
-                                    <div
-                                        key={file.id}
-                                        className="d-flex align-items-center mx-2 mb-2 px-3 py-2 rounded"
-                                        style={{ backgroundColor: "#fff", border: "1px solid #ced4da", fontSize: "0.9rem" }}
-                                    >
+                                    <div key={file.id} className="d-flex align-items-center mx-2 mb-2 px-3 py-2 rounded border bg-white shadow-sm">
                                         <FileText size={16} className="me-2 text-muted" />
                                         <span className="text-dark me-2">{file.name}</span>
-                                        <X
-                                            size={14}
-                                            className="text-danger"
-                                            onClick={() => handleRemoveFile(file.id)}
-                                            style={{ cursor: "pointer" }}
-                                        />
+                                        <X size={14} className="text-danger" onClick={() => handleRemoveFile(file.id)} style={{ cursor: "pointer" }} />
                                     </div>
                                 ))}
                             </div>
-                        )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="card text-start border-0 shadow-sm mt-4" style={{ borderRadius: "8px", padding: "0 1.5rem 1.5rem 1.5rem" }}>
+                <div className="p-3 mb-4 d-flex align-items-center justify-content-center" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
+                    <MapPin size={20} className="me-2 text-white" />
+                    <h3 className="mb-0 fs-6 fw-bold text-white">Address Details</h3>
+                </div>
+                <div className="row">
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform text-start d-block">Phone No</label>
+                        <input type="text" name="phoneNo" className="form-input w-100" placeholder="Enter phone no" value={formData.phoneNo} onChange={handleChange} />
+                    </div>
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform text-start d-block">Email ID</label>
+                        <input type="text" name="emailID" className="form-input w-100" placeholder="Enter email ID" value={formData.emailID} onChange={handleChange} />
+                    </div>
+                </div>
+                <div className="row">
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform-select text-start d-block">Address Type <span className="text-danger">*</span></label>
+                        <Select name="addressType" options={addressTypeOptions} onChange={handleSelectChange} classNamePrefix="select" value={addressTypeOptions?.find(opt => opt.value === formData.addressType)} placeholder="Select address type" />
+                    </div>
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform text-start d-block">Address 1</label>
+                        <input type="text" name="address1" className="form-input w-100" placeholder="Enter address 1" value={formData.address1} onChange={handleChange} />
+                    </div>
+                </div>
+                <div className="row">
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform text-start d-block">Address 2</label>
+                        <input type="text" name="address2" className="form-input w-100" placeholder="Enter address 2" value={formData.address2} onChange={handleChange} />
+                    </div>
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform-select text-start d-block">Country <span className="text-danger">*</span></label>
+                        <Select name="country" options={countryOptions} onChange={handleSelectChange} classNamePrefix="select" value={countryOptions?.find(opt => opt.value === formData.country)} placeholder="Select country" />
+                    </div>
+                </div>
+                <div className="row">
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform-select text-start d-block">City <span className="text-danger">*</span></label>
+                        <Select name="addresscity" options={addresscityOptions} onChange={handleSelectChange} classNamePrefix="select" value={addresscityOptions?.find(opt => opt.value === formData.addresscity)} placeholder="Select city" />
+                    </div>
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform text-start d-block">Zip/Postal Code <span style={{ color: 'red' }}>*</span></label>
+                        <input type="text" name="zipCode" className="form-input w-100" placeholder="Enter Zip/Postal Code" value={formData.zipCode} onChange={handleChange} />
+                    </div>
+                </div>
+            </div>
+
+            <div className="card text-start border-0 shadow-sm mt-4" style={{ borderRadius: "8px", padding: "0 1.5rem 1.5rem 1.5rem" }}>
+                <div className="p-3 mb-4 d-flex align-items-center justify-content-center" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
+                    <User size={20} className="me-2 text-white" />
+                    <h3 className="mb-0 fs-6 fw-bold text-white">Contact Details</h3>
+                </div>
+                <div className="row">
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform text-start d-block"> Name <span style={{ color: 'red' }}>*</span></label>
+                        <input type="text" name="contactName" className="form-input w-100" placeholder="Enter contact name" value={formData.contactName} onChange={handleChange} />
+                    </div>
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform-select text-start d-block"> Position <span className="text-danger">*</span></label>
+                        <Select name="contactPosition" options={contactPositionOptions} onChange={handleSelectChange} classNamePrefix="select" value={contactPositionOptions?.find(opt => opt.value === formData.contactPosition)} placeholder="Select position" />
+                    </div>
+                </div>
+                <div className="row">
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform text-start d-block">Phone No </label>
+                        <input type="text" name="contactPhoneNo" className="form-input w-100" placeholder="Enter phone no" value={formData.contactPhoneNo} onChange={handleChange} />
+                    </div>
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform text-start d-block"> Email ID </label>
+                        <input type="text" name="contactEmailID" className="form-input w-100" placeholder="Enter email ID" value={formData.contactEmailID} onChange={handleChange} />
+                    </div>
+                </div>
+            </div>
+
+           <div className="card text-start border-0 shadow-sm mt-4" style={{ borderRadius: "8px", padding: "0 1.5rem 1.5rem 1.5rem" }}>
+    <div className="p-3 mb-4 d-flex align-items-center justify-content-center" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
+        <FileText size={20} className="me-2 text-white" />
+        <h3 className="mb-0 fs-6 fw-bold text-white">Tax Details</h3>
+    </div>
+
+    <div className="row">
+        <div className="col-md-6 mt-3 mb-4">
+            <label className="projectform-select text-start d-block">Tax Type <span className="text-danger">*</span></label>
+            <Select 
+                name="taxType" 
+                options={taxTypeOptions} 
+                onChange={handleSelectChange} 
+                classNamePrefix="select" 
+                value={taxTypeOptions?.find(opt => opt.value === formData.taxType)} 
+                placeholder="Select tax type" 
+            />
+        </div>
+        <div className="col-md-6 mt-3 mb-4">
+            <label className="projectform-select text-start d-block">Territory Type <span style={{ color: "red" }}>*</span></label>
+            <Select 
+                name="territoryType" 
+                options={territoryTypeOptions} 
+                onChange={handleSelectChange} 
+                classNamePrefix="select" 
+                value={territoryTypeOptions?.find(opt => opt.value === formData.territoryType)} 
+                placeholder="Select territory type" 
+            />
+        </div>
+    </div>
+
+    <div className="row">
+        <div className="col-md-6 mt-3 mb-4">
+            <label className="projectform-select text-start d-block">Territory <span style={{ color: "red" }}>*</span></label>
+            <Select 
+                name="territory" 
+                options={territoryOptions} 
+                onChange={handleSelectChange} 
+                classNamePrefix="select" 
+                value={territoryOptions?.find(opt => opt.value === formData.territory)} 
+                placeholder="Select territory" 
+            />
+        </div>
+        <div className="col-md-6 mt-3 mb-4">
+            <label className="projectform text-start d-block">Tax Reg No <span style={{ color: 'red' }}>*</span></label>
+            <input 
+                type="text" 
+                name="taxRegNo" 
+                className="form-input w-100" 
+                placeholder="Enter tax registration no" 
+                value={formData.taxRegNo} 
+                onChange={handleChange} 
+            />
+        </div>
+    </div>
+
+    <div className="row">
+        <div className="col-md-6 mt-3 mb-4">
+            <label className="projectform-select text-start d-block">Tax Reg Date <span style={{ color: "red" }}>*</span></label>
+            <div className="position-relative">
+               <Flatpickr
+    ref={taxRegDateRef}
+    name="taxRegDate"
+    className="form-input w-100"
+    placeholder="Select Tax Reg date"
+    options={{
+        dateFormat: "d-m-Y",
+        allowInput: true
+    }}
+    onClose={(_, dateStr) => {
+        setFormData(prev => ({
+            ...prev,
+            taxRegDate: dateStr
+        }));
+    }}
+/>
+
+                <span 
+                    className='calendar-icon' 
+                    style={{ 
+                        position: 'absolute', 
+                        right: '12px', 
+                        top: '50%', 
+                        transform: 'translateY(-50%)', 
+                        cursor: 'pointer' 
+                    }} 
+                    onClick={() => {
+                        if (taxRegDateRef.current?.flatpickr) {
+                            taxRegDateRef.current.flatpickr.open();
+                        }
+                    }}
+                >
+                    <FaCalendarAlt size={18} color='#005197' />
+                </span>
+            </div>
+        </div>
+        <div className="col-md-6 mt-3 mb-4">
+            <label className="projectform text-start d-block">Address 1</label>
+            <input 
+                type="text" 
+                name="taxAddress1" 
+                className="form-input w-100" 
+                placeholder="Enter address 1" 
+                value={formData.taxAddress1} 
+                onChange={handleChange} 
+            />
+        </div>
+    </div>
+
+    <div className="row">
+        <div className="col-md-6 mt-3 mb-4">
+            <label className="projectform text-start d-block">Address 2</label>
+            <input 
+                type="text" 
+                name="taxAddress2" 
+                className="form-input w-100" 
+                placeholder="Enter address 2" 
+                value={formData.taxAddress2} 
+                onChange={handleChange} 
+            />
+        </div>
+        <div className="col-md-6 mt-3 mb-4">
+            <label className="projectform-select text-start d-block">City <span style={{ color: "red" }}>*</span></label>
+            <Select 
+                name="taxCity" 
+                options={taxCityOptions} 
+                onChange={handleSelectChange} 
+                classNamePrefix="select" 
+                value={taxCityOptions?.find(opt => opt.value === formData.taxCity)} 
+                placeholder="Select city" 
+            />
+        </div>
+    </div>
+
+    <div className="row">
+        <div className="col-md-6 mt-3 mb-4">
+            <label className="projectform text-start d-block">Zip/Postal Code</label>
+            <input 
+                type="text" 
+                name="taxZipCode" 
+                className="form-input w-100" 
+                placeholder="Enter Zip/Postal Code" 
+                value={formData.taxZipCode} 
+                onChange={handleChange} 
+            />
+        </div>
+        <div className="col-md-6 mt-3 mb-4">
+            <label className="projectform text-start d-block">Email ID</label>
+            <input 
+                type="text" 
+                name="taxEmailID" 
+                className="form-input w-100" 
+                placeholder="Enter email ID" 
+                value={formData.taxEmailID} 
+                onChange={handleChange} 
+            />
+        </div>
+    </div>
+</div>
+
+            <div className="card text-start border-0 shadow-sm mt-4" style={{ borderRadius: "8px", padding: "0 1.5rem 1.5rem 1.5rem" }}>
+                <div className="p-3 mb-4 d-flex align-items-center justify-content-center" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
+                    <CreditCard size={20} className="me-2 text-white" />
+                    <h3 className="mb-0 fs-6 fw-bold text-white">Bank Accounts</h3>
+                </div>
+                <div className="row">
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform text-start d-block">Account Holder Name <span style={{ color: 'red' }}>*</span></label>
+                        <input type="text" name="accountHolderName" className="form-input w-100" placeholder="Enter account holder name" value={formData.accountHolderName} onChange={handleChange} />
+                    </div>
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform text-start d-block">Account No <span style={{ color: 'red' }}>*</span></label>
+                        <input type="text" name="accountNo" className="form-input w-100" placeholder="Enter account no" value={formData.accountNo} onChange={handleChange} />
+                    </div>
+                </div>
+                <div className="row">
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform text-start d-block">Bank Name <span style={{ color: 'red' }}>*</span></label>
+                        <input type="text" name="bankName" className="form-input w-100" placeholder="Enter bank name" value={formData.bankName} onChange={handleChange} />
+                    </div>
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform text-start d-block">Branch Name <span style={{ color: "red" }}>*</span></label>
+                        <input type="text" name="branchName" className="form-input w-100" placeholder="Enter branch name" value={formData.branchName} onChange={handleChange} />
+                    </div>
+                </div>
+                <div className="row">
+                    <div className="col-md-12 mt-3 mb-4">
+                        <label className="projectform text-start d-block">Bank Address</label>
+                        <input type="text" name="bankAddress" className="form-input w-100" placeholder="Enter bank address" value={formData.bankAddress} onChange={handleChange} />
+                    </div>
+                </div>
+            </div>
+
+            <div className="card text-start border-0 shadow-sm mt-4" style={{ borderRadius: "8px", padding: "0 1.5rem 1.5rem 1.5rem" }}>
+                <div className="p-3 mb-4 d-flex align-items-center justify-content-center" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
+                    <Info size={20} className="me-2 text-white" />
+                    <h3 className="mb-0 fs-6 fw-bold text-white">Additional Info</h3>
+                </div>
+                <div className="row">
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform-select text-start d-block">Type <span style={{ color: "red" }}>*</span></label>
+                        <Select name="additionalInfoType" options={additionalInfoTypeOptions} onChange={handleSelectChange} classNamePrefix="select" value={additionalInfoTypeOptions?.find(opt => opt.value === formData.additionalInfoType)} placeholder="Select type" />
+                    </div>
+                    <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform text-start d-block">Registration No <span style={{ color: "red" }}>*</span></label>
+                        <input type="text" name="registrationNo" className="form-input w-100" placeholder="Enter registration no" value={formData.registrationNo} onChange={handleChange} />
                     </div>
                 </div>
             </div>
@@ -277,7 +546,7 @@ const ManualEntryForm = ({ formData, setFormData, handleChange, handleSelectChan
     );
 };
 
-const EmailInviteForm = ({ formData, setFormData, handleSendInvitation }) => (
+const EmailInviteForm = ({ formData, handleChange, handleSendInvitation }) => (
     <form onSubmit={handleSendInvitation} className="p-3" >
         <div className="text-center p-4">
             <Mail size={30} className=" mb-3" style={{ color: bluePrimary }} />
@@ -296,41 +565,38 @@ const EmailInviteForm = ({ formData, setFormData, handleSendInvitation }) => (
                     Contractor Email ID <span style={{ color: 'red' }}>*</span>
                 </label>
                 <input
-                    type="text"
-                    className="form-input w-100"
-                    placeholder="Enter Contractor Email ID"
-                    value={formData.contractorEmailId}
-                    onChange={(e) =>
-                        setFormData({ ...formData, contractorEmailId: e.target.value })
-                    }
-                />
+    type="text"
+    name="contractorEmailId" 
+    className="form-input w-100"
+    placeholder="Enter Contractor Email ID"
+    value={formData.contractorEmailId}
+    onChange={handleChange} 
+/>
             </div>
 
             <div className="col-md-6 mt-3 mb-4">
                 <label className="projectform text-start d-block">Contractor Name</label>
                 <input
-                    type="text"
-                    className="form-input w-100"
-                    placeholder="Enter Contractor Name"
-                    value={formData.contractorName}
-                    onChange={(e) =>
-                        setFormData({ ...formData, contractorName: e.target.value })
-                    }
-                />
+    type="text"
+    name="contractorName"
+    className="form-input w-100"
+    placeholder="Enter Contractor Name"
+    value={formData.contractorName}
+    onChange={handleChange}
+/>
             </div>
         </div>
 
         <div className="col-md-12 mt-3 mb-4">
             <label className="projectform text-start d-block">Message</label>
             <input
-                type="text"
-                className="form-input w-100"
-                placeholder="Add a personalized message..."
-                value={formData.contractorMessage}
-                onChange={(e) =>
-                    setFormData({ ...formData, contractorMessage: e.target.value })
-                }
-            />
+    type="text"
+    name="contractorMessage"
+    className="form-input w-100"
+    placeholder="Add a personalized message..."
+    value={formData.contractorMessage}
+    onChange={handleChange}
+/>
         </div>
 
         <div
@@ -358,381 +624,6 @@ const EmailInviteForm = ({ formData, setFormData, handleSendInvitation }) => (
             </button>
         </div>
     </form>
-);
-
-const AddressDetailsContent = ({ formData, setFormData, handleSelectChange }) => (
-    <div className="card text-start border-0 shadow-sm mt-4" style={{ borderRadius: "8px", padding: "0 1.5rem 1.5rem 1.5rem" }}>
-        <div className="p-3 mb-4 d-flex align-items-center justify-content-center" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
-            <MapPin size={20} className="me-2 text-white" />
-            <h3 className="mb-0 fs-6 fw-bold text-white">Address Details</h3>
-        </div>
-        <div className="row">
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Phone No
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter phone no"
-                    value={formData.phoneNo}
-                    onChange={(e) => setFormData({ ...formData, phoneNo: e.target.value })}
-                />
-            </div>
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Email ID
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter Email ID"
-                    value={formData.emailID}
-                    onChange={(e) => setFormData({ ...formData, emailID: e.target.value })}
-                />
-            </div>
-        </div>
-        <div className="row">
-            <div className="col-md-6 mt-3 mb-4">
-                <label htmlFor="addressType" className="projectform-select text-start d-block">Address Type <span className="text-danger">*</span></label>
-                <Select
-                    name="addressType"
-                    options={addressTypeOptions}
-                    onChange={handleSelectChange}
-                    classNamePrefix="select"
-                    value={addressTypeOptions.find(option => option.value === formData.addressType)}
-                    placeholder="Select address type"
-                />
-            </div>
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Address 1 <span style={{ color: 'red' }}>*</span>
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter Address 1"
-                    value={formData.address1}
-                    onChange={(e) => setFormData({ ...formData, address1: e.target.value })}
-                />
-            </div>
-        </div>
-        <div className="row">
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Address 2
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter Address 2"
-                    value={formData.address2}
-                    onChange={(e) => setFormData({ ...formData, address2: e.target.value })}
-                />
-            </div>
-            <div className="col-md-6 mt-3 mb-4">
-                <label htmlFor="country" className="projectform-select text-start d-block">Country <span className="text-danger">*</span></label>
-                <Select
-                    name="country"
-                    options={countryOptions}
-                    onChange={handleSelectChange}
-                    classNamePrefix="select"
-                    value={countryOptions.find(option => option.value === formData.country)}
-                    placeholder="Select country"
-                />
-            </div>
-        </div>
-        <div className="row mb-4">
-            <div className="col-md-6 mt-3 mb-4">
-                <label htmlFor="addresscity" className="projectform-select text-start d-block">City <span className="text-danger">*</span></label>
-                <Select
-                    name="addresscity"
-                    options={addresscityOptions}
-                    onChange={handleSelectChange}
-                    classNamePrefix="select"
-                    value={addresscityOptions.find(option => option.value === formData.addresscity)}
-                    placeholder="Select city"
-                />
-            </div>
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Zip/Postal Code <span style={{ color: 'red' }}>*</span>
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter Zip/Postal Code"
-                    value={formData.zipCode}
-                    onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
-                />
-            </div>
-        </div>
-    </div>
-);
-
-const ContactDetailsContent = ({ formData, setFormData, handleSelectChange }) => (
-    <div className="card text-start border-0 shadow-sm mt-4" style={{ borderRadius: "8px", padding: "0 1.5rem 1.5rem 1.5rem" }}>
-        <div className="p-3 mb-4 d-flex align-items-center justify-content-center" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
-            <User size={20} className="me-2 text-white" />
-            <h3 className="mb-0 fs-6 fw-bold text-white">Contact Details</h3>
-        </div>
-        <div className="row">
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Contact Name <span style={{ color: 'red' }}>*</span>
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter contact name"
-                    value={formData.contactName}
-                    onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-                />
-            </div>
-            <div className="col-md-6 mt-3 mb-4">
-                <label htmlFor="contactPosition" className="projectform-select text-start d-block">Position <span className="text-danger">*</span></label>
-                <Select
-                    name="contactPosition"
-                    options={contactPositionOptions}
-                    onChange={handleSelectChange}
-                    classNamePrefix="select"
-                    value={contactPositionOptions.find(option => option.value === formData.contactPosition)}
-                    placeholder="Select position"
-                />
-            </div>
-        </div>
-        <div className="row mb-4">
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Phone No <span style={{ color: 'red' }}>*</span>
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter phone no"
-                    value={formData.contactPhoneNo}
-                    onChange={(e) => setFormData({ ...formData, contactPhoneNo: e.target.value })}
-                />
-            </div>
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Email ID <span style={{ color: 'red' }}>*</span>
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter Email ID"
-                    value={formData.contactEmailID}
-                    onChange={(e) => setFormData({ ...formData, contactEmailID: e.target.value })}
-
-                />
-            </div>
-        </div>
-    </div>
-);
-
-const TaxDetailsContent = ({ formData, setFormData, handleChange, handleSelectChange }) => (
-    <div className="card text-start border-0 shadow-sm mt-4" style={{ borderRadius: "8px", padding: "0 1.5rem 1.5rem 1.5rem" }}>
-        <div className="p-3 mb-4 d-flex align-items-center justify-content-center" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
-            <Briefcase size={20} className="me-2 text-white" />
-            <h3 className="mb-0 fs-6 fw-bold text-white">Tax Details</h3>
-        </div>
-        <div className="row">
-            <div className="col-md-6 mt-3 mb-4">
-                <label htmlFor="taxType" className="projectform-select text-start d-block">Tax Type <span className="text-danger">*</span></label>
-                <Select
-                    name="taxType"
-                    options={taxTypeOptions}
-                    onChange={handleSelectChange}
-                    classNamePrefix="select"
-                    value={taxTypeOptions.find(option => option.value === formData.taxType)}
-                    placeholder="Select tax type"
-                />
-            </div>
-            <div className="col-md-6 mt-3 mb-4">
-                <label htmlFor="territoryType" className="projectform-select text-start d-block">Territory Type <span className="text-danger">*</span></label>
-                <Select
-                    name="territoryType"
-                    options={territoryTypeOptions}
-                    onChange={handleSelectChange}
-                    classNamePrefix="select"
-                    value={territoryTypeOptions.find(option => option.value === formData.territoryType)}
-                    placeholder="Select territory type"
-                />
-            </div>
-        </div>
-        <div className="row">
-            <div className="col-md-6 mt-3 mb-4">
-                <label htmlFor="territory" className="projectform-select text-start d-block">Territory <span className="text-danger">*</span></label>
-                <Select
-                    name="territory"
-                    options={territoryOptions}
-                    onChange={handleSelectChange}
-                    classNamePrefix="select"
-                    value={territoryOptions.find(option => option.value === formData.territory)}
-                    placeholder="Select territory type"
-                />
-            </div>
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Tax Reg. No <span style={{ color: 'red' }}>*</span>
-                </label>
-                <Flatpickr
-                        id="taxRegDate"
-                        className="form-input w-100"
-                        placeholder="Select Tax Registration date"
-                        options={{ dateFormat: "d-m-Y" }}
-                        value={formData.effectiveDate}
-                        onChange={([date]) => setFormData({ ...formData, taxRegDate: date })}
-                        ref={datePickerRef}
-                    />
-                    <span className='calender-icon' onClick={() => openCalendar('taxRegDate')}><FaCalendarAlt size={18} color='#005197' /></span>
-            </div>
-        </div>
-        <div className="row">
-            <div className="col-md-6 mt-3 mb-4">
-                <label htmlFor="taxRegDate" className="projectform-select text-start d-block">Tax Reg. Date <span className="text-danger">*</span></label>
-                <div className="input-group">
-                    <input type="text" className="form-control" id="taxRegDate" name="taxRegDate" value={formData.taxRegDate} onChange={handleChange} placeholder="mm/dd/yy" style={{ height: "40px" }} />
-                    <span className="input-group-text bg-white" style={{ borderLeft: "none", height: "40px" }}><FaCalendarAlt size={18} className="text-muted" /></span>
-                </div>
-            </div>
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Address 1
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter Address 1"
-                    value={formData.taxAddress1}
-                    onChange={(e) => setFormData({ ...formData, taxAddress1: e.target.value })}
-
-                />
-            </div>
-        </div>
-        <div className="row">
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Address 2
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter Address 2"
-                    value={formData.taxAddress2}
-                    onChange={(e) => setFormData({ ...formData, taxAddress2: e.target.value })}
-
-                />
-            </div>
-            <div className="col-md-6 mt-3 mb-4">
-                <label htmlFor="taxCity" className="projectform-select text-start d-block">City <span className="text-danger">*</span></label>
-                <Select
-                    name="taxCity"
-                    options={taxCityOptions}
-                    onChange={handleSelectChange}
-                    classNamePrefix="select"
-                    value={taxCityOptions.find(option => option.value === formData.taxCity)}
-                    placeholder="Select City type"
-                />
-            </div>
-        </div>
-        <div className="row mb-4">
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Zip/Postal Code
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter Zip/Postal Code"
-                    value={formData.taxZipCode}
-                    onChange={(e) => setFormData({ ...formData, taxZipCode: e.target.value })}
-
-                />
-            </div>
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Email ID
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter Email ID"
-                    value={formData.taxEmailID}
-                    onChange={(e) => setFormData({ ...formData, taxEmailID: e.target.value })}
-
-                />
-            </div>
-        </div>
-    </div>
-);
-
-const BankAccountsContent = ({ formData, setFormData }) => (
-    <div className="card text-start border-0 shadow-sm mt-4" style={{ borderRadius: "8px", padding: "0 1.5rem 1.5rem 1.5rem" }}>
-        <div className="p-3 mb-4 d-flex align-items-center justify-content-center" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
-            <DollarSign size={20} className="me-2 text-white" />
-            <h3 className="mb-0 fs-6 fw-bold text-white">Bank Accounts</h3>
-        </div>
-
-        <div className="row">
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Account Holder Name <span style={{ color: 'red' }}>*</span>
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter Account Holder Name"
-                    value={formData.accountHolderName}
-                    onChange={(e) => setFormData({ ...formData, accountHolderName: e.target.value })}
-
-                />
-            </div>
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Account No <span style={{ color: 'red' }}>*</span>
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter Account No"
-                    value={formData.accountNo}
-                    onChange={(e) => setFormData({ ...formData, accountNo: e.target.value })}
-
-                />
-            </div>
-        </div>
-
-        <div className="row">
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Bank Name <span style={{ color: 'red' }}>*</span>
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter Bank Name"
-                    value={formData.bankName}
-                    onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
-
-                />
-            </div>
-
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Branch Name <span style={{ color: 'red' }}>*</span>
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter Branch Name"
-                    value={formData.branchName}
-                    onChange={(e) => setFormData({ ...formData, branchName: e.target.value })}
-
-                />
-            </div>
-        </div>
-        <div className="row mb-4">
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Bank Address
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter Bank Address"
-                    value={formData.bankAddress}
-                    onChange={(e) => setFormData({ ...formData, bankAddress: e.target.value })}
-
-                />
-            </div>
-            <div className="col-md-6">
-            </div>
-        </div>
-    </div>
-);
-
-const AdditionalInfoContent = ({ formData, setFormData, handleSelectChange }) => (
-    <div className="card text-start border-0 shadow-sm mt-4" style={{ borderRadius: "8px", padding: "0 1.5rem 1.5rem 1.5rem" }}>
-        <div className="p-3 mb-4 d-flex align-items-center justify-content-center" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
-            <Info size={20} className="me-2 text-white" />
-            <h3 className="mb-0 fs-6 fw-bold text-white">Additional Info</h3>
-        </div>
-
-        <div className="row">
-            <div className="col-md-6 mt-3 mb-4">
-                <label htmlFor="additionalInfoType" className="projectform-select text-start d-block">Type <span className="text-danger">*</span></label>
-                <Select
-                    name="additionalInfoType"
-                    options={additionalInfoTypeOptions}
-                    onChange={handleSelectChange}
-                    classNamePrefix="select"
-                    value={additionalInfoTypeOptions.find(option => option.value === formData.additionalInfoType)}
-                    placeholder="Select type"
-                />
-            </div>
-            <div className="col-md-6 mt-3 mb-4">
-                <label className="projectform text-start d-block">
-                    Registration No <span style={{ color: 'red' }}>*</span>
-                </label>
-                <input type="text" className="form-input w-100" placeholder="Enter Registration No"
-                    value={formData.registrationNo}
-                    onChange={(e) => setFormData({ ...formData, registrationNo: e.target.value })}
-
-                />
-            </div>
-        </div>
-    </div>
 );
 
 const ReviewSummaryContent = ({ formData, handleGoBackToEntry, handleSubmitFinal }) => {
@@ -1000,135 +891,19 @@ const ReviewSummaryContent = ({ formData, handleGoBackToEntry, handleSubmitFinal
     );
 };
 
-function ContractorOverview() {
-    const navigate = useNavigate();
-    const location = useLocation();
-    const datePickerRef = useRef();
-    const handleGoBack = () => navigate(-1);
-    const [selectedView, setSelectedView] = useState('manual');
-    const [viewMode, setViewMode] = useState('entry');
-
-    useLayoutEffect(() => {
-        if ('scrollRestoration' in history) {
-            history.scrollRestoration = 'manual';
-        }
-        const scrollTimer = setTimeout(() => {
-            window.scrollTo(0, 0);
-        }, 0);
-        return () => {
-            clearTimeout(scrollTimer);
-            if ('scrollRestoration' in history) {
-                history.scrollRestoration = 'auto';
-            }
-        };
-
-    }, [location.pathname])
-
-
-    const handleViewChange = (view) => {
-        setSelectedView(view);
-        setViewMode('entry');
-    };
-
-    const defaultBasicInfo = {
-        entityCode: '',
-        entityName: '',
-        effectiveDate: '',
-        entityType: '',
-        natureOfBusiness: '',
-        grade: '',
-        attachments: [],
-        attachmentMetadata: []
-    };
-
-    const defaultAddressDetails = {
-        phoneNo: '',
-        emailID: '',
-        addressType: '',
-        address1: '',
-        address2: '',
-        country: '',
-        addresscity: '',
-        zipCode: ''
-    };
-
-    const defaultContactDetails = {
-        contactName: '',
-        contactPosition: '',
-        contactPhoneNo: '',
-        contactEmailID: ''
-    };
-
-    const defaultTaxDetails = {
-        taxType: '',
-        territoryType: '',
-        territory: '',
-        taxRegNo: '',
-        taxRegDate: '',
-        taxAddress1: '',
-        taxAddress2: '',
-        taxCity: '',
-        taxZipCode: '',
-        taxEmailID: ''
-    };
-
-    const defaultBankAccounts = {
-        accountHolderName: '',
-        accountNo: '',
-        bankName: '',
-        branchName: '',
-        bankAddress: ''
-    };
-
-    const defaultAdditionalInfo = {
-        additionalInfoType: '',
-        registrationNo: ''
-    };
-
-    const defaultEmailInvite = {
-        contractorEmailId: '',
-        contractorName: '',
-        contractorMessage: ''
-    };
-
-    const defaultFormData = {
-        ...defaultBasicInfo,
-        ...defaultAddressDetails,
-        ...defaultContactDetails,
-        ...defaultTaxDetails,
-        ...defaultBankAccounts,
-        ...defaultAdditionalInfo,
-        ...defaultEmailInvite
-    };
-
-    const loadFormData = () => {
-        try {
-            const savedData = sessionStorage.getItem(STORAGE_KEY);
-            if (savedData) {
-                const parsedData = JSON.parse(savedData);
-                return {
-                    ...defaultFormData,
-                    ...parsedData,
-                    attachments: [],
-                    attachmentMetadata: parsedData.attachmentMetadata || []
-                };
-            }
-        } catch (error) {
-            console.error("Could not load data from sessionStorage:", error);
-        }
-        return defaultFormData;
-    };
-
-    const [formData, setFormData] = useState(loadFormData());
-
     useEffect(() => {
         const serializableData = {
             ...formData,
-            attachments: [],
+            attachments: [], 
             attachmentMetadata: formData.attachmentMetadata
         };
         sessionStorage.setItem(STORAGE_KEY, JSON.stringify(serializableData));
     }, [formData]);
+
+    useEffect(() => {
+    window.scrollTo(0, 0);
+}, [viewMode]);
+
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -1142,9 +917,7 @@ function ContractorOverview() {
 
     const handleFileChange = (e) => {
         const newFiles = Array.from(e.target.files);
-
         e.target.value = null;
-
         const newMetadata = newFiles.map(file => ({
             id: Date.now() + Math.random().toString(36).substring(2, 9),
             name: file.name,
@@ -1152,155 +925,95 @@ function ContractorOverview() {
             lastModified: file.lastModified,
             fileObject: file,
         }));
-
         setFormData(prev => ({
             ...prev,
             attachmentMetadata: [...prev.attachmentMetadata, ...newMetadata]
         }));
     };
 
-    const handleRemoveFile = (fileIdToRemove) => {
-        setFormData(prev => ({
-            ...prev,
-            attachmentMetadata: prev.attachmentMetadata.filter(
-                (meta) => meta.id !== fileIdToRemove
-            )
-        }));
-    };
-
     const handleSubmit = (e) => {
         e.preventDefault();
-        console.log("Form data ready for review:", formData);
         setViewMode('review');
-        window.scrollTo(0, 0);
-    };
-
-    const handleSubmitFinal = () => {
-        console.log("FINAL SUBMISSION:", formData);
-        sessionStorage.removeItem(STORAGE_KEY);
-        navigate('ContractorOnboarding');
-    };
-
-    const handleGoBackToEntry = () => {
-        setViewMode('entry');
-        window.scrollTo(0, 0);
-    };
-
-    const handleSendInvitation = (e) => {
-        e.preventDefault();
-        console.log("Invitation Sent:", {
-            contractorEmailId: formData.contractorEmailId,
-            contractorName: formData.contractorName,
-            message: formData.contractorMessage
-        });
-    };
-
-    const handleCancel = () => {
-        sessionStorage.removeItem(STORAGE_KEY);
-        navigate('/ContractorOnboarding');
-        console.log("Form Cancelled. Data cleared and navigating to /ContractorOnboarding.");
     };
 
     const isManualActive = selectedView === 'manual';
-    const isEmailActive = selectedView === 'email';
     const isEntryMode = viewMode === 'entry';
     const isReviewMode = viewMode === 'review';
 
-    const buttonGroupStyle = {
-        borderRadius: '6px',
-        overflow: 'hidden',
-        boxShadow: (isManualActive || isEmailActive) ? `0 0 0 1px ${bluePrimary}` : 'none'
-    };
-
-    const manualButtonStyle = {
-        paddingLeft: '20px',
-        paddingRight: '20px',
-        borderTopRightRadius: isManualActive ? 0 : '6px',
-        borderBottomRightRadius: isManualActive ? 0 : '6px',
-        backgroundColor: isManualActive ? bluePrimary : 'white',
-        color: isManualActive ? 'white' : bluePrimary,
-        transition: 'all 0.3s',
-        border: 'none',
-        outline: 'none'
-    };
-
-    const emailButtonStyle = {
-        paddingLeft: '20px',
-        paddingRight: '20px',
-        borderTopLeftRadius: isEmailActive ? 0 : '6px',
-        borderBottomLeftRadius: isEmailActive ? 0 : '6px',
-        backgroundColor: isEmailActive ? bluePrimary : 'white',
-        color: isEmailActive ? 'white' : bluePrimary,
-        transition: 'all 0.3s',
-        border: 'none',
-        outline: 'none'
-    };
     return (
         <div className="container-fluid min-vh-100 p-0">
             <div className="d-flex align-items-center py-3 px-4 mb-4">
                 <ArrowLeft size={24} className="me-3" onClick={handleGoBack} style={{ cursor: 'pointer', color: bluePrimary }} />
                 <h2 className="mb-0 fs-5 fw-bold">New Contractor</h2>
             </div>
-            {isEntryMode && (
-                <div className="px-4 text-start">
-                    <div className="d-inline-flex mb-4" style={buttonGroupStyle}>
-                        <button className="btn d-flex align-items-center fw-bold" onClick={() => handleViewChange('manual')} style={manualButtonStyle}>
-                            <Pencil size={20} className="me-2" /> Manual Entry
-                        </button>
-                        <button className="btn d-flex align-items-center fw-bold" onClick={() => handleViewChange('email')} style={emailButtonStyle}>
-                            <Mail size={20} className="me-2" /> Email Invite
-                        </button>
-                    </div>
-                </div>
-            )}
 
             {isEntryMode && (
                 <div className="px-4 text-start">
+                    <div className="d-inline-flex mb-4" style={{ borderRadius: '6px', overflow: 'hidden', border: `1px solid ${bluePrimary}` }}>
+                        <button 
+                            className="btn fw-bold" 
+                            onClick={() => setSelectedView('manual')} 
+                            style={{ backgroundColor: isManualActive ? bluePrimary : 'white', color: isManualActive ? 'white' : bluePrimary, border: 'none', borderRadius: 0 }}
+                        >
+                            <Pencil size={18} className="me-2" /> Manual Entry
+                        </button>
+                        <button 
+                            className="btn fw-bold" 
+                            onClick={() => setSelectedView('email')} 
+                            style={{ backgroundColor: !isManualActive ? bluePrimary : 'white', color: !isManualActive ? 'white' : bluePrimary, border: 'none', borderRadius: 0 }}
+                        >
+                            <Mail size={18} className="me-2" /> Email Invite
+                        </button>
+                    </div>
+
                     <form id="contractorForm" onSubmit={handleSubmit}>
-                        <div className="card text-start border-0 shadow-sm" style={{ borderRadius: "8px", padding: selectedView === 'manual' ? "0 1.5rem 1.5rem 1.5rem" : "1.5rem" }}>
-                            {selectedView === 'manual' ?
+                        <div className="card text-start border-0 shadow-sm" style={{ borderRadius: "8px" }}>
+                            {isManualActive ? (
                                 <ManualEntryForm
                                     formData={formData}
                                     setFormData={setFormData}
                                     handleChange={handleChange}
                                     handleSelectChange={handleSelectChange}
                                     handleFileChange={handleFileChange}
-                                    handleRemoveFile={handleRemoveFile}
+                                    effectiveDateRef={effectiveDateRef}
+                                    taxRegDateRef={taxRegDateRef}
+                                    handleRemoveFile={(id) => setFormData(prev => ({
+                                        ...prev, attachmentMetadata: prev.attachmentMetadata.filter(m => m.id !== id)
+                                    }))}
+                                    datePickerRef={datePickerRef} 
                                 />
-                                :
+                            ) : (
                                 <EmailInviteForm
                                     formData={formData}
-                                    setFormData={setFormData}
-                                    handleSendInvitation={handleSendInvitation}
+                                    handleChange={handleChange}
                                 />
-                            }
+                            )}
                         </div>
-                        {selectedView === 'manual' && <AddressDetailsContent formData={formData} setFormData={setFormData} handleSelectChange={handleSelectChange} />}
-                        {selectedView === 'manual' && <ContactDetailsContent formData={formData} setFormData={setFormData} handleSelectChange={handleSelectChange} />}
-                        {selectedView === 'manual' && <TaxDetailsContent formData={formData} setFormData={setFormData} handleChange={handleChange} handleSelectChange={handleSelectChange} />}
-                        {selectedView === 'manual' && <BankAccountsContent formData={formData} setFormData={setFormData} />}
-                        {selectedView === 'manual' && <AdditionalInfoContent formData={formData} setFormData={setFormData} handleSelectChange={handleSelectChange} />}
                     </form>
 
-                    {selectedView === 'manual' && (
-                        <div className="d-flex justify-content-end mt-4">
-                            <button type="button" onClick={handleCancel} className="fw-bold px-4" style={{ background: "none", border: "none", color: bluePrimary, cursor: "pointer" }}>Cancel</button>
-                            <button type="submit" form="contractorForm" className="btn px-4 fw-bold" style={{ backgroundColor: bluePrimary, color: "white", borderRadius: "6px", borderColor: bluePrimary }}>Review & Submit<ArrowRight size={21} color="white" className="ms-2" /></button>
+                    {isManualActive && (
+                        <div className="d-flex justify-content-end mt-4 mb-5">
+                            <button type="button" onClick={() => navigate('/ContractorOnboarding')} className="btn px-4 fw-bold me-3" style={{ color: bluePrimary }}>Cancel</button>
+                            <button type="submit" form="contractorForm" className="btn px-4 fw-bold" style={{ backgroundColor: bluePrimary, color: "white" }}>
+                                Review & Submit <ArrowRight size={20} className="ms-2" />
+                            </button>
                         </div>
                     )}
                 </div>
             )}
+
             {isReviewMode && (
                 <ReviewSummaryContent
                     formData={formData}
-                    handleGoBackToEntry={handleGoBackToEntry}
-                    handleSubmitFinal={handleSubmitFinal}
+                    handleGoBackToEntry={() => setViewMode('entry')}
+                    handleSubmitFinal={() => {
+                        sessionStorage.removeItem(STORAGE_KEY);
+                        navigate('/ContractorOnboarding');
+                    }}
                 />
             )}
-
-            <div className="mb-5"></div>
         </div>
     );
 }
 
-export default ContractorOverview;
+export default ContractorOverview; 
