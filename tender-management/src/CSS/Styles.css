@@ -82,7 +82,7 @@
 
 .content-container {
   flex: 1;
-  margin-left: 65px;
+  margin-left: 55px;
 }
 
 .content-container.collapsed,
@@ -904,14 +904,22 @@ label {
   color: #005197;
 }
 /* Admin SideBar */
+.admin-layout{
+  display: flex;
+  flex-direction: row;
+}
 .admin-sidebar{
   background-color: #E3F2FF;
+  width: 250px !important;
   min-height: 100vh;
+  position: sticky;
+}
+.admin-content{
+  flex: 1;
 }
 .cursor-pointer {
   cursor: pointer;
 }
-
 .admin-nav-btn {
   font-size: 14px;
   padding: 6px 12px;
@@ -920,6 +928,17 @@ label {
 .btn.admin-nav-btn.active {
   background-color: white;
   color: #005197;
-  font-weight: 600;
+  font-weight: 500;
   outline: transparent;
+  border: #FFFFFF !important;
 }
+.modal-close-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+}
+.modal-close-btn svg {
+    pointer-events: none;
+}
+

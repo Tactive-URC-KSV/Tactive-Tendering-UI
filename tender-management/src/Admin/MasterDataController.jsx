@@ -1,9 +1,9 @@
 import "../CSS/Styles.css";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 
-function MasterDataController({children}) {
+function MasterDataController({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname.split("/").pop();
@@ -15,12 +15,8 @@ function MasterDataController({children}) {
     company: false,
   });
 
-  const toggleSection = (key) => {
-    setOpenSections((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
+ const toggleSection = (key) => { setOpenSections((prev) => ({ ...prev, [key]: !prev[key], })); };
+
   const masterData = [
     { label: "Region", path: "region" },
     { label: "Sector", path: "sector" },
@@ -55,11 +51,11 @@ function MasterDataController({children}) {
   const renderSection = (key, title, data) => (
     <>
       <li
-        className="menu-heading mt-3 text-primary fw-bold d-flex align-items-center justify-content-between cursor-pointer"
+        className={`menu-heading mt-3 fw-medium d-flex align-items-center justify-content-between cursor-pointer ${openSections[key] ? "text-primary": "text-dark"}`}
         onClick={() => toggleSection(key)}
       >
         <span>{title}</span>
-        {openSections[key] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        {openSections[key] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
       </li>
       {openSections[key] &&
         data.map((item, index) => (
@@ -79,8 +75,8 @@ function MasterDataController({children}) {
     </>
   );
   return (
-      <div className="row">
-      <div className="col-lg-auto col-md-auto text-start admin-sidebar p-3">
+      <div className="row min-vh-100">
+      <div className="admin-sidebar p-3">
         <nav>
           <ul className="list-unstyled">
             {renderSection("master", "Master Data", masterData)}
@@ -90,7 +86,7 @@ function MasterDataController({children}) {
           </ul>
         </nav>
       </div>
-      <div className="col-auto">
+      <div className="admin-content">
         {children}
       </div>
     </div>

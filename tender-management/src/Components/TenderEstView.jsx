@@ -663,9 +663,9 @@ function TenderEstView({ projectId }) {
 
   }
   return (
-    <div className="container-fluid mt-3 p-4 min-vh-100">
+    <div className="container-fluid p-2 min-vh-100">
       <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-3 mt-2 mb-3">
-        <div className="ms-3">
+        <div>
           <ArrowLeft size={20} onClick={() => window.history.back()} style={{ cursor: 'pointer' }} />
           <span className='ms-2'>Tender Estimation</span>
           <span className='ms-2'>-</span>

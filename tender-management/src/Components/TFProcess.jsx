@@ -1374,9 +1374,9 @@ function TFProcess({ projectId }) {
         }
     }
     return (
-        <div className='container-fluid p-4 mt-3 min-vh-100 overflow-y-hidden'>
+        <div className='container-fluid p-3 min-vh-100 overflow-y-hidden'>
             <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-3 mt-2 mb-3">
-                <div className="ms-3">
+                <div>
                     <ArrowLeft size={20} onClick={() => window.history.back()} style={{ cursor: 'pointer' }} />
                     <span className='ms-2'>Tender Floating</span>
                     <span className='ms-2'>-</span>
