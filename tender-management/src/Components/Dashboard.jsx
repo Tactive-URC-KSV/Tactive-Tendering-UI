@@ -151,9 +151,9 @@ function ProjectWorklist() {
         return Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
     };
     return (
-        <div className="container-fluid mt-3 p-4 min-vh-100">
+        <div className="container-fluid p-3 mt-3 min-vh-100">
             <div className="row align-items-center mb-3 mt-3 ps-lg-2 ms-md-1">
-                <div className='d-flex justify-content-between'>
+                <div className='d-flex justify-content-around'>
                     <div className="col-lg-4 col-md-4 col-sm-12 ms-3">
                         <div className="project-counts d-flex justify-content-between align-items-center p-3 h-100 mb-3">
                             <div className="text-start">

@@ -12,13 +12,11 @@ function BOQProjectInfo({ projects, continueRoute }) {
     const [selectedCompany, setSelectedCompany] = useState(null);
     const projectStatus = useProjectStatus();
     const navigate = useNavigate();
-
     function handleContinue() {
         if (projectId) {
             navigate(`${continueRoute}/${projectId}`);
         }
     }
-
     const companyOptions = Array.from(
         new Set(projects.map(prj => prj.companyName))
     ).map(name => ({ label: name, value: name }));
