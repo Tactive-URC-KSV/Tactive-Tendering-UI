@@ -7,7 +7,6 @@ import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/themes/material_blue.css";
 import '../CSS/Styles.css';
 
-
 function ContractorOverview() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -186,6 +185,7 @@ const ManualEntryForm = ({
     <div className="position-relative">
       <Flatpickr
     ref={effectiveDateRef}
+     value={formData.effectiveDate}
     name="effectiveDate"
     className="form-input w-100"
     placeholder="Select Effective date"
@@ -396,6 +396,7 @@ const ManualEntryForm = ({
                <Flatpickr
     ref={taxRegDateRef}
     name="taxRegDate"
+    value={formData.taxRegDate}
     className="form-input w-100"
     placeholder="Select Tax Reg date"
     options={{
@@ -491,7 +492,7 @@ const ManualEntryForm = ({
             />
         </div>
     </div>
-</div>
+            </div>
 
             <div className="card text-start border-0 shadow-sm mt-4" style={{ borderRadius: "8px", padding: "0 1.5rem 1.5rem 1.5rem" }}>
                 <div className="p-3 mb-4 d-flex align-items-center justify-content-center" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
