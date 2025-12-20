@@ -183,8 +183,7 @@ export function Region() {
                                     <div className="d-flex justify-content-between mt-2">
                                         <span>{r.regionName}</span>
                                         <span
-                                            className={`badge ${r.active ? "text-success" : "text-muted"
-                                                }`}
+                                            className={`${r.active ? "text-success" : "text-muted"}`}
                                         >
                                             {r.active ? "Active" : "Inactive"}
                                         </span>
@@ -894,7 +893,7 @@ export function ListOfApprovals() {
     };
 
     const handleDelete = (doc) => {
-        doc.active = false; // API → active=false
+        doc.active = false; 
     };
 
     const handleSave = () => {
@@ -955,10 +954,10 @@ export function ListOfApprovals() {
                             <div className="card shadow-sm h-100">
                                 <div className="card-body">
                                     <div className="d-flex justify-content-between">
-                                        <Edit onClick={() => handleEdit(doc)} style={{ cursor: "pointer" }} />
+                                        <Edit size={18} onClick={() => handleEdit(doc)} style={{ cursor: "pointer" }} />
                                         {doc.active
-                                            ? <Trash2 onClick={() => handleDelete(doc)} style={{ cursor: "pointer" }} />
-                                            : <Ban className="text-muted" />}
+                                            ? <Trash2 size={18} onClick={() => handleDelete(doc)} style={{ cursor: "pointer" }} />
+                                            : <Ban size={18} className="text-muted" />}
                                     </div>
                                     <div className="mt-2 d-flex justify-content-between">
                                         <span>{doc.documentName}</span>

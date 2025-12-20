@@ -32,6 +32,10 @@ import TenderFloating from './Components/TenderFloating';
 import ContractorReview from './Components/ContractorReview';
 import MasterDataController from './Admin/MasterDataController';
 import { CostCodeActivity, CostCodeType, ListOfApprovals, Region, Scopes, Sectors, UOM } from './Admin/MasterDataManagement';
+import { Addresstype, Cities, Countries, States } from './Admin/LocationDataManagement';
+import { CompanyConstitution, CompanyLanguage, CompanyLevel, CompanyNature, CompanyNatureOfBusiness, CompanyStatus, CompanyType } from './Admin/CompanyDataManagement';
+import { ContractorGrade, EntityType, NatureOfBusiness } from './Admin/ContractorDataMangement';
+import { Currency, IdentityType, TaxType, TerritoryType } from './Admin/TaxManagement';
 import {ResourceNature,ResourceType,QuantityType,Resources} from './Admin/ResourceQuantityManagement';
 
 
@@ -135,6 +139,24 @@ function App() {
                                 <Route path='approvals' element={<ListOfApprovals />} caseSensitive={false} />
                                 <Route path='costcodetype' element={<CostCodeType />} caseSensitive={false} />
                                 <Route path='costcodeactivity' element={<CostCodeActivity />} caseSensitive={false} />
+                                <Route path='country' element={<Countries />} caseSensitive={false} />
+                                <Route path='state' element={<States />} caseSensitive={false} />
+                                <Route path='city' element={<Cities />} caseSensitive={false} />
+                                <Route path='addresstype' element={<Addresstype />} caseSensitive={false} />
+                                <Route path='companylevel' element={<CompanyLevel />} caseSensitive={false} />
+                                <Route path='companytype' element={<CompanyType />} caseSensitive={false} />
+                                <Route path='companystatus' element={<CompanyStatus />} caseSensitive={false} />
+                                <Route path='companyconstitution' element={<CompanyConstitution />} caseSensitive={false} />
+                                <Route path='companynature' element={<CompanyNature />} caseSensitive={false} />
+                                <Route path='companynatureofbusiness' element={<CompanyNatureOfBusiness />} caseSensitive={false} />
+                                <Route path='companylanguage' element={<CompanyLanguage />} caseSensitive={false} />
+                                <Route path='contractortype' element={<EntityType />} caseSensitive={false} />
+                                <Route path='contractornatureofbusiness' element={<NatureOfBusiness />} caseSensitive={false} />
+                                <Route path='contractorgrade' element={<ContractorGrade />} caseSensitive={false} />
+                                <Route path='taxtype' element={<TaxType />} caseSensitive={false} />
+                                <Route path='territorytype' element={<TerritoryType />} caseSensitive={false} />
+                                <Route path='identitytype' element={<IdentityType />} caseSensitive={false} />
+                                <Route path='currency' element={<Currency />} caseSensitive={false} />
                                   <Route path="resourcenature" element={<ResourceNature />} />
   <Route path="resourcetype" element={<ResourceType />} />
   <Route path="quantitytype" element={<QuantityType />} />
