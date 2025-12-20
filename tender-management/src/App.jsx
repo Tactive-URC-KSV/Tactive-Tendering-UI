@@ -31,7 +31,7 @@ import AddResource from './Components/AddResource';
 import TenderFloating from './Components/TenderFloating';
 import ContractorReview from './Components/ContractorReview';
 import MasterDataController from './Admin/MasterDataController';
-import ResgionController from './Admin/RegionController';
+import { CostCodeActivity, CostCodeType, ListOfApprovals, Region, Scopes, Sectors, UOM } from './Admin/MasterDataManagement';
 
 function App() {
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 768);
@@ -126,7 +126,13 @@ function App() {
                         <Sidebar>
                             <MasterDataController>
                               <Routes>
-                                <Route path='region' element={<ResgionController />} caseSensitive={false} />
+                                <Route path='region' element={<Region />} caseSensitive={false} />
+                                <Route path='sector' element={<Sectors />} caseSensitive={false} />
+                                <Route path='scopes' element={<Scopes />} caseSensitive={false} />
+                                <Route path='uom' element={<UOM />} caseSensitive={false} />
+                                <Route path='approvals' element={<ListOfApprovals />} caseSensitive={false} />
+                                <Route path='costcodetype' element={<CostCodeType />} caseSensitive={false} />
+                                <Route path='costcodeactivity' element={<CostCodeActivity />} caseSensitive={false} />
                               </Routes>
                             </MasterDataController>
                         </Sidebar>

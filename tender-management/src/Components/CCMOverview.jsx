@@ -1044,7 +1044,7 @@ const CCMOverview = () => {
     }, [activityGroups, costCodeTypes]);
 
     return (
-        <div className="container-fluid p-4 mt-3">
+        <div className="container-fluid p-3 mt-3">
             <ToastContainer position="top-right" autoClose={3000} />
             {showNotification && notification && notification.type === "confirm" && (
                 <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
