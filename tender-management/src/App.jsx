@@ -32,6 +32,8 @@ import TenderFloating from './Components/TenderFloating';
 import ContractorReview from './Components/ContractorReview';
 import MasterDataController from './Admin/MasterDataController';
 import { CostCodeActivity, CostCodeType, ListOfApprovals, Region, Scopes, Sectors, UOM } from './Admin/MasterDataManagement';
+import {ResourceNature,ResourceType,QuantityType,Resources} from './Admin/ResourceQuantityManagement';
+
 
 function App() {
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 768);
@@ -133,6 +135,10 @@ function App() {
                                 <Route path='approvals' element={<ListOfApprovals />} caseSensitive={false} />
                                 <Route path='costcodetype' element={<CostCodeType />} caseSensitive={false} />
                                 <Route path='costcodeactivity' element={<CostCodeActivity />} caseSensitive={false} />
+                                  <Route path="resourcenature" element={<ResourceNature />} />
+  <Route path="resourcetype" element={<ResourceType />} />
+  <Route path="quantitytype" element={<QuantityType />} />
+  <Route path="resources" element={<Resources />} />
                               </Routes>
                             </MasterDataController>
                         </Sidebar>
