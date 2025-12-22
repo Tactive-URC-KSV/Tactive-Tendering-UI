@@ -13,9 +13,21 @@ function MasterDataController({ children }) {
     location: false,
     resource: false,
     company: false,
+    contractor: false,
+    tax: false
   });
 
- const toggleSection = (key) => { setOpenSections((prev) => ({ ...prev, [key]: !prev[key], })); };
+ const toggleSection = (key) => {
+  setOpenSections((prev) => {
+    const updated = {};
+
+    Object.keys(prev).forEach(k => {
+      updated[k] = k === key ? !prev[k] : false;
+    });
+
+    return updated;
+  });
+};
 
   const masterData = [
     { label: "Region", path: "region" },
@@ -46,7 +58,23 @@ function MasterDataController({ children }) {
     { label: "Company Level", path: "companylevel" },
     { label: "Company Status", path: "companystatus" },
     { label: "Company Constitution", path: "companyconstitution" },
+    { label: "Comapny Nature", path: "comapanynature"},
+    { label: "Nature Of Business", path: "companynatureofbusiness"},
+    { label: "Language", path: "companylanguage"},
   ];
+
+  const contratorData= [
+    { label: "Entity Type", path: "contractortype"},
+    { label: "Nature Of Business" , path: "contractornatureofbusiness"},
+    { label: "Contractor Grade", path: "contractorgrade"},
+  ];
+
+  const taxAndCurrency = [
+    { label: "Tax Type", path: "taxtype"},
+    { label: "Territory Type", path: "territorytype"},
+    { label: "Identity Type", path: "identitytype"},
+    { label: "Currency", path: "currency"},
+  ]; 
 
   const renderSection = (key, title, data) => (
     <>
@@ -82,7 +110,9 @@ function MasterDataController({ children }) {
             {renderSection("master", "Master Data", masterData)}
             {renderSection("location", "Location & Geography", locationData)}
             {renderSection("resource", "Resource & Quantity", resourceData)}
-            {renderSection("company", "Company & Contractor", companyData)}
+            {renderSection("company", "Company", companyData)}
+            {renderSection("contractor", "Contractor", contratorData)}
+            {renderSection("tax", "Tax & Currency" , taxAndCurrency)}
           </ul>
         </nav>
       </div>

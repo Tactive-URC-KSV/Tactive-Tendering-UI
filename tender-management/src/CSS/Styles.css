@@ -911,11 +911,18 @@ label {
 .admin-sidebar{
   background-color: #E3F2FF;
   width: 250px !important;
-  min-height: 100vh;
+  top: 0;
+  height: 100vh;
   position: sticky;
+  overflow-y: auto;
 }
 .admin-content{
   flex: 1;
+  top: 0;
+  height: 100vh;
+  position: sticky;
+  overflow-y: auto;
+
 }
 .cursor-pointer {
   cursor: pointer;
