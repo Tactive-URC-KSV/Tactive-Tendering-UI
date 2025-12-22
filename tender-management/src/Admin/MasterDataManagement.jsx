@@ -1,4 +1,4 @@
-import { ArrowLeft, Edit, Plus, Trash2, X, Ban } from "lucide-react";
+import { ArrowLeft, Edit, Plus, Trash2, X, Ban, RotateCcw } from "lucide-react";
 import { useRegions } from "../Context/RegionsContext";
 import { useEffect, useState } from "react";
 import { useSectors } from "../Context/SectorsContext";
@@ -6,10 +6,10 @@ import { useScope } from "../Context/ScopeContext";
 import { useUom } from "../Context/UomContext";
 import axios from "axios";
 import Select from "react-select";
-
+import { toast } from "react-toastify";
 
 export function Region() {
-    const regions = useRegions();
+    const regions = useRegions(); 
     const [search, setSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
@@ -18,7 +18,8 @@ export function Region() {
         regionName: "",
         active: true,
     });
-    const filteredRegions = regions.filter(r =>
+    const token = sessionStorage.getItem("token");
+    const filteredRegions = regions.filter((r) =>
         r.regionName?.toLowerCase().includes(search.toLowerCase())
     );
     const handleAdd = () => {
@@ -31,35 +32,85 @@ export function Region() {
         setRegion({ ...r });
         setOpenModal(true);
     };
-
-    /* 🗑️ Soft delete (Inactive) */
     const handleDelete = (r) => {
-        // API call here → set active = false
-        r.active = false;
-        // trigger refresh if needed
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/region/edit`,
+                { ...r, active: false },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "Region deactivated");
+                window.location.reload(); 
+            })
+            .catch((e) =>
+                toast.error(e?.response?.data || "Failed to deactivate region")
+            );
     };
 
+    /* 🔄 Reactivate */
+    const handleReactivate = (r) => {
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/region/edit`,
+                { ...r, active: true },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "Region reactivated");
+                window.location.reload();
+            })
+            .catch((e) =>
+                toast.error(e?.response?.data || "Failed to reactivate region")
+            );
+    };
+
+    /* 💾 Save */
     const handleSave = () => {
         if (!region.regionName.trim()) return;
 
         if (isEdit) {
-            console.log("Update region:", region);
+            axios
+                .put(
+                    `${import.meta.env.VITE_API_BASE_URL}/region/edit`,
+                    region,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                )
+                .then((res) => {
+                    toast.success(res.data || "Region updated");
+                    setOpenModal(false);
+                    window.location.reload();
+                })
+                .catch((e) =>
+                    toast.error(e?.response?.data || "Update failed")
+                );
         } else {
-            console.log("Create region:", region);
+            axios
+                .post(
+                    `${import.meta.env.VITE_API_BASE_URL}/addRegion`,
+                    region,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                )
+                .then((res) => {
+                    toast.success(res.data || "Region created");
+                    setOpenModal(false);
+                    window.location.reload();
+                })
+                .catch((e) =>
+                    toast.error(e?.response?.data || "Save failed")
+                );
         }
-
-        setOpenModal(false);
     };
 
+    /* 🪟 Modal */
     const regionForm = () => (
         <div
             className="modal fade show d-block"
-            tabIndex="-1"
             style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
             onClick={() => setOpenModal(false)}
         >
             <div
-                className="modal-dialog modal-md"
+                className="modal-dialog modal-md modal-dialog-centered"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="modal-content rounded-3">
@@ -67,9 +118,7 @@ export function Region() {
                         <p className="fw-bold mb-0">
                             {isEdit ? "Edit Region" : "Add Region"}
                         </p>
-
                         <button
-                            type="button"
                             className="modal-close-btn"
                             onClick={() => setOpenModal(false)}
                         >
@@ -82,12 +131,11 @@ export function Region() {
                             Region Name <span className="text-danger">*</span>
                         </label>
                         <input
-                            type="text"
                             className="form-input w-100"
                             placeholder="Enter region name"
                             value={region.regionName}
                             onChange={(e) =>
-                                setRegion(prev => ({
+                                setRegion((prev) => ({
                                     ...prev,
                                     regionName: e.target.value,
                                 }))
@@ -117,6 +165,7 @@ export function Region() {
 
     return (
         <div className="container-fluid p-4 mt-3">
+            {/* Header */}
             <div className="d-flex justify-content-between">
                 <div className="fw-bold">
                     <ArrowLeft size={16} />
@@ -129,61 +178,66 @@ export function Region() {
                 </button>
             </div>
 
-            <div className="bg-white rounded-3 mt-5" style={{ border: "1px solid #0051973D" }}>
-                <div className="tab-info col-12 h-100">
+            <div
+                className="bg-white rounded-3 mt-5"
+                style={{ border: "1px solid #0051973D" }}
+            >
+                <div className="tab-info">
                     <span className="ms-2">Regions</span>
                 </div>
 
+                {/* Search */}
                 <div className="row ms-1 me-1 mt-3 bg-white p-4 rounded-3">
-                    <div className="col-lg-8 col-md-8 col-sm-6">
-                        <label className="fs-6 text-start">Search</label>
+                    <div className="col-lg-8">
+                        <label>Search</label>
                         <input
-                            type="text"
                             className="form-input w-100"
-                            placeholder="Search by Region Name"
                             value={search}
-                            onChange={e => setSearch(e.target.value)}
+                            onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
 
-                    <div className="col-lg-4 col-md-4 d-flex align-items-center justify-content-center">
-                        <p className="mb-0">
-                            {filteredRegions.length} of {regions.length} Regions
-                        </p>
+                    <div className="col-lg-4 d-flex align-items-center justify-content-center">
+                        {filteredRegions.length} of {regions.length} Regions
                     </div>
                 </div>
 
                 {/* Cards */}
                 <div className="row ms-1 me-1 mt-3">
-                    {filteredRegions.map((r, index) => (
-                        <div className="col-lg-4 col-md-4 mb-3" key={index}>
+                    {filteredRegions.map((r, i) => (
+                        <div className="col-lg-4 mb-3" key={i}>
                             <div className="card shadow-sm h-100">
                                 <div className="card-body">
                                     <div className="d-flex justify-content-between">
                                         <Edit
                                             size={18}
-                                            style={{ cursor: "pointer" }}
                                             onClick={() => handleEdit(r)}
+                                            style={{ cursor: "pointer" }}
                                         />
                                         {r.active ? (
                                             <Trash2
                                                 size={18}
-                                                style={{ cursor: "pointer" }}
                                                 onClick={() => handleDelete(r)}
+                                                style={{ cursor: "pointer" }}
                                             />
                                         ) : (
-                                            <Ban
+                                            <RotateCcw
                                                 size={18}
-                                                className="text-muted"
-                                                title="Inactive"
+                                                onClick={() => handleReactivate(r)}
+                                                className="text-primary"
+                                                style={{ cursor: "pointer" }}
                                             />
                                         )}
                                     </div>
 
-                                    <div className="d-flex justify-content-between mt-2">
+                                    <div className="mt-2 d-flex justify-content-between">
                                         <span>{r.regionName}</span>
                                         <span
-                                            className={`${r.active ? "text-success" : "text-muted"}`}
+                                            className={
+                                                r.active
+                                                    ? "text-success"
+                                                    : "text-muted"
+                                            }
                                         >
                                             {r.active ? "Active" : "Inactive"}
                                         </span>
@@ -201,7 +255,6 @@ export function Region() {
 }
 export function Sectors() {
     const sectors = useSectors();
-
     const [search, setSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
@@ -212,8 +265,10 @@ export function Sectors() {
         active: true,
     });
 
+    const token = sessionStorage.getItem("token");
+
     /* 🔍 Filter */
-    const filteredSectors = sectors.filter(sec =>
+    const filteredSectors = sectors.filter((sec) =>
         sec.sectorName?.toLowerCase().includes(search.toLowerCase())
     );
 
@@ -231,35 +286,86 @@ export function Sectors() {
         setOpenModal(true);
     };
 
-    /* 🗑️ Soft delete → Inactive */
+    /* 🗑️ Deactivate */
     const handleDelete = (sec) => {
-        // API call → set active=false
-        sec.active = false;
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/sector/edit`,
+                { ...sec, active: false },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "Sector deactivated");
+                window.location.reload();
+            })
+            .catch((e) =>
+                toast.error(e?.response?.data || "Failed to deactivate sector")
+            );
     };
 
-    /* 💾 Save (Add / Edit) */
+    /* 🔄 Reactivate */
+    const handleReactivate = (sec) => {
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/sector/edit`,
+                { ...sec, active: true },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "Sector reactivated");
+                window.location.reload();
+            })
+            .catch((e) =>
+                toast.error(e?.response?.data || "Failed to reactivate sector")
+            );
+    };
+
+    /* 💾 Save */
     const handleSave = () => {
         if (!sector.sectorName.trim()) return;
 
         if (isEdit) {
-            console.log("Update sector:", sector);
+            axios
+                .put(
+                    `${import.meta.env.VITE_API_BASE_URL}/sector/edit`,
+                    sector,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                )
+                .then((res) => {
+                    toast.success(res.data || "Sector updated");
+                    setOpenModal(false);
+                    window.location.reload();
+                })
+                .catch((e) =>
+                    toast.error(e?.response?.data || "Update failed")
+                );
         } else {
-            console.log("Create sector:", sector);
+            axios
+                .post(
+                    `${import.meta.env.VITE_API_BASE_URL}/sector`,
+                    sector,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                )
+                .then((res) => {
+                    toast.success(res.data || "Sector created");
+                    setOpenModal(false);
+                    window.location.reload();
+                })
+                .catch((e) =>
+                    toast.error(e?.response?.data || "Save failed")
+                );
         }
-
-        setOpenModal(false);
     };
 
     /* 🪟 Modal */
     const sectorForm = () => (
         <div
             className="modal fade show d-block"
-            tabIndex="-1"
             style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
             onClick={() => setOpenModal(false)}
         >
             <div
-                className="modal-dialog modal-md"
+                className="modal-dialog modal-md modal-dialog-centered"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="modal-content rounded-3">
@@ -268,7 +374,6 @@ export function Sectors() {
                             {isEdit ? "Edit Sector" : "Add Sector"}
                         </p>
                         <button
-                            type="button"
                             className="modal-close-btn"
                             onClick={() => setOpenModal(false)}
                         >
@@ -286,7 +391,7 @@ export function Sectors() {
                             placeholder="Enter sector name"
                             value={sector.sectorName}
                             onChange={(e) =>
-                                setSector(prev => ({
+                                setSector((prev) => ({
                                     ...prev,
                                     sectorName: e.target.value,
                                 }))
@@ -329,78 +434,74 @@ export function Sectors() {
                 </button>
             </div>
 
-            <div className="bg-white rounded-3 mt-5" style={{ border: "1px solid #0051973D" }}>
-                <div className="tab-info col-12 h-100">
+            <div
+                className="bg-white rounded-3 mt-5"
+                style={{ border: "1px solid #0051973D" }}
+            >
+                <div className="tab-info">
                     <span className="ms-2">Sectors</span>
                 </div>
 
                 {/* Search */}
                 <div className="row ms-1 me-1 mt-3 bg-white p-4 rounded-3">
-                    <div className="col-lg-8 col-md-8 col-sm-6">
-                        <label className="fs-6">Search</label>
+                    <div className="col-lg-8">
+                        <label>Search</label>
                         <input
-                            type="text"
                             className="form-input w-100"
-                            placeholder="Search by Sector Name"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
 
-                    <div className="col-lg-4 col-md-4 d-flex align-items-center justify-content-center">
-                        <p className="mb-0">
-                            {filteredSectors.length} of {sectors.length} Sectors
-                        </p>
+                    <div className="col-lg-4 d-flex align-items-center justify-content-center">
+                        {filteredSectors.length} of {sectors.length} Sectors
                     </div>
                 </div>
 
                 {/* Cards */}
                 <div className="row ms-1 me-1 mt-3">
-                    {filteredSectors.length > 0 ? (
-                        filteredSectors.map((sec, index) => (
-                            <div className="col-lg-4 col-md-4 mb-3" key={index}>
-                                <div className="card shadow-sm h-100">
-                                    <div className="card-body">
-                                        <div className="d-flex justify-content-between">
-                                            <Edit
+                    {filteredSectors.map((sec, i) => (
+                        <div className="col-lg-4 mb-3" key={i}>
+                            <div className="card shadow-sm h-100">
+                                <div className="card-body">
+                                    <div className="d-flex justify-content-between">
+                                        <Edit
+                                            size={18}
+                                            onClick={() => handleEdit(sec)}
+                                            style={{ cursor: "pointer" }}
+                                        />
+                                        {sec.active ? (
+                                            <Trash2
                                                 size={18}
+                                                onClick={() => handleDelete(sec)}
                                                 style={{ cursor: "pointer" }}
-                                                onClick={() => handleEdit(sec)}
                                             />
+                                        ) : (
+                                            <RotateCcw
+                                                size={18}
+                                                onClick={() => handleReactivate(sec)}
+                                                className="text-primary"
+                                                style={{ cursor: "pointer" }}
+                                            />
+                                        )}
+                                    </div>
 
-                                            {sec.active ? (
-                                                <Trash2
-                                                    size={18}
-                                                    style={{ cursor: "pointer" }}
-                                                    onClick={() => handleDelete(sec)}
-                                                />
-                                            ) : (
-                                                <Ban
-                                                    size={18}
-                                                    className="text-muted"
-                                                    title="Inactive"
-                                                />
-                                            )}
-                                        </div>
-
-                                        <div className="d-flex justify-content-between mt-2">
-                                            <span>{sec.sectorName}</span>
-                                            <span
-                                                className={`${sec.active ? "text-success" : "text-muted"
-                                                    }`}
-                                            >
-                                                {sec.active ? "Active" : "Inactive"}
-                                            </span>
-                                        </div>
+                                    <div className="mt-2 d-flex justify-content-between">
+                                        <span>{sec.sectorName}</span>
+                                        <span
+                                            className={
+                                                sec.active
+                                                    ? "text-success"
+                                                    : "text-muted"
+                                            }
+                                        >
+                                            {sec.active ? "Active" : "Inactive"}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
-                        ))
-                    ) : (
-                        <div className="d-flex justify-content-center text-muted">
-                            No sectors were found
                         </div>
-                    )}
+                    ))}
                 </div>
 
                 {openModal && sectorForm()}
@@ -410,7 +511,6 @@ export function Sectors() {
 }
 export function Scopes() {
     const scopes = useScope();
-
     const [search, setSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
@@ -421,8 +521,10 @@ export function Scopes() {
         active: true,
     });
 
+    const token = sessionStorage.getItem("token");
+
     /* 🔍 Filter */
-    const filteredScopes = scopes.filter(s =>
+    const filteredScopes = scopes.filter((s) =>
         s.scope?.toLowerCase().includes(search.toLowerCase())
     );
 
@@ -440,10 +542,38 @@ export function Scopes() {
         setOpenModal(true);
     };
 
-    /* 🗑️ Soft delete (Inactive) */
+    /* 🗑️ Deactivate */
     const handleDelete = (s) => {
-        // API call → active=false
-        s.active = false;
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/scope/edit`,
+                { ...s, active: false },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "Scope deactivated");
+                window.location.reload();
+            })
+            .catch((e) =>
+                toast.error(e?.response?.data || "Failed to deactivate scope")
+            );
+    };
+
+    /* 🔄 Reactivate */
+    const handleReactivate = (s) => {
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/scope/edit`,
+                { ...s, active: true },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "Scope reactivated");
+                window.location.reload();
+            })
+            .catch((e) =>
+                toast.error(e?.response?.data || "Failed to reactivate scope")
+            );
     };
 
     /* 💾 Save */
@@ -451,24 +581,47 @@ export function Scopes() {
         if (!scopeData.scope.trim()) return;
 
         if (isEdit) {
-            console.log("Update scope:", scopeData);
+            axios
+                .put(
+                    `${import.meta.env.VITE_API_BASE_URL}/scope/edit`,
+                    scopeData,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                )
+                .then((res) => {
+                    toast.success(res.data || "Scope updated");
+                    setOpenModal(false);
+                    window.location.reload();
+                })
+                .catch((e) =>
+                    toast.error(e?.response?.data || "Update failed")
+                );
         } else {
-            console.log("Create scope:", scopeData);
+            axios
+                .post(
+                    `${import.meta.env.VITE_API_BASE_URL}/scope`,
+                    scopeData,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                )
+                .then((res) => {
+                    toast.success(res.data || "Scope created");
+                    setOpenModal(false);
+                    window.location.reload();
+                })
+                .catch((e) =>
+                    toast.error(e?.response?.data || "Save failed")
+                );
         }
-
-        setOpenModal(false);
     };
 
     /* 🪟 Modal */
     const scopeForm = () => (
         <div
             className="modal fade show d-block"
-            tabIndex="-1"
             style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
             onClick={() => setOpenModal(false)}
         >
             <div
-                className="modal-dialog modal-md"
+                className="modal-dialog modal-md modal-dialog-centered"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="modal-content rounded-3">
@@ -476,9 +629,7 @@ export function Scopes() {
                         <p className="fw-bold mb-0">
                             {isEdit ? "Edit Scope" : "Add Scope"}
                         </p>
-
                         <button
-                            type="button"
                             className="modal-close-btn"
                             onClick={() => setOpenModal(false)}
                         >
@@ -496,7 +647,7 @@ export function Scopes() {
                             placeholder="Enter scope name"
                             value={scopeData.scope}
                             onChange={(e) =>
-                                setScopeData(prev => ({
+                                setScopeData((prev) => ({
                                     ...prev,
                                     scope: e.target.value,
                                 }))
@@ -530,7 +681,7 @@ export function Scopes() {
             <div className="d-flex justify-content-between">
                 <div className="fw-bold">
                     <ArrowLeft size={16} />
-                    <span className="ms-2">Scope of packages</span>
+                    <span className="ms-2">Scope of Packages</span>
                 </div>
 
                 <button className="btn action-button" onClick={handleAdd}>
@@ -543,77 +694,70 @@ export function Scopes() {
                 className="bg-white rounded-3 mt-5"
                 style={{ border: "1px solid #0051973D" }}
             >
-                <div className="tab-info col-12 h-100">
+                <div className="tab-info">
                     <span className="ms-2">Scope of Packages</span>
                 </div>
 
                 {/* Search */}
                 <div className="row ms-1 me-1 mt-3 bg-white p-4 rounded-3">
-                    <div className="col-lg-8 col-md-8 col-sm-6">
-                        <label className="fs-6">Search</label>
+                    <div className="col-lg-8">
+                        <label>Search</label>
                         <input
-                            type="text"
                             className="form-input w-100"
-                            placeholder="Search by Scope Name"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
 
-                    <div className="col-lg-4 col-md-4 d-flex align-items-center justify-content-center">
-                        <p className="mb-0">
-                            {filteredScopes.length} of {scopes.length} Scope of packages
-                        </p>
+                    <div className="col-lg-4 d-flex align-items-center justify-content-center">
+                        {filteredScopes.length} of {scopes.length} Scope of packages
                     </div>
                 </div>
 
                 {/* Cards */}
                 <div className="row ms-1 me-1 mt-3">
-                    {filteredScopes.length > 0 ? (
-                        filteredScopes.map((s, index) => (
-                            <div className="col-lg-4 col-md-4 mb-3" key={index}>
-                                <div className="card shadow-sm h-100">
-                                    <div className="card-body">
-                                        <div className="d-flex justify-content-between">
-                                            <Edit
+                    {filteredScopes.map((s, i) => (
+                        <div className="col-lg-4 mb-3" key={i}>
+                            <div className="card shadow-sm h-100">
+                                <div className="card-body">
+                                    <div className="d-flex justify-content-between">
+                                        <Edit
+                                            size={18}
+                                            onClick={() => handleEdit(s)}
+                                            style={{ cursor: "pointer" }}
+                                        />
+                                        {s.active ? (
+                                            <Trash2
                                                 size={18}
+                                                onClick={() => handleDelete(s)}
                                                 style={{ cursor: "pointer" }}
-                                                onClick={() => handleEdit(s)}
                                             />
+                                        ) : (
+                                            <RotateCcw
+                                                size={18}
+                                                onClick={() => handleReactivate(s)}
+                                                className="text-primary"
+                                                style={{ cursor: "pointer" }}
+                                            />
+                                        )}
+                                    </div>
 
-                                            {s.active ? (
-                                                <Trash2
-                                                    size={18}
-                                                    style={{ cursor: "pointer" }}
-                                                    onClick={() => handleDelete(s)}
-                                                />
-                                            ) : (
-                                                <Ban
-                                                    size={18}
-                                                    className="text-muted"
-                                                    title="Inactive"
-                                                />
-                                            )}
-                                        </div>
-
-                                        <div className="d-flex justify-content-between mt-2">
-                                            <span>{s.scope}</span>
-                                            <span
-                                                className={`${s.active ? "text-success" : "text-muted"
-                                                    }`}
-                                            >
-                                                {s.active ? "Active" : "Inactive"}
-                                            </span>
-                                        </div>
+                                    <div className="mt-2 d-flex justify-content-between">
+                                        <span>{s.scope}</span>
+                                        <span
+                                            className={
+                                                s.active
+                                                    ? "text-success"
+                                                    : "text-muted"
+                                            }
+                                        >
+                                            {s.active ? "Active" : "Inactive"}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
-                        ))
-                    ) : (
-                        <div className="d-flex justify-content-center text-muted">
-                            No Scope of package were found
                         </div>
-                    )}
+                    ))}
                 </div>
 
                 {openModal && scopeForm()}
@@ -635,10 +779,13 @@ export function UOM() {
         active: true,
     });
 
+    const token = sessionStorage.getItem("token");
+
     /* 🔍 Filter (Name OR Code) */
-    const filteredUnits = uoms.filter(uom =>
-        uom.uomName?.toLowerCase().includes(search.toLowerCase()) ||
-        uom.uomCode?.toLowerCase().includes(search.toLowerCase())
+    const filteredUnits = uoms.filter(
+        (uom) =>
+            uom.uomName?.toLowerCase().includes(search.toLowerCase()) ||
+            uom.uomCode?.toLowerCase().includes(search.toLowerCase())
     );
 
     /* ➕ Add */
@@ -655,10 +802,38 @@ export function UOM() {
         setOpenModal(true);
     };
 
-    /* 🗑️ Soft delete → Inactive */
+    /* 🗑️ Deactivate */
     const handleDelete = (uom) => {
-        // API call → active=false
-        uom.active = false;
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/uom/edit`,
+                { ...uom, active: false },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "UOM deactivated");
+                window.location.reload();
+            })
+            .catch((e) =>
+                toast.error(e?.response?.data || "Failed to deactivate UOM")
+            );
+    };
+
+    /* 🔄 Reactivate */
+    const handleReactivate = (uom) => {
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/uom/edit`,
+                { ...uom, active: true },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "UOM reactivated");
+                window.location.reload();
+            })
+            .catch((e) =>
+                toast.error(e?.response?.data || "Failed to reactivate UOM")
+            );
     };
 
     /* 💾 Save */
@@ -666,24 +841,47 @@ export function UOM() {
         if (!uomData.uomName.trim() || !uomData.uomCode.trim()) return;
 
         if (isEdit) {
-            console.log("Update UOM:", uomData);
+            axios
+                .put(
+                    `${import.meta.env.VITE_API_BASE_URL}/uom/edit`,
+                    uomData,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                )
+                .then((res) => {
+                    toast.success(res.data || "UOM updated");
+                    setOpenModal(false);
+                    window.location.reload();
+                })
+                .catch((e) =>
+                    toast.error(e?.response?.data || "Update failed")
+                );
         } else {
-            console.log("Create UOM:", uomData);
+            axios
+                .post(
+                    `${import.meta.env.VITE_API_BASE_URL}/uom`,
+                    uomData,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                )
+                .then((res) => {
+                    toast.success(res.data || "UOM created");
+                    setOpenModal(false);
+                    window.location.reload();
+                })
+                .catch((e) =>
+                    toast.error(e?.response?.data || "Save failed")
+                );
         }
-
-        setOpenModal(false);
     };
 
     /* 🪟 Modal */
     const uomForm = () => (
         <div
             className="modal fade show d-block"
-            tabIndex="-1"
             style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
             onClick={() => setOpenModal(false)}
         >
             <div
-                className="modal-dialog modal-md"
+                className="modal-dialog modal-md modal-dialog-centered"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="modal-content rounded-3">
@@ -691,9 +889,7 @@ export function UOM() {
                         <p className="fw-bold mb-0">
                             {isEdit ? "Edit UOM" : "Add UOM"}
                         </p>
-
                         <button
-                            type="button"
                             className="modal-close-btn"
                             onClick={() => setOpenModal(false)}
                         >
@@ -707,12 +903,11 @@ export function UOM() {
                                 UOM Name <span className="text-danger">*</span>
                             </label>
                             <input
-                                type="text"
                                 className="form-input w-100"
                                 placeholder="Enter UOM name"
                                 value={uomData.uomName}
                                 onChange={(e) =>
-                                    setUomData(prev => ({
+                                    setUomData((prev) => ({
                                         ...prev,
                                         uomName: e.target.value,
                                     }))
@@ -725,12 +920,11 @@ export function UOM() {
                                 UOM Code <span className="text-danger">*</span>
                             </label>
                             <input
-                                type="text"
                                 className="form-input w-100"
                                 placeholder="Enter UOM code"
                                 value={uomData.uomCode}
                                 onChange={(e) =>
-                                    setUomData(prev => ({
+                                    setUomData((prev) => ({
                                         ...prev,
                                         uomCode: e.target.value.toUpperCase(),
                                     }))
@@ -777,17 +971,19 @@ export function UOM() {
                 </button>
             </div>
 
-            <div className="bg-white rounded-3 mt-5" style={{ border: "1px solid #0051973D" }}>
-                <div className="tab-info col-12 h-100">
+            <div
+                className="bg-white rounded-3 mt-5"
+                style={{ border: "1px solid #0051973D" }}
+            >
+                <div className="tab-info">
                     <span className="ms-2">Unit of Measurements</span>
                 </div>
 
                 {/* Search */}
                 <div className="row ms-1 me-1 mt-3 bg-white p-4 rounded-3">
-                    <div className="col-lg-8 col-md-8 col-sm-6">
-                        <label className="fs-6">Search</label>
+                    <div className="col-lg-8">
+                        <label>Search</label>
                         <input
-                            type="text"
                             className="form-input w-100"
                             placeholder="Search by UOM Name or Code"
                             value={search}
@@ -795,62 +991,57 @@ export function UOM() {
                         />
                     </div>
 
-                    <div className="col-lg-4 col-md-4 d-flex align-items-center justify-content-center">
-                        <p className="mb-0">
-                            {filteredUnits.length} of {uoms.length} UOM&apos;s
-                        </p>
+                    <div className="col-lg-4 d-flex align-items-center justify-content-center">
+                        {filteredUnits.length} of {uoms.length} UOM&apos;s
                     </div>
                 </div>
 
                 {/* Cards */}
                 <div className="row ms-1 me-1 mt-3">
-                    {filteredUnits.length > 0 ? (
-                        filteredUnits.map((uom, index) => (
-                            <div className="col-lg-4 col-md-4 mb-3" key={index}>
-                                <div className="card shadow-sm h-100">
-                                    <div className="card-body">
-                                        <div className="d-flex justify-content-between">
-                                            <Edit
+                    {filteredUnits.map((uom, i) => (
+                        <div className="col-lg-4 mb-3" key={i}>
+                            <div className="card shadow-sm h-100">
+                                <div className="card-body">
+                                    <div className="d-flex justify-content-between">
+                                        <Edit
+                                            size={18}
+                                            onClick={() => handleEdit(uom)}
+                                            style={{ cursor: "pointer" }}
+                                        />
+                                        {uom.active ? (
+                                            <Trash2
                                                 size={18}
+                                                onClick={() => handleDelete(uom)}
                                                 style={{ cursor: "pointer" }}
-                                                onClick={() => handleEdit(uom)}
                                             />
+                                        ) : (
+                                            <RotateCcw
+                                                size={18}
+                                                onClick={() => handleReactivate(uom)}
+                                                className="text-primary"
+                                                style={{ cursor: "pointer" }}
+                                            />
+                                        )}
+                                    </div>
 
-                                            {uom.active ? (
-                                                <Trash2
-                                                    size={18}
-                                                    style={{ cursor: "pointer" }}
-                                                    onClick={() => handleDelete(uom)}
-                                                />
-                                            ) : (
-                                                <Ban
-                                                    size={18}
-                                                    className="text-muted"
-                                                    title="Inactive"
-                                                />
-                                            )}
-                                        </div>
-
-                                        <div className="d-flex justify-content-between mt-2">
-                                            <span>
-                                                {uom.uomName} ({uom.uomCode})
-                                            </span>
-                                            <span
-                                                className={`${uom.active ? "text-success" : "text-muted"
-                                                    }`}
-                                            >
-                                                {uom.active ? "Active" : "Inactive"}
-                                            </span>
-                                        </div>
+                                    <div className="mt-2 d-flex justify-content-between">
+                                        <span>
+                                            {uom.uomName} ({uom.uomCode})
+                                        </span>
+                                        <span
+                                            className={
+                                                uom.active
+                                                    ? "text-success"
+                                                    : "text-muted"
+                                            }
+                                        >
+                                            {uom.active ? "Active" : "Inactive"}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
-                        ))
-                    ) : (
-                        <div className="d-flex justify-content-center text-muted">
-                            No Unit of Measurements were found
                         </div>
-                    )}
+                    ))}
                 </div>
 
                 {openModal && uomForm()}
@@ -870,56 +1061,170 @@ export function ListOfApprovals() {
         active: true,
     });
 
+    const token = sessionStorage.getItem("token");
+
+    /* 🔹 Fetch */
+    const fetchApprovals = () => {
+        axios
+            .get(`${import.meta.env.VITE_API_BASE_URL}/listOfApprovals`, {
+                headers: { Authorization: `Bearer ${token}` },
+            })
+            .then((r) => {
+                if (r.status === 200) setListOfApprovals(r.data || []);
+            })
+            .catch(() => toast.error("Failed to load approval documents"));
+    };
+
     useEffect(() => {
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/listOfApprovals`, {
-            headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` },
-        }).then(r => setListOfApprovals(r.data || []));
+        fetchApprovals();
     }, []);
 
-    const filteredDoc = listOfApprovals.filter(d =>
+    /* 🔍 Filter */
+    const filteredDoc = listOfApprovals.filter((d) =>
         d.documentName?.toLowerCase().includes(search.toLowerCase())
     );
 
+    /* ➕ Add */
     const handleAdd = () => {
         setIsEdit(false);
         setApproval({ id: null, documentName: "", active: true });
         setOpenModal(true);
     };
 
+    /* ✏️ Edit */
     const handleEdit = (doc) => {
         setIsEdit(true);
         setApproval({ ...doc });
         setOpenModal(true);
     };
 
+    /* 🗑️ Deactivate */
     const handleDelete = (doc) => {
-        doc.active = false; 
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/listOfApprovals/edit`,
+                { ...doc, active: false },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((r) => {
+                toast.success(r.data || "Approval document deactivated");
+                fetchApprovals();
+            })
+            .catch((e) =>
+                toast.error(
+                    e?.response?.data || "Failed to deactivate approval"
+                )
+            );
     };
 
+    /* 🔄 Reactivate */
+    const handleReactivate = (doc) => {
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/listOfApprovals/edit`,
+                { ...doc, active: true },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((r) => {
+                toast.success(r.data || "Approval document reactivated");
+                fetchApprovals();
+            })
+            .catch((e) =>
+                toast.error(
+                    e?.response?.data || "Failed to reactivate approval"
+                )
+            );
+    };
+
+    /* 💾 Save */
     const handleSave = () => {
         if (!approval.documentName.trim()) return;
-        setOpenModal(false);
+
+        if (isEdit) {
+            axios
+                .put(
+                    `${import.meta.env.VITE_API_BASE_URL}/listOfApprovals/edit`,
+                    approval,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                )
+                .then((r) => {
+                    toast.success(r.data || "Approval updated");
+                    fetchApprovals();
+                    setOpenModal(false);
+                })
+                .catch((e) =>
+                    toast.error(e?.response?.data || "Update failed")
+                );
+        } else {
+            axios
+                .post(
+                    `${import.meta.env.VITE_API_BASE_URL}/listOfApprovals`,
+                    approval,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                )
+                .then((r) => {
+                    toast.success(r.data || "Approval created");
+                    fetchApprovals();
+                    setOpenModal(false);
+                })
+                .catch((e) =>
+                    toast.error(e?.response?.data || "Save failed")
+                );
+        }
     };
 
+    /* 🪟 Modal */
     const modal = () => (
-        <div className="modal fade show d-block" style={{ background: "rgba(0,0,0,0.5)" }} onClick={() => setOpenModal(false)}>
-            <div className="modal-dialog modal-md" onClick={e => e.stopPropagation()}>
+        <div
+            className="modal fade show d-block"
+            style={{ background: "rgba(0,0,0,0.5)" }}
+            onClick={() => setOpenModal(false)}
+        >
+            <div
+                className="modal-dialog modal-md modal-dialog-centered"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <div className="modal-content rounded-3">
                     <div className="modal-header d-flex justify-content-between">
-                        <p className="fw-bold mb-0">{isEdit ? "Edit Approval" : "Add Approval"}</p>
-                        <button className="modal-close-btn" onClick={() => setOpenModal(false)}><X /></button>
+                        <p className="fw-bold mb-0">
+                            {isEdit ? "Edit Approval" : "Add Approval"}
+                        </p>
+                        <button
+                            className="modal-close-btn"
+                            onClick={() => setOpenModal(false)}
+                        >
+                            <X />
+                        </button>
                     </div>
+
                     <div className="modal-body">
-                        <label className="projectform d-block">Document Name *</label>
+                        <label className="projectform d-block">
+                            Document Name <span className="text-danger">*</span>
+                        </label>
                         <input
                             className="form-input w-100"
                             value={approval.documentName}
-                            onChange={e => setApproval(p => ({ ...p, documentName: e.target.value }))}
+                            onChange={(e) =>
+                                setApproval((p) => ({
+                                    ...p,
+                                    documentName: e.target.value,
+                                }))
+                            }
                         />
                     </div>
+
                     <div className="modal-footer">
-                        <button className="btn btn-secondary" onClick={() => setOpenModal(false)}>Cancel</button>
-                        <button className="btn btn-primary" onClick={handleSave} disabled={!approval.documentName.trim()}>
+                        <button
+                            className="btn btn-secondary"
+                            onClick={() => setOpenModal(false)}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            className="btn btn-primary"
+                            onClick={handleSave}
+                            disabled={!approval.documentName.trim()}
+                        >
                             {isEdit ? "Update" : "Save"}
                         </button>
                     </div>
@@ -930,38 +1235,77 @@ export function ListOfApprovals() {
 
     return (
         <div className="container-fluid p-4 mt-3">
+            {/* Header */}
             <div className="d-flex justify-content-between">
-                <div className="fw-bold"><ArrowLeft size={16} /> <span className="ms-2">List Of Approvals</span></div>
-                <button className="btn action-button" onClick={handleAdd}><Plus size={16} /> Add new approval doc</button>
+                <div className="fw-bold">
+                    <ArrowLeft size={16} />
+                    <span className="ms-2">List Of Approvals</span>
+                </div>
+                <button className="btn action-button" onClick={handleAdd}>
+                    <Plus size={16} /> Add new approval doc
+                </button>
             </div>
 
-            <div className="bg-white rounded-3 mt-5" style={{ border: "1px solid #0051973D" }}>
-                <div className="tab-info"><span className="ms-2">List of Approval Documents</span></div>
+            <div
+                className="bg-white rounded-3 mt-5"
+                style={{ border: "1px solid #0051973D" }}
+            >
+                <div className="tab-info">
+                    <span className="ms-2">List of Approval Documents</span>
+                </div>
 
+                {/* Search */}
                 <div className="row ms-1 me-1 mt-3 bg-white p-4 rounded-3">
                     <div className="col-lg-8">
                         <label>Search</label>
-                        <input className="form-input w-100" value={search} onChange={e => setSearch(e.target.value)} />
+                        <input
+                            className="form-input w-100"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
                     </div>
                     <div className="col-lg-4 d-flex align-items-center justify-content-center">
                         {filteredDoc.length} of {listOfApprovals.length} documents
                     </div>
                 </div>
 
+                {/* Cards */}
                 <div className="row ms-1 me-1 mt-3">
                     {filteredDoc.map((doc, i) => (
                         <div className="col-lg-4 mb-3" key={i}>
                             <div className="card shadow-sm h-100">
                                 <div className="card-body">
                                     <div className="d-flex justify-content-between">
-                                        <Edit size={18} onClick={() => handleEdit(doc)} style={{ cursor: "pointer" }} />
-                                        {doc.active
-                                            ? <Trash2 size={18} onClick={() => handleDelete(doc)} style={{ cursor: "pointer" }} />
-                                            : <Ban size={18} className="text-muted" />}
+                                        <Edit
+                                            size={18}
+                                            onClick={() => handleEdit(doc)}
+                                            style={{ cursor: "pointer" }}
+                                        />
+                                        {doc.active ? (
+                                            <Trash2
+                                                size={18}
+                                                onClick={() => handleDelete(doc)}
+                                                style={{ cursor: "pointer" }}
+                                            />
+                                        ) : (
+                                            <RotateCcw
+                                                size={18}
+                                                onClick={() => handleReactivate(doc)}
+                                                className="text-primary"
+                                                style={{ cursor: "pointer" }}
+                                            />
+                                        )}
                                     </div>
+
                                     <div className="mt-2 d-flex justify-content-between">
                                         <span>{doc.documentName}</span>
-                                        <span className={doc.active ? "text-success" : "text-muted"}>
+                                        <span
+                                            className={
+                                                doc.active
+                                                    ? "text-success"
+                                                    : "text-muted"
+                                            }
+                                        >
                                             {doc.active ? "Active" : "Inactive"}
                                         </span>
                                     </div>
@@ -970,6 +1314,7 @@ export function ListOfApprovals() {
                         </div>
                     ))}
                 </div>
+
                 {openModal && modal()}
             </div>
         </div>
@@ -987,19 +1332,24 @@ export function CostCodeType() {
         active: true,
     });
 
-    /* 🔹 Fetch Cost Code Types */
-    useEffect(() => {
+    const token = sessionStorage.getItem("token");
+
+    /* 🔹 Fetch */
+    const fetchCostCodeTypes = () => {
         axios
             .get(`${import.meta.env.VITE_API_BASE_URL}/costCodeTypes`, {
-                headers: {
-                    Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-                },
+                headers: { Authorization: `Bearer ${token}` },
             })
             .then((r) => {
                 if (r.status === 200) {
                     setCostCodeTypes(r.data || []);
                 }
-            });
+            })
+            .catch(() => toast.error("Failed to load cost code types"));
+    };
+
+    useEffect(() => {
+        fetchCostCodeTypes();
     }, []);
 
     /* 🔍 Search */
@@ -1021,11 +1371,42 @@ export function CostCodeType() {
         setOpenModal(true);
     };
 
-    /* 🗑️ Soft delete → Inactive */
+    /* 🗑️ Deactivate */
     const handleDelete = (t) => {
-        // API call → active=false
-        t.active = false;
-        setCostCodeTypes([...costCodeTypes]); // force re-render
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/costCodeTypes/edit`,
+                { ...t, active: false },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "Cost code type deactivated");
+                fetchCostCodeTypes();
+            })
+            .catch((e) =>
+                toast.error(
+                    e?.response?.data || "Failed to deactivate cost code type"
+                )
+            );
+    };
+
+    /* 🔄 Reactivate */
+    const handleReactivate = (t) => {
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/costCodeTypes/edit`,
+                { ...t, active: true },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "Cost code type reactivated");
+                fetchCostCodeTypes();
+            })
+            .catch((e) =>
+                toast.error(
+                    e?.response?.data || "Failed to reactivate cost code type"
+                )
+            );
     };
 
     /* 💾 Save */
@@ -1033,36 +1414,57 @@ export function CostCodeType() {
         if (!type.costCodeName.trim()) return;
 
         if (isEdit) {
-            console.log("Update Cost Code Type:", type);
-            // PUT API
+            axios
+                .put(
+                    `${import.meta.env.VITE_API_BASE_URL}/costCodeTypes/edit`,
+                    type,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                )
+                .then((res) => {
+                    toast.success(res.data || "Cost code type updated");
+                    fetchCostCodeTypes();
+                    setOpenModal(false);
+                })
+                .catch((e) =>
+                    toast.error(e?.response?.data || "Update failed")
+                );
         } else {
-            console.log("Create Cost Code Type:", type);
-            // POST API
+            axios
+                .post(
+                    `${import.meta.env.VITE_API_BASE_URL}/costCodeTypes`,
+                    type,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                )
+                .then((res) => {
+                    toast.success(res.data || "Cost code type created");
+                    fetchCostCodeTypes();
+                    setOpenModal(false);
+                })
+                .catch((e) =>
+                    toast.error(e?.response?.data || "Save failed")
+                );
         }
-
-        setOpenModal(false);
     };
 
     /* 🪟 Modal */
     const typeForm = () => (
         <div
             className="modal fade show d-block"
-            tabIndex="-1"
             style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
             onClick={() => setOpenModal(false)}
         >
             <div
-                className="modal-dialog modal-md"
+                className="modal-dialog modal-md modal-dialog-centered"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="modal-content rounded-3">
                     <div className="modal-header d-flex justify-content-between">
                         <p className="fw-bold mb-0">
-                            {isEdit ? "Edit Cost Code Type" : "Add Cost Code Type"}
+                            {isEdit
+                                ? "Edit Cost Code Type"
+                                : "Add Cost Code Type"}
                         </p>
-
                         <button
-                            type="button"
                             className="modal-close-btn"
                             onClick={() => setOpenModal(false)}
                         >
@@ -1127,16 +1529,15 @@ export function CostCodeType() {
                 className="bg-white rounded-3 mt-5"
                 style={{ border: "1px solid #0051973D" }}
             >
-                <div className="tab-info col-12 h-100">
+                <div className="tab-info">
                     <span className="ms-2">Cost Code Type</span>
                 </div>
 
                 {/* Search */}
                 <div className="row ms-1 me-1 mt-3 bg-white p-4 rounded-3">
-                    <div className="col-lg-8 col-md-8 col-sm-6">
-                        <label className="fs-6">Search</label>
+                    <div className="col-lg-8">
+                        <label>Search</label>
                         <input
-                            type="text"
                             className="form-input w-100"
                             placeholder="Search by Cost Code Name"
                             value={search}
@@ -1144,61 +1545,55 @@ export function CostCodeType() {
                         />
                     </div>
 
-                    <div className="col-lg-4 col-md-4 d-flex align-items-center justify-content-center">
-                        <p className="mb-0">
-                            {filteredTypes.length} of {costCodeTypes.length} Cost Code Types
-                        </p>
+                    <div className="col-lg-4 d-flex align-items-center justify-content-center">
+                        {filteredTypes.length} of {costCodeTypes.length} Cost Code Types
                     </div>
                 </div>
 
                 {/* Cards */}
                 <div className="row ms-1 me-1 mt-3">
-                    {filteredTypes.length > 0 ? (
-                        filteredTypes.map((t, index) => (
-                            <div className="col-lg-4 col-md-4 mb-3" key={index}>
-                                <div className="card shadow-sm h-100">
-                                    <div className="card-body">
-                                        <div className="d-flex justify-content-between">
-                                            <Edit
+                    {filteredTypes.map((t, i) => (
+                        <div className="col-lg-4 mb-3" key={i}>
+                            <div className="card shadow-sm h-100">
+                                <div className="card-body">
+                                    <div className="d-flex justify-content-between">
+                                        <Edit
+                                            size={18}
+                                            onClick={() => handleEdit(t)}
+                                            style={{ cursor: "pointer" }}
+                                        />
+                                        {t.active ? (
+                                            <Trash2
                                                 size={18}
+                                                onClick={() => handleDelete(t)}
                                                 style={{ cursor: "pointer" }}
-                                                onClick={() => handleEdit(t)}
                                             />
+                                        ) : (
+                                            <RotateCcw
+                                                size={18}
+                                                onClick={() => handleReactivate(t)}
+                                                className="text-primary"
+                                                style={{ cursor: "pointer" }}
+                                            />
+                                        )}
+                                    </div>
 
-                                            {t.active ? (
-                                                <Trash2
-                                                    size={18}
-                                                    style={{ cursor: "pointer" }}
-                                                    onClick={() => handleDelete(t)}
-                                                />
-                                            ) : (
-                                                <Ban
-                                                    size={18}
-                                                    className="text-muted"
-                                                    title="Inactive"
-                                                />
-                                            )}
-                                        </div>
-
-                                        <div className="d-flex justify-content-between mt-2">
-                                            <span>{t.costCodeName}</span>
-                                            <span
-                                                className={
-                                                    t.active ? "text-success" : "text-muted"
-                                                }
-                                            >
-                                                {t.active ? "Active" : "Inactive"}
-                                            </span>
-                                        </div>
+                                    <div className="mt-2 d-flex justify-content-between">
+                                        <span>{t.costCodeName}</span>
+                                        <span
+                                            className={
+                                                t.active
+                                                    ? "text-success"
+                                                    : "text-muted"
+                                            }
+                                        >
+                                            {t.active ? "Active" : "Inactive"}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
-                        ))
-                    ) : (
-                        <div className="d-flex justify-content-center text-muted">
-                            No Cost Code Types were found
                         </div>
-                    )}
+                    ))}
                 </div>
 
                 {openModal && typeForm()}
@@ -1222,40 +1617,42 @@ export function CostCodeActivity() {
         active: true,
     });
 
-    /* 🔹 Fetch Cost Code Activities */
-    useEffect(() => {
+    const token = sessionStorage.getItem("token");
+
+    /* 🔹 Fetch Activities */
+    const fetchActivities = () => {
         axios
             .get(`${import.meta.env.VITE_API_BASE_URL}/activityGroups`, {
-                headers: {
-                    Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-                },
+                headers: { Authorization: `Bearer ${token}` },
             })
-            .then(r => {
-                if (r.status === 200) {
-                    setActivityGroups(r.data || []);
-                }
-            });
-    }, []);
+            .then((r) => {
+                if (r.status === 200) setActivityGroups(r.data || []);
+            })
+            .catch(() => toast.error("Failed to load cost code activities"));
+    };
 
-    /* 🔹 Fetch Cost Code Types (for dropdown) */
-    useEffect(() => {
+    /* 🔹 Fetch Cost Code Types */
+    const fetchCostCodeTypes = () => {
         axios
             .get(`${import.meta.env.VITE_API_BASE_URL}/costCodeTypes`, {
-                headers: {
-                    Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-                },
+                headers: { Authorization: `Bearer ${token}` },
             })
-            .then(r => {
-                if (r.status === 200) {
-                    setCostCodeTypes(r.data || []);
-                }
-            });
+            .then((r) => {
+                if (r.status === 200) setCostCodeTypes(r.data || []);
+            })
+            .catch(() => toast.error("Failed to load cost code types"));
+    };
+
+    useEffect(() => {
+        fetchActivities();
+        fetchCostCodeTypes();
     }, []);
 
     /* 🔍 Search */
-    const filteredActivity = activityGroups.filter(a =>
-        a.activityName?.toLowerCase().includes(search.toLowerCase()) ||
-        a.activityCode?.toLowerCase().includes(search.toLowerCase())
+    const filteredActivity = activityGroups.filter(
+        (a) =>
+            a.activityName?.toLowerCase().includes(search.toLowerCase()) ||
+            a.activityCode?.toLowerCase().includes(search.toLowerCase())
     );
 
     /* ➕ Add */
@@ -1276,7 +1673,7 @@ export function CostCodeActivity() {
         setIsEdit(true);
         setActivity({
             id: a.id,
-            costCodeTypeId: a.costCodeTypeId,
+            costCodeTypeId: a.costCodeType?.id || a.costCodeTypeId,
             activityCode: a.activityCode,
             activityName: a.activityName,
             active: a.active,
@@ -1284,11 +1681,38 @@ export function CostCodeActivity() {
         setOpenModal(true);
     };
 
-    /* 🗑️ Soft Delete → Inactive */
+    /* 🗑️ Deactivate */
     const handleDelete = (a) => {
-        // API call → set active=false
-        a.active = false;
-        setActivityGroups([...activityGroups]);
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/activityGroups/edit`,
+                { ...a, active: false },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "Activity deactivated");
+                fetchActivities();
+            })
+            .catch((e) =>
+                toast.error(e?.response?.data || "Failed to deactivate activity")
+            );
+    };
+
+    /* 🔄 Reactivate */
+    const handleReactivate = (a) => {
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/activityGroups/edit`,
+                { ...a, active: true },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "Activity reactivated");
+                fetchActivities();
+            })
+            .catch((e) =>
+                toast.error(e?.response?.data || "Failed to reactivate activity")
+            );
     };
 
     /* 💾 Save */
@@ -1297,46 +1721,72 @@ export function CostCodeActivity() {
             !activity.costCodeTypeId ||
             !activity.activityCode.trim() ||
             !activity.activityName.trim()
-        ) {
+        )
             return;
-        }
+
+        const payload = {
+            ...activity,
+            costCodeTypeId: activity.costCodeTypeId,
+        };
 
         if (isEdit) {
-            console.log("Update activity:", activity);
-            // PUT API
+            axios
+                .put(
+                    `${import.meta.env.VITE_API_BASE_URL}/activityGroups/edit`,
+                    payload,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                )
+                .then((res) => {
+                    toast.success(res.data || "Activity updated");
+                    fetchActivities();
+                    setOpenModal(false);
+                })
+                .catch((e) =>
+                    toast.error(e?.response?.data || "Update failed")
+                );
         } else {
-            console.log("Create activity:", activity);
-            // POST API
+            axios
+                .post(
+                    `${import.meta.env.VITE_API_BASE_URL}/activityGroups`,
+                    payload,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                )
+                .then((res) => {
+                    toast.success(res.data || "Activity created");
+                    fetchActivities();
+                    setOpenModal(false);
+                })
+                .catch((e) =>
+                    toast.error(e?.response?.data || "Save failed")
+                );
         }
-
-        setOpenModal(false);
     };
-    const costCodeTypeOptions = costCodeTypes.map(type => ({
-        value: type.id,
-        label: type.costCodeName,
-    }));
 
+    /* React-Select options */
+    const costCodeTypeOptions = costCodeTypes.map((t) => ({
+        value: t.id,
+        label: t.costCodeName,
+    }));
 
     /* 🪟 Modal */
     const activityForm = () => (
         <div
             className="modal fade show d-block"
-            tabIndex="-1"
             style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
             onClick={() => setOpenModal(false)}
         >
             <div
-                className="modal-dialog modal-md"
+                className="modal-dialog modal-md modal-dialog-centered"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="modal-content rounded-3">
                     <div className="modal-header d-flex justify-content-between">
                         <p className="fw-bold mb-0">
-                            {isEdit ? "Edit Cost Code Activity" : "Add Cost Code Activity"}
+                            {isEdit
+                                ? "Edit Cost Code Activity"
+                                : "Add Cost Code Activity"}
                         </p>
-
                         <button
-                            type="button"
                             className="modal-close-btn"
                             onClick={() => setOpenModal(false)}
                         >
@@ -1345,26 +1795,24 @@ export function CostCodeActivity() {
                     </div>
 
                     <div className="modal-body">
-
-                        {/* Cost Code Type - React Select */}
-                        <div className="position-relative mb-3">
+                        {/* Cost Code Type */}
+                        <div className="mb-3">
                             <label className="projectform-select d-block">
                                 Cost Code Type <span className="text-danger">*</span>
                             </label>
                             <Select
                                 options={costCodeTypeOptions}
                                 placeholder="Select Cost Code Type"
-                                className="w-100"
                                 classNamePrefix="select"
                                 isClearable
-                                isDisabled={isEdit}   // lock on edit
+                                isDisabled={isEdit}
                                 value={costCodeTypeOptions.find(
-                                    opt => opt.value === activity.costCodeTypeId
+                                    (o) => o.value === activity.costCodeTypeId
                                 )}
-                                onChange={(option) =>
-                                    setActivity(prev => ({
-                                        ...prev,
-                                        costCodeTypeId: option ? option.value : "",
+                                onChange={(opt) =>
+                                    setActivity((p) => ({
+                                        ...p,
+                                        costCodeTypeId: opt ? opt.value : "",
                                     }))
                                 }
                             />
@@ -1376,13 +1824,11 @@ export function CostCodeActivity() {
                                 Activity Code <span className="text-danger">*</span>
                             </label>
                             <input
-                                type="text"
                                 className="form-input w-100"
-                                placeholder="Enter activity code"
                                 value={activity.activityCode}
                                 onChange={(e) =>
-                                    setActivity(prev => ({
-                                        ...prev,
+                                    setActivity((p) => ({
+                                        ...p,
                                         activityCode: e.target.value.toUpperCase(),
                                     }))
                                 }
@@ -1395,13 +1841,11 @@ export function CostCodeActivity() {
                                 Activity Name <span className="text-danger">*</span>
                             </label>
                             <input
-                                type="text"
                                 className="form-input w-100"
-                                placeholder="Enter activity name"
                                 value={activity.activityName}
                                 onChange={(e) =>
-                                    setActivity(prev => ({
-                                        ...prev,
+                                    setActivity((p) => ({
+                                        ...p,
                                         activityName: e.target.value,
                                     }))
                                 }
@@ -1435,11 +1879,10 @@ export function CostCodeActivity() {
 
     return (
         <div className="container-fluid p-4 mt-3">
-            {/* Header */}
             <div className="d-flex justify-content-between">
                 <div className="fw-bold">
                     <ArrowLeft size={16} />
-                    <span className="ms-2">Cost code Activity</span>
+                    <span className="ms-2">Cost Code Activity</span>
                 </div>
 
                 <button className="btn action-button" onClick={handleAdd}>
@@ -1449,73 +1892,73 @@ export function CostCodeActivity() {
             </div>
 
             <div className="bg-white rounded-3 mt-5" style={{ border: "1px solid #0051973D" }}>
-                <div className="tab-info col-12 h-100">
+                <div className="tab-info">
                     <span className="ms-2">Cost Code Activity</span>
                 </div>
 
                 {/* Search */}
                 <div className="row ms-1 me-1 mt-3 bg-white p-4 rounded-3">
-                    <div className="col-lg-8 col-md-8 col-sm-6">
-                        <label className="fs-6">Search</label>
+                    <div className="col-lg-8">
+                        <label>Search</label>
                         <input
-                            type="text"
                             className="form-input w-100"
                             placeholder="Search by Activity Name or Code"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-
-                    <div className="col-lg-4 col-md-4 d-flex align-items-center justify-content-center">
-                        <p className="mb-0">
-                            {filteredActivity.length} of {activityGroups.length} Cost Code Activity
-                        </p>
+                    <div className="col-lg-4 d-flex align-items-center justify-content-center">
+                        {filteredActivity.length} of {activityGroups.length} Activities
                     </div>
                 </div>
 
                 {/* Cards */}
                 <div className="row ms-1 me-1 mt-3">
-                    {filteredActivity.length > 0 ? (
-                        filteredActivity.map((a, index) => (
-                            <div className="col-lg-4 col-md-4 mb-3" key={index}>
-                                <div className="card shadow-sm h-100">
-                                    <div className="card-body">
-                                        <div className="d-flex justify-content-between">
-                                            <Edit
+                    {filteredActivity.map((a, i) => (
+                        <div className="col-lg-4 mb-3" key={i}>
+                            <div className="card shadow-sm h-100">
+                                <div className="card-body">
+                                    <div className="d-flex justify-content-between">
+                                        <Edit
+                                            size={18}
+                                            onClick={() => handleEdit(a)}
+                                            style={{ cursor: "pointer" }}
+                                        />
+                                        {a.active ? (
+                                            <Trash2
                                                 size={18}
+                                                onClick={() => handleDelete(a)}
                                                 style={{ cursor: "pointer" }}
-                                                onClick={() => handleEdit(a)}
                                             />
-                                            {a.active ? (
-                                                <Trash2
-                                                    size={18}
-                                                    style={{ cursor: "pointer" }}
-                                                    onClick={() => handleDelete(a)}
-                                                />
-                                            ) : (
-                                                <Ban size={18} className="text-muted" />
-                                            )}
-                                        </div>
+                                        ) : (
+                                            <RotateCcw
+                                                size={18}
+                                                onClick={() => handleReactivate(a)}
+                                                className="text-primary"
+                                                style={{ cursor: "pointer" }}
+                                            />
+                                        )}
+                                    </div>
 
-                                        <div className="d-flex justify-content-between mt-2">
-                                            <span>
-                                                ({a.activityCode}) - {a.activityName}
-                                            </span>
-                                            <span className={a.active ? "text-success" : "text-muted"}>
-                                                {a.active ? "Active" : "Inactive"}
-                                            </span>
-                                        </div>
+                                    <div className="mt-2 d-flex justify-content-between">
+                                        <span>
+                                            ({a.activityCode}) {a.activityName}
+                                        </span>
+                                        <span
+                                            className={
+                                                a.active
+                                                    ? "text-success"
+                                                    : "text-muted"
+                                            }
+                                        >
+                                            {a.active ? "Active" : "Inactive"}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
-                        ))
-                    ) : (
-                        <div className="d-flex justify-content-center text-muted">
-                            No Cost Code Activity were found
                         </div>
-                    )}
+                    ))}
                 </div>
-
                 {openModal && activityForm()}
             </div>
         </div>

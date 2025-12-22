@@ -37,16 +37,18 @@
   position: fixed;
   top: 66px;
   left: 0;
-  height: 100vh;
+  min-height: 100vh;
   width: 270px;
   background-color: #005197;
   overflow-x: hidden;
+  overflow-y: auto;
   transition: width 0.5s ease;
   z-index: 1000;
 }
 
 .sidebar-container.collapsed {
   width: 65px;
+  overflow-y: auto;
 }
 
 .sidebar-container.expanded {
