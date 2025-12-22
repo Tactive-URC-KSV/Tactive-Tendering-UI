@@ -58,7 +58,7 @@ function MasterDataController({ children }) {
     { label: "Company Level", path: "companylevel" },
     { label: "Company Status", path: "companystatus" },
     { label: "Company Constitution", path: "companyconstitution" },
-    { label: "Comapny Nature", path: "comapanynature"},
+    { label: "Comapny Nature", path: "companynature"},
     { label: "Nature Of Business", path: "companynatureofbusiness"},
     { label: "Language", path: "companylanguage"},
   ];
