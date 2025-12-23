@@ -37,6 +37,8 @@ import { CompanyConstitution, CompanyLanguage, CompanyLevel, CompanyNature, Comp
 import { ContractorGrade, EntityType, NatureOfBusiness } from './Admin/ContractorDataMangement';
 import { Currency, IdentityType, TaxType, TerritoryType } from './Admin/TaxManagement';
 import {ResourceNature,ResourceType,QuantityType,Resources} from './Admin/ResourceQuantityManagement';
+import CompanyDetails from './Components/CompanyDetails';
+
 
 
 function App() {
@@ -93,6 +95,7 @@ function App() {
                         <Sidebar>
                           <Routes>
                             <Route path="/dashboard" element={<Dashboard />} caseSensitive={false} />
+                            <Route path='companydetails' element={<CompanyDetails />} caseSensitive={false} />
                             <Route path="/projectmanagement" element={<ProjectManagement />} caseSensitive={false} />
                             <Route path="/dashboard/project/:projectId" element={<ProjectInfo />} caseSensitive={false} />
                             <Route path="/projectmanagement/project/:projectId" element={<ProjectManagement />} caseSensitive={false} />
@@ -157,10 +160,10 @@ function App() {
                                 <Route path='territorytype' element={<TerritoryType />} caseSensitive={false} />
                                 <Route path='identitytype' element={<IdentityType />} caseSensitive={false} />
                                 <Route path='currency' element={<Currency />} caseSensitive={false} />
-                                  <Route path="resourcenature" element={<ResourceNature />} />
-  <Route path="resourcetype" element={<ResourceType />} />
-  <Route path="quantitytype" element={<QuantityType />} />
-  <Route path="resources" element={<Resources />} />
+                                <Route path="resourcenature" element={<ResourceNature />} />
+                                <Route path="resourcetype" element={<ResourceType />} />
+                                <Route path="quantitytype" element={<QuantityType />} />
+                                <Route path="resources" element={<Resources />} />
                               </Routes>
                             </MasterDataController>
                         </Sidebar>
