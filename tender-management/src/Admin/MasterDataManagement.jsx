@@ -41,14 +41,12 @@ export function Region() {
             )
             .then((res) => {
                 toast.success(res.data || "Region deactivated");
-                window.location.reload(); 
+                useRegions();
             })
             .catch((e) =>
-                toast.error(e?.response?.data || "Failed to deactivate region")
+                toast.error(e?.response?.data)
             );
     };
-
-    /* 🔄 Reactivate */
     const handleReactivate = (r) => {
         axios
             .put(
@@ -58,17 +56,14 @@ export function Region() {
             )
             .then((res) => {
                 toast.success(res.data || "Region reactivated");
-                window.location.reload();
+                useRegions();
             })
             .catch((e) =>
-                toast.error(e?.response?.data || "Failed to reactivate region")
+                toast.error(e?.response?.data)
             );
     };
-
-    /* 💾 Save */
     const handleSave = () => {
         if (!region.regionName.trim()) return;
-
         if (isEdit) {
             axios
                 .put(
@@ -79,7 +74,7 @@ export function Region() {
                 .then((res) => {
                     toast.success(res.data || "Region updated");
                     setOpenModal(false);
-                    window.location.reload();
+                    useRegions();
                 })
                 .catch((e) =>
                     toast.error(e?.response?.data || "Update failed")
@@ -94,15 +89,13 @@ export function Region() {
                 .then((res) => {
                     toast.success(res.data || "Region created");
                     setOpenModal(false);
-                    window.location.reload();
+                    useRegions();
                 })
                 .catch((e) =>
                     toast.error(e?.response?.data || "Save failed")
                 );
         }
     };
-
-    /* 🪟 Modal */
     const regionForm = () => (
         <div
             className="modal fade show d-block"
@@ -125,7 +118,6 @@ export function Region() {
                             <X />
                         </button>
                     </div>
-
                     <div className="modal-body">
                         <label className="projectform d-block">
                             Region Name <span className="text-danger">*</span>
@@ -142,7 +134,6 @@ export function Region() {
                             }
                         />
                     </div>
-
                     <div className="modal-footer">
                         <button
                             className="btn btn-secondary"
@@ -162,22 +153,18 @@ export function Region() {
             </div>
         </div>
     );
-
     return (
         <div className="container-fluid p-4 mt-3">
-            {/* Header */}
             <div className="d-flex justify-content-between">
                 <div className="fw-bold">
                     <ArrowLeft size={16} />
                     <span className="ms-2">Region</span>
                 </div>
-
                 <button className="btn action-button" onClick={handleAdd}>
                     <Plus size={16} />
                     <span className="ms-2">Add new Region</span>
                 </button>
             </div>
-
             <div
                 className="bg-white rounded-3 mt-5"
                 style={{ border: "1px solid #0051973D" }}
@@ -185,8 +172,6 @@ export function Region() {
                 <div className="tab-info">
                     <span className="ms-2">Regions</span>
                 </div>
-
-                {/* Search */}
                 <div className="row ms-1 me-1 mt-3 bg-white p-4 rounded-3">
                     <div className="col-lg-8">
                         <label>Search</label>
@@ -201,8 +186,6 @@ export function Region() {
                         {filteredRegions.length} of {regions.length} Regions
                     </div>
                 </div>
-
-                {/* Cards */}
                 <div className="row ms-1 me-1 mt-3">
                     {filteredRegions.map((r, i) => (
                         <div className="col-lg-4 mb-3" key={i}>
@@ -229,7 +212,6 @@ export function Region() {
                                             />
                                         )}
                                     </div>
-
                                     <div className="mt-2 d-flex justify-content-between">
                                         <span>{r.regionName}</span>
                                         <span
@@ -247,7 +229,6 @@ export function Region() {
                         </div>
                     ))}
                 </div>
-
                 {openModal && regionForm()}
             </div>
         </div>
@@ -258,35 +239,25 @@ export function Sectors() {
     const [search, setSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
-
     const [sector, setSector] = useState({
         id: null,
         sectorName: "",
         active: true,
     });
-
     const token = sessionStorage.getItem("token");
-
-    /* 🔍 Filter */
     const filteredSectors = sectors.filter((sec) =>
         sec.sectorName?.toLowerCase().includes(search.toLowerCase())
     );
-
-    /* ➕ Add */
     const handleAdd = () => {
         setIsEdit(false);
         setSector({ id: null, sectorName: "", active: true });
         setOpenModal(true);
     };
-
-    /* ✏️ Edit */
     const handleEdit = (sec) => {
         setIsEdit(true);
         setSector({ ...sec });
         setOpenModal(true);
     };
-
-    /* 🗑️ Deactivate */
     const handleDelete = (sec) => {
         axios
             .put(
@@ -302,8 +273,6 @@ export function Sectors() {
                 toast.error(e?.response?.data || "Failed to deactivate sector")
             );
     };
-
-    /* 🔄 Reactivate */
     const handleReactivate = (sec) => {
         axios
             .put(
@@ -319,8 +288,6 @@ export function Sectors() {
                 toast.error(e?.response?.data || "Failed to reactivate sector")
             );
     };
-
-    /* 💾 Save */
     const handleSave = () => {
         if (!sector.sectorName.trim()) return;
 
@@ -342,7 +309,7 @@ export function Sectors() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/sector`,
+                    `${import.meta.env.VITE_API_BASE_URL}/addSector`,
                     sector,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -356,8 +323,6 @@ export function Sectors() {
                 );
         }
     };
-
-    /* 🪟 Modal */
     const sectorForm = () => (
         <div
             className="modal fade show d-block"
@@ -514,35 +479,25 @@ export function Scopes() {
     const [search, setSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
-
     const [scopeData, setScopeData] = useState({
         id: null,
         scope: "",
         active: true,
     });
-
     const token = sessionStorage.getItem("token");
-
-    /* 🔍 Filter */
     const filteredScopes = scopes.filter((s) =>
         s.scope?.toLowerCase().includes(search.toLowerCase())
     );
-
-    /* ➕ Add */
     const handleAdd = () => {
         setIsEdit(false);
         setScopeData({ id: null, scope: "", active: true });
         setOpenModal(true);
     };
-
-    /* ✏️ Edit */
     const handleEdit = (s) => {
         setIsEdit(true);
         setScopeData({ ...s });
         setOpenModal(true);
     };
-
-    /* 🗑️ Deactivate */
     const handleDelete = (s) => {
         axios
             .put(
@@ -558,8 +513,6 @@ export function Scopes() {
                 toast.error(e?.response?.data || "Failed to deactivate scope")
             );
     };
-
-    /* 🔄 Reactivate */
     const handleReactivate = (s) => {
         axios
             .put(
@@ -598,7 +551,7 @@ export function Scopes() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/scope`,
+                    `${import.meta.env.VITE_API_BASE_URL}/addScope`,
                     scopeData,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -612,8 +565,6 @@ export function Scopes() {
                 );
         }
     };
-
-    /* 🪟 Modal */
     const scopeForm = () => (
         <div
             className="modal fade show d-block"
@@ -636,7 +587,6 @@ export function Scopes() {
                             <X />
                         </button>
                     </div>
-
                     <div className="modal-body">
                         <label className="projectform d-block">
                             Scope Name <span className="text-danger">*</span>
@@ -654,7 +604,6 @@ export function Scopes() {
                             }
                         />
                     </div>
-
                     <div className="modal-footer">
                         <button
                             className="btn btn-secondary"
@@ -677,19 +626,16 @@ export function Scopes() {
 
     return (
         <div className="container-fluid p-4 mt-3">
-            {/* Header */}
             <div className="d-flex justify-content-between">
                 <div className="fw-bold">
                     <ArrowLeft size={16} />
                     <span className="ms-2">Scope of Packages</span>
                 </div>
-
                 <button className="btn action-button" onClick={handleAdd}>
                     <Plus size={16} />
                     <span className="ms-2">Add new scope</span>
                 </button>
             </div>
-
             <div
                 className="bg-white rounded-3 mt-5"
                 style={{ border: "1px solid #0051973D" }}
@@ -697,8 +643,6 @@ export function Scopes() {
                 <div className="tab-info">
                     <span className="ms-2">Scope of Packages</span>
                 </div>
-
-                {/* Search */}
                 <div className="row ms-1 me-1 mt-3 bg-white p-4 rounded-3">
                     <div className="col-lg-8">
                         <label>Search</label>
@@ -708,13 +652,10 @@ export function Scopes() {
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-
                     <div className="col-lg-4 d-flex align-items-center justify-content-center">
                         {filteredScopes.length} of {scopes.length} Scope of packages
                     </div>
                 </div>
-
-                {/* Cards */}
                 <div className="row ms-1 me-1 mt-3">
                     {filteredScopes.map((s, i) => (
                         <div className="col-lg-4 mb-3" key={i}>
@@ -767,42 +708,31 @@ export function Scopes() {
 }
 export function UOM() {
     const uoms = useUom();
-
     const [search, setSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
-
     const [uomData, setUomData] = useState({
         id: null,
         uomName: "",
         uomCode: "",
         active: true,
     });
-
     const token = sessionStorage.getItem("token");
-
-    /* 🔍 Filter (Name OR Code) */
     const filteredUnits = uoms.filter(
         (uom) =>
             uom.uomName?.toLowerCase().includes(search.toLowerCase()) ||
             uom.uomCode?.toLowerCase().includes(search.toLowerCase())
     );
-
-    /* ➕ Add */
     const handleAdd = () => {
         setIsEdit(false);
         setUomData({ id: null, uomName: "", uomCode: "", active: true });
         setOpenModal(true);
     };
-
-    /* ✏️ Edit */
     const handleEdit = (uom) => {
         setIsEdit(true);
         setUomData({ ...uom });
         setOpenModal(true);
     };
-
-    /* 🗑️ Deactivate */
     const handleDelete = (uom) => {
         axios
             .put(
@@ -818,8 +748,6 @@ export function UOM() {
                 toast.error(e?.response?.data || "Failed to deactivate UOM")
             );
     };
-
-    /* 🔄 Reactivate */
     const handleReactivate = (uom) => {
         axios
             .put(
@@ -835,8 +763,6 @@ export function UOM() {
                 toast.error(e?.response?.data || "Failed to reactivate UOM")
             );
     };
-
-    /* 💾 Save */
     const handleSave = () => {
         if (!uomData.uomName.trim() || !uomData.uomCode.trim()) return;
 
@@ -858,7 +784,7 @@ export function UOM() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/uom`,
+                    `${import.meta.env.VITE_API_BASE_URL}/addUom`,
                     uomData,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -872,8 +798,6 @@ export function UOM() {
                 );
         }
     };
-
-    /* 🪟 Modal */
     const uomForm = () => (
         <div
             className="modal fade show d-block"
@@ -958,19 +882,16 @@ export function UOM() {
 
     return (
         <div className="container-fluid p-4 mt-3">
-            {/* Header */}
             <div className="d-flex justify-content-between">
                 <div className="fw-bold">
                     <ArrowLeft size={16} />
                     <span className="ms-2">Unit of Measurements</span>
                 </div>
-
                 <button className="btn action-button" onClick={handleAdd}>
                     <Plus size={16} />
                     <span className="ms-2">Add new Unit</span>
                 </button>
             </div>
-
             <div
                 className="bg-white rounded-3 mt-5"
                 style={{ border: "1px solid #0051973D" }}
@@ -978,8 +899,6 @@ export function UOM() {
                 <div className="tab-info">
                     <span className="ms-2">Unit of Measurements</span>
                 </div>
-
-                {/* Search */}
                 <div className="row ms-1 me-1 mt-3 bg-white p-4 rounded-3">
                     <div className="col-lg-8">
                         <label>Search</label>
@@ -990,13 +909,10 @@ export function UOM() {
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-
                     <div className="col-lg-4 d-flex align-items-center justify-content-center">
                         {filteredUnits.length} of {uoms.length} UOM&apos;s
                     </div>
                 </div>
-
-                {/* Cards */}
                 <div className="row ms-1 me-1 mt-3">
                     {filteredUnits.map((uom, i) => (
                         <div className="col-lg-4 mb-3" key={i}>
@@ -1023,7 +939,6 @@ export function UOM() {
                                             />
                                         )}
                                     </div>
-
                                     <div className="mt-2 d-flex justify-content-between">
                                         <span>
                                             {uom.uomName} ({uom.uomCode})
@@ -1054,16 +969,12 @@ export function ListOfApprovals() {
     const [search, setSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
-
     const [approval, setApproval] = useState({
         id: null,
         documentName: "",
         active: true,
     });
-
     const token = sessionStorage.getItem("token");
-
-    /* 🔹 Fetch */
     const fetchApprovals = () => {
         axios
             .get(`${import.meta.env.VITE_API_BASE_URL}/listOfApprovals`, {
@@ -1074,35 +985,26 @@ export function ListOfApprovals() {
             })
             .catch(() => toast.error("Failed to load approval documents"));
     };
-
     useEffect(() => {
         fetchApprovals();
     }, []);
-
-    /* 🔍 Filter */
     const filteredDoc = listOfApprovals.filter((d) =>
         d.documentName?.toLowerCase().includes(search.toLowerCase())
     );
-
-    /* ➕ Add */
     const handleAdd = () => {
         setIsEdit(false);
         setApproval({ id: null, documentName: "", active: true });
         setOpenModal(true);
     };
-
-    /* ✏️ Edit */
     const handleEdit = (doc) => {
         setIsEdit(true);
         setApproval({ ...doc });
         setOpenModal(true);
     };
-
-    /* 🗑️ Deactivate */
     const handleDelete = (doc) => {
         axios
             .put(
-                `${import.meta.env.VITE_API_BASE_URL}/listOfApprovals/edit`,
+                `${import.meta.env.VITE_API_BASE_URL}/approvalDocuments/edit`,
                 { ...doc, active: false },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
@@ -1116,12 +1018,10 @@ export function ListOfApprovals() {
                 )
             );
     };
-
-    /* 🔄 Reactivate */
     const handleReactivate = (doc) => {
         axios
             .put(
-                `${import.meta.env.VITE_API_BASE_URL}/listOfApprovals/edit`,
+                `${import.meta.env.VITE_API_BASE_URL}/approvalDocuments/edit`,
                 { ...doc, active: true },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
@@ -1135,15 +1035,13 @@ export function ListOfApprovals() {
                 )
             );
     };
-
-    /* 💾 Save */
     const handleSave = () => {
         if (!approval.documentName.trim()) return;
 
         if (isEdit) {
             axios
                 .put(
-                    `${import.meta.env.VITE_API_BASE_URL}/listOfApprovals/edit`,
+                    `${import.meta.env.VITE_API_BASE_URL}/approvalDocuemnts/edit`,
                     approval,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -1158,7 +1056,7 @@ export function ListOfApprovals() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/listOfApprovals`,
+                    `${import.meta.env.VITE_API_BASE_URL}/approvalDocuments/add`,
                     approval,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -1325,16 +1223,12 @@ export function CostCodeType() {
     const [search, setSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
-
     const [type, setType] = useState({
         id: null,
         costCodeName: "",
         active: true,
     });
-
     const token = sessionStorage.getItem("token");
-
-    /* 🔹 Fetch */
     const fetchCostCodeTypes = () => {
         axios
             .get(`${import.meta.env.VITE_API_BASE_URL}/costCodeTypes`, {
@@ -1351,31 +1245,23 @@ export function CostCodeType() {
     useEffect(() => {
         fetchCostCodeTypes();
     }, []);
-
-    /* 🔍 Search */
     const filteredTypes = costCodeTypes.filter((t) =>
         t.costCodeName?.toLowerCase().includes(search.toLowerCase())
     );
-
-    /* ➕ Add */
     const handleAdd = () => {
         setIsEdit(false);
         setType({ id: null, costCodeName: "", active: true });
         setOpenModal(true);
     };
-
-    /* ✏️ Edit */
     const handleEdit = (t) => {
         setIsEdit(true);
         setType({ ...t });
         setOpenModal(true);
     };
-
-    /* 🗑️ Deactivate */
     const handleDelete = (t) => {
         axios
             .put(
-                `${import.meta.env.VITE_API_BASE_URL}/costCodeTypes/edit`,
+                `${import.meta.env.VITE_API_BASE_URL}/costCodeType/edit`,
                 { ...t, active: false },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
@@ -1389,12 +1275,10 @@ export function CostCodeType() {
                 )
             );
     };
-
-    /* 🔄 Reactivate */
     const handleReactivate = (t) => {
         axios
             .put(
-                `${import.meta.env.VITE_API_BASE_URL}/costCodeTypes/edit`,
+                `${import.meta.env.VITE_API_BASE_URL}/costCodeType/edit`,
                 { ...t, active: true },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
@@ -1408,15 +1292,13 @@ export function CostCodeType() {
                 )
             );
     };
-
-    /* 💾 Save */
     const handleSave = () => {
         if (!type.costCodeName.trim()) return;
 
         if (isEdit) {
             axios
                 .put(
-                    `${import.meta.env.VITE_API_BASE_URL}/costCodeTypes/edit`,
+                    `${import.meta.env.VITE_API_BASE_URL}/costCodeType/edit`,
                     type,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -1431,7 +1313,7 @@ export function CostCodeType() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/costCodeTypes`,
+                    `${import.meta.env.VITE_API_BASE_URL}/costCodeType/add`,
                     type,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -1445,8 +1327,6 @@ export function CostCodeType() {
                 );
         }
     };
-
-    /* 🪟 Modal */
     const typeForm = () => (
         <div
             className="modal fade show d-block"
@@ -1616,10 +1496,7 @@ export function CostCodeActivity() {
         activityName: "",
         active: true,
     });
-
     const token = sessionStorage.getItem("token");
-
-    /* 🔹 Fetch Activities */
     const fetchActivities = () => {
         axios
             .get(`${import.meta.env.VITE_API_BASE_URL}/activityGroups`, {
@@ -1630,8 +1507,6 @@ export function CostCodeActivity() {
             })
             .catch(() => toast.error("Failed to load cost code activities"));
     };
-
-    /* 🔹 Fetch Cost Code Types */
     const fetchCostCodeTypes = () => {
         axios
             .get(`${import.meta.env.VITE_API_BASE_URL}/costCodeTypes`, {
@@ -1642,20 +1517,15 @@ export function CostCodeActivity() {
             })
             .catch(() => toast.error("Failed to load cost code types"));
     };
-
     useEffect(() => {
         fetchActivities();
         fetchCostCodeTypes();
     }, []);
-
-    /* 🔍 Search */
     const filteredActivity = activityGroups.filter(
         (a) =>
             a.activityName?.toLowerCase().includes(search.toLowerCase()) ||
             a.activityCode?.toLowerCase().includes(search.toLowerCase())
     );
-
-    /* ➕ Add */
     const handleAdd = () => {
         setIsEdit(false);
         setActivity({
@@ -1667,8 +1537,6 @@ export function CostCodeActivity() {
         });
         setOpenModal(true);
     };
-
-    /* ✏️ Edit */
     const handleEdit = (a) => {
         setIsEdit(true);
         setActivity({
@@ -1680,12 +1548,10 @@ export function CostCodeActivity() {
         });
         setOpenModal(true);
     };
-
-    /* 🗑️ Deactivate */
     const handleDelete = (a) => {
         axios
             .put(
-                `${import.meta.env.VITE_API_BASE_URL}/activityGroups/edit`,
+                `${import.meta.env.VITE_API_BASE_URL}/activityGroup/edit`,
                 { ...a, active: false },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
@@ -1697,12 +1563,10 @@ export function CostCodeActivity() {
                 toast.error(e?.response?.data || "Failed to deactivate activity")
             );
     };
-
-    /* 🔄 Reactivate */
     const handleReactivate = (a) => {
         axios
             .put(
-                `${import.meta.env.VITE_API_BASE_URL}/activityGroups/edit`,
+                `${import.meta.env.VITE_API_BASE_URL}/activityGroup/edit`,
                 { ...a, active: true },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
@@ -1714,8 +1578,6 @@ export function CostCodeActivity() {
                 toast.error(e?.response?.data || "Failed to reactivate activity")
             );
     };
-
-    /* 💾 Save */
     const handleSave = () => {
         if (
             !activity.costCodeTypeId ||
@@ -1723,12 +1585,10 @@ export function CostCodeActivity() {
             !activity.activityName.trim()
         )
             return;
-
         const payload = {
             ...activity,
             costCodeTypeId: activity.costCodeTypeId,
         };
-
         if (isEdit) {
             axios
                 .put(
@@ -1747,7 +1607,7 @@ export function CostCodeActivity() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/activityGroups`,
+                    `${import.meta.env.VITE_API_BASE_URL}/activityGroup`,
                     payload,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -1761,14 +1621,10 @@ export function CostCodeActivity() {
                 );
         }
     };
-
-    /* React-Select options */
     const costCodeTypeOptions = costCodeTypes.map((t) => ({
         value: t.id,
         label: t.costCodeName,
     }));
-
-    /* 🪟 Modal */
     const activityForm = () => (
         <div
             className="modal fade show d-block"
@@ -1795,7 +1651,6 @@ export function CostCodeActivity() {
                     </div>
 
                     <div className="modal-body">
-                        {/* Cost Code Type */}
                         <div className="mb-3">
                             <label className="projectform-select d-block">
                                 Cost Code Type <span className="text-danger">*</span>
@@ -1817,8 +1672,6 @@ export function CostCodeActivity() {
                                 }
                             />
                         </div>
-
-                        {/* Activity Code */}
                         <div className="mb-3">
                             <label className="projectform d-block">
                                 Activity Code <span className="text-danger">*</span>
@@ -1834,8 +1687,6 @@ export function CostCodeActivity() {
                                 }
                             />
                         </div>
-
-                        {/* Activity Name */}
                         <div className="mb-3">
                             <label className="projectform d-block">
                                 Activity Name <span className="text-danger">*</span>
@@ -1852,7 +1703,6 @@ export function CostCodeActivity() {
                             />
                         </div>
                     </div>
-
                     <div className="modal-footer">
                         <button
                             className="btn btn-secondary"
@@ -1876,7 +1726,6 @@ export function CostCodeActivity() {
             </div>
         </div>
     );
-
     return (
         <div className="container-fluid p-4 mt-3">
             <div className="d-flex justify-content-between">

@@ -8,15 +8,15 @@ export function EntityType() {
     const [search, setSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
-    const [entityType, setEntityType] = useState({
+    const [contractorType, setContractorType] = useState({
         id: null,
-        entityType: "",
+        type: "",
         active: true,
     });
     const token = sessionStorage.getItem("token");
     const fetchEntityTypes = () => {
         axios
-            .get(`${import.meta.env.VITE_API_BASE_URL}/entityType`, {
+            .get(`${import.meta.env.VITE_API_BASE_URL}/contractorType`, {
                 headers: { Authorization: `Bearer ${token}` },
             })
             .then((r) => {
@@ -30,26 +30,26 @@ export function EntityType() {
         fetchEntityTypes();
     }, []);
     const filteredEntityTypes = entityTypes.filter((e) =>
-        e.entityType?.toLowerCase().includes(search.toLowerCase())
+        e.type?.toLowerCase().includes(search.toLowerCase())
     );
     const handleAdd = () => {
         setIsEdit(false);
-        setEntityType({
+        setContractorType({
             id: null,
-            entityType: "",
+            type: "",
             active: true,
         });
         setOpenModal(true);
     };
     const handleEdit = (e) => {
         setIsEdit(true);
-        setEntityType({ ...e });
+        setContractorType({ ...e });
         setOpenModal(true);
     };
     const handleDelete = (e) => {
         axios
             .put(
-                `${import.meta.env.VITE_API_BASE_URL}/entityType/edit`,
+                `${import.meta.env.VITE_API_BASE_URL}/contractorType/edit`,
                 { ...e, active: false },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
@@ -66,7 +66,7 @@ export function EntityType() {
     const handleReactivate = (e) => {
         axios
             .put(
-                `${import.meta.env.VITE_API_BASE_URL}/entityType/edit`,
+                `${import.meta.env.VITE_API_BASE_URL}/contractorType/edit`,
                 { ...e, active: true },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
@@ -81,13 +81,13 @@ export function EntityType() {
             );
     };
     const handleSave = () => {
-        if (!entityType.entityType.trim()) return;
+        if (!contractorType.type.trim()) return;
 
         if (isEdit) {
             axios
                 .put(
-                    `${import.meta.env.VITE_API_BASE_URL}/entityType/edit`,
-                    entityType,
+                    `${import.meta.env.VITE_API_BASE_URL}/contractorType/edit`,
+                    contractorType,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
                 .then((r) => {
@@ -101,8 +101,8 @@ export function EntityType() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/entityType`,
-                    entityType,
+                    `${import.meta.env.VITE_API_BASE_URL}/contractorType/add`,
+                    contractorType,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
                 .then((r) => {
@@ -144,11 +144,11 @@ export function EntityType() {
                         <input
                             className="form-input w-100"
                             placeholder="Enter entity type"
-                            value={entityType.entityType}
+                            value={contractorType.type}
                             onChange={(e) =>
-                                setEntityType((prev) => ({
+                                setContractorType((prev) => ({
                                     ...prev,
-                                    entityType: e.target.value,
+                                    type: e.target.value,
                                 }))
                             }
                         />
@@ -163,7 +163,7 @@ export function EntityType() {
                         <button
                             className="btn btn-primary"
                             onClick={handleSave}
-                            disabled={!entityType.entityType.trim()}
+                            disabled={!contractorType.type.trim()}
                         >
                             {isEdit ? "Update" : "Save"}
                         </button>
@@ -232,7 +232,7 @@ export function EntityType() {
                                     </div>
 
                                     <div className="mt-2 d-flex justify-content-between">
-                                        <span>{e.entityType}</span>
+                                        <span>{e.type}</span>
                                         <span
                                             className={
                                                 e.active
@@ -261,7 +261,7 @@ export function ContractorGrade() {
 
     const [grade, setGrade] = useState({
         id: null,
-        grade: "",
+        gradeName: "",
         active: true,
     });
 
@@ -287,7 +287,7 @@ export function ContractorGrade() {
 
     /* 🔍 Search */
     const filteredGrades = grades.filter((g) =>
-        g.grade?.toLowerCase().includes(search.toLowerCase())
+        g.gradeName?.toLowerCase().includes(search.toLowerCase())
     );
 
     /* ➕ Add */
@@ -295,7 +295,7 @@ export function ContractorGrade() {
         setIsEdit(false);
         setGrade({
             id: null,
-            grade: "",
+            gradeName: "",
             active: true,
         });
         setOpenModal(true);
@@ -348,7 +348,7 @@ export function ContractorGrade() {
 
     /* 💾 Save */
     const handleSave = () => {
-        if (!grade.grade.trim()) return;
+        if (!grade.gradeName.trim()) return;
 
         if (isEdit) {
             axios
@@ -368,7 +368,7 @@ export function ContractorGrade() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/contractorGrade`,
+                    `${import.meta.env.VITE_API_BASE_URL}/contractorGrade/add`,
                     grade,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -414,11 +414,11 @@ export function ContractorGrade() {
                         <input
                             className="form-input w-100"
                             placeholder="Enter contractor grade"
-                            value={grade.grade}
+                            value={grade.gradeName}
                             onChange={(e) =>
                                 setGrade((prev) => ({
                                     ...prev,
-                                    grade: e.target.value,
+                                    gradeName: e.target.value,
                                 }))
                             }
                         />
@@ -434,7 +434,7 @@ export function ContractorGrade() {
                         <button
                             className="btn btn-primary"
                             onClick={handleSave}
-                            disabled={!grade.grade.trim()}
+                            disabled={!grade.gradeName.trim()}
                         >
                             {isEdit ? "Update" : "Save"}
                         </button>
@@ -512,7 +512,7 @@ export function ContractorGrade() {
                                     </div>
 
                                     <div className="mt-2 d-flex justify-content-between">
-                                        <span>{g.grade}</span>
+                                        <span>{g.gradeName}</span>
                                         <span
                                             className={
                                                 g.active ? "text-success" : "text-muted"
@@ -547,7 +547,7 @@ export function NatureOfBusiness() {
     const token = sessionStorage.getItem("token");
     const fetchNatures = () => {
         axios
-            .get(`${import.meta.env.VITE_API_BASE_URL}/natureOfBusiness`, {
+            .get(`${import.meta.env.VITE_API_BASE_URL}/contractorNature`, {
                 headers: { Authorization: `Bearer ${token}` },
             })
             .then((r) => {
@@ -557,7 +557,7 @@ export function NatureOfBusiness() {
     };
     const fetchEntityTypes = () => {
         axios
-            .get(`${import.meta.env.VITE_API_BASE_URL}/entityType`, {
+            .get(`${import.meta.env.VITE_API_BASE_URL}/contractorType`, {
                 headers: { Authorization: `Bearer ${token}` },
             })
             .then((r) => {
@@ -570,7 +570,7 @@ export function NatureOfBusiness() {
         fetchEntityTypes();
     }, []);
     const filteredNatures = natures.filter((n) =>
-        n.natureOfBusiness?.toLowerCase().includes(search.toLowerCase())
+        n.nature?.toLowerCase().includes(search.toLowerCase())
     );
     const handleAdd = () => {
         setIsEdit(false);
@@ -586,8 +586,8 @@ export function NatureOfBusiness() {
         setIsEdit(true);
         setNature({
             id: n.id,
-            natureOfBusiness: n.natureOfBusiness,
-            entityTypeId: n.entityType.id,
+            natureOfBusiness: n.nature,
+            entityTypeId: n.contractorType.id,
             active: n.active,
         });
         setOpenModal(true);
@@ -595,7 +595,7 @@ export function NatureOfBusiness() {
     const handleDelete = (n) => {
         axios
             .put(
-                `${import.meta.env.VITE_API_BASE_URL}/natureOfBusiness/edit`,
+                `${import.meta.env.VITE_API_BASE_URL}/contractorNature/edit`,
                 { ...n, active: false },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
@@ -612,7 +612,7 @@ export function NatureOfBusiness() {
     const handleReactivate = (n) => {
         axios
             .put(
-                `${import.meta.env.VITE_API_BASE_URL}/natureOfBusiness/edit`,
+                `${import.meta.env.VITE_API_BASE_URL}/contractorNature/edit`,
                 { ...n, active: true },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
@@ -632,12 +632,12 @@ export function NatureOfBusiness() {
             id: nature.id,
             natureOfBusiness: nature.natureOfBusiness,
             active: nature.active,
-            entityType: { id: nature.entityTypeId },
+            entityTypeId: nature.entityTypeId,
         };
         if (isEdit) {
             axios
                 .put(
-                    `${import.meta.env.VITE_API_BASE_URL}/natureOfBusiness/edit`,
+                    `${import.meta.env.VITE_API_BASE_URL}/contractorNature/edit`,
                     payload,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -652,7 +652,7 @@ export function NatureOfBusiness() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/natureOfBusiness`,
+                    `${import.meta.env.VITE_API_BASE_URL}/contractorNature`,
                     payload,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
