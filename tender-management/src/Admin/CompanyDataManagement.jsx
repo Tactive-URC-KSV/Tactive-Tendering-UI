@@ -11,7 +11,7 @@ export function CompanyType() {
     const [companyType, setCompanyType] = useState({
         id: null,
         type: "",
-        isActive: true,
+        active: true,
     });
     const token = sessionStorage.getItem("token");
     const fetchCompanyTypes = () => {
@@ -21,11 +21,16 @@ export function CompanyType() {
             })
             .then((r) => {
                 if (r.status === 200) {
-                    setCompanyTypes(r.data || []);
+                    const normalized = (r.data || []).map(c => ({
+                        ...c,
+                        active: c.active
+                    }));
+                    setCompanyTypes(normalized);
                 }
             })
             .catch(() => toast.error("Failed to load company types"));
     };
+
     useEffect(() => {
         fetchCompanyTypes();
     }, []);
@@ -34,7 +39,7 @@ export function CompanyType() {
     );
     const handleAdd = () => {
         setIsEdit(false);
-        setCompanyType({ id: null, type: "", isActive: true });
+        setCompanyType({ id: null, type: "", active: true });
         setOpenModal(true);
     };
     const handleEdit = (c) => {
@@ -46,7 +51,11 @@ export function CompanyType() {
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/companyType/edit`,
-                { ...c, isActive: false },
+                {
+                    id: c.id,
+                    type: c.type,
+                    active: false   // 🔥 backend field
+                },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             .then((r) => {
@@ -57,11 +66,16 @@ export function CompanyType() {
                 toast.error(e?.response?.data || "Failed to deactivate company type")
             );
     };
+
     const handleReactivate = (c) => {
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/companyType/edit`,
-                { ...c, isActive: true },
+                {
+                    id: c.id,
+                    type: c.type,
+                    active: true  
+                },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             .then((r) => {
@@ -74,11 +88,16 @@ export function CompanyType() {
     };
     const handleSave = () => {
         if (!companyType.type.trim()) return;
+        const payload = {
+            id: companyType.id,
+            type: companyType.type,
+            active: companyType.active   
+        };
         if (isEdit) {
             axios
                 .put(
                     `${import.meta.env.VITE_API_BASE_URL}/companyType/edit`,
-                    companyType,
+                    payload,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
                 .then((r) => {
@@ -92,8 +111,8 @@ export function CompanyType() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/companyType`,
-                    companyType,
+                    `${import.meta.env.VITE_API_BASE_URL}/companyType/add`, 
+                    payload,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
                 .then((r) => {
@@ -207,7 +226,7 @@ export function CompanyType() {
                                             onClick={() => handleEdit(c)}
                                             style={{ cursor: "pointer" }}
                                         />
-                                        {c.isActive ? (
+                                        {c.active ? (
                                             <Trash2
                                                 size={18}
                                                 title="Deactivate"
@@ -229,10 +248,10 @@ export function CompanyType() {
                                         <span>{c.type}</span>
                                         <span
                                             className={
-                                                c.isActive ? "text-success" : "text-muted"
+                                                c.active ? "text-success" : "text-muted"
                                             }
                                         >
-                                            {c.isActive ? "Active" : "Inactive"}
+                                            {c.active ? "Active" : "Inactive"}
                                         </span>
                                     </div>
                                 </div>
@@ -254,7 +273,7 @@ export function CompanyStatus() {
     const [companyStatus, setCompanyStatus] = useState({
         id: null,
         comStatus: "",
-        isActive: true,
+        active: true,
     });
 
     const token = sessionStorage.getItem("token");
@@ -285,7 +304,7 @@ export function CompanyStatus() {
     /* ➕ Add */
     const handleAdd = () => {
         setIsEdit(false);
-        setCompanyStatus({ id: null, comStatus: "", isActive: true });
+        setCompanyStatus({ id: null, comStatus: "", active: true });
         setOpenModal(true);
     };
 
@@ -301,7 +320,7 @@ export function CompanyStatus() {
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/companyStatus/edit`,
-                { ...s, isActive: false },
+                { ...s, active: false },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             .then((r) => {
@@ -318,7 +337,7 @@ export function CompanyStatus() {
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/companyStatus/edit`,
-                { ...s, isActive: true },
+                { ...s, active: true },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             .then((r) => {
@@ -480,7 +499,7 @@ export function CompanyStatus() {
                                             onClick={() => handleEdit(s)}
                                             style={{ cursor: "pointer" }}
                                         />
-                                        {s.isActive ? (
+                                        {s.active ? (
                                             <Trash2
                                                 size={18}
                                                 title="Deactivate"
@@ -502,10 +521,10 @@ export function CompanyStatus() {
                                         <span>{s.comStatus}</span>
                                         <span
                                             className={
-                                                s.isActive ? "text-success" : "text-muted"
+                                                s.active ? "text-success" : "text-muted"
                                             }
                                         >
-                                            {s.isActive ? "Active" : "Inactive"}
+                                            {s.active ? "Active" : "Inactive"}
                                         </span>
                                     </div>
                                 </div>
@@ -527,7 +546,7 @@ export function CompanyLevel() {
     const [companyLevel, setCompanyLevel] = useState({
         id: null,
         level: "",
-        isActive: true,
+        active: true,
     });
     const token = sessionStorage.getItem("token");
     const fetchCompanyLevels = () => {
@@ -550,7 +569,7 @@ export function CompanyLevel() {
     );
     const handleAdd = () => {
         setIsEdit(false);
-        setCompanyLevel({ id: null, level: "", isActive: true });
+        setCompanyLevel({ id: null, level: "", active: true });
         setOpenModal(true);
     };
     const handleEdit = (l) => {
@@ -562,7 +581,7 @@ export function CompanyLevel() {
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/companyLevel/edit`,
-                { ...l, isActive: false },
+                { ...l, active: false },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             .then((r) => {
@@ -577,7 +596,7 @@ export function CompanyLevel() {
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/companyLevel/edit`,
-                { ...l, isActive: true },
+                { ...l, active: true },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             .then((r) => {
@@ -725,7 +744,7 @@ export function CompanyLevel() {
                                             onClick={() => handleEdit(l)}
                                             style={{ cursor: "pointer" }}
                                         />
-                                        {l.isActive ? (
+                                        {l.active ? (
                                             <Trash2
                                                 size={18}
                                                 title="Deactivate"
@@ -746,10 +765,10 @@ export function CompanyLevel() {
                                         <span>{l.level}</span>
                                         <span
                                             className={
-                                                l.isActive ? "text-success" : "text-muted"
+                                                l.active ? "text-success" : "text-muted"
                                             }
                                         >
-                                            {l.isActive ? "Active" : "Inactive"}
+                                            {l.active ? "Active" : "Inactive"}
                                         </span>
                                     </div>
                                 </div>
@@ -771,7 +790,7 @@ export function CompanyConstitution() {
     const [companyConstitution, setCompanyConstitution] = useState({
         id: null,
         comConstitution: "",
-        isActive: true,
+        active: true,
     });
 
     const token = sessionStorage.getItem("token");
@@ -805,7 +824,7 @@ export function CompanyConstitution() {
         setCompanyConstitution({
             id: null,
             comConstitution: "",
-            isActive: true,
+            active: true,
         });
         setOpenModal(true);
     };
@@ -822,7 +841,7 @@ export function CompanyConstitution() {
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/companyConstitution/edit`,
-                { ...c, isActive: false },
+                { ...c, active: false },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             .then((r) => {
@@ -832,7 +851,7 @@ export function CompanyConstitution() {
             .catch((e) =>
                 toast.error(
                     e?.response?.data ||
-                        "Failed to deactivate company constitution"
+                    "Failed to deactivate company constitution"
                 )
             );
     };
@@ -842,7 +861,7 @@ export function CompanyConstitution() {
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/companyConstitution/edit`,
-                { ...c, isActive: true },
+                { ...c, active: true },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             .then((r) => {
@@ -852,7 +871,7 @@ export function CompanyConstitution() {
             .catch((e) =>
                 toast.error(
                     e?.response?.data ||
-                        "Failed to reactivate company constitution"
+                    "Failed to reactivate company constitution"
                 )
             );
     };
@@ -1013,7 +1032,7 @@ export function CompanyConstitution() {
                                             onClick={() => handleEdit(c)}
                                             style={{ cursor: "pointer" }}
                                         />
-                                        {c.isActive ? (
+                                        {c.active ? (
                                             <Trash2
                                                 size={18}
                                                 title="Deactivate"
@@ -1037,12 +1056,12 @@ export function CompanyConstitution() {
                                         <span>{c.comConstitution}</span>
                                         <span
                                             className={
-                                                c.isActive
+                                                c.active
                                                     ? "text-success"
                                                     : "text-muted"
                                             }
                                         >
-                                            {c.isActive
+                                            {c.active
                                                 ? "Active"
                                                 : "Inactive"}
                                         </span>
@@ -1066,7 +1085,7 @@ export function CompanyNature() {
     const [companyNature, setCompanyNature] = useState({
         id: null,
         comNature: "",
-        isActive: true,
+        active: true,
     });
     const token = sessionStorage.getItem("token");
     const fetchCompanyNatures = () => {
@@ -1093,7 +1112,7 @@ export function CompanyNature() {
         setCompanyNature({
             id: null,
             comNature: "",
-            isActive: true,
+            active: true,
         });
         setOpenModal(true);
     };
@@ -1106,7 +1125,7 @@ export function CompanyNature() {
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/companyNature/edit`,
-                { ...n, isActive: false },
+                { ...n, active: false },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             .then((r) => {
@@ -1123,7 +1142,7 @@ export function CompanyNature() {
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/companyNature/edit`,
-                { ...n, isActive: true },
+                { ...n, active: true },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             .then((r) => {
@@ -1278,7 +1297,7 @@ export function CompanyNature() {
                                             onClick={() => handleEdit(n)}
                                             style={{ cursor: "pointer" }}
                                         />
-                                        {n.isActive ? (
+                                        {n.active ? (
                                             <Trash2
                                                 size={18}
                                                 title="Deactivate"
@@ -1302,12 +1321,12 @@ export function CompanyNature() {
                                         <span>{n.comNature}</span>
                                         <span
                                             className={
-                                                n.isActive
+                                                n.active
                                                     ? "text-success"
                                                     : "text-muted"
                                             }
                                         >
-                                            {n.isActive
+                                            {n.active
                                                 ? "Active"
                                                 : "Inactive"}
                                         </span>
@@ -1330,7 +1349,7 @@ export function CompanyNatureOfBusiness() {
     const [nature, setNature] = useState({
         id: null,
         natureOfBusiness: "",
-        isActive: true,
+        active: true,
     });
     const token = sessionStorage.getItem("token");
     const fetchNatures = () => {
@@ -1358,7 +1377,7 @@ export function CompanyNatureOfBusiness() {
         setNature({
             id: null,
             natureOfBusiness: "",
-            isActive: true,
+            active: true,
         });
         setOpenModal(true);
     };
@@ -1371,7 +1390,7 @@ export function CompanyNatureOfBusiness() {
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/companyNatureOfBusiness/edit`,
-                { ...n, isActive: false },
+                { ...n, active: false },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             .then((r) => {
@@ -1381,7 +1400,7 @@ export function CompanyNatureOfBusiness() {
             .catch((e) =>
                 toast.error(
                     e?.response?.data ||
-                        "Failed to deactivate nature of business"
+                    "Failed to deactivate nature of business"
                 )
             );
     };
@@ -1389,7 +1408,7 @@ export function CompanyNatureOfBusiness() {
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/companyNatureOfBusiness/edit`,
-                { ...n, isActive: true },
+                { ...n, active: true },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             .then((r) => {
@@ -1399,7 +1418,7 @@ export function CompanyNatureOfBusiness() {
             .catch((e) =>
                 toast.error(
                     e?.response?.data ||
-                        "Failed to reactivate nature of business"
+                    "Failed to reactivate nature of business"
                 )
             );
     };
@@ -1541,7 +1560,7 @@ export function CompanyNatureOfBusiness() {
                                             onClick={() => handleEdit(n)}
                                             style={{ cursor: "pointer" }}
                                         />
-                                        {n.isActive ? (
+                                        {n.active ? (
                                             <Trash2
                                                 size={18}
                                                 onClick={() => handleDelete(n)}
@@ -1562,12 +1581,12 @@ export function CompanyNatureOfBusiness() {
                                         <span>{n.natureOfBusiness}</span>
                                         <span
                                             className={
-                                                n.isActive
+                                                n.active
                                                     ? "text-success"
                                                     : "text-muted"
                                             }
                                         >
-                                            {n.isActive
+                                            {n.active
                                                 ? "Active"
                                                 : "Inactive"}
                                         </span>
@@ -1592,7 +1611,7 @@ export function CompanyLanguage() {
         id: null,
         language: "",
         languageCode: "",
-        isActive: true,
+        active: true,
     });
 
     const token = sessionStorage.getItem("token");
@@ -1629,7 +1648,7 @@ export function CompanyLanguage() {
             id: null,
             language: "",
             languageCode: "",
-            isActive: true,
+            active: true,
         });
         setOpenModal(true);
     };
@@ -1646,7 +1665,7 @@ export function CompanyLanguage() {
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/companyLanguage/edit`,
-                { ...l, isActive: false },
+                { ...l, active: false },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             .then((r) => {
@@ -1665,7 +1684,7 @@ export function CompanyLanguage() {
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/companyLanguage/edit`,
-                { ...l, isActive: true },
+                { ...l, active: true },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             .then((r) => {
@@ -1846,7 +1865,7 @@ export function CompanyLanguage() {
                                             onClick={() => handleEdit(l)}
                                             style={{ cursor: "pointer" }}
                                         />
-                                        {l.isActive ? (
+                                        {l.active ? (
                                             <Trash2
                                                 size={18}
                                                 onClick={() => handleDelete(l)}
@@ -1870,12 +1889,12 @@ export function CompanyLanguage() {
                                         </span>
                                         <span
                                             className={
-                                                l.isActive
+                                                l.active
                                                     ? "text-success"
                                                     : "text-muted"
                                             }
                                         >
-                                            {l.isActive
+                                            {l.active
                                                 ? "Active"
                                                 : "Inactive"}
                                         </span>

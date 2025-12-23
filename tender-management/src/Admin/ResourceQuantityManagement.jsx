@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
+import { ArrowLeft, Plus, X, Edit, Trash2, RotateCcw } from "lucide-react";
 import { toast } from "react-toastify";
-import { Plus, Edit, Trash2, Ban, X, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import Select from "react-select";
-
+import Select from 'react-select';
 
 export function ResourceNature() {
     const [resourceNature, setResourceNature] = useState([]);
@@ -14,82 +13,122 @@ export function ResourceNature() {
 
     const [nature, setNature] = useState({
         id: null,
-        natureName: "",
-        active: true
+        nature: "",
+        active: true,
     });
-
+    const token = sessionStorage.getItem("token");
     const handleUnauthorized = () => {
         sessionStorage.clear();
         window.location.href = "/login";
     };
-
     const fetchResourceNature = useCallback(() => {
         axios
             .get(`${import.meta.env.VITE_API_BASE_URL}/resourceNature`, {
                 headers: {
-                    Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-                    "Content-Type": "application/json"
-                }
+                    Authorization: `Bearer ${token}`,
+                },
             })
-            .then(res => {
-                if (res.status === 200) setResourceNature(res.data);
+            .then((res) => {
+                if (res.status === 200) setResourceNature(res.data || []);
             })
-            .catch(err => {
+            .catch((err) => {
                 if (err?.response?.status === 401) handleUnauthorized();
-                else toast.error("Failed to fetch resource natures.");
+                else toast.error("Failed to fetch resource natures");
             });
-    }, []);
+    }, [token]);
 
     useEffect(() => {
         fetchResourceNature();
     }, [fetchResourceNature]);
-
-    const filteredList = resourceNature.filter(n =>
-        n.natureName?.toLowerCase().includes(search.toLowerCase())
+    const filteredList = resourceNature.filter((n) =>
+        n.nature?.toLowerCase().includes(search.toLowerCase())
     );
-
     const handleAdd = () => {
         setIsEdit(false);
-        setNature({ id: null, natureName: "", active: true });
+        setNature({ id: null, nature: "", active: true });
         setOpenModal(true);
     };
-
     const handleEdit = (n) => {
         setIsEdit(true);
         setNature({ ...n });
         setOpenModal(true);
     };
-
     const handleDelete = (n) => {
-        n.active = false;
-        toast.info("Marked as inactive");
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/resourceNature/edit`,
+                { ...n, active: false },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "Resource nature deactivated");
+                fetchResourceNature();
+            })
+            .catch((e) => {
+                if (e?.response?.status === 401) handleUnauthorized();
+                else toast.error(e?.response?.data || "Deactivate failed");
+            });
     };
-
+    const handleReactivate = (n) => {
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/resourceNature/edit`,
+                { ...n, active: true },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "Resource nature reactivated");
+                fetchResourceNature();
+            })
+            .catch((e) => {
+                toast.error(e?.response?.data || "Reactivation failed");
+            });
+    };
     const handleSave = () => {
-        if (!nature.natureName.trim()) return;
+        if (!nature.nature.trim()) return;
 
-        if (isEdit) {
-            console.log("Update Resource Nature:", nature);
-        } else {
-            console.log("Create Resource Nature:", nature);
-        }
+        const apiCall = isEdit
+            ? axios.put(
+                `${import.meta.env.VITE_API_BASE_URL}/resourceNature/edit`,
+                nature,
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            : axios.post(
+                `${import.meta.env.VITE_API_BASE_URL}/resourceNature/add`,
+                nature,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
 
-        setOpenModal(false);
+        apiCall
+            .then((res) => {
+                toast.success(res.data || "Resource nature saved");
+                setOpenModal(false);
+                fetchResourceNature();
+            })
+            .catch((e) => {
+                if (e?.response?.status === 401) handleUnauthorized();
+                else toast.error(e?.response?.data || "Save failed");
+            });
     };
-
     const modalForm = () => (
         <div
             className="modal fade show d-block"
             style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
             onClick={() => setOpenModal(false)}
         >
-            <div className="modal-dialog modal-md" onClick={e => e.stopPropagation()}>
+            <div
+                className="modal-dialog modal-md modal-dialog-centered"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <div className="modal-content rounded-3">
-                    <div className="modal-header">
+                    <div className="modal-header d-flex justify-content-between">
                         <p className="fw-bold mb-0">
                             {isEdit ? "Edit Resource Nature" : "Add Resource Nature"}
                         </p>
-                        <button className="modal-close-btn" onClick={() => setOpenModal(false)}>
+                        <button
+                            className="modal-close-btn"
+                            onClick={() => setOpenModal(false)}
+                        >
                             <X />
                         </button>
                     </div>
@@ -102,24 +141,27 @@ export function ResourceNature() {
                             type="text"
                             className="form-input w-100"
                             placeholder="Enter nature name"
-                            value={nature.natureName}
+                            value={nature.nature}
                             onChange={(e) =>
-                                setNature(prev => ({
-                                    ...prev,
-                                    natureName: e.target.value
+                                setNature((p) => ({
+                                    ...p,
+                                    nature: e.target.value,
                                 }))
                             }
                         />
                     </div>
 
                     <div className="modal-footer">
-                        <button className="btn btn-secondary" onClick={() => setOpenModal(false)}>
+                        <button
+                            className="btn btn-secondary"
+                            onClick={() => setOpenModal(false)}
+                        >
                             Cancel
                         </button>
                         <button
                             className="btn btn-primary"
                             onClick={handleSave}
-                            disabled={!nature.natureName.trim()}
+                            disabled={!nature.nature.trim()}
                         >
                             {isEdit ? "Update" : "Save"}
                         </button>
@@ -144,10 +186,11 @@ export function ResourceNature() {
             </div>
 
             <div className="bg-white rounded-3 mt-5" style={{ border: "1px solid #0051973D" }}>
-                <div className="tab-info col-12 h-100">
+                <div className="tab-info">
                     <span className="ms-2">Resource Natures</span>
                 </div>
 
+                {/* Search */}
                 <div className="row mt-3 p-4">
                     <div className="col-md-8">
                         <label>Search</label>
@@ -155,7 +198,7 @@ export function ResourceNature() {
                             className="form-input w-100"
                             placeholder="Search by name"
                             value={search}
-                            onChange={e => setSearch(e.target.value)}
+                            onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
                     <div className="col-md-4 d-flex align-items-center justify-content-center">
@@ -166,19 +209,37 @@ export function ResourceNature() {
                 <div className="row p-4">
                     {filteredList.map((n, i) => (
                         <div className="col-md-4 mb-3" key={i}>
-                            <div className="card shadow-sm">
+                            <div className="card shadow-sm h-100">
                                 <div className="card-body">
                                     <div className="d-flex justify-content-between">
-                                        <Edit size={18} onClick={() => handleEdit(n)} />
+                                        <Edit
+                                            size={18}
+                                            style={{ cursor: "pointer" }}
+                                            onClick={() => handleEdit(n)}
+                                        />
                                         {n.active ? (
-                                            <Trash2 size={18} onClick={() => handleDelete(n)} />
+                                            <Trash2
+                                                size={18}
+                                                style={{ cursor: "pointer" }}
+                                                onClick={() => handleDelete(n)}
+                                            />
                                         ) : (
-                                            <Ban size={18} className="text-muted" />
+                                            <RotateCcw
+                                                size={18}
+                                                className="text-primary"
+                                                style={{ cursor: "pointer" }}
+                                                onClick={() => handleReactivate(n)}
+                                            />
                                         )}
                                     </div>
+
                                     <div className="mt-2 d-flex justify-content-between">
                                         <span>{n.nature}</span>
-                                        <span className={`badge ${n.active ? "text-success" : "text-muted"}`}>
+                                        <span
+                                            className={
+                                                n.active ? "text-success" : "text-muted"
+                                            }
+                                        >
                                             {n.active ? "Active" : "Inactive"}
                                         </span>
                                     </div>
@@ -193,96 +254,127 @@ export function ResourceNature() {
         </div>
     );
 }
-
-
 export function ResourceType() {
     const navigate = useNavigate();
-
     const [resourceTypes, setResourceTypes] = useState([]);
     const [search, setSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
-
     const [resourceType, setResourceType] = useState({
         id: null,
         resourceTypeName: "",
-        active: true
+        active: true,
     });
-
+    const token = sessionStorage.getItem("token");
     const handleUnauthorized = () => {
         sessionStorage.clear();
         navigate("/login");
     };
-
     const fetchResourceTypes = useCallback(() => {
         axios
             .get(`${import.meta.env.VITE_API_BASE_URL}/resourceType`, {
-                headers: {
-                    Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-                    "Content-Type": "application/json"
-                }
+                headers: { Authorization: `Bearer ${token}` },
             })
             .then((res) => {
-                if (res.status === 200) setResourceTypes(res.data);
+                if (res.status === 200) setResourceTypes(res.data || []);
             })
             .catch((err) => {
                 if (err?.response?.status === 401) handleUnauthorized();
-                else toast.error("Failed to fetch resource types.");
+                else toast.error("Failed to fetch resource types");
             });
-    }, [navigate]);
-
+    }, [token, navigate]);
     useEffect(() => {
         fetchResourceTypes();
     }, [fetchResourceTypes]);
-
-    const filteredResourceTypes = resourceTypes.filter(rt =>
+    const filteredResourceTypes = resourceTypes.filter((rt) =>
         rt.resourceTypeName?.toLowerCase().includes(search.toLowerCase())
     );
-
     const handleAdd = () => {
         setIsEdit(false);
         setResourceType({ id: null, resourceTypeName: "", active: true });
         setOpenModal(true);
     };
-
     const handleEdit = (rt) => {
         setIsEdit(true);
         setResourceType({ ...rt });
         setOpenModal(true);
     };
-
     const handleDelete = (rt) => {
-        rt.active = false;
-        setResourceTypes([...resourceTypes]);
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/resourceType/edit`,
+                { ...rt, active: false },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "Resource type deactivated");
+                fetchResourceTypes();
+            })
+            .catch((e) => {
+                if (e?.response?.status === 401) handleUnauthorized();
+                else toast.error(e?.response?.data || "Deactivate failed");
+            });
     };
-
+    const handleReactivate = (rt) => {
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/resourceType/edit`,
+                { ...rt, active: true },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "Resource type reactivated");
+                fetchResourceTypes();
+            })
+            .catch((e) =>
+                toast.error(e?.response?.data || "Reactivation failed")
+            );
+    };
     const handleSave = () => {
         if (!resourceType.resourceTypeName.trim()) return;
 
-        if (isEdit) {
-            console.log("Update resource type:", resourceType);
-        } else {
-            console.log("Create resource type:", resourceType);
-        }
+        const apiCall = isEdit
+            ? axios.put(
+                `${import.meta.env.VITE_API_BASE_URL}/resourceType/edit`,
+                resourceType,
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            : axios.post(
+                `${import.meta.env.VITE_API_BASE_URL}/resourceType`,
+                resourceType,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
 
-        setOpenModal(false);
-        fetchResourceTypes();
+        apiCall
+            .then((res) => {
+                toast.success(res.data || "Resource type saved");
+                setOpenModal(false);
+                fetchResourceTypes();
+            })
+            .catch((e) => {
+                if (e?.response?.status === 401) handleUnauthorized();
+                else toast.error(e?.response?.data || "Save failed");
+            });
     };
-
     const resourceTypeForm = () => (
         <div
             className="modal fade show d-block"
-            tabIndex="-1"
             style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
             onClick={() => setOpenModal(false)}
         >
-            <div className="modal-dialog modal-md" onClick={(e) => e.stopPropagation()}>
+            <div
+                className="modal-dialog modal-md modal-dialog-centered"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <div className="modal-content rounded-3">
                     <div className="modal-header d-flex justify-content-between">
                         <p className="fw-bold mb-0">
                             {isEdit ? "Edit Resource Type" : "Add Resource Type"}
                         </p>
-                        <button className="modal-close-btn" onClick={() => setOpenModal(false)}>
+                        <button
+                            className="modal-close-btn"
+                            onClick={() => setOpenModal(false)}
+                        >
                             <X />
                         </button>
                     </div>
@@ -297,16 +389,19 @@ export function ResourceType() {
                             placeholder="Enter resource type"
                             value={resourceType.resourceTypeName}
                             onChange={(e) =>
-                                setResourceType(prev => ({
-                                    ...prev,
-                                    resourceTypeName: e.target.value
+                                setResourceType((p) => ({
+                                    ...p,
+                                    resourceTypeName: e.target.value,
                                 }))
                             }
                         />
                     </div>
 
                     <div className="modal-footer">
-                        <button className="btn btn-secondary" onClick={() => setOpenModal(false)}>
+                        <button
+                            className="btn btn-secondary"
+                            onClick={() => setOpenModal(false)}
+                        >
                             Cancel
                         </button>
                         <button
@@ -337,15 +432,15 @@ export function ResourceType() {
             </div>
 
             <div className="bg-white rounded-3 mt-5" style={{ border: "1px solid #0051973D" }}>
-                <div className="tab-info col-12 h-100">
+                <div className="tab-info">
                     <span className="ms-2">Resource Types</span>
                 </div>
 
+                {/* Search */}
                 <div className="row ms-1 me-1 mt-3 bg-white p-4 rounded-3">
                     <div className="col-lg-8">
                         <label>Search</label>
                         <input
-                            type="text"
                             className="form-input w-100"
                             placeholder="Search by resource type"
                             value={search}
@@ -354,29 +449,45 @@ export function ResourceType() {
                     </div>
 
                     <div className="col-lg-4 d-flex align-items-center justify-content-center">
-                        <p className="mb-0">
-                            {filteredResourceTypes.length} of {resourceTypes.length} Resource Types
-                        </p>
+                        {filteredResourceTypes.length} of {resourceTypes.length} Resource Types
                     </div>
                 </div>
 
+                {/* Cards */}
                 <div className="row ms-1 me-1 mt-3">
                     {filteredResourceTypes.map((rt, index) => (
                         <div className="col-lg-4 mb-3" key={index}>
                             <div className="card shadow-sm h-100">
                                 <div className="card-body">
                                     <div className="d-flex justify-content-between">
-                                        <Edit size={18} onClick={() => handleEdit(rt)} />
+                                        <Edit
+                                            size={18}
+                                            style={{ cursor: "pointer" }}
+                                            onClick={() => handleEdit(rt)}
+                                        />
                                         {rt.active ? (
-                                            <Trash2 size={18} onClick={() => handleDelete(rt)} />
+                                            <Trash2
+                                                size={18}
+                                                style={{ cursor: "pointer" }}
+                                                onClick={() => handleDelete(rt)}
+                                            />
                                         ) : (
-                                            <Ban size={18} className="text-muted" />
+                                            <RotateCcw
+                                                size={18}
+                                                className="text-primary"
+                                                style={{ cursor: "pointer" }}
+                                                onClick={() => handleReactivate(rt)}
+                                            />
                                         )}
                                     </div>
 
                                     <div className="d-flex justify-content-between mt-2">
                                         <span>{rt.resourceTypeName}</span>
-                                        <span className={`badge ${rt.active ? "text-success" : "text-muted"}`}>
+                                        <span
+                                            className={
+                                                rt.active ? "text-success" : "text-muted"
+                                            }
+                                        >
                                             {rt.active ? "Active" : "Inactive"}
                                         </span>
                                     </div>
@@ -395,113 +506,168 @@ export function ResourceType() {
 export function QuantityType() {
     const navigate = useNavigate();
 
-    const [quantityTypes, setQuantityType] = useState([]);
+    const [quantityTypes, setQuantityTypes] = useState([]);
     const [search, setSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
 
     const [quantity, setQuantity] = useState({
         id: null,
-        quantityTypeName: "",
-        active: true
+        quantityType: "",
+        active: true,
     });
 
+    /* 🔐 Unauthorized handler */
     const handleUnauthorized = () => {
         sessionStorage.clear();
         navigate("/login");
     };
 
-    const fetchQuantityType = useCallback(() => {
+    /* 📥 Fetch Quantity Types */
+    const fetchQuantityTypes = useCallback(() => {
         axios
             .get(`${import.meta.env.VITE_API_BASE_URL}/quantityType`, {
                 headers: {
                     Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-                    "Content-Type": "application/json"
+                },
+            })
+            .then(res => {
+                if (res.status === 200) {
+                    setQuantityTypes(res.data || []);
                 }
             })
-            .then((res) => {
-                if (res.status === 200) setQuantityType(res.data);
-            })
-            .catch((err) => {
+            .catch(err => {
                 if (err?.response?.status === 401) handleUnauthorized();
-                else toast.error("Failed to fetch quantity types.");
+                else toast.error("Failed to fetch quantity types");
             });
-    }, []);
+    }, [navigate]);
 
     useEffect(() => {
-        fetchQuantityType();
-    }, [fetchQuantityType]);
+        fetchQuantityTypes();
+    }, [fetchQuantityTypes]);
 
-    const handleAdd = () => {
-        setIsEdit(false);
-        setQuantity({ id: null, quantityTypeName: "", active: true });
-        setOpenModal(true);
-    };
-
-    const handleEdit = (q) => {
-        setIsEdit(true);
-        setQuantity({ ...q });
-        setOpenModal(true);
-    };
-
-    const handleDelete = (q) => {
-        q.active = false;
-        toast.info("Marked as inactive");
-    };
-
-    const handleSave = () => {
-        if (!quantity.quantityTypeName.trim()) return;
-
-        if (isEdit) {
-            console.log("Update Quantity Type:", quantity);
-        } else {
-            console.log("Create Quantity Type:", quantity);
-        }
-
-        setOpenModal(false);
-        fetchQuantityType();
-    };
-
+    /* 🔍 Filter */
     const filteredList = quantityTypes.filter(q =>
         q.quantityType?.toLowerCase().includes(search.toLowerCase())
     );
 
+    /* ➕ Add */
+    const handleAdd = () => {
+        setIsEdit(false);
+        setQuantity({ id: null, quantityType: "", active: true });
+        setOpenModal(true);
+    };
 
+    /* ✏️ Edit */
+    const handleEdit = (q) => {
+        setIsEdit(true);
+        setQuantity({
+            id: q.id,
+            quantityType: q.quantityType,
+            active: q.active,
+        });
+        setOpenModal(true);
+    };
+
+    /* 🗑️ Soft delete */
+    const handleDelete = (q) => {
+        const payload = { ...q, active: false };
+
+        axios
+            .put(`${import.meta.env.VITE_API_BASE_URL}/quantityType/edit`, payload, {
+                headers: {
+                    Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+                },
+            })
+            .then(() => {
+                toast.info("Quantity type marked as inactive");
+                fetchQuantityTypes();
+            })
+            .catch(err => {
+                if (err?.response?.status === 401) handleUnauthorized();
+                else toast.error("Failed to deactivate quantity type");
+            });
+    };
+
+    /* ♻️ Reactivate */
+    const handleReactivate = (q) => {
+        const payload = { ...q, active: true };
+
+        axios
+            .put(`${import.meta.env.VITE_API_BASE_URL}/quantityType/edit`, payload, {
+                headers: {
+                    Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+                },
+            })
+            .then(() => {
+                toast.success("Quantity type reactivated");
+                fetchQuantityTypes();
+            })
+            .catch(err => {
+                if (err?.response?.status === 401) handleUnauthorized();
+                else toast.error("Failed to reactivate quantity type");
+            });
+    };
+
+    /* 💾 Save */
+    const handleSave = () => {
+        if (!quantity.quantityType.trim()) return;
+
+        const apiCall = isEdit
+            ? axios.put(
+                `${import.meta.env.VITE_API_BASE_URL}/quantityType/edit`,
+                quantity,
+                { headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` } }
+            )
+            : axios.post(
+                `${import.meta.env.VITE_API_BASE_URL}/quantityType`,
+                quantity,
+                { headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` } }
+            );
+
+        apiCall
+            .then(() => {
+                toast.success(isEdit ? "Quantity type updated" : "Quantity type created");
+                setOpenModal(false);
+                fetchQuantityTypes();
+            })
+            .catch(err => {
+                if (err?.response?.status === 401) handleUnauthorized();
+                else toast.error("Save failed");
+            });
+    };
+
+    /* 🪟 Modal */
     const quantityForm = () => (
         <div
             className="modal fade show d-block"
-            tabIndex="-1"
             style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
             onClick={() => setOpenModal(false)}
         >
-            <div className="modal-dialog modal-md" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-dialog modal-md modal-dialog-centered" onClick={e => e.stopPropagation()}>
                 <div className="modal-content rounded-3">
                     <div className="modal-header d-flex justify-content-between">
                         <p className="fw-bold mb-0">
                             {isEdit ? "Edit Quantity Type" : "Add Quantity Type"}
                         </p>
-                        <button
-                            type="button"
-                            className="modal-close-btn"
-                            onClick={() => setOpenModal(false)}
-                        >
+                        <button className="modal-close-btn" onClick={() => setOpenModal(false)}>
                             <X />
                         </button>
                     </div>
 
                     <div className="modal-body">
                         <label className="projectform d-block">
-                            Quantity Type Name <span className="text-danger">*</span>
+                            Quantity Type <span className="text-danger">*</span>
                         </label>
                         <input
                             type="text"
                             className="form-input w-100"
                             placeholder="Enter quantity type"
-                            value={quantity.quantityTypeName}
+                            value={quantity.quantityType}
                             onChange={(e) =>
                                 setQuantity(prev => ({
                                     ...prev,
-                                    quantityTypeName: e.target.value
+                                    quantityType: e.target.value,
                                 }))
                             }
                         />
@@ -514,7 +680,7 @@ export function QuantityType() {
                         <button
                             className="btn btn-primary"
                             onClick={handleSave}
-                            disabled={!quantity.quantityTypeName.trim()}
+                            disabled={!quantity.quantityType.trim()}
                         >
                             {isEdit ? "Update" : "Save"}
                         </button>
@@ -524,6 +690,7 @@ export function QuantityType() {
         </div>
     );
 
+    /* 🧩 UI */
     return (
         <div className="container-fluid p-4 mt-3">
             <div className="d-flex justify-content-between">
@@ -539,15 +706,15 @@ export function QuantityType() {
             </div>
 
             <div className="bg-white rounded-3 mt-5" style={{ border: "1px solid #0051973D" }}>
-                <div className="tab-info col-12 h-100">
+                <div className="tab-info">
                     <span className="ms-2">Quantity Types</span>
                 </div>
 
-                <div className="row ms-1 me-1 mt-3 bg-white p-4 rounded-3">
+                {/* Search */}
+                <div className="row p-4">
                     <div className="col-lg-8">
                         <label>Search</label>
                         <input
-                            type="text"
                             className="form-input w-100"
                             placeholder="Search quantity type"
                             value={search}
@@ -555,30 +722,32 @@ export function QuantityType() {
                         />
                     </div>
                     <div className="col-lg-4 d-flex align-items-center justify-content-center">
-                        <p className="mb-0">
-                            {filteredList.length} of {quantityTypes.length} Quantity Types
-                        </p>
+                        {filteredList.length} of {quantityTypes.length} Quantity Types
                     </div>
                 </div>
 
-                <div className="row ms-1 me-1 mt-3">
+                {/* Cards */}
+                <div className="row p-4">
                     {filteredList.map((q, index) => (
-                        <div className="col-lg-4 col-md-4 mb-3" key={index}>
+                        <div className="col-lg-4 mb-3" key={index}>
                             <div className="card shadow-sm h-100">
                                 <div className="card-body">
                                     <div className="d-flex justify-content-between">
-                                        <Edit size={18} onClick={() => handleEdit(q)} />
+                                        <Edit size={18} style={{ cursor: "pointer" }} onClick={() => handleEdit(q)} />
                                         {q.active ? (
-                                            <Trash2 size={18} onClick={() => handleDelete(q)} />
+                                            <Trash2 size={18} style={{ cursor: "pointer" }} onClick={() => handleDelete(q)} />
                                         ) : (
-                                            <Ban size={18} className="text-muted" />
+                                            <RotateCcw
+                                                size={18}
+                                                style={{ cursor: "pointer" }}
+                                                onClick={() => handleReactivate(q)}
+                                            />
                                         )}
                                     </div>
 
                                     <div className="d-flex justify-content-between mt-2">
                                         <span>{q.quantityType}</span>
-
-                                        <span className={`badge ${q.active ? "text-success" : "text-muted"}`}>
+                                        <span className={q.active ? "text-success" : "text-muted"}>
                                             {q.active ? "Active" : "Inactive"}
                                         </span>
                                     </div>
@@ -604,7 +773,8 @@ export function Resources() {
     const [selectedResType, setSelectedResType] = useState(null);
     const [search, setSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
-
+    const [isEdit, setIsEdit] = useState(false);
+    const [editingId, setEditingId] = useState(null);
     const [resourceForm, setResourceForm] = useState({
         resourceCode: "",
         resourceName: "",
@@ -613,135 +783,162 @@ export function Resources() {
         uom: null,
         quantityType: null
     });
-    const handleAdd = () => {
-        setResourceForm({
-            resourceCode: null,
-            resourceName: null,
-            resourceType: null,
-            unitRate: '',
-            quantityType: '',
-            uom: '',
-        });
-        setOpenModal(true);
 
-    }
+    /* 🔐 Auth failure */
+    const handleUnauthorized = () => {
+        sessionStorage.clear();
+        navigate("/login");
+    };
 
-    const fetchInitialData = useCallback(async () => {
-        const token = sessionStorage.getItem("token");
-        if (!token) { navigate("/login"); return; }
-
-        const headers = {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-        };
-
-        try {
-            const [typeRes, resData] = await Promise.all([
-                axios.get(`${import.meta.env.VITE_API_BASE_URL}/resourceType`, { headers }),
-                axios.get(`${import.meta.env.VITE_API_BASE_URL}/resources`, { headers })
-            ]);
-
-            setResourceTypes(typeRes.data.map(rt => ({ value: rt.id, label: rt.resourceTypeName })));
-            setAllResources(resData.data);
-        } catch (err) {
-            if (err.response?.status === 401) navigate("/login");
-            toast.error("Failed to load initial data");
-        }
+    /* 🔹 Initial fetch */
+    const fetchInitialData = useCallback(() => {
+        axios
+            .all([
+                axios.get(`${import.meta.env.VITE_API_BASE_URL}/resourceType`, {
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+                }),
+                axios.get(`${import.meta.env.VITE_API_BASE_URL}/resources`, {
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+                })
+            ])
+            .then(
+                axios.spread((typeRes, resData) => {
+                    setResourceTypes(
+                        typeRes.data.map(rt => ({
+                            value: rt.id,
+                            label: rt.resourceTypeName
+                        }))
+                    );
+                    setAllResources(resData.data || []);
+                })
+            )
+            .catch(err => {
+                if (err?.response?.status === 401) handleUnauthorized();
+                else toast.error("Failed to load resources");
+            });
     }, [navigate]);
 
     useEffect(() => {
         fetchInitialData();
     }, [fetchInitialData]);
 
-    const fetchDropdownMasters = async () => {
-        const token = sessionStorage.getItem("token");
-
-        if (!token) {
-            toast.error("No security token found.");
-            return;
-        }
-
-        const headers = {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-        };
-
-        try {
-            const [uomRes, qtyRes] = await Promise.all([
-                axios.get(`${import.meta.env.VITE_API_BASE_URL}/uom`, { headers }),
-                axios.get(`${import.meta.env.VITE_API_BASE_URL}/quantityType`, { headers })
-            ]);
-
-            setUoms(uomRes.data.map(u => ({
-                value: u.id,
-                label: u.uomName
-            })));
-
-            setQuantityTypes(qtyRes.data.map(q => ({
-                value: q.id,
-                label: q.quantityType
-            })));
-
-        } catch (err) {
-            console.error("Dropdown Fetch Error:", err.response);
-            toast.error("Failed to load dropdown options. Authentication error.");
-        }
+    /* 🔹 Dropdown masters */
+    const fetchDropdownMasters = () => {
+        axios
+            .all([
+                axios.get(`${import.meta.env.VITE_API_BASE_URL}/uom`, {
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+                }),
+                axios.get(`${import.meta.env.VITE_API_BASE_URL}/quantityType`, {
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+                })
+            ])
+            .then(
+                axios.spread((uomRes, qtyRes) => {
+                    setUoms(uomRes.data.map(u => ({ value: u.id, label: u.uomName })));
+                    setQuantityTypes(qtyRes.data.map(q => ({ value: q.id, label: q.quantityType })));
+                })
+            )
+            .catch(() => toast.error("Failed to load dropdowns"));
     };
-
-    const handleDelete = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this resource?")) return;
-
-        const token = sessionStorage.getItem("token");
-        const headers = { Authorization: `Bearer ${token}` };
-
-        try {
-            await axios.delete(`${import.meta.env.VITE_API_BASE_URL}/resources/${id}`, { headers });
-            toast.success("Deleted successfully");
-            fetchInitialData();
-        } catch (err) {
-            toast.error("Delete failed. You may not have permission.");
-        }
+    const handleAdd = () => {
+        fetchDropdownMasters();
+        setIsEdit(false);
+        setEditingId(null);
+        setResourceForm({
+            resourceCode: "",
+            resourceName: "",
+            unitRate: "",
+            resourceType: null,
+            uom: null,
+            quantityType: null
+        });
+        setOpenModal(true);
     };
+    const handleEdit = (r) => {
+        fetchDropdownMasters();
+        setIsEdit(true);
+        setEditingId(r.id);
 
-    const displayData = allResources.filter(r => {
-        const matchesSearch = (r.resourceName || "").toLowerCase().includes(search.toLowerCase());
-        const matchesType = selectedResType ? r.resourceType?.id === selectedResType.value : true;
-        return matchesSearch && matchesType;
-    });
+        setResourceForm({
+            resourceCode: r.resourceCode,
+            resourceName: r.resourceName,
+            unitRate: r.unitRate,
+            resourceType: { value: r.resourceType.id, label: r.resourceType.resourceTypeName },
+            uom: { value: r.uom.id, label: r.uom.uomName },
+            quantityType: { value: r.quantityType.id, label: r.quantityType.quantityType }
+        });
 
-    const handleSaveResource = async () => {
+        setOpenModal(true);
+    };
+    const handleDelete = (r) => {
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/resource/edit`,
+                {
+                    id: r.id,
+                    resourceCode: r.resourceCode,
+                    resourceName: r.resourceName,
+                    unitRate: r.unitRate,
+                    resourceTypeId: r.resourceType.id,
+                    uomId: r.uom.id,
+                    quantityTypeId: r.quantityType.id,
+                    active: false
+                },
+                { headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` } }
+            )
+            .then(() => {
+                toast.success("Resource deactivated");
+                fetchInitialData();
+            })
+            .catch(e => toast.error(e?.response?.data || "Delete failed"));
+    };
+    const handleSaveResource = () => {
         const { resourceCode, resourceName, unitRate, resourceType, uom, quantityType } = resourceForm;
+
         if (!resourceCode || !resourceName || !unitRate || !resourceType || !uom || !quantityType) {
             toast.warning("All fields are required");
             return;
         }
 
         const payload = {
+            id: isEdit ? editingId : null,
             resourceCode,
             resourceName,
             unitRate: Number(unitRate),
-            active: true,
-            resourceType: { id: resourceType.value },
-            uom: { id: uom.value },
-            quantityType: { id: quantityType.value }
+            resourceTypeId: resourceType.value,
+            uomId: uom.value,
+            quantityTypeId: quantityType.value,
+            active: true
         };
 
-        try {
-            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/resources`, payload, {
-                headers: {
-                    Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-                    "Content-Type": "application/json"
-                }
+        const api = isEdit
+            ? axios.put(`${import.meta.env.VITE_API_BASE_URL}/resource/edit`, payload, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+            })
+            : axios.post(`${import.meta.env.VITE_API_BASE_URL}/resource/add`, payload, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
             });
-            toast.success("Saved successfully!");
-            setOpenModal(false);
-            setResourceForm({ resourceCode: "", resourceName: "", unitRate: "", resourceType: null, uom: null, quantityType: null });
-            fetchInitialData();
-        } catch {
-            toast.error("Save failed");
-        }
+
+        api
+            .then(() => {
+                toast.success(isEdit ? "Resource updated" : "Resource added");
+                setOpenModal(false);
+                setIsEdit(false);
+                setEditingId(null);
+                fetchInitialData();
+            })
+            .catch(e => toast.error(e?.response?.data || "Save failed"));
     };
 
+    /* 🔍 Filters */
+    const displayData = allResources.filter(r => {
+        const matchSearch = r.resourceName?.toLowerCase().includes(search.toLowerCase());
+        const matchType = selectedResType ? r.resourceType.id === selectedResType.value : true;
+        return matchSearch && matchType;
+    });
+
+    /* ================= UI ================= */
     return (
         <div className="container-fluid p-4 mt-3">
             <div className="d-flex justify-content-between">
@@ -749,73 +946,70 @@ export function Resources() {
                     <ArrowLeft size={16} />
                     <span className="ms-2">Resource</span>
                 </div>
-                <button className="btn action-button">
+                <button className="btn action-button" onClick={handleAdd}>
                     <Plus size={16} />
                     <span className="ms-2">Add resources</span>
                 </button>
             </div>
+
             <div className="bg-white mt-5">
-                <div className="tab-info col-12 h-100">
-                    <span className="ms-2">Cost Code Activity</span>
+                <div className="tab-info">
+                    <span className="ms-2">Resources</span>
                 </div>
-                <div className="p-4 ">
-                    <div className="row g-3 align-items-end">
-                        <div className="col-lg-6 ">
-                            <label className="small fw-bold mb-2 text-muted">Resource Type</label>
-                            <Select
-                                options={resourceTypes}
-                                value={selectedResType}
-                                onChange={setSelectedResType}
-                                classNamePrefix={"select"}
-                                isClearable
-                                placeholder="All Types" />
-                        </div>
-                        <div className="col-lg-6">
-                            <label className="fw-bold mb-2 text-muted">Search Resources</label>
-                            <input className="form-input w-100" placeholder="Search by name..." value={search} onChange={e => setSearch(e.target.value)} />
-                        </div>
+
+                <div className="p-4 row g-3">
+                    <div className="col-lg-6">
+                        <label className="small fw-bold text-muted">Resource Type</label>
+                        <Select
+                            options={resourceTypes}
+                            value={selectedResType}
+                            onChange={setSelectedResType}
+                            classNamePrefix={"select"}
+                            isClearable
+                        />
+                    </div>
+                    <div className="col-lg-6">
+                        <label className="small fw-bold text-muted">Search</label>
+                        <input
+                            className="form-input w-100"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                        />
                     </div>
                 </div>
 
-                <div className="table-responsive mt-3">
-                    <table className="table table-hover align-middle mb-0">
-                        <thead className="bg-light">
+                <div className="table-responsive">
+                    <table className="table table-hover">
+                        <thead>
                             <tr>
-                                <th>S.No</th>
-                                <th>Resource Type</th>
-                                <th>Resource Code</th>
-                                <th>Resource Name</th>
+                                <th>Sno</th>
+                                <th>Type</th>
+                                <th>Code</th>
+                                <th>Name</th>
                                 <th>UOM</th>
                                 <th>Rate</th>
                                 <th>Status</th>
-                                <th className="text-end pe-4">Actions</th>
+                                <th className="text-end">Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {displayData.length > 0 ? displayData.map((r, i) => (
+                            {displayData.map((r, i) => (
                                 <tr key={r.id}>
-                                    <td className="text-muted">{i + 1}</td>
-                                    <td className="text-muted">{r.resourceType.resourceTypeName}</td>
-                                    <td className="text-muted">{r.resourceCode}</td>
-                                    <td className="text-muted">{r.resourceName}</td>
-                                    <td className="text-muted">{r.uom.uomCode}</td>
-                                    <td className="text-muted">{r.unitRate}</td>
-                                    <td>
-                                        <span className={`${r.active ? "text-success" : "text-danger"}`}>
-                                            {r.active ? "Active" : "Inactive"}
-                                        </span>
+                                    <td>{i + 1}</td>
+                                    <td>{r.resourceType.resourceTypeName}</td>
+                                    <td>{r.resourceCode}</td>
+                                    <td>{r.resourceName}</td>
+                                    <td>{r.uom.uomCode}</td>
+                                    <td>{r.unitRate}</td>
+                                    <td className={r.active ? "text-success" : "text-danger"}>
+                                        {r.active ? "Active" : "Inactive"}
                                     </td>
-                                    <td className="text-end pe-4">
-                                        <button className="btn btn-link text-danger p-0 shadow-none" onClick={() => handleDelete(r.id)}>
-                                            <Trash2 size={18} />
-                                        </button>
+                                    <td className="text-end">
+                                        <Edit size={18} onClick={() => handleEdit(r)} />
+                                        <Trash2 size={18} className="ms-2" onClick={() => handleDelete(r)} />
                                     </td>
                                 </tr>
-                            )) : (
-                                <tr>
-                                    <td colSpan="4" className="text-center py-4 text-muted">No resources found</td>
-                                </tr>
-                            )}
+                            ))}
                         </tbody>
                     </table>
                 </div>
@@ -824,24 +1018,47 @@ export function Resources() {
             {openModal && (
                 <div className="modal fade show d-block" style={{ background: "rgba(0,0,0,.5)" }}>
                     <div className="modal-dialog modal-lg modal-dialog-centered">
-                        <div className="modal-content border-0">
-                            <div className="modal-header border-bottom-0">
-                                <h6 className="fw-bold mb-0">Add New Resource</h6>
-                                <button className="btn-close shadow-none" onClick={() => setOpenModal(false)} />
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h6>{isEdit ? "Edit Resource" : "Add Resource"}</h6>
+                                <button className="btn-close" onClick={() => setOpenModal(false)} />
                             </div>
-                            <div className="modal-body p-4 pt-0">
-                                <div className="row g-3">
-                                    <div className="col-md-6"><label className="small fw-bold mb-1">Resource Code</label><input className="form-control" value={resourceForm.resourceCode} onChange={e => setResourceForm(p => ({ ...p, resourceCode: e.target.value }))} /></div>
-                                    <div className="col-md-6"><label className="small fw-bold mb-1">Resource Name</label><input className="form-control" value={resourceForm.resourceName} onChange={e => setResourceForm(p => ({ ...p, resourceName: e.target.value }))} /></div>
-                                    <div className="col-md-6"><label className="small fw-bold mb-1">Unit Rate</label><input type="number" className="form-control" value={resourceForm.unitRate} onChange={e => setResourceForm(p => ({ ...p, unitRate: e.target.value }))} /></div>
-                                    <div className="col-md-6"><label className="small fw-bold mb-1">Resource Type</label><Select options={resourceTypes} value={resourceForm.resourceType} onChange={opt => setResourceForm(p => ({ ...p, resourceType: opt }))} /></div>
-                                    <div className="col-md-6"><label className="small fw-bold mb-1">UOM</label><Select options={uoms} value={resourceForm.uom} onChange={opt => setResourceForm(p => ({ ...p, uom: opt }))} /></div>
-                                    <div className="col-md-6"><label className="small fw-bold mb-1">Quantity Type</label><Select options={quantityTypes} value={resourceForm.quantityType} onChange={opt => setResourceForm(p => ({ ...p, quantityType: opt }))} /></div>
+
+                            <div className="modal-body row g-3">
+                                <div className="col-md-6">
+                                    <input className="form-control" placeholder="Code"
+                                        value={resourceForm.resourceCode}
+                                        onChange={e => setResourceForm(p => ({ ...p, resourceCode: e.target.value }))} />
+                                </div>
+                                <div className="col-md-6">
+                                    <input className="form-control" placeholder="Name"
+                                        value={resourceForm.resourceName}
+                                        onChange={e => setResourceForm(p => ({ ...p, resourceName: e.target.value }))} />
+                                </div>
+                                <div className="col-md-6">
+                                    <input type="number" className="form-control" placeholder="Rate"
+                                        value={resourceForm.unitRate}
+                                        onChange={e => setResourceForm(p => ({ ...p, unitRate: e.target.value }))} />
+                                </div>
+                                <div className="col-md-6">
+                                    <Select options={resourceTypes} value={resourceForm.resourceType}
+                                        onChange={opt => setResourceForm(p => ({ ...p, resourceType: opt }))} />
+                                </div>
+                                <div className="col-md-6">
+                                    <Select options={uoms} value={resourceForm.uom}
+                                        onChange={opt => setResourceForm(p => ({ ...p, uom: opt }))} />
+                                </div>
+                                <div className="col-md-6">
+                                    <Select options={quantityTypes} value={resourceForm.quantityType}
+                                        onChange={opt => setResourceForm(p => ({ ...p, quantityType: opt }))} />
                                 </div>
                             </div>
-                            <div className="modal-footer border-top-0">
-                                <button className="btn btn-light px-4" onClick={() => setOpenModal(false)}>Cancel</button>
-                                <button className="btn btn-primary px-4 fw-bold" onClick={handleSaveResource}>Save Resource</button>
+
+                            <div className="modal-footer">
+                                <button className="btn btn-light" onClick={() => setOpenModal(false)}>Cancel</button>
+                                <button className="btn btn-primary" onClick={handleSaveResource}>
+                                    {isEdit ? "Update" : "Save"}
+                                </button>
                             </div>
                         </div>
                     </div>
