@@ -522,12 +522,16 @@ export function States() {
         setOpenModal(true);
     };
     const handleDelete = (s) => {
-        axios
-            .put(
-                `${import.meta.env.VITE_API_BASE_URL}/states/edit`,
-                { ...s, active: false },
-                { headers: { Authorization: `Bearer ${token}` } }
-            )
+        axios.put(
+            `${import.meta.env.VITE_API_BASE_URL}/states/edit`,
+            {
+                id: s.id,
+                state: s.state,
+                countryId: s.country.id,
+                active: false
+            },
+            { headers: { Authorization: `Bearer ${token}` } }
+        )
             .then(r => {
                 toast.success(r.data);
                 fetchStates();
@@ -536,13 +540,18 @@ export function States() {
                 toast.error(e?.response?.data || "Failed to deactivate state")
             );
     };
+
     const handleReactivate = (s) => {
-        axios
-            .put(
-                `${import.meta.env.VITE_API_BASE_URL}/states/edit`,
-                { ...s, active: true },
-                { headers: { Authorization: `Bearer ${token}` } }
-            )
+        axios.put(
+            `${import.meta.env.VITE_API_BASE_URL}/states/edit`,
+            {
+                id: s.id,
+                state: s.state,
+                countryId: s.country.id,
+                active: true
+            },
+            { headers: { Authorization: `Bearer ${token}` } }
+        )
             .then(r => {
                 toast.success(r.data);
                 fetchStates();
@@ -551,13 +560,14 @@ export function States() {
                 toast.error(e?.response?.data || "Failed to reactivate state")
             );
     };
+
     const handleSave = () => {
         if (!state.state.trim() || !state.countryId) return;
         const payload = {
             id: state.id,
             state: state.state,
             active: state.active,
-            country: { id: state.countryId },
+            countryId: state.countryId
         };
         if (isEdit) {
             axios
@@ -591,6 +601,7 @@ export function States() {
                 );
         }
     };
+
     const modal = () => (
         <div
             className="modal fade show d-block"
@@ -792,7 +803,7 @@ export function Cities() {
             return;
         }
         axios
-            .get(`${import.meta.env.VITE_API_BASE_URL}/states/byCountry/${countryId}`, {
+            .get(`${import.meta.env.VITE_API_BASE_URL}/states/${countryId}`, {
                 headers: { Authorization: `Bearer ${token}` },
             })
             .then(r => {
@@ -839,19 +850,25 @@ export function Cities() {
             id: c.id,
             city: c.city,
             countryId: c.country.id,
-            stateId: c.state ? c.state.id : "",
+            stateId: c.states ? c.states.id : "",
             active: c.active,
         });
         fetchStatesByCountry(c.country.id);
         setOpenModal(true);
     };
+
     const handleDelete = (c) => {
-        axios
-            .put(
-                `${import.meta.env.VITE_API_BASE_URL}/cities/edit`,
-                { ...c, active: false },
-                { headers: { Authorization: `Bearer ${token}` } }
-            )
+        axios.put(
+            `${import.meta.env.VITE_API_BASE_URL}/cities/edit`,
+            {
+                id: c.id,
+                city: c.city,
+                countryId: c.country.id,
+                stateId: c.states ? c.states.id : "",
+                active: false
+            },
+            { headers: { Authorization: `Bearer ${token}` } }
+        )
             .then(r => {
                 toast.success(r.data);
                 fetchCities();
@@ -861,12 +878,17 @@ export function Cities() {
             );
     };
     const handleReactivate = (c) => {
-        axios
-            .put(
-                `${import.meta.env.VITE_API_BASE_URL}/cities/edit`,
-                { ...c, active: true },
-                { headers: { Authorization: `Bearer ${token}` } }
-            )
+        axios.put(
+            `${import.meta.env.VITE_API_BASE_URL}/cities/edit`,
+            {
+                id: c.id,
+                city: c.city,
+                countryId: c.country.id,
+                stateId: c.states ? c.states.id : "",
+                active: true
+            },
+            { headers: { Authorization: `Bearer ${token}` } }
+        )
             .then(r => {
                 toast.success(r.data);
                 fetchCities();
@@ -875,22 +897,24 @@ export function Cities() {
                 toast.error(e?.response?.data || "Failed to reactivate city")
             );
     };
+
     const handleSave = () => {
         if (!city.city.trim() || !city.countryId) return;
+
         const payload = {
             id: city.id,
             city: city.city,
             active: city.active,
-            country: { id: city.countryId },
-            state: city.stateId ? { id: city.stateId } : null,
+            countryId: city.countryId,
+            stateId: city.stateId || ""
         };
+
         if (isEdit) {
-            axios
-                .put(
-                    `${import.meta.env.VITE_API_BASE_URL}/cities/edit`,
-                    payload,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                )
+            axios.put(
+                `${import.meta.env.VITE_API_BASE_URL}/cities/edit`,
+                payload,
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
                 .then(r => {
                     toast.success(r.data);
                     fetchCities();
@@ -900,12 +924,11 @@ export function Cities() {
                     toast.error(e?.response?.data || "Update failed")
                 );
         } else {
-            axios
-                .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/cities`,
-                    payload,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                )
+            axios.post(
+                `${import.meta.env.VITE_API_BASE_URL}/cities`,
+                payload,
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
                 .then(r => {
                     toast.success(r.data);
                     fetchCities();

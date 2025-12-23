@@ -16,8 +16,6 @@ export function TaxType() {
     });
 
     const token = sessionStorage.getItem("token");
-
-    /* 🔹 Fetch */
     const fetchTaxTypes = () => {
         axios
             .get(`${import.meta.env.VITE_API_BASE_URL}/taxType`, {
@@ -35,12 +33,9 @@ export function TaxType() {
         fetchTaxTypes();
     }, []);
 
-    /* 🔍 Search */
     const filteredTaxTypes = taxTypes.filter((t) =>
         t.taxType?.toLowerCase().includes(search.toLowerCase())
     );
-
-    /* ➕ Add */
     const handleAdd = () => {
         setIsEdit(false);
         setTaxType({
@@ -50,15 +45,11 @@ export function TaxType() {
         });
         setOpenModal(true);
     };
-
-    /* ✏️ Edit */
     const handleEdit = (t) => {
         setIsEdit(true);
         setTaxType({ ...t });
         setOpenModal(true);
     };
-
-    /* 🗑️ Deactivate */
     const handleDelete = (t) => {
         axios
             .put(
@@ -76,8 +67,6 @@ export function TaxType() {
                 )
             );
     };
-
-    /* 🔄 Reactivate */
     const handleReactivate = (t) => {
         axios
             .put(
@@ -95,8 +84,6 @@ export function TaxType() {
                 )
             );
     };
-
-    /* 💾 Save */
     const handleSave = () => {
         if (!taxType.taxType.trim()) return;
 
@@ -118,7 +105,7 @@ export function TaxType() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/taxType`,
+                    `${import.meta.env.VITE_API_BASE_URL}/taxType/add`,
                     taxType,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -133,7 +120,6 @@ export function TaxType() {
         }
     };
 
-    /* 🪟 Modal */
     const modal = () => (
         <div
             className="modal fade show d-block"
@@ -378,7 +364,6 @@ export function TerritoryType() {
     /* 💾 Save */
     const handleSave = () => {
         if (!territoryType.territoryType.trim()) return;
-
         if (isEdit) {
             axios
                 .put(
@@ -397,7 +382,7 @@ export function TerritoryType() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/territoryType`,
+                    `${import.meta.env.VITE_API_BASE_URL}/territoryType/add`,
                     territoryType,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -569,7 +554,7 @@ export function IdentityType() {
 
     const [identityType, setIdentityType] = useState({
         id: null,
-        identityType: "",
+        idType: "",
         active: true,
     });
 
@@ -595,7 +580,7 @@ export function IdentityType() {
 
     /* 🔍 Search */
     const filteredIdentityTypes = identityTypes.filter((i) =>
-        i.identityType?.toLowerCase().includes(search.toLowerCase())
+        i.idType?.toLowerCase().includes(search.toLowerCase())
     );
 
     /* ➕ Add */
@@ -603,7 +588,7 @@ export function IdentityType() {
         setIsEdit(false);
         setIdentityType({
             id: null,
-            identityType: "",
+            idType: "",
             active: true,
         });
         setOpenModal(true);
@@ -656,7 +641,7 @@ export function IdentityType() {
 
     /* 💾 Save */
     const handleSave = () => {
-        if (!identityType.identityType.trim()) return;
+        if (!identityType.idType.trim()) return;
 
         if (isEdit) {
             axios
@@ -676,7 +661,7 @@ export function IdentityType() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/identityType`,
+                    `${import.meta.env.VITE_API_BASE_URL}/identityType/add`,
                     identityType,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -722,11 +707,11 @@ export function IdentityType() {
                         <input
                             className="form-input w-100"
                             placeholder="Enter identity type"
-                            value={identityType.identityType}
+                            value={identityType.idType}
                             onChange={(e) =>
                                 setIdentityType((prev) => ({
                                     ...prev,
-                                    identityType: e.target.value,
+                                    idType: e.target.value,
                                 }))
                             }
                         />
@@ -742,7 +727,7 @@ export function IdentityType() {
                         <button
                             className="btn btn-primary"
                             onClick={handleSave}
-                            disabled={!identityType.identityType.trim()}
+                            disabled={!identityType.idType.trim()}
                         >
                             {isEdit ? "Update" : "Save"}
                         </button>
@@ -820,7 +805,7 @@ export function IdentityType() {
                                     </div>
 
                                     <div className="mt-2 d-flex justify-content-between">
-                                        <span>{i.identityType}</span>
+                                        <span>{i.idType}</span>
                                         <span
                                             className={
                                                 i.active ? "text-success" : "text-muted"
@@ -849,16 +834,15 @@ export function Currency() {
     const [currency, setCurrency] = useState({
         id: null,
         currencyName: "",
+        currencyCode: "",
         symbol: "",
         active: true,
     });
 
     const token = sessionStorage.getItem("token");
-
-    /* 🔹 Fetch */
     const fetchCurrencies = () => {
         axios
-            .get(`${import.meta.env.VITE_API_BASE_URL}/currency`, {
+            .get(`${import.meta.env.VITE_API_BASE_URL}/project/currency`, {
                 headers: { Authorization: `Bearer ${token}` },
             })
             .then((r) => {
@@ -886,6 +870,7 @@ export function Currency() {
         setCurrency({
             id: null,
             currencyName: "",
+            currencyCode:"",
             symbol: "",
             active: true,
         });
@@ -959,7 +944,7 @@ export function Currency() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/currency`,
+                    `${import.meta.env.VITE_API_BASE_URL}/currency/add`,
                     currency,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -1013,7 +998,20 @@ export function Currency() {
                                 }))
                             }
                         />
-
+                        <label className="projectform d-block">
+                            Currency Code 
+                        </label>
+                        <input
+                            className="form-input w-100 mb-3"
+                            placeholder="Enter currency Code"
+                            value={currency.currencyCode}
+                            onChange={(e) =>
+                                setCurrency((prev) => ({
+                                    ...prev,
+                                    currencyCode: e.target.value,
+                                }))
+                            }
+                        />
                         <label className="projectform d-block">
                             Symbol <span className="text-danger">*</span>
                         </label>
@@ -1122,7 +1120,7 @@ export function Currency() {
 
                                     <div className="mt-2 d-flex justify-content-between">
                                         <span>
-                                            {c.currencyName} ({c.symbol})
+                                            {c.currencyName} ({c.symbol}) ({c.currencyCode})
                                         </span>
                                         <span
                                             className={
