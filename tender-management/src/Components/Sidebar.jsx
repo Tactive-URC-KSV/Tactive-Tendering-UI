@@ -4,6 +4,7 @@ import Logo from "../assest/logo.svg?react";
 import LogoutIcon from "../assest/Logout.svg?react";
 import UserIcon from "../assest/User.svg?react";
 import NotifyIcon from "../assest/Notify.svg?react";
+
 import {
   FaClipboardList,
   FaPlus,
@@ -15,9 +16,10 @@ import {
   FaInbox,
   FaChartBar,
   FaUserPlus,
+  
 } from "react-icons/fa";
 import "../CSS/Styles.css";
-import { UserCog } from "lucide-react";
+import { UserCog, Building2 } from "lucide-react";
 import { getUserName, getUserRole } from "../config/Auth";
 import { canAccessMenu } from "../config/Permission";
 
@@ -29,8 +31,10 @@ function Sidebar({ children }) {
   const role = getUserRole();
   const userName = getUserName();
   const sections = [
-    { label: "Admin Portal", path:"adminportal", icon: <UserCog />, key: "ADMIN_PORTAL" },
+   
     { label: "Dashboard", path: "dashboard", icon: <FaClipboardList />, key: "DASHBOARD" },
+     { label: "Admin Portal", path:"adminportal", icon: <UserCog  size={18}/>, key: "ADMIN_PORTAL" },
+    { label: "Company Details", path: "companydetails", icon: <Building2 size={18} stroke="#005197" />, key: "COMPANY_DETAILS" },
     { label: "Project Management", path: "projectmanagement", icon: <FaPlus />, key: "PROJECT_MANAGEMENT" },
     { label: "BOQ Definition", path: "boqdefinition", icon: <FaListAlt />, key: "BOQ_DEFINITION" },
     { label: "Tender Estimation", path: "tenderestimation", icon: <FaCalculator />, key: "TENDER_ESTIMATION" },
@@ -40,6 +44,7 @@ function Sidebar({ children }) {
     { label: "Tender Tracking", path: "TenderTracking", icon: <FaSearch />, key: "TENDER_TRACKING" },
     { label: "Tender Comparison", path: "TenderComparison", icon: <FaChartBar />, key: "TENDER_COMPARISON" },
     { label: "Contractor Onboarding", path: "ContractorOnboarding", icon: <FaUserPlus />, key: "CONTRACTOR_ONBOARDING" },
+    
   ];
   useEffect(()=>{
     console.log(userName);
