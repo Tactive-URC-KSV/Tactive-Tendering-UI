@@ -356,6 +356,7 @@ function FeasibilityStudy({ project, setActiveTab }) {
                             placeholder="Enter Selling Cost"
                             value={financialData.sellingCost}
                             onChange={(e) => setFinancialData({ ...financialData, sellingCost: e.target.value })}
+                            onWheel={(e) => e.target.blur()}
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
@@ -366,6 +367,7 @@ function FeasibilityStudy({ project, setActiveTab }) {
                             placeholder="Enter Rental Cost"
                             value={financialData.rentalCost}
                             onChange={(e) => setFinancialData({ ...financialData, rentalCost: e.target.value })}
+                            onWheel={(e) => e.target.blur()}
                         />
                     </div>
                 </div>
@@ -378,6 +380,7 @@ function FeasibilityStudy({ project, setActiveTab }) {
                             placeholder="Years"
                             value={financialData.roiYear}
                             onChange={(e) => setFinancialData({ ...financialData, roiYear: e.target.value })}
+                            onWheel={(e) => e.target.blur()}
                         />
                     </div>
                     <div className="col-md-6 mt-3 mb-3">
@@ -388,6 +391,7 @@ function FeasibilityStudy({ project, setActiveTab }) {
                             placeholder="%"
                             value={financialData.profitPercentage}
                             onChange={(e) => setFinancialData({ ...financialData, profitPercentage: e.target.value })}
+                            onWheel={(e) => e.target.blur()}
                         />
                     </div>
                 </div>

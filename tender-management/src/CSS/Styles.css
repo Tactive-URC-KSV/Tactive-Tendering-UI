@@ -37,20 +37,22 @@
   position: fixed;
   top: 66px;
   left: 0;
-  height: 100vh;
-  width: 250px;
+  min-height: 100vh;
+  width: 270px;
   background-color: #005197;
   overflow-x: hidden;
+  overflow-y: auto;
   transition: width 0.5s ease;
   z-index: 1000;
 }
 
 .sidebar-container.collapsed {
   width: 65px;
+  overflow-y: auto;
 }
 
 .sidebar-container.expanded {
-  width: 250px;
+  width: 270px;
   background-color: #005197CC;
 }
 
@@ -82,14 +84,14 @@
 
 .content-container {
   flex: 1;
-  margin-left: 65px;
-  padding: 20px;
+  margin-left: 55px;
 }
 
 .content-container.collapsed,
 .content-container.expanded {
-  margin-top: 65px;
+  margin-top: 50px;
   background-color: #F9FAFB;
+  
 }
 
 .project-counts {
@@ -219,7 +221,7 @@ label {
 }
 
 .select__menu {
-  z-index: 9999 !important;
+  z-index: 100 !important;
 }
 
 .select__control {
@@ -903,3 +905,49 @@ label {
   opacity: 60%;
   color: #005197;
 }
+/* Admin SideBar */
+.admin-layout{
+  display: flex;
+  flex-direction: row;
+}
+.admin-sidebar{
+  background-color: #E3F2FF;
+  width: 250px !important;
+  top: 0;
+  height: 100vh;
+  position: sticky;
+  overflow-y: auto;
+}
+.admin-content{
+  flex: 1;
+  top: 0;
+  height: 100vh;
+  position: sticky;
+  overflow-y: auto;
+
+}
+.cursor-pointer {
+  cursor: pointer;
+}
+.admin-nav-btn {
+  font-size: 14px;
+  padding: 6px 12px;
+}
+.btn.admin-nav-btn.active:focus,
+.btn.admin-nav-btn.active {
+  background-color: white;
+  color: #005197;
+  font-weight: 500;
+  outline: transparent;
+  border: #FFFFFF !important;
+}
+.modal-close-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+}
+.modal-close-btn svg {
+    pointer-events: none;
+}
+

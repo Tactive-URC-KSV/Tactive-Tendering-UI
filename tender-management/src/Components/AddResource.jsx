@@ -408,7 +408,7 @@ function AddResource() {
     }, [handleCalculations]);
 
     return (
-        <div className="container-fluid min-vh-100">
+        <div className="container-fluid mt-4 min-vh-100 p-4">
             <div className="ms-3 d-flex justify-content-between align-items-center mb-4">
                 <div className="fw-bold text-start">
                     <ArrowLeft size={20} onClick={handleBack} style={{ cursor: 'pointer' }} />
@@ -492,6 +492,7 @@ function AddResource() {
                         </label>
                         <input
                             type="number"
+                            onWheel={(e) => e.target.blur()}
                             name="rate"
                             value={resourceData.rate ?? 0}
                             onChange={handleChange}
@@ -545,6 +546,7 @@ function AddResource() {
                         </label>
                         <input
                             type="number"
+                            onWheel={(e) => e.target.blur()}
                             name="coEfficient"
                             value={resourceData.coEfficient ?? 1}
                             onChange={handleChange}
@@ -594,6 +596,7 @@ function AddResource() {
                                 placeholder="0.00"
                                 className="form-input w-100"
                                 style={{ borderRadius: "0.5rem" }}
+                                onWheel={(e) => e.target.blur()}
                                 step="0.01"
                             />
                         </div>
@@ -647,6 +650,7 @@ function AddResource() {
                                     className="form-input w-100"
                                     placeholder="0.00"
                                     style={{ borderRadius: "0.5rem" }}
+                                    onWheel={(e) => e.target.blur()}
                                     step="0.01"
                                 />
                             </div>
@@ -673,6 +677,7 @@ function AddResource() {
                                     className="form-input w-100"
                                     placeholder="0.00"
                                     style={{ borderRadius: "0.5rem" }}
+                                    onWheel={(e) => e.target.blur()}
                                     step="0.01"
                                 />
                             </div>
@@ -684,6 +689,7 @@ function AddResource() {
                                     value={resourceData.exchangeRate ?? 1}
                                     onChange={handleChange}
                                     className="form-input w-100"
+                                    onWheel={(e) => e.target.blur()}
                                     placeholder="1.00000"
                                     step="0.0001"
                                 />

@@ -167,7 +167,7 @@ function TenderResource() {
     })
   }
   return (
-    <div className="container-fluid min-vh-100">
+    <div className="container-fluid mt-4 p-4 min-vh-100">
       <div className="ms-3 d-flex justify-content-between align-items-center mb-4">
         <div className="fw-bold text-start">
           <ArrowLeft size={20} onClick={() => window.history.back()} style={{ cursor: 'pointer' }} />

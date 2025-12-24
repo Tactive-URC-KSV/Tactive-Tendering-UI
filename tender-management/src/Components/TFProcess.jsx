@@ -1,12 +1,10 @@
-import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, ArrowRight, BoxesIcon, ChevronDown, ChevronRight, IndianRupee, Info, Paperclip, Plus, User2, X, Download } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from "react";
+import { ArrowLeft, ArrowRight, BoxesIcon, ChevronDown, ChevronRight, Folder, Info, Paperclip, Plus, User2, X, Download, Edit, Send, File } from 'lucide-react';
 import axios from "axios";
 import Flatpickr from "react-flatpickr";
 import { FaCalendarAlt, FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
 import Select from "react-select";
 import { useScope } from "../Context/ScopeContext";
-
-
 function TFProcess({ projectId }) {
     const datePickerRef = useRef();
     const [project, setProject] = useState('');
@@ -23,7 +21,6 @@ function TFProcess({ projectId }) {
         const padded = String(randomNum).padStart(6, '0');
         return `TF-${year}-${padded}`;
     };
-
     const CustomMultiValueContainer = () => null;
     const CustomDropdownIndicator = () => null;
     const CustomIndicatorSeparator = () => null;
@@ -31,8 +28,6 @@ function TFProcess({ projectId }) {
     const handleRemoveScope = (idToRemove) => {
         setSelectedScopes(prevScopes => prevScopes.filter(id => id !== idToRemove));
     };
-
-
     const getCurrentDate = () => {
         const today = new Date();
         return today.toISOString().split("T")[0];
@@ -60,13 +55,11 @@ function TFProcess({ projectId }) {
     });
     const scopes = useScope() || [];
     const scopeOptions = scopes.map(s => ({ value: s.id, label: s.scope }));
-
     const [selectedScopes, setSelectedScopes] = useState([]);
-
+    const [openNodes, setOpenNodes] = useState(new Set());
     const handleUnauthorized = () => {
         console.error("Unauthorized access, attempting to redirect to login...");
     }
-
     useEffect(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${projectId}`, {
             headers: {
@@ -85,7 +78,6 @@ function TFProcess({ projectId }) {
             }
         });
     }, [projectId]);
-
     const getLoggedInUser = () => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/loggedin-user`, {
             headers: {
@@ -108,7 +100,6 @@ function TFProcess({ projectId }) {
             }
         })
     }
-
     const fetchParentBoqData = async () => {
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getParentBoq/${projectId}`, {
@@ -130,7 +121,6 @@ function TFProcess({ projectId }) {
             setParentBoq([]);
         }
     };
-
     const handleToggle = (parentId) => {
         setExpandedParentIds(prevSet => {
             const newSet = new Set(prevSet);
@@ -144,7 +134,6 @@ function TFProcess({ projectId }) {
             return newSet;
         });
     };
-
     const fetchChildrenBoq = async (parentId) => {
         const findNode = (tree) => {
             for (const node of tree) {
@@ -158,14 +147,11 @@ function TFProcess({ projectId }) {
             }
             return null;
         };
-
         const parentNode = findNode(parentTree);
         if (parentNode && parentNode.children !== null) {
             return;
         }
-
         setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: 'pending' }));
-
         try {
             const response = await axios.get(
                 `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${projectId}/${parentId}`,
@@ -194,7 +180,6 @@ function TFProcess({ projectId }) {
             setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: [] }));
         }
     };
-
     const updateNodeInTree = (tree, nodeId, newProps) => {
         return tree.map(node => {
             if (node.id === nodeId) {
@@ -206,7 +191,6 @@ function TFProcess({ projectId }) {
             return node;
         });
     };
-
     const handleParentBoqTree = (data = parentBoq) => {
         if (Array.isArray(data) && data.length > 0) {
             const parentTree = new Map();
@@ -222,7 +206,6 @@ function TFProcess({ projectId }) {
             setParentTree(Array.from(parentTree.values()))
         }
     }
-
     const toggleSelection = (boqId) => {
         setSelectedBoq(prevSet => {
             const newSet = new Set(prevSet);
@@ -234,7 +217,6 @@ function TFProcess({ projectId }) {
             return newSet;
         });
     };
-
     const toggleAllChildrenSelection = (children, selectAll) => {
         if (!Array.isArray(children)) return;
 
@@ -252,7 +234,6 @@ function TFProcess({ projectId }) {
             return newSet;
         });
     };
-
     const getSelectedLeafBoqs = (tree) => {
         let result = [];
         if (!selectedBoq || selectedBoq.size === 0) return [];
@@ -269,7 +250,6 @@ function TFProcess({ projectId }) {
         traverse(tree);
         return result;
     };
-
     const toggleRemovalSelection = (boqId) => {
         setBoqForRemoval(prevSet => {
             const newSet = new Set(prevSet);
@@ -277,7 +257,6 @@ function TFProcess({ projectId }) {
             return newSet;
         });
     };
-
     const handleRemoveSelectedBoqs = () => {
         setSelectedBoq(prevSet => {
             const newSet = new Set(prevSet);
@@ -295,7 +274,6 @@ function TFProcess({ projectId }) {
             setSelectedScopes(tenderDetail.scopeOfPackage);
         }
     }, [tenderDetail?.scopeOfPackage]);
-
     const BOQNode = ({ boq, level = 0 }) => {
         const canExpand = boq.level === 1 || boq.level === 2;
         const isExpanded = expandedParentIds.has(boq.id);
@@ -422,49 +400,52 @@ function TFProcess({ projectId }) {
             </div>
         );
     }
-
     const boqSelection = () => {
         return (
-            <div className="bg-white rounded-3 ms-3 me-3 p-3 mt-5" style={{ border: '1px solid #0051973D' }}>
-                <div className="ms-2 mb-2 d-flex justify-content-between align-items-center">
-                    <div className="text-start d-flex flex-column">
-                        <span className="fw-bold mb-2">Select BOQ's for tender floating</span>
-                        <span className="text-muted" style={{ fontSize: '14px' }}>Choose one or more BOQ’s to include in your tender package</span>
-                    </div>
-                    <div className="me-3 px-3 py-1 rounded-5 fw-medium" style={{ backgroundColor: '#DBEAFE', color: '#005197', fontSize: '14px' }}>
-                        {parentTree.length} BOQ
-                    </div>
-                </div>
-                <div className="boq-structure-list mt-3">
-                    {parentTree.length > 0 && parentTree.every(boq => boq.lastLevel === true) ? (
-                        <div className="table-responsive">
-                            <table className="table table-borderless">
-                                <thead>
-                                    <tr style={{ borderBottom: '0.5px solid #0051973D', color: '#005197' }}>
-                                        <th className="px-2"></th>
-                                        <th className="px-2">BOQ Code</th>
-                                        <th className="px-2">BOQ Name</th>
-                                        <th className="px-2">UOM</th>
-                                        <th className="px-2">Quantity</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {parentTree.map((boq) => (
-                                        <BOQNode key={boq.id} boq={boq} level={0} />
-                                    ))}
-                                </tbody>
-                            </table>
+            <>
+                <div className="bg-white rounded-3 ms-3 me-3 p-3 mt-5" style={{ border: '1px solid #0051973D' }}>
+                    <div className="ms-2 mb-2 d-flex justify-content-between align-items-center">
+                        <div className="text-start d-flex flex-column">
+                            <span className="fw-bold mb-2">Select BOQ's for tender floating</span>
+                            <span className="text-muted" style={{ fontSize: '14px' }}>Choose one or more BOQ’s to include in your tender package</span>
                         </div>
-                    ) : (
-                        parentTree.map((boq) => (
-                            <BOQNode key={boq.id} boq={boq} level={0} />
-                        ))
-                    )}
+                        <div className="me-3 px-3 py-1 rounded-5 fw-medium" style={{ backgroundColor: '#DBEAFE', color: '#005197', fontSize: '14px' }}>
+                            {parentTree.length} BOQ
+                        </div>
+                    </div>
+                    <div className="boq-structure-list mt-3">
+                        {parentTree.length > 0 && parentTree.every(boq => boq.lastLevel === true) ? (
+                            <div className="table-responsive">
+                                <table className="table table-borderless">
+                                    <thead>
+                                        <tr style={{ borderBottom: '0.5px solid #0051973D', color: '#005197' }}>
+                                            <th className="px-2"></th>
+                                            <th className="px-2">BOQ Code</th>
+                                            <th className="px-2">BOQ Name</th>
+                                            <th className="px-2">UOM</th>
+                                            <th className="px-2">Quantity</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {parentTree.map((boq) => (
+                                            <BOQNode key={boq.id} boq={boq} level={0} />
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            parentTree.map((boq) => (
+                                <BOQNode key={boq.id} boq={boq} level={0} />
+                            ))
+                        )}
+                    </div>
                 </div>
-            </div>
+                <div className="d-flex justify-content-end mt-4 me-3">
+                    <button className="btn btn-lg action-button" disabled={selectedBoq.size === 0} onClick={handleNextTabChange}><span className="fw-bold me-2">Confirm & Proceed</span><ArrowRight size={18} /></button>
+                </div>
+            </>
         );
     }
-
     const generalDetails = () => {
         const openCalendar = (id) => {
             const input = document.querySelector(`#${id}`);
@@ -579,21 +560,21 @@ function TFProcess({ projectId }) {
                 </div>
                 <div className="row align-items-center justify-content-between ms-1 mt-5">
                     <div className="col-md-4 col-lg-4 ">
-                        <label className="projectform text-start d-block">Contact Person</label>
+                        <label className="projectform text-start d-block">Pre Bid Meeting</label>
                         <input type="text" className="form-input w-100"
                             value={tenderDetail.contactPerson}
                             readOnly
                         />
                     </div>
                     <div className="col-md-4 col-lg-4">
-                        <label className="projectform text-start d-block">Contact Email</label>
+                        <label className="projectform text-start d-block">Pre Bid Meeting Date</label>
                         <input type="text" className="form-input w-100"
                             value={tenderDetail.contactEmail}
                             readOnly
                         />
                     </div>
                     <div className="col-md-4 col-lg-4">
-                        <label className="projectform text-start d-block">Contact Number</label>
+                        <label className="projectform text-start d-block">Site Investigation</label>
                         <input type="text" className="form-input w-100"
                             value={tenderDetail.contactMobile}
                             readOnly
@@ -602,7 +583,7 @@ function TFProcess({ projectId }) {
                 </div>
                 <div className="row align-items-center ms-1 mt-5">
                     <div className="col-md-6 col-lg-6">
-                        <label className="projectform text-start d-block">Contact Number</label>
+                        <label className="projectform text-start d-block">Site Investigation Date</label>
                         <input type="text" className="form-input w-100"
                             value={tenderDetail.contactMobile}
                             readOnly
@@ -646,20 +627,148 @@ function TFProcess({ projectId }) {
     }
 
     const packageDetails = (selectedBoqArray) => {
+        const toggleNode = (id) => {
+            setOpenNodes((prev) => {
+                const updated = new Set(prev);
+                updated.has(id) ? updated.delete(id) : updated.add(id);
+                return updated;
+            });
+        };
+         const buildBoqTree = (selected) => {
+            const nodes = new Map();
+            const ensureNode = (boq) => {
+                if (!boq) return null;
+                const parentProp = boq.parentBOQ ?? boq.parentBoq ?? null;
+                if (nodes.has(boq.id)) return nodes.get(boq.id);
+                const node = { ...boq, children: [] };
+                nodes.set(boq.id, node);
+                const parent = parentProp ? ensureNode(parentProp) : null;
+                if (parent) {
+                    parent.children.push(node);
+                    node._parent = parent;
+                }
+                return node;
+            };
+            selected.forEach(boq => ensureNode(boq));
+            const roots = [...nodes.values()].filter(n => !n._parent);
+            return roots;
+        };
+        const boqStructure = buildBoqTree(selectedBoqArray);
+        const buildParentChildMap = (boqStructure) => {
+            const map = new Map();
+
+            const build = (nodes) => {
+                nodes.forEach(node => {
+                    if (node.children?.length) {
+                        map.set(
+                            node.id,
+                            node.children
+                                .filter(child => child.lastLevel === true)
+                                .map(child => child.id)
+                        );
+
+                        build(node.children.filter(child => !child.lastLevel));
+                    }
+                });
+            };
+
+            build(boqStructure);
+            return map;
+        };
+        const parentChildMap = buildParentChildMap(boqStructure);
         const boqNameDisplay = (boqName) => {
             return boqName && boqName.length > 20
                 ? boqName.substring(0, 20) + '...'
                 : boqName;
-        }
-
-        const isAllSelectedForRemoval = selectedBoqArray.length > 0 && selectedBoqArray.every(boq => boqForRemoval.has(boq.id));
-
-        const toggleAllRemovalSelection = (checked) => {
-            if (checked) {
-                setBoqForRemoval(new Set(selectedBoqArray.map(boq => boq.id)));
-            } else {
-                setBoqForRemoval(new Set());
+        };
+        const getImmediateLastLevelChildren = (node) => {
+            return node.children?.filter(child => child.lastLevel === true) || [];
+        };
+        const collectLastLevel = (node, isVisible) => {
+            let result = [];
+            const isOpen = openNodes.has(node.id);
+            if (node.lastLevel && isVisible) {
+                result.push(node);
             }
+            if (node.children?.length && isOpen) {
+                node.children.forEach(child => {
+                    result.push(...collectLastLevel(child, isVisible && isOpen));
+                });
+            }
+            return result;
+        };
+        const renderParentSections = (nodes, depth = 0) => {
+            return nodes.map(node => {
+                if (node.lastLevel) return null;
+                const isOpen = openNodes.has(node.id);
+                const lastLevelChildren = getImmediateLastLevelChildren(node);
+                return (
+                    <div key={node.id} style={{ marginLeft: depth * 20 }}>
+                        <div
+                            className="d-flex align-items-center py-2"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => toggleNode(node.id)}
+                        >
+                            {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                            <Folder size={18} color="#005197" className="mx-2" />
+                            <strong>{node.boqCode}</strong>
+                            <span className="ms-2 text-muted">{node.boqName}</span>
+                        </div>
+                        {isOpen && lastLevelChildren.length > 0 && (
+                            <div className="table table-responsive mt-2 ms-4">
+                                <table className="table table-borderless">
+                                    <tbody>
+                                        {lastLevelChildren.map(child => (
+                                            <tr key={child.id}>
+                                                <td>
+                                                    <input
+                                                        type="checkbox"
+                                                        className="form-check-input"
+                                                        style={{ borderColor: '#005197' }}
+                                                        checked={boqForRemoval.has(child.id)}
+                                                        onChange={() => toggleRemovalSelection(child.id)}
+                                                    />
+
+                                                </td>
+                                                <td>{child.boqCode}</td>
+                                                <td title={child.boqName}>
+                                                    {boqNameDisplay(child.boqName)}
+                                                </td>
+                                                <td>{child.uom?.uomCode || '-'}</td>
+                                                <td>{child.quantity?.toFixed(3) || 0}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                        {isOpen && node.children?.length > 0 &&
+                            renderParentSections(
+                                node.children.filter(c => !c.lastLevel),
+                                depth + 1
+                            )
+                        }
+                    </div>
+                );
+            });
+        };
+        const toggleRemovalSelection = (boqId) => {
+            setBoqForRemoval(prev => {
+                const updated = new Set(prev);
+                if (updated.has(boqId)) {
+                    updated.delete(boqId);
+                } else {
+                    updated.add(boqId);
+                }
+                parentChildMap.forEach((children, parentId) => {
+                    const hasAnyChild = children.some(childId => updated.has(childId));
+
+                    if (!hasAnyChild) {
+                        updated.delete(parentId);
+                    }
+                });
+                return updated;
+            });
         };
 
         return (
@@ -677,7 +786,8 @@ function TFProcess({ projectId }) {
                         </div>
                     </div>
                     <div className="d-flex gap-5">
-                        <button className="btn btn-sm"
+                        <button
+                            className="btn btn-sm"
                             style={{ border: '1px solid #dc3545', color: '#dc3545' }}
                             onClick={handleRemoveSelectedBoqs}
                             disabled={boqForRemoval.size === 0}
@@ -694,57 +804,14 @@ function TFProcess({ projectId }) {
                         </button>
                     </div>
                 </div>
-
-                <div className="table table-responsive mt-4">
-                    <table className="table table-borderless">
-                        <thead style={{ color: '#005197' }}>
-                            <tr>
-                                <th style={{ width: '40px' }}>
-                                    <input
-                                        type="checkbox"
-                                        className="form-check-input"
-                                        style={{ borderColor: '#005197' }}
-                                        checked={isAllSelectedForRemoval}
-                                        onChange={(e) => toggleAllRemovalSelection(e.target.checked)}
-                                    />
-                                </th>
-                                <th>BOQ Code</th>
-                                <th>BOQ Name</th>
-                                <th>UOM</th>
-                                <th>Quantity</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {selectedBoqArray.length === 0 ? (
-                                <tr>
-                                    <td colSpan="5" className="text-center text-muted py-4">No BOQ items selected for this package.</td>
-                                </tr>
-                            ) : (
-                                selectedBoqArray.map((boq) => (
-                                    <tr key={boq.id}>
-                                        <td>
-                                            <input
-                                                type="checkbox"
-                                                className="form-check-input"
-                                                style={{ borderColor: '#005197' }}
-                                                checked={boqForRemoval.has(boq.id)}
-                                                onChange={() => toggleRemovalSelection(boq.id)}
-                                            />
-                                        </td>
-                                        <td>{boq.boqCode}</td>
-                                        <td title={boq.boqName}>{boqNameDisplay(boq.boqName) || '-'}</td>
-                                        <td>{boq.uom?.uomCode || '-'}</td>
-                                        <td>{boq.quantity?.toFixed(3) || 0}</td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                {selectedBoqArray.length > 0 && (
+                    <div className="mt-3">
+                        {renderParentSections(boqStructure)}
+                    </div>
+                )}
             </div>
         );
-    }
-
+    };
     const contractorDetails = () => {
         return (
             <div className="p-2">
@@ -766,7 +833,6 @@ function TFProcess({ projectId }) {
             }
         }));
     };
-
     const handleNoteChange = (key, value) => {
         setAttachments(prev => ({
             ...prev,
@@ -776,7 +842,6 @@ function TFProcess({ projectId }) {
             }
         }));
     };
-
     const attachmentDetails = () => {
         const attachmentTypes = [
             { key: "technical", title: "Technical Specification", noteLabel: "Additional notes for technical specification" },
@@ -918,6 +983,9 @@ function TFProcess({ projectId }) {
             else if (tab === 'contractor') {
                 setTab('attachment');
             }
+            else if (tab === 'attachment') {
+                setCurrentTab('review');
+            }
         }
 
         const handlePrevious = () => {
@@ -930,31 +998,36 @@ function TFProcess({ projectId }) {
             else if (tab === 'package') {
                 setTab('general');
             }
+            else if (tab === 'general') {
+                setCurrentTab('boq');
+            }
         }
 
         return (
-            <div className="bg-white ms-3 me-3 rounded-3 p-3 mt-5" style={{ border: '1px solid #0051973D' }}>
+            <>
+                <div className="bg-white ms-3 me-3 rounded-3 p-3 mt-5" style={{ border: '1px solid #0051973D' }}>
 
-                <div className="d-flex justify-content-between align-items-center ms-2 me-2 fw-bold" style={{ borderBottom: '1px solid #0051973D' }}>
-                    <div className="h-100 p-2" onClick={() => setTab('general')} style={{ cursor: 'pointer', color: `${tab === 'general' ? '#005197' : '#00000080'}`, borderBottom: `${tab === 'general' ? '1px solid #005197' : 'none'}` }}>
-                        <Info size={18} /> <span className="ms-1">General Details</span>
+                    <div className="d-flex justify-content-between align-items-center ms-2 me-2 fw-bold" style={{ borderBottom: '1px solid #0051973D' }}>
+                        <div className="h-100 p-2" onClick={() => setTab('general')} style={{ cursor: 'pointer', color: `${tab === 'general' ? '#005197' : '#00000080'}`, borderBottom: `${tab === 'general' ? '1px solid #005197' : 'none'}` }}>
+                            <Info size={18} /> <span className="ms-1">General Details</span>
+                        </div>
+                        <div className="h-100 p-2" onClick={() => setTab('package')} style={{ cursor: 'pointer', color: `${tab === 'package' ? '#005197' : '#00000080'}`, borderBottom: `${tab === 'package' ? '1px solid #005197' : 'none'}` }}>
+                            <BoxesIcon size={18} /> <span className="ms-1">Package Details</span>
+                        </div>
+                        <div className="h-100 p-2" onClick={() => setTab('contractor')} style={{ cursor: 'pointer', color: `${tab === 'contractor' ? '#005197' : '#00000080'}`, borderBottom: `${tab === 'contractor' ? '1px solid #005197' : 'none'}` }}>
+                            <User2 size={18} /> <span className="ms-1">Contractor Details</span>
+                        </div>
+                        <div className="h-100 p-2" onClick={() => setTab('attachment')} style={{ cursor: 'pointer', color: `${tab === 'attachment' ? '#005197' : '#00000080'}`, borderBottom: `${tab === 'attachment' ? '1px solid #005197' : 'none'}` }}>
+                            <Paperclip size={18} /> <span className="ms-1">Attachments</span>
+                        </div>
                     </div>
-                    <div className="h-100 p-2" onClick={() => setTab('package')} style={{ cursor: 'pointer', color: `${tab === 'package' ? '#005197' : '#00000080'}`, borderBottom: `${tab === 'package' ? '1px solid #005197' : 'none'}` }}>
-                        <BoxesIcon size={18} /> <span className="ms-1">Package Details</span>
-                    </div>
-                    <div className="h-100 p-2" onClick={() => setTab('contractor')} style={{ cursor: 'pointer', color: `${tab === 'contractor' ? '#005197' : '#00000080'}`, borderBottom: `${tab === 'contractor' ? '1px solid #005197' : 'none'}` }}>
-                        <User2 size={18} /> <span className="ms-1">Contractor Details</span>
-                    </div>
-                    <div className="h-100 p-2" onClick={() => setTab('attachment')} style={{ cursor: 'pointer', color: `${tab === 'attachment' ? '#005197' : '#00000080'}`, borderBottom: `${tab === 'attachment' ? '1px solid #005197' : 'none'}` }}>
-                        <Paperclip size={18} /> <span className="ms-1">Attachments</span>
-                    </div>
+                    {renderTab()}
                 </div>
-                {renderTab()}
                 <div className="d-flex justify-content-between align-items-center ms-3 me-3 mt-4 mb-4">
-                    <button className="btn cancel-button" disabled={tab === 'general'} onClick={handlePrevious}>Previous</button>
-                    <button className="btn action-button" disabled={tab === 'attachment'} onClick={handleNext}><ArrowRight size={18} /><span className="fw-bold ms-2">Next</span></button>
+                    <button className="btn cancel-button" onClick={handlePrevious}><ArrowLeft size={18} /><span className="ms-2">Previous</span></button>
+                    <button className="btn btn-lg action-button" onClick={handleNext}><span className="fw-bold me-2">{tab === 'attachment' ? 'Confirm & Proceed' : 'Next'}</span><ArrowRight size={18} /></button>
                 </div>
-            </div>
+            </>
         );
     }
     const AttachmentRow = ({ title, files, notes }) => (
@@ -995,7 +1068,6 @@ function TFProcess({ projectId }) {
         }
 
     }
-
     const reviewTender = () => {
         const boqArray = getSelectedLeafBoqs(parentTree);
         const contractorsList = [];
@@ -1019,7 +1091,6 @@ function TFProcess({ projectId }) {
 
         return (
             <div className="p-4">
-
                 <div className="p-4 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
                     <div className="text-start ms-1 mt-2 mb-4">
                         <h5 className="fw-bold mb-1" style={{ color: '#333' }}>Review & Float Tender</h5>
@@ -1044,7 +1115,6 @@ function TFProcess({ projectId }) {
                         </div>
                     </div>
                 </div>
-
                 <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
                     <div className="text-start ms-1 mt-2 mb-3">
                         <Info size={20} color="#2BA95A" />
@@ -1162,255 +1232,128 @@ function TFProcess({ projectId }) {
                                 </div>
                             </div>
                         ))}
-                        <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-                            <div className="text-start ms-1 mt-2 mb-3">
-                                <Info size={20} color="#2BA95A" />
-                                <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>General Details</span>
-                            </div>
-                            <div className="row g-4 ms-1">
-                                <div className="col-md-4 text-start">
-                                    <span className="text-muted d-block">Project Name</span>
-                                    <span className="fw-medium">{project?.projectName || 'N/A'}</span>
-                                </div>
-                                <div className="col-md-4 text-start">
-                                    <span className="text-muted d-block">Offer Submission Mode</span>
-                                    <span className="fw-medium">{getDisplayMode(tenderDetail.offerSubmissionMode)}</span>
-                                </div>
-                                <div className="col-md-4 text-start">
-                                    <span className="text-muted d-block">Submission Last Date</span>
-                                    <span
-                                        className="fw-medium"
-                                        style={{ color: '#dc3545' }}
-                                    >
-                                        {tenderDetail.submissionLastDate
-                                            ? new Date(tenderDetail.submissionLastDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-                                            : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="col-md-4 text-start">
-                                    <span className="text-muted d-block">Bid Opening</span>
-                                    <span className="fw-medium">
-                                        {tenderDetail.bidOpeningDate
-                                            ? new Date(tenderDetail.bidOpeningDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-                                            : 'N/A'}
-                                    </span>
-                                </div>
+                    </div>
+                </div>
+                <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
+                    <div className="text-start ms-1 mb-3">
+                        <Paperclip size={20} color="#005197" />
+                        <span className="ms-2 fw-bold" style={{ color: '#005197' }}>Attachments</span>
+                    </div>
 
-                                <div className="col-md-4 text-start">
-                                    <span className="text-muted d-block">Contact Person</span>
-                                    <span className="fw-medium">{tenderDetail.contactPerson || 'N/A'}</span>
-                                </div>
-                                <div className="col-md-4 text-start">
-                                    <span className="text-muted d-block">Contact Number</span>
-                                    <span className="fw-medium">{tenderDetail.contactMobile || 'N/A'}</span>
-                                </div>
-                                <div className="col-md-4 text-start">
-                                    <span className="text-muted d-block">Contact Email ID</span>
-                                    <span className="fw-medium">{tenderDetail.contactEmail || 'N/A'}</span>
-                                </div>
-                                <div className="col-md-12 text-start">
-                                    <span className="text-muted d-block">Scope of Packages</span>
-                                    <div className="d-flex flex-wrap gap-2 mt-1">
-                                        {Array.isArray(tenderDetail.scopeOfPackage) && tenderDetail.scopeOfPackage.length > 0 ? (
-                                            tenderDetail.scopeOfPackage.map((scopeId, index) => {
-                                                const scopeObj = scopeOptions.find(opt => opt.value === scopeId);
-                                                return (
-                                                    <span key={index} className="badge p-2"
-                                                        style={{ backgroundColor: '#EAF2FE', color: '#2563EBCC', fontSize: '11px', borderRadius: '15px' }}>
-                                                        {scopeObj ? scopeObj.label : scopeId}
-                                                    </span>
-                                                );
-                                            })
-                                        ) : (
-                                            <span className="text-muted" style={{ fontSize: '14px' }}>No scopes selected</span>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-                            <div className="text-start ms-1 mb-3">
-                                <BoxesIcon size={20} color="#2BA95A" />
-                                <span className="ms-2 fw-bold" style={{ color: '#2BA95A' }}>Package Details </span>
-                            </div>
-                            <div className="table-responsive ms-1 me-1">
-                                <table className="table table-borderless">
-                                    <thead style={{ color: '#005197', borderBottom: '2px solid #0051973D' }}>
-                                        <tr>
-                                            <th className="fw-bold">BOQ Code</th>
-                                            <th className="fw-bold">BOQ Name</th>
-                                            <th className="fw-bold">Unit</th>
-                                            <th className="fw-bold text-end">Quantity</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {boqArray.length > 0 ? (
-                                            boqArray.map((boq) => (
-                                                <tr key={boq.id}>
-                                                    <td>{boq.boqCode}</td>
-                                                    <td title={boq.boqName}>{boqNameDisplay(boq.boqName)}</td>
-                                                    <td>{boq.uom?.uomCode || '-'}</td>
-                                                    <td className="text-end">{boq.quantity?.toFixed(4) || 0}</td>
-                                                </tr>
-                                            ))
-                                        ) : (
-                                            <tr><td colSpan="4" className="text-center text-muted">No BOQ items selected.</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-                            <div className="text-start ms-1 mb-3">
-                                <User2 size={20} color="#dc3545" />
-                                <span className="ms-2 fw-bold" style={{ color: '#dc3545' }}>Contractor Details</span>
-                                <p className="text-muted mt-1" style={{ fontSize: '14px' }}>{contractorsList.length} contractors selected for tender invitation</p>
-                            </div>
-                            <div className="d-flex flex-wrap gap-3 ms-1">
-                                {contractorsList.map((contractor, index) => (
-                                    <div key={index} className="p-3" style={{ border: '1px solid #ccc', borderRadius: '8px', minWidth: '300px' }}>
-                                        <div className="d-flex justify-content-between align-items-start">
-                                            <span className="fw-bold" style={{ color: '#333' }}>{contractor.name}</span>
-                                            <span style={{ color: '#dc3545', cursor: 'pointer' }}>
-                                                <X size={16} />
-                                            </span>
-                                        </div>
-                                        <p className="text-muted mb-0" style={{ fontSize: '13px' }}>{contractor.contact}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
-                            <div className="text-start ms-1 mb-3">
-                                <Paperclip size={20} color="#005197" />
-                                <span className="ms-2 fw-bold" style={{ color: '#005197' }}>Attachments</span>
-                            </div>
+                    <div className="ms-1 me-1">
+                        {Object.keys(attachments).map((key, index) => {
+                            const attachmentData = attachments[key];
+                            const title = getAttachmentTitle(key);
+                            const files = attachmentData.files || [];
+                            const notes = attachmentData.notes || '';
 
-                            <div className="ms-1 me-1">
-                                {Object.keys(attachments).map((key, index) => {
-                                    const attachmentData = attachments[key];
-                                    const title = getAttachmentTitle(key);
-                                    const files = attachmentData.files || [];
-                                    const notes = attachmentData.notes || '';
+                            const fileInfo = files.length > 0 ? files[0] : null;
 
-                                    const fileInfo = files.length > 0 ? files[0] : null;
-
-                                    return (
-                                        <div
-                                            key={key}
-                                            className="p-3 rounded-3 mb-3"
-                                            style={{
-                                                backgroundColor: '#FAFAFA',
-                                            }}
-                                        >
-                                            <div className="d-flex justify-content-between align-items-start">
-
-                                                <div className="text-start me-4 flex-grow-1">
-                                                    <span className="fw-medium d-block mb-1" style={{ color: '#333' }}>{title}</span>
-                                                    {fileInfo ? (
-                                                        <div className="d-block mt-1">
-                                                            <span style={{ fontSize: '13px', color: '#00000080' }}>
-                                                                {getFriendlyFileType(fileInfo.type || fileInfo.extension)} {formatFileSize(fileInfo.size) || fileInfo.id || 'N/A'}
-                                                            </span>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-muted" style={{ fontSize: '13px' }}>No file uploaded</span>
-                                                    )}
-                                                    <span
-                                                        className="d-block mt-1"
-                                                        style={{
-                                                            fontSize: '13px',
-                                                            color: 'rgba(0, 0, 0, 0.5)'
-                                                        }}
-                                                    >
-                                                        {notes}
-                                                    </span>
-                                                </div>
-                                                {fileInfo && (
-                                                    <span
-                                                        className="p-2 rounded-circle flex-shrink-0"
-                                                        style={{ cursor: 'pointer', color: '#005197' }}
-                                                    >
-                                                        <Download size={18} />
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                        <div className="mt-5 mb-5">
-
-                            <div
-                                className="p-4 d-flex flex-column rounded-3"
-                                style={{
-                                    backgroundColor: '#EAF2FE',
-                                    border: '1px solid #C0D9FF',
-                                }}
-                            >
-                                <div className="mb-3 fw-bold text-start" style={{ color: '#005197' }}>
-                                    Tender Summary
-                                </div>
-                                <div className="d-flex flex-column" style={{ color: '#005197', fontSize: '14px' }}>
-                                    <div className="d-flex mb-2">
-                                        <div
-                                            className="d-flex justify-content-between pe-2 me-4"
-                                            style={{
-                                                width: '50%',
-                                                borderRight: '1px solid #D2E3F4',
-                                            }}
-                                        >
-                                            <span>Total Packages</span> <span style={{ color: '#005197' }}>{boqArray.length > 0 ? 1 : 0}</span>
-                                        </div>
-                                        <div className="d-flex justify-content-between ps-4" style={{ width: '50%' }}>
-                                            <span>Selected Contractors</span> <span style={{ color: '#005197' }}>{contractorsList.length}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="d-flex">
-                                        <div
-                                            className="d-flex justify-content-between pe-2 me-4"
-                                            style={{
-                                                width: '50%',
-                                                borderRight: '1px solid #D2E3F4'
-                                            }}
-                                        >
-                                            <span>Attachments</span> <span style={{ color: '#005197' }}>{Object.keys(attachments).filter(key => attachments[key].files?.length > 0 || attachments[key].notes).length}</span>
-                                        </div>
-                                        <div className="d-flex justify-content-between ps-4" style={{ width: '50%' }}>
-                                            <span>Submission Deadline</span>
-                                            <span
-                                                style={{
-                                                    color: '#dc3545'
-                                                }}
-                                            >
-                                                {tenderDetail.offerSubmissionDate || 'Not Set'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="d-flex justify-content-end mt-3">
-                                <button
-                                    className="btn fw-bold"
+                            return (
+                                <div
+                                    key={key}
+                                    className="p-3 rounded-3 mb-3"
                                     style={{
-                                        backgroundColor: '#005197CC',
-                                        color: 'white',
-                                        padding: '10px 20px'
+                                        backgroundColor: '#FAFAFA',
                                     }}
                                 >
-                                    Float Tender
-                                </button>
+                                    <div className="d-flex justify-content-between align-items-start">
+
+                                        <div className="text-start me-4 flex-grow-1">
+                                            <span className="fw-medium d-block mb-1" style={{ color: '#333' }}>{title}</span>
+                                            {fileInfo ? (
+                                                <div className="d-block mt-1">
+                                                    <span style={{ fontSize: '13px', color: '#00000080' }}>
+                                                        {getFriendlyFileType(fileInfo.type || fileInfo.extension)} {formatFileSize(fileInfo.size) || fileInfo.id || 'N/A'}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-muted" style={{ fontSize: '13px' }}>No file uploaded</span>
+                                            )}
+                                            <span
+                                                className="d-block mt-1"
+                                                style={{
+                                                    fontSize: '13px',
+                                                    color: 'rgba(0, 0, 0, 0.5)'
+                                                }}
+                                            >
+                                                {notes}
+                                            </span>
+                                        </div>
+                                        {fileInfo && (
+                                            <span
+                                                className="p-2 rounded-circle flex-shrink-0"
+                                                style={{ cursor: 'pointer', color: '#005197' }}
+                                            >
+                                                <Download size={18} />
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                <div className="mt-5 mb-5">
+                    <div
+                        className="p-4 d-flex flex-column rounded-3"
+                        style={{
+                            backgroundColor: '#EAF2FE',
+                            border: '1px solid #C0D9FF',
+                        }}
+                    >
+                        <div className="mb-3 fw-bold text-start" style={{ color: '#005197' }}>
+                            Tender Summary
+                        </div>
+                        <div className="d-flex flex-column" style={{ color: '#005197', fontSize: '14px' }}>
+                            <div className="d-flex mb-2">
+                                <div
+                                    className="d-flex justify-content-between pe-2 me-4"
+                                    style={{
+                                        width: '50%',
+                                        borderRight: '1px solid #D2E3F4',
+                                    }}
+                                >
+                                    <span>Total Packages</span> <span style={{ color: '#005197' }}>{boqArray.length > 0 ? 1 : 0}</span>
+                                </div>
+                                <div className="d-flex justify-content-between ps-4" style={{ width: '50%' }}>
+                                    <span>Selected Contractors</span> <span style={{ color: '#005197' }}>{contractorsList.length}</span>
+                                </div>
+                            </div>
+
+                            <div className="d-flex">
+                                <div
+                                    className="d-flex justify-content-between pe-2 me-4"
+                                    style={{
+                                        width: '50%',
+                                        borderRight: '1px solid #D2E3F4'
+                                    }}
+                                >
+                                    <span>Attachments</span> <span style={{ color: '#005197' }}>{Object.keys(attachments).filter(key => attachments[key].files?.length > 0 || attachments[key].notes).length}</span>
+                                </div>
+                                <div className="d-flex justify-content-between ps-4" style={{ width: '50%' }}>
+                                    <span>Submission Deadline</span>
+                                    <span
+                                        style={{
+                                            color: '#dc3545'
+                                        }}
+                                    >
+                                        {tenderDetail.offerSubmissionDate || 'Not Set'}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
+                <div className="d-flex justify-content-between mt-3">
+                    <button className="btn cancel-button" onClick={() => setCurrentTab('tender')}> <Edit size={18} color="#005197" /> <span className="ms-2">Edit Details</span></button>
+                    <button className="btn btn-lg action-button">
+                        <Send size={20} color="#FFFFFF" /><span className="ms-2">Float Tender</span>
+                    </button>
+                </div>
             </div>
         );
     };
-
     const renderContent = () => {
         switch (currentTab) {
             case 'boq':
@@ -1423,7 +1366,6 @@ function TFProcess({ projectId }) {
                 return null;
         }
     }
-
     const handleNextTabChange = () => {
         if (currentTab === 'boq') {
             setCurrentTab('tender');
@@ -1431,19 +1373,10 @@ function TFProcess({ projectId }) {
             setCurrentTab('review');
         }
     }
-
-    const handlePreviousTabChange = () => {
-        if (currentTab === 'tender') {
-            setCurrentTab('boq');
-        } else if (currentTab === 'review') {
-            setCurrentTab('tender');
-        }
-    }
-
     return (
-        <div className='container-fluid min-vh-100 overflow-y-hidden'>
+        <div className='container-fluid p-3 min-vh-100 overflow-y-hidden'>
             <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-3 mt-2 mb-3">
-                <div className="ms-3">
+                <div>
                     <ArrowLeft size={20} onClick={() => window.history.back()} style={{ cursor: 'pointer' }} />
                     <span className='ms-2'>Tender Floating</span>
                     <span className='ms-2'>-</span>
@@ -1470,48 +1403,7 @@ function TFProcess({ projectId }) {
                 </div>
             </div>
             {renderContent()}
-            <div className={`d-flex justify-content-${currentTab === 'boq' ? 'end' : 'between'} align-items-center mt-5 me-3 ms-3 mb-4`}>
-                {currentTab !== 'boq' && <button className="btn cancel-button" onClick={handlePreviousTabChange}>Previous</button>}
-                <button className="btn action-button" disabled={selectedBoq.size === 0} onClick={handleNextTabChange}><span className="fw-bold me-2">Confirm & Proceed</span><ArrowRight size={18} /></button>
-            </div>
         </div>
-
     );
-    //  return (
-    //     <div className='container-fluid min-vh-100'>
-    //         <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-3 mt-2 mb-3">
-    //             <div className="ms-3">
-    //                 <ArrowLeft size={20} onClick={() => window.history.back()} style={{ cursor: 'pointer' }} />
-    //                 <span className='ms-2'>Tender Floating</span>
-    //                 <span className='ms-2'>-</span>
-    //                 <span className="fw-bold text-start ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</span>
-    //             </div>
-    //         </div>
-    //         <div className="bg-white rounded-3 ms-3 me-3 p-3 mt-4 mb-3" style={{ border: '1px solid #0051973D' }}>
-    //             <div className="text-start fw-bold ms-2 mb-2">Tender Floating Process</div>
-    //             <div className="d-flex align-items-center justify-content-between mt-3 p-3">
-    //                 <div className="text-white">
-    //                     <span className="py-2 px-3" style={{ background: '#005197', borderRadius: '30px' }}>1</span>
-    //                     <span className="ms-2 fw-bold" style={{ color: '#005197' }}>Select BOQ's</span>
-    //                 </div>
-    //                 <div className="rounded" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}`, height: '5px', width: '15%' }}></div>
-    //                 <div className="text-white">
-    //                     <span className="py-2 px-3" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}`, borderRadius: '30px' }}>2</span>
-    //                     <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}` }}>Tender details</span>
-    //                 </div>
-    //                 <div className="rounded" style={{ background: `${currentTab === 'review' ? '#005197' : '#00000052'}`, height: '5px', width: '15%' }}></div>
-    //                 <div className="text-white">
-    //                     <span className="py-2 px-3" style={{ background: `${currentTab === 'review' ? '#005197' : '#00000052'}`, borderRadius: '30px' }}>3</span>
-    //                     <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'review' ? '#005197' : '#00000052'}` }}>Review & Float</span>
-    //                 </div>
-    //             </div>
-    //         </div>
-    //         {renderContent()}
-    //         <div className={`d-flex justify-content-${currentTab === 'boq' ? 'end' : 'between'} align-items-center mt-5 me-3 ms-3 mb-4`}>
-    //             {currentTab !== 'boq' && <button className="btn cancel-button" onClick={handlePreviousTabChange}>Previous</button>}
-    //             <button className="btn action-button" disabled={selectedBoq.size === 0} onClick={handleNextTabChange}><span className="fw-bold me-2">Confirm & Proceed</span><ArrowRight size={18} /></button>
-    //         </div>
-    //     </div>
-    // );
 }
 export default TFProcess;

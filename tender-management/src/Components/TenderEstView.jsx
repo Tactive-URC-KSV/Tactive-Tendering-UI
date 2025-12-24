@@ -10,6 +10,7 @@ import CollapseIcon from '../assest/Collapse.svg?react';
 import ExpandIcon from '../assest/Expand.svg?react';
 import { FolderTree, Eye, ChevronRight, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useUom } from "../Context/UomContext";
 
 
 const handleUnauthorized = () => {
@@ -241,6 +242,11 @@ function BOQStructureView({ projectId }) {
   const [parentTree, setParentTree] = useState([]);
   const [expandedParentIds, setExpandedParentIds] = useState(new Set());
   const [isAllExpanded, setIsAllExpanded] = useState(false);
+  const uoms = useUom();
+      const findUom = (uomId) => {
+          const uom = uoms.find((uom) => uom.id === uomId);
+          return uom?.uomCode;
+      }
   const handleResource = (boqId) => {
     navigate(`/tenderestimation/${projectId}/resourceadding/${boqId}`);
   }
@@ -356,7 +362,7 @@ function BOQStructureView({ projectId }) {
   }, [projectId, navigate]);
 
   const BOQNode = ({ boq, level = 0 }) => {
-    const canExpand = boq.level === 1 || boq.level === 2;
+    const canExpand = boq.level === 1 || boq.level === 2 || boq.level === 3;
     const isExpanded = expandedParentIds.has(boq.id);
     const childrenStatus = boq.children;
     const isLoading = isExpanded && childrenStatus === 'pending';
@@ -382,7 +388,7 @@ function BOQStructureView({ projectId }) {
         <tr className="boq-leaf-row bg-white" style={{ borderBottom: '1px solid #eee' }}>
           <td className="px-2">{boq.boqCode}</td>
           <td className="px-2" title={boq.boqName}>{boqNameDisplay}</td>
-          <td className="px-2">{boq.uom?.uomCode || '-'}</td>
+          <td className="px-2">{findUom(boq.uomId) || '-'}</td>
           <td className="px-2">{boq.quantity?.toFixed(3) || 0}</td>
           <td className="px-2">
             <button className="btn btn-sm" style={{ background: "#DCFCE7", cursor: "pointer" }} onClick={() => handleResource(boq.id)}><Eye color="#15803D" size={20} /><span className="ms-1" style={{ color: '#15803D' }}>View</span></button>
@@ -657,9 +663,9 @@ function TenderEstView({ projectId }) {
 
   }
   return (
-    <div className="container-fluid min-vh-100">
+    <div className="container-fluid p-2 min-vh-100">
       <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-3 mt-2 mb-3">
-        <div className="ms-3">
+        <div>
           <ArrowLeft size={20} onClick={() => window.history.back()} style={{ cursor: 'pointer' }} />
           <span className='ms-2'>Tender Estimation</span>
           <span className='ms-2'>-</span>

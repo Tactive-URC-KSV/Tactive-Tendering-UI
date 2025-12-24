@@ -12,13 +12,11 @@ function BOQProjectInfo({ projects, continueRoute }) {
     const [selectedCompany, setSelectedCompany] = useState(null);
     const projectStatus = useProjectStatus();
     const navigate = useNavigate();
-
     function handleContinue() {
         if (projectId) {
             navigate(`${continueRoute}/${projectId}`);
         }
     }
-
     const companyOptions = Array.from(
         new Set(projects.map(prj => prj.companyName))
     ).map(name => ({ label: name, value: name }));
@@ -30,7 +28,7 @@ function BOQProjectInfo({ projects, continueRoute }) {
     });
 
     return (
-        <div className='container-fluid min-vh-100'>
+        <div className='container-fluid mt-3 min-vh-100 p-4'>
             <div className="mt-3 rounded-3 bg-white mx-4" style={{ border: '0.5px solid #0051973D' }}>
                 <div className="tab-info col-12 h-100">
                     <SelectIcon />

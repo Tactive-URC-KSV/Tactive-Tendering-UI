@@ -107,7 +107,7 @@ function ProjectWorklist() {
     }
 
     const projectCounts = projects.reduce((acc, project) => {
-        acc[project.status] = (acc[project.status] || 0) + 1;
+        acc[project.status] = (acc[projectStatus.find((state)=> state.id === project.status)] || 0) + 1;
         return acc;
     }, {});
 
@@ -151,9 +151,9 @@ function ProjectWorklist() {
         return Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
     };
     return (
-        <div className="container-fluid mt-3 min-vh-100">
+        <div className="container-fluid p-3 mt-3 min-vh-100">
             <div className="row align-items-center mb-3 mt-3 ps-lg-2 ms-md-1">
-                <div className='d-flex justify-content-between'>
+                <div className='d-flex justify-content-around'>
                     <div className="col-lg-4 col-md-4 col-sm-12 ms-3">
                         <div className="project-counts d-flex justify-content-between align-items-center p-3 h-100 mb-3">
                             <div className="text-start">
@@ -219,7 +219,7 @@ function ProjectWorklist() {
                                         width: '100%'
                                     }}
                                 >
-                                    <p className="status-count fw-bold fs-5 mb-1">{projectCounts[config.status] || 0}</p>
+                                    <p className="status-count fw-bold fs-5 mb-1">{projectCounts[config.id] || 0}</p>
                                     <p className="status-label mb-0" style={{ color: "black" }}>{config.status}</p>
                                 </div>
                             </div>
@@ -326,7 +326,7 @@ function ProjectWorklist() {
                                             )}</td>
                                         <td>{project.sectorName}</td>
                                         <td>{projectStatus.map((state) => (
-                                            state.status === project.status && (
+                                            state.id === project.status && (
                                                 <span key={state.status} className="badge rounded-pill"
                                                     style={{ backgroundColor: state.bgColor, color: state.textColor, fontSize: '12px' }}
                                                 >
@@ -357,7 +357,7 @@ function ProjectWorklist() {
                                             {project.projectCode}
                                         </span>
                                         {projectStatus.map((state) => (
-                                            state.status === project.status && (
+                                            state.id === project.status && (
                                                 <span key={state.status} className="badge rounded-pill"
                                                     style={{ backgroundColor: state.bgColor, color: state.textColor, fontSize: '12px' }}
                                                 >

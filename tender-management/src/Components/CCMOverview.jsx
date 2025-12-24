@@ -1044,7 +1044,7 @@ const CCMOverview = () => {
     }, [activityGroups, costCodeTypes]);
 
     return (
-        <div className="container-fluid">
+        <div className="container-fluid p-3 mt-3">
             <ToastContainer position="top-right" autoClose={3000} />
             {showNotification && notification && notification.type === "confirm" && (
                 <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
@@ -1251,6 +1251,7 @@ const CCMOverview = () => {
                                                                 className="form-input w-100"
                                                                 value={activity.qtypercentage}
                                                                 onChange={(e) => updateMappingActivity(index, 'qtypercentage', e.target.value)}
+                                                                onWheel={(e) => e.target.blur()}
                                                                 min="0"
                                                                 max="100"
                                                                 step="0.01"
@@ -1263,6 +1264,7 @@ const CCMOverview = () => {
                                                                 className="form-input w-100"
                                                                 value={activity.qtyvalue}
                                                                 onChange={(e) => updateMappingActivity(index, 'qtyvalue', e.target.value)}
+                                                                onWheel={(e) => e.target.blur()}
                                                                 min="0"
                                                                 step="0.01"
                                                             />
@@ -1278,6 +1280,7 @@ const CCMOverview = () => {
                                                                 className="form-input w-100"
                                                                 value={activity.ratepercentage}
                                                                 onChange={(e) => updateMappingActivity(index, 'ratepercentage', e.target.value)}
+                                                                onWheel={(e) => e.target.blur()}
                                                                 min="0"
                                                                 max="100"
                                                                 step="0.01"
@@ -1290,6 +1293,7 @@ const CCMOverview = () => {
                                                                 className="form-input w-100"
                                                                 value={activity.ratevalue}
                                                                 onChange={(e) => updateMappingActivity(index, 'ratevalue', e.target.value)}
+                                                                onWheel={(e) => e.target.blur()}
                                                                 min="0"
                                                                 step="0.01"
                                                             />
@@ -1305,6 +1309,7 @@ const CCMOverview = () => {
                                                                 className="form-input w-100"
                                                                 value={activity.amountpercentage}
                                                                 onChange={(e) => updateMappingActivity(index, 'amountpercentage', e.target.value)}
+                                                                onWheel={(e) => e.target.blur()}
                                                                 min="0"
                                                                 max="100"
                                                                 step="0.01"
@@ -1317,6 +1322,7 @@ const CCMOverview = () => {
                                                                 className="form-input w-100"
                                                                 value={activity.amountvalue}
                                                                 onChange={(e) => updateMappingActivity(index, 'amountvalue', e.target.value)}
+                                                                onWheel={(e) => e.target.blur()}
                                                                 min="0"
                                                                 step="0.01"
                                                             />

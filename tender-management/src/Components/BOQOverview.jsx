@@ -9,6 +9,7 @@ import Import from '../assest/Import.svg?react';
 import BOQUpload from "./BOQUpload";
 import { toast } from 'react-toastify';
 import { useNavigate } from "react-router-dom";
+import { useUom } from "../Context/UomContext";
 
 
 function ConfirmationDialog({ isOpen, onClose, onConfirm, message }) {
@@ -51,7 +52,11 @@ function BOQOverview({ projectId }) {
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [totalBOQ, setTotalBOQ] = useState(0);
     const [lastLevelBOQ, setLastLevelBOQ] = useState(0);
-
+    const uoms = useUom();
+    const findUom = (uomId) => {
+        const uom = uoms.find((uom) => uom.id === uomId);
+        return uom?.uomCode;
+    }
     const refreshParentBoqData = async () => {
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getParentBoq/${projectId}`, {
@@ -403,7 +408,7 @@ function BOQOverview({ projectId }) {
                     </td>
                     <td className="px-2">{boq.boqCode}</td>
                     <td className="px-2" title={boq.boqName}>{boqNameDisplay}</td>
-                    <td className="px-2">{boq.uom?.uomCode || '-'}</td>
+                    <td className="px-2">{findUom(boq.uomId) || '-'}</td>
                     <td className="px-2">{boq.quantity?.toFixed(3) || 0}</td>
                 </tr>
             );
@@ -497,7 +502,7 @@ function BOQOverview({ projectId }) {
         uploadScreen ? (
             <BOQUpload projectId={projectId} projectName={project?.projectName + '(' + project?.projectCode + ')'} setUploadScreen={setUploadScreen} />
         ) : (
-            <div className="container-fluid min-vh-100">
+            <div className="container-fluid p-2 min-vh-100">
                 <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-1 mt-1 mb-3">
                     <div className="ms-3">
                         <ArrowLeft size={20} onClick={() => window.history.back()} />

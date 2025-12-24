@@ -415,11 +415,14 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          );
          if (response.status === 200) {
             toast.success("BOQ mapping saved successfully!");
-
+            if (sheetOption.length === 1) {
+               setTimeout(() => {
+                  window.location.href = `/boqdefinition/${projectId}`;
+               }, 3000);
+            }
             setSheetOption(prev =>
                prev.filter(option => option.value !== selectedSheet)
             );
-
             plate();
             setExcelData([]);
             setCurrentPage(0);
@@ -433,13 +436,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             setSection('columnMapping');
             setSearchTerm('');
             toast.success("BOQ Data imported Successfully");
-
-            if (sheetOption.length === 1) {
-               setTimeout(() => {
-                  window.location.href = `/boqdefinition/${projectId}`;
-               }, 3000);
-            }
-
             if (fileType === 'pdf') {
                setSelectedSheet(null);
                setColumns([]);
@@ -458,7 +454,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       }
       catch (error) {
-         console.error("Failed to save mapped BOQ:", error);
          toast.error("Error saving BOQ mapping");
       }
    };
@@ -1192,7 +1187,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       }
    }
    return (
-      <div className='container-fluid min-vh-100'>
+      <div className='container-fluid p-2 min-vh-100'>
          <div className="text-start fw-bold ms-1 mt-2 mb-4">
             <ArrowLeft size={20} onClick={() => setUploadScreen(false)} /><span className='ms-2'>BOQ Definition</span>
          </div>
