@@ -33,8 +33,8 @@ function Sidebar({ children }) {
   const sections = [
    
     { label: "Dashboard", path: "dashboard", icon: <FaClipboardList />, key: "DASHBOARD" },
-     { label: "Admin Portal", path:"adminportal", icon: <UserCog  size={18}/>, key: "ADMIN_PORTAL" },
-    { label: "Company Details", path: "companydetails", icon: <Building2 size={18} stroke="#005197" />, key: "COMPANY_DETAILS" },
+     { label: "Admin Portal", path:"adminportal", icon: <UserCog  size={20}/>, key: "ADMIN_PORTAL" },
+    { label: "Company Details", path: "companydetails", icon: <Building2 size={20} />, key: "COMPANY_DETAILS" },
     { label: "Project Management", path: "projectmanagement", icon: <FaPlus />, key: "PROJECT_MANAGEMENT" },
     { label: "BOQ Definition", path: "boqdefinition", icon: <FaListAlt />, key: "BOQ_DEFINITION" },
     { label: "Tender Estimation", path: "tenderestimation", icon: <FaCalculator />, key: "TENDER_ESTIMATION" },

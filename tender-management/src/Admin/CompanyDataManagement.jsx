@@ -278,7 +278,6 @@ export function CompanyStatus() {
 
     const token = sessionStorage.getItem("token");
 
-    /* 🔹 Fetch */
     const fetchCompanyStatuses = () => {
         axios
             .get(`${import.meta.env.VITE_API_BASE_URL}/companyStatus`, {
@@ -371,7 +370,7 @@ export function CompanyStatus() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/companyStatus`,
+                    `${import.meta.env.VITE_API_BASE_URL}/companyStatus/add`,
                     companyStatus,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -628,7 +627,7 @@ export function CompanyLevel() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/companyLevel`,
+                    `${import.meta.env.VITE_API_BASE_URL}/companyLevel/add`,
                     companyLevel,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -898,7 +897,7 @@ export function CompanyConstitution() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/companyConstitution`,
+                    `${import.meta.env.VITE_API_BASE_URL}/companyConstitution/add`,
                     companyConstitution,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -1175,7 +1174,7 @@ export function CompanyNature() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/companyNature`,
+                    `${import.meta.env.VITE_API_BASE_URL}/companyNature/add`,
                     companyNature,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -1348,13 +1347,13 @@ export function CompanyNatureOfBusiness() {
     const [isEdit, setIsEdit] = useState(false);
     const [nature, setNature] = useState({
         id: null,
-        natureOfBusiness: "",
+        businessNature: "",
         active: true,
     });
     const token = sessionStorage.getItem("token");
     const fetchNatures = () => {
         axios
-            .get(`${import.meta.env.VITE_API_BASE_URL}/companyNatureOfBusiness`, {
+            .get(`${import.meta.env.VITE_API_BASE_URL}/businessNature`, {
                 headers: { Authorization: `Bearer ${token}` },
             })
             .then((r) => {
@@ -1370,13 +1369,13 @@ export function CompanyNatureOfBusiness() {
         fetchNatures();
     }, []);
     const filteredNatures = natures.filter((n) =>
-        n.natureOfBusiness?.toLowerCase().includes(search.toLowerCase())
+        n.businessNature?.toLowerCase().includes(search.toLowerCase())
     );
     const handleAdd = () => {
         setIsEdit(false);
         setNature({
             id: null,
-            natureOfBusiness: "",
+            businessNature: "",
             active: true,
         });
         setOpenModal(true);
@@ -1389,7 +1388,7 @@ export function CompanyNatureOfBusiness() {
     const handleDelete = (n) => {
         axios
             .put(
-                `${import.meta.env.VITE_API_BASE_URL}/companyNatureOfBusiness/edit`,
+                `${import.meta.env.VITE_API_BASE_URL}/businessNature/edit`,
                 { ...n, active: false },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
@@ -1407,7 +1406,7 @@ export function CompanyNatureOfBusiness() {
     const handleReactivate = (n) => {
         axios
             .put(
-                `${import.meta.env.VITE_API_BASE_URL}/companyNatureOfBusiness/edit`,
+                `${import.meta.env.VITE_API_BASE_URL}/businessNature/edit`,
                 { ...n, active: true },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
@@ -1423,11 +1422,11 @@ export function CompanyNatureOfBusiness() {
             );
     };
     const handleSave = () => {
-        if (!nature.natureOfBusiness.trim()) return;
+        if (!nature.businessNature.trim()) return;
         if (isEdit) {
             axios
                 .put(
-                    `${import.meta.env.VITE_API_BASE_URL}/companyNatureOfBusiness/edit`,
+                    `${import.meta.env.VITE_API_BASE_URL}/businessNature/edit`,
                     nature,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -1442,7 +1441,7 @@ export function CompanyNatureOfBusiness() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/companyNatureOfBusiness`,
+                    `${import.meta.env.VITE_API_BASE_URL}/businessNature/add`,
                     nature,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -1488,11 +1487,11 @@ export function CompanyNatureOfBusiness() {
                         <input
                             className="form-input w-100"
                             placeholder="Enter nature of business"
-                            value={nature.natureOfBusiness}
+                            value={nature.businessNature}
                             onChange={(e) =>
                                 setNature((prev) => ({
                                     ...prev,
-                                    natureOfBusiness: e.target.value,
+                                    businessNature: e.target.value,
                                 }))
                             }
                         />
@@ -1507,7 +1506,7 @@ export function CompanyNatureOfBusiness() {
                         <button
                             className="btn btn-primary"
                             onClick={handleSave}
-                            disabled={!nature.natureOfBusiness.trim()}
+                            disabled={!nature.businessNature.trim()}
                         >
                             {isEdit ? "Update" : "Save"}
                         </button>
@@ -1578,7 +1577,7 @@ export function CompanyNatureOfBusiness() {
                                         )}
                                     </div>
                                     <div className="mt-2 d-flex justify-content-between">
-                                        <span>{n.natureOfBusiness}</span>
+                                        <span>{n.businessNature}</span>
                                         <span
                                             className={
                                                 n.active
@@ -1610,7 +1609,6 @@ export function CompanyLanguage() {
     const [language, setLanguage] = useState({
         id: null,
         language: "",
-        languageCode: "",
         active: true,
     });
 
@@ -1619,7 +1617,7 @@ export function CompanyLanguage() {
     /* 🔹 Fetch */
     const fetchLanguages = () => {
         axios
-            .get(`${import.meta.env.VITE_API_BASE_URL}/companyLanguage`, {
+            .get(`${import.meta.env.VITE_API_BASE_URL}/language`, {
                 headers: { Authorization: `Bearer ${token}` },
             })
             .then((r) => {
@@ -1637,8 +1635,7 @@ export function CompanyLanguage() {
     /* 🔍 Search */
     const filteredLanguages = languages.filter(
         (l) =>
-            l.language?.toLowerCase().includes(search.toLowerCase()) ||
-            l.languageCode?.toLowerCase().includes(search.toLowerCase())
+            l.language?.toLowerCase().includes(search.toLowerCase())
     );
 
     /* ➕ Add */
@@ -1647,7 +1644,6 @@ export function CompanyLanguage() {
         setLanguage({
             id: null,
             language: "",
-            languageCode: "",
             active: true,
         });
         setOpenModal(true);
@@ -1664,7 +1660,7 @@ export function CompanyLanguage() {
     const handleDelete = (l) => {
         axios
             .put(
-                `${import.meta.env.VITE_API_BASE_URL}/companyLanguage/edit`,
+                `${import.meta.env.VITE_API_BASE_URL}/language/edit`,
                 { ...l, active: false },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
@@ -1683,7 +1679,7 @@ export function CompanyLanguage() {
     const handleReactivate = (l) => {
         axios
             .put(
-                `${import.meta.env.VITE_API_BASE_URL}/companyLanguage/edit`,
+                `${import.meta.env.VITE_API_BASE_URL}/language/edit`,
                 { ...l, active: true },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
@@ -1700,12 +1696,12 @@ export function CompanyLanguage() {
 
     /* 💾 Save */
     const handleSave = () => {
-        if (!language.language.trim() || !language.languageCode.trim()) return;
+        if (!language.language.trim()) return;
 
         if (isEdit) {
             axios
                 .put(
-                    `${import.meta.env.VITE_API_BASE_URL}/companyLanguage/edit`,
+                    `${import.meta.env.VITE_API_BASE_URL}/language/edit`,
                     language,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -1720,7 +1716,7 @@ export function CompanyLanguage() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/companyLanguage`,
+                    `${import.meta.env.VITE_API_BASE_URL}/language/add`,
                     language,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -1774,21 +1770,6 @@ export function CompanyLanguage() {
                                 }))
                             }
                         />
-
-                        <label className="projectform d-block">
-                            Language Code <span className="text-danger">*</span>
-                        </label>
-                        <input
-                            className="form-input w-100"
-                            placeholder="Enter language code"
-                            value={language.languageCode}
-                            onChange={(e) =>
-                                setLanguage((prev) => ({
-                                    ...prev,
-                                    languageCode: e.target.value.toUpperCase(),
-                                }))
-                            }
-                        />
                     </div>
 
                     <div className="modal-footer">
@@ -1802,8 +1783,7 @@ export function CompanyLanguage() {
                             className="btn btn-primary"
                             onClick={handleSave}
                             disabled={
-                                !language.language.trim() ||
-                                !language.languageCode.trim()
+                                !language.language.trim()
                             }
                         >
                             {isEdit ? "Update" : "Save"}
@@ -1885,7 +1865,7 @@ export function CompanyLanguage() {
 
                                     <div className="mt-2 d-flex justify-content-between">
                                         <span>
-                                            {l.language} ({l.languageCode})
+                                            {l.language}
                                         </span>
                                         <span
                                             className={
