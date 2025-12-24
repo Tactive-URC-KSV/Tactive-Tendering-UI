@@ -27,6 +27,8 @@ function CompanyDetails() {
     const [countryOptions, setCountryOptions] = useState([]);
     const [cityOptions, setCityOptions] = useState([]);
     const [citiesOption, setCitiesOption] = useState([]);
+    const [territoryOptions, setTerritoryOptions] = useState([]);
+    const [isLoadingTerritory, setIsLoadingTerritory] = useState(false);
     const [attachments, setAttachments] = useState([]);
     const toOptions = (data, labelKey) =>
         (data || [])
@@ -76,6 +78,49 @@ function CompanyDetails() {
     };
     const removeFile = (index) => {
         setAttachments(prev => prev.filter((_, i) => i !== index));
+    };
+    const fetchTerritory = async (territoryTypeId) => {
+        if (!territoryTypeId) {
+            setTerritoryOptions([]);
+            setTaxDetails(prev => ({ ...prev, territoryTypeId: null, territory: null }));
+            return;
+        }
+
+        setIsLoadingTerritory(true);
+        try {
+            const token = sessionStorage.getItem("token");
+            const headers = { Authorization: `Bearer ${token}` };
+            let url = '';
+            let response = [];
+
+            // Map territoryTypeId to appropriate endpoint
+            switch (territoryTypeId) {
+                case 'Country': // or whatever ID represents "Country"
+                    url = `${import.meta.env.VITE_API_BASE_URL}/countries`;
+                    response = await axios.get(url, { headers });
+                    setTerritoryOptions(toOptions(response.data, "country"));
+                    break;
+                case 'state':   // or whatever ID represents "State"
+                    url = `${import.meta.env.VITE_API_BASE_URL}/states`;
+                    response = await axios.get(url, { headers });
+                    setTerritoryOptions(toOptions(response.data, "state"));
+                    break;
+                case 'city':    // or whatever ID represents "City"
+                    url = `${import.meta.env.VITE_API_BASE_URL}/cities`;
+                    response = await axios.get(url, { headers });
+                    setTerritoryOptions(toOptions(response.data, "city"));
+                    break;
+                default:
+                    setTerritoryOptions([]);
+                    return;
+            }
+            // adjust "name" to your API field
+        } catch (error) {
+            console.error("Error fetching territory:", error);
+            setTerritoryOptions([]);
+        } finally {
+            setIsLoadingTerritory(false);
+        }
     };
     const [basicInfo, setBasicInfo] = useState({
         companyTypeId: null,
@@ -201,7 +246,7 @@ function CompanyDetails() {
                 formData.append("files", file);
             });
             const companyDTO = {
-                companyId: null, 
+                companyId: null,
                 companyName: basicInfo.companyName.trim(),
                 shortName: basicInfo.shortName.trim(),
                 parentCompanyId: basicInfo.parentCompanyId || null,
@@ -409,7 +454,6 @@ function CompanyDetails() {
                                                 isClearable
                                             />
                                         </div>
-
                                         <div className="col-md-6 mb-4 position-relative">
                                             <label className="projectform-select d-block">Company Status <span style={{ color: "red" }}>*</span></label>
                                             <Select
@@ -420,7 +464,6 @@ function CompanyDetails() {
                                                 options={companyStatusOptions}
                                             />
                                         </div>
-
                                         <div className="col-md-6 mb-4 position-relative">
                                             <label className="projectform-select d-block">Fin. Start Month <span style={{ color: "red" }}>*</span></label>
                                             <Select
@@ -695,8 +738,26 @@ function CompanyDetails() {
                                                 classNamePrefix="select"
                                                 placeholder="Select Territory Type"
                                                 value={getSelectedOption(taxDetails.territoryTypeId, territoryTypeOptions)}
-                                                onChange={handleSelectChange(setTaxDetails, 'territoryTypeId')}
+                                                onChange={(selectedOption) => {
+                                                    const newTerritoryTypeId = selectedOption ? selectedOption.value : null;
+
+                                                    // Reset territory when territory type changes
+                                                    setTaxDetails(prev => ({
+                                                        ...prev,
+                                                        territoryTypeId: newTerritoryTypeId,
+                                                        territory: null
+                                                    }));
+
+                                                    // Fetch territories based on type
+                                                    if (selectedOption) {
+                                                        fetchTerritory(selectedOption.label);
+                                                    } else {
+                                                        setTerritoryOptions([]);
+                                                    }
+                                                }}
                                                 options={territoryTypeOptions}
+                                                isClearable
+                                                isSearchable
                                             />
                                         </div>
                                         <div className="col-md-6 mb-4 position-relative">
@@ -704,9 +765,9 @@ function CompanyDetails() {
                                             <Select
                                                 classNamePrefix="select"
                                                 placeholder="Select Territory"
-                                                value={getSelectedOption(taxDetails.territory, [])}
+                                                value={getSelectedOption(taxDetails.territory, territoryOptions)}
                                                 onChange={handleSelectChange(setTaxDetails, 'territory')}
-                                                options={[]}
+                                                options={territoryOptions}
                                                 isClearable
                                             />
                                         </div>
@@ -1042,7 +1103,7 @@ function CompanyDetails() {
                 <button className="btn px-4 fw-bold" style={{ color: bluePrimary, border: `1px solid ${bluePrimary}`, borderRadius: '8px' }}>
                     Reset
                 </button>
-                <button className="btn px-4 fw-bold text-white" style={{ backgroundColor: bluePrimary, borderRadius: '8px' }}>
+                <button className="btn px-4 fw-bold text-white" style={{ backgroundColor: bluePrimary, borderRadius: '8px' }} onClick={handleSave}>
                     Save Details
                 </button>
             </div>
