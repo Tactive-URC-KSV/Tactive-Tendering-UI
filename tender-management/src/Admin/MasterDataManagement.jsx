@@ -8,6 +8,7 @@ import axios from "axios";
 import Select from "react-select";
 import { toast } from "react-toastify";
 
+
 export function Region() {
     const regions = useRegions(); 
     const [search, setSearch] = useState("");
@@ -33,69 +34,58 @@ export function Region() {
         setOpenModal(true);
     };
     const handleDelete = (r) => {
-        axios
-            .put(
-                `${import.meta.env.VITE_API_BASE_URL}/region/edit`,
-                { ...r, active: false },
-                { headers: { Authorization: `Bearer ${token}` } }
-            )
-            .then((res) => {
-                toast.success(res.data || "Region deactivated");
-                useRegions();
-            })
-            .catch((e) =>
-                toast.error(e?.response?.data)
-            );
-    };
-    const handleReactivate = (r) => {
-        axios
-            .put(
-                `${import.meta.env.VITE_API_BASE_URL}/region/edit`,
-                { ...r, active: true },
-                { headers: { Authorization: `Bearer ${token}` } }
-            )
-            .then((res) => {
-                toast.success(res.data || "Region reactivated");
-                useRegions();
-            })
-            .catch((e) =>
-                toast.error(e?.response?.data)
-            );
-    };
+    axios
+        .put(
+            `${import.meta.env.VITE_API_BASE_URL}/region/edit`,
+            { ...r, active: false },
+            { headers: { Authorization: `Bearer ${token}` } } 
+        )
+        .then((res) => {
+            toast.success(res.data || "Region deactivated");
+            window.location.reload(); 
+        })
+        .catch((e) => toast.error(e?.response?.data));
+};
+   const handleReactivate = (r) => {
+    axios
+        .put(
+            `${import.meta.env.VITE_API_BASE_URL}/region/edit`,
+            { ...r, active: true },
+            { headers: { Authorization: `Bearer ${token}` } } 
+        )
+        .then((res) => {
+            toast.success(res.data || "Region reactivated");
+            window.location.reload(); 
+        })
+        .catch((e) => toast.error(e?.response?.data));
+};
     const handleSave = () => {
-        if (!region.regionName.trim()) return;
-        if (isEdit) {
-            axios
-                .put(
-                    `${import.meta.env.VITE_API_BASE_URL}/region/edit`,
-                    region,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                )
-                .then((res) => {
-                    toast.success(res.data || "Region updated");
-                    setOpenModal(false);
-                    useRegions();
-                })
-                .catch((e) =>
-                    toast.error(e?.response?.data || "Update failed")
-                );
-        } else {
-            axios
-                .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/addRegion`,
-                    region,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                )
-                .then((res) => {
-                    toast.success(res.data || "Region created");
-                    setOpenModal(false);
-                    useRegions();
-                })
-                .catch((e) =>
-                    toast.error(e?.response?.data || "Save failed")
-                );
-        }
+    if (!region.regionName.trim()) return;
+
+    const config = { 
+        headers: { Authorization: `Bearer ${token}` } 
     };
+
+    if (isEdit) {
+        axios
+            .put(`${import.meta.env.VITE_API_BASE_URL}/region/edit`, region, config)
+            .then((res) => {
+                toast.success(res.data || "Region updated");
+                setOpenModal(false);
+                window.location.reload(); 
+            })
+            .catch((e) => toast.error(e?.response?.data || "Update failed"));
+    } else {
+        axios
+            .post(`${import.meta.env.VITE_API_BASE_URL}/addRegion`, region, config)
+            .then((res) => {
+                toast.success(res.data || "Region created");
+                setOpenModal(false);
+                window.location.reload(); 
+            })
+            .catch((e) => toast.error(e?.response?.data || "Save failed"));
+    }
+};
     const regionForm = () => (
         <div
             className="modal fade show d-block"
@@ -122,17 +112,17 @@ export function Region() {
                         <label className="projectform d-block">
                             Region Name <span className="text-danger">*</span>
                         </label>
-                        <input
-                            className="form-input w-100"
-                            placeholder="Enter region name"
-                            value={region.regionName}
-                            onChange={(e) =>
-                                setRegion((prev) => ({
-                                    ...prev,
-                                    regionName: e.target.value,
-                                }))
-                            }
-                        />
+                       <input
+    className="form-input w-100"
+    placeholder="Enter region name"
+    value={region.regionName}
+    onChange={(e) =>
+        setRegion((prev) => ({
+            ...prev,
+            regionName: e.target.value,
+        }))
+    }
+/>
                     </div>
                     <div className="modal-footer">
                         <button
@@ -996,11 +986,16 @@ export function ListOfApprovals() {
         setApproval({ id: null, documentName: "", active: true });
         setOpenModal(true);
     };
-    const handleEdit = (doc) => {
-        setIsEdit(true);
-        setApproval({ ...doc });
-        setOpenModal(true);
-    };
+   const handleEdit = (doc) => {
+    setIsEdit(true);
+    setApproval({
+        id: doc.id,
+        documentName: doc.documentName,
+        active: doc.active
+    });
+    setOpenModal(true);
+};
+
     const handleDelete = (doc) => {
         axios
             .put(
@@ -1035,41 +1030,42 @@ export function ListOfApprovals() {
                 )
             );
     };
-    const handleSave = () => {
-        if (!approval.documentName.trim()) return;
+   const handleSave = () => {
+    if (!approval.documentName.trim()) return;
 
-        if (isEdit) {
-            axios
-                .put(
-                    `${import.meta.env.VITE_API_BASE_URL}/approvalDocuments/edit`,
-                    approval,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                )
-                .then((r) => {
-                    toast.success(r.data || "Approval updated");
-                    fetchApprovals();
-                    setOpenModal(false);
-                })
-                .catch((e) =>
-                    toast.error(e?.response?.data || "Update failed")
-                );
-        } else {
-            axios
-                .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/approvalDocuments/add`,
-                    approval,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                )
-                .then((r) => {
-                    toast.success(r.data || "Approval created");
-                    fetchApprovals();
-                    setOpenModal(false);
-                })
-                .catch((e) =>
-                    toast.error(e?.response?.data || "Save failed")
-                );
-        }
+    const payload = {
+        id: approval.id,
+        documentName: approval.documentName,
+        active: approval.active
     };
+
+    if (isEdit) {
+        axios.put(
+            `${import.meta.env.VITE_API_BASE_URL}/approvalDocuments/edit`,
+            payload,
+            { headers: { Authorization: `Bearer ${token}` } }
+        )
+        .then(() => {
+            toast.success("Approval updated successfully");
+            fetchApprovals();
+            setOpenModal(false);
+        })
+        .catch(() => toast.error("Update failed"));
+    } else {
+        axios.post(
+            `${import.meta.env.VITE_API_BASE_URL}/approvalDocuments/add`,
+            payload,
+            { headers: { Authorization: `Bearer ${token}` } }
+        )
+        .then(() => {
+            toast.success("Approval added successfully");
+            fetchApprovals();
+            setOpenModal(false);
+        })
+        .catch(() => toast.error("Save failed"));
+    }
+};
+
 
     /* 🪟 Modal */
     const modal = () => (
