@@ -9,12 +9,8 @@ function MasterDataController({ children }) {
   const currentPath = location.pathname.split("/").pop();
 
   const [openSections, setOpenSections] = useState({
-    master: true,
-    location: false,
-    resource: false,
-    company: false,
-    contractor: false,
-    tax: false
+    gm: true,
+    stam: true,
   });
 
  const toggleSection = (key) => {
@@ -29,55 +25,39 @@ function MasterDataController({ children }) {
   });
 };
 
-  const masterData = [
+  const generalMasterData = [
     { label: "Region", path: "region" },
     { label: "Sector", path: "sector" },
     { label: "Scope of Packages", path: "scopes" },
-    { label: "UOM", path: "uom" },
     { label: "List of Approvals", path: "approvals" },
     { label: "Cost Code Type", path: "costcodetype" },
-    { label: "Cost Code Activity", path: "costcodeactivity" },
-  ];
-
-  const locationData = [
-    { label: "Country", path: "country" },
-    { label: "State", path: "state" },
-    { label: "City", path: "city" },
     { label: "Address Type", path: "addresstype" },
-  ];
-
-  const resourceData = [
     { label: "Resource Nature", path: "resourcenature" },
     { label: "Resource Type", path: "resourcetype" },
-    { label: "Quantity Type", path: "quantitytype" },
-    { label: "Resources", path: "resources" },
-  ];
-
-  const companyData = [
-    { label: "Company Type", path: "companytype" },
+    //{ label: "Quantity Type", path: "quantitytype" },
+    //{ label: "Company Type", path: "companytype" },
     { label: "Company Level", path: "companylevel" },
     { label: "Company Status", path: "companystatus" },
     { label: "Company Constitution", path: "companyconstitution" },
     { label: "Comapny Nature", path: "companynature"},
     { label: "Nature Of Business", path: "companynatureofbusiness"},
     { label: "Language", path: "companylanguage"},
-  ];
-
-  const contratorData= [
     { label: "Entity Type", path: "contractortype"},
     { label: "Nature Of Business" , path: "contractornatureofbusiness"},
     { label: "Contractor Grade", path: "contractorgrade"},
-  ];
-
-  const taxAndCurrency = [
     { label: "Tax Type", path: "taxtype"},
-    { label: "Territory Type", path: "territorytype"},
+    // { label: "Territory Type", path: "territorytype"},
     { label: "Identity Type", path: "identitytype"},
+  ];
+  const staMasterData = [
+    { label: "UOM", path: "uom" },
+    { label: "Cost Code Activity", path: "costcodeactivity" },
+    { label: "Country", path: "country" },
+    { label: "State", path: "state" },
+    { label: "City", path: "city" },
+    { label: "Resources", path: "resources" },
     { label: "Currency", path: "currency"},
-  ]; 
-
-  
-
+  ];
   const renderSection = (key, title, data) => (
     <>
       <li
@@ -109,12 +89,8 @@ function MasterDataController({ children }) {
       <div className="admin-sidebar p-3">
         <nav>
           <ul className="list-unstyled">
-            {renderSection("master", "Master Data", masterData)}
-            {renderSection("location", "Location & Geography", locationData)}
-            {renderSection("resource", "Resource & Quantity", resourceData)}
-            {renderSection("company", "Company", companyData)}
-            {renderSection("contractor", "Contractor", contratorData)}
-            {renderSection("tax", "Tax & Currency" , taxAndCurrency)}
+            {renderSection("gm", "General Master", generalMasterData)}
+            {renderSection("stam", "Standalone Master", staMasterData)}
           </ul>
         </nav>
       </div>

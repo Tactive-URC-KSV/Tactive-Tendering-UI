@@ -1,16 +1,17 @@
 import { ArrowLeft, Edit, Plus, Trash2, X, Ban, RotateCcw } from "lucide-react";
 import { useRegions } from "../Context/RegionsContext";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSectors } from "../Context/SectorsContext";
 import { useScope } from "../Context/ScopeContext";
 import { useUom } from "../Context/UomContext";
 import axios from "axios";
 import Select from "react-select";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 
 
 export function Region() {
-    const regions = useRegions(); 
+    const [regions, setRegions] = useState([]);
     const [search, setSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
@@ -20,6 +21,16 @@ export function Region() {
         active: true,
     });
     const token = sessionStorage.getItem("token");
+    const fetchRegion = useCallback(() => {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/regions`, {
+            headers: { Authorization: `Bearer ${token}` },
+        }).then((res) => {
+            setRegions(Array.isArray(res.data) ? res.data : res.data.data || []);
+        });
+    },[]);
+    useEffect(()=>{
+        fetchRegion();
+    },[fetchRegion])
     const filteredRegions = regions.filter((r) =>
         r.regionName?.toLowerCase().includes(search.toLowerCase())
     );
@@ -34,58 +45,58 @@ export function Region() {
         setOpenModal(true);
     };
     const handleDelete = (r) => {
-    axios
-        .put(
-            `${import.meta.env.VITE_API_BASE_URL}/region/edit`,
-            { ...r, active: false },
-            { headers: { Authorization: `Bearer ${token}` } } 
-        )
-        .then((res) => {
-            toast.success(res.data || "Region deactivated");
-            window.location.reload(); 
-        })
-        .catch((e) => toast.error(e?.response?.data));
-};
-   const handleReactivate = (r) => {
-    axios
-        .put(
-            `${import.meta.env.VITE_API_BASE_URL}/region/edit`,
-            { ...r, active: true },
-            { headers: { Authorization: `Bearer ${token}` } } 
-        )
-        .then((res) => {
-            toast.success(res.data || "Region reactivated");
-            window.location.reload(); 
-        })
-        .catch((e) => toast.error(e?.response?.data));
-};
-    const handleSave = () => {
-    if (!region.regionName.trim()) return;
-
-    const config = { 
-        headers: { Authorization: `Bearer ${token}` } 
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/region/edit`,
+                { ...r, active: false },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "Region deactivated");
+                window.location.reload();
+            })
+            .catch((e) => toast.error(e?.response?.data));
     };
+    const handleReactivate = (r) => {
+        axios
+            .put(
+                `${import.meta.env.VITE_API_BASE_URL}/region/edit`,
+                { ...r, active: true },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(res.data || "Region reactivated");
+                window.location.reload();
+            })
+            .catch((e) => toast.error(e?.response?.data));
+    };
+    const handleSave = () => {
+        if (!region.regionName.trim()) return;
 
-    if (isEdit) {
-        axios
-            .put(`${import.meta.env.VITE_API_BASE_URL}/region/edit`, region, config)
-            .then((res) => {
-                toast.success(res.data || "Region updated");
-                setOpenModal(false);
-                window.location.reload(); 
-            })
-            .catch((e) => toast.error(e?.response?.data || "Update failed"));
-    } else {
-        axios
-            .post(`${import.meta.env.VITE_API_BASE_URL}/addRegion`, region, config)
-            .then((res) => {
-                toast.success(res.data || "Region created");
-                setOpenModal(false);
-                window.location.reload(); 
-            })
-            .catch((e) => toast.error(e?.response?.data || "Save failed"));
-    }
-};
+        const config = {
+            headers: { Authorization: `Bearer ${token}` }
+        };
+
+        if (isEdit) {
+            axios
+                .put(`${import.meta.env.VITE_API_BASE_URL}/region/edit`, region, config)
+                .then((res) => {
+                    toast.success(res.data || "Region updated");
+                    setOpenModal(false);
+                    window.location.reload();
+                })
+                .catch((e) => toast.error(e?.response?.data || "Update failed"));
+        } else {
+            axios
+                .post(`${import.meta.env.VITE_API_BASE_URL}/addRegion`, region, config)
+                .then((res) => {
+                    toast.success(res.data || "Region created");
+                    setOpenModal(false);
+                    window.location.reload();
+                })
+                .catch((e) => toast.error(e?.response?.data || "Save failed"));
+        }
+    };
     const regionForm = () => (
         <div
             className="modal fade show d-block"
@@ -112,17 +123,17 @@ export function Region() {
                         <label className="projectform d-block">
                             Region Name <span className="text-danger">*</span>
                         </label>
-                       <input
-    className="form-input w-100"
-    placeholder="Enter region name"
-    value={region.regionName}
-    onChange={(e) =>
-        setRegion((prev) => ({
-            ...prev,
-            regionName: e.target.value,
-        }))
-    }
-/>
+                        <input
+                            className="form-input w-100"
+                            placeholder="Enter region name"
+                            value={region.regionName}
+                            onChange={(e) =>
+                                setRegion((prev) => ({
+                                    ...prev,
+                                    regionName: e.target.value,
+                                }))
+                            }
+                        />
                     </div>
                     <div className="modal-footer">
                         <button
@@ -225,7 +236,7 @@ export function Region() {
     );
 }
 export function Sectors() {
-    const sectors = useSectors();
+    const [sectors, setSectors] = useState([]);
     const [search, setSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
@@ -235,6 +246,16 @@ export function Sectors() {
         active: true,
     });
     const token = sessionStorage.getItem("token");
+    const fetchSector = useCallback(() => {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/sectors`, {
+            headers: { Authorization: `Bearer ${token}` },
+        }).then((res) => {
+            setSectors(Array.isArray(res.data) ? res.data : res.data.data || []);
+        });
+    },[]);
+    useEffect(()=>{
+        fetchSector();
+    },[fetchSector])
     const filteredSectors = sectors.filter((sec) =>
         sec.sectorName?.toLowerCase().includes(search.toLowerCase())
     );
@@ -299,7 +320,7 @@ export function Sectors() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/addSector`,
+                    `${import.meta.env.VITE_API_BASE_URL}/sector`,
                     sector,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -465,7 +486,7 @@ export function Sectors() {
     );
 }
 export function Scopes() {
-    const scopes = useScope();
+    const [scopes, setScopes] = useState([]);
     const [search, setSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
@@ -475,6 +496,16 @@ export function Scopes() {
         active: true,
     });
     const token = sessionStorage.getItem("token");
+    const fetchScope = useCallback(() => {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/scopes`, {
+            headers: { Authorization: `Bearer ${token}` },
+        }).then((res) => {
+            setScopes(Array.isArray(res.data) ? res.data : res.data.data || []);
+        });
+    },[]);
+    useEffect(()=>{
+        fetchScope();
+    },[fetchScope])
     const filteredScopes = scopes.filter((s) =>
         s.scope?.toLowerCase().includes(search.toLowerCase())
     );
@@ -541,7 +572,7 @@ export function Scopes() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/addScope`,
+                    `${import.meta.env.VITE_API_BASE_URL}/scope`,
                     scopeData,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -697,7 +728,7 @@ export function Scopes() {
     );
 }
 export function UOM() {
-    const uoms = useUom();
+    const [uoms, setUoms] = useState([]);
     const [search, setSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
@@ -708,6 +739,16 @@ export function UOM() {
         active: true,
     });
     const token = sessionStorage.getItem("token");
+    const fetchUom = useCallback(() => {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/uoms`, {
+            headers: { Authorization: `Bearer ${token}` },
+        }).then((res) => {
+            setUoms(Array.isArray(res.data) ? res.data : res.data.data || []);
+        });
+    },[]);
+    useEffect(()=>{
+        fetchUom();
+    },[fetchUom])
     const filteredUnits = uoms.filter(
         (uom) =>
             uom.uomName?.toLowerCase().includes(search.toLowerCase()) ||
@@ -986,15 +1027,15 @@ export function ListOfApprovals() {
         setApproval({ id: null, documentName: "", active: true });
         setOpenModal(true);
     };
-   const handleEdit = (doc) => {
-    setIsEdit(true);
-    setApproval({
-        id: doc.id,
-        documentName: doc.documentName,
-        active: doc.active
-    });
-    setOpenModal(true);
-};
+    const handleEdit = (doc) => {
+        setIsEdit(true);
+        setApproval({
+            id: doc.id,
+            documentName: doc.documentName,
+            active: doc.active
+        });
+        setOpenModal(true);
+    };
 
     const handleDelete = (doc) => {
         axios
@@ -1030,41 +1071,41 @@ export function ListOfApprovals() {
                 )
             );
     };
-   const handleSave = () => {
-    if (!approval.documentName.trim()) return;
+    const handleSave = () => {
+        if (!approval.documentName.trim()) return;
 
-    const payload = {
-        id: approval.id,
-        documentName: approval.documentName,
-        active: approval.active
+        const payload = {
+            id: approval.id,
+            documentName: approval.documentName,
+            active: approval.active
+        };
+
+        if (isEdit) {
+            axios.put(
+                `${import.meta.env.VITE_API_BASE_URL}/approvalDocuments/edit`,
+                payload,
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+                .then(() => {
+                    toast.success("Approval updated successfully");
+                    fetchApprovals();
+                    setOpenModal(false);
+                })
+                .catch(() => toast.error("Update failed"));
+        } else {
+            axios.post(
+                `${import.meta.env.VITE_API_BASE_URL}/approvalDocuments/add`,
+                payload,
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+                .then(() => {
+                    toast.success("Approval added successfully");
+                    fetchApprovals();
+                    setOpenModal(false);
+                })
+                .catch(() => toast.error("Save failed"));
+        }
     };
-
-    if (isEdit) {
-        axios.put(
-            `${import.meta.env.VITE_API_BASE_URL}/approvalDocuments/edit`,
-            payload,
-            { headers: { Authorization: `Bearer ${token}` } }
-        )
-        .then(() => {
-            toast.success("Approval updated successfully");
-            fetchApprovals();
-            setOpenModal(false);
-        })
-        .catch(() => toast.error("Update failed"));
-    } else {
-        axios.post(
-            `${import.meta.env.VITE_API_BASE_URL}/approvalDocuments/add`,
-            payload,
-            { headers: { Authorization: `Bearer ${token}` } }
-        )
-        .then(() => {
-            toast.success("Approval added successfully");
-            fetchApprovals();
-            setOpenModal(false);
-        })
-        .catch(() => toast.error("Save failed"));
-    }
-};
 
 
     /* 🪟 Modal */
@@ -1534,120 +1575,119 @@ export function CostCodeActivity() {
         setOpenModal(true);
     };
     const handleEdit = (a) => {
-    setIsEdit(true);
-    setActivity({
-        id: a.id, // MUST NOT BE NULL
-        costCodeTypeId: a.costCodeType?.id || a.costCodeTypeId,
-        activityCode: a.activityCode,
-        activityName: a.activityName,
-        active: a.active,
-    });
-    setOpenModal(true);
-};
-const handleDelete = (a) => {
-    const currentToken = sessionStorage.getItem("token");
-    
-    // We create a clean payload so we don't send nested objects
-    const payload = {
-        id: a.id,
-        activityCode: a.activityCode,
-        activityName: a.activityName,
-        // Extract the ID from the object if it exists, otherwise use the field
-        costCodeTypeId: a.costCodeType?.id || a.costCodeTypeId, 
-        active: false 
+        setIsEdit(true);
+        setActivity({
+            id: a.id, // MUST NOT BE NULL
+            costCodeTypeId: a.costCodeType?.id || a.costCodeTypeId,
+            activityCode: a.activityCode,
+            activityName: a.activityName,
+            active: a.active,
+        });
+        setOpenModal(true);
     };
+    const handleDelete = (a) => {
+        const currentToken = sessionStorage.getItem("token");
 
-    axios
-        .put(`${import.meta.env.VITE_API_BASE_URL}/activityGroups/edit`, payload, {
-            headers: { Authorization: `Bearer ${currentToken}` }
-        })
-        .then(() => {
-            toast.success("Activity deactivated");
-            fetchActivities();
-        })
-        .catch((e) => toast.error(e?.response?.data || "Failed to deactivate"));
-};
+        const payload = {
+            id: a.id,
+            activityCode: a.activityCode,
+            activityName: a.activityName,
+            // Extract the ID from the object if it exists, otherwise use the field
+            costCodeTypeId: a.costCodeType?.id || a.costCodeTypeId,
+            active: false
+        };
 
-const handleReactivate = (a) => {
-    const currentToken = sessionStorage.getItem("token");
-    
-    const payload = {
-        id: a.id,
-        activityCode: a.activityCode,
-        activityName: a.activityName,
-        costCodeTypeId: a.costCodeType?.id || a.costCodeTypeId,
-        active: true 
-    };
-
-    axios
-        .put(`${import.meta.env.VITE_API_BASE_URL}/activityGroups/edit`, payload, {
-            headers: { Authorization: `Bearer ${currentToken}` }
-        })
-        .then(() => {
-            toast.success("Activity reactivated");
-            fetchActivities();
-        })
-        .catch((e) => toast.error(e?.response?.data || "Failed to reactivate"));
-};
-
-const handleSave = () => {
-    // 1. ALWAYS get a fresh token inside the function to avoid using a stale one
-    const currentToken = sessionStorage.getItem("token"); 
-
-    if (!currentToken) {
-        toast.error("Session expired. Please log in again.");
-        return;
-    }
-
-    // 2. Simple Validation
-    if (!activity.costCodeTypeId || !activity.activityCode.trim() || !activity.activityName.trim()) {
-        toast.warning("Please fill in all required fields.");
-        return;
-    }
-
-    // 3. CLEAN PAYLOAD: Do not spread the whole object. Only send these fields.
-    const payload = {
-        id: activity.id, 
-        activityCode: activity.activityCode,
-        activityName: activity.activityName,
-        costCodeTypeId: activity.costCodeTypeId,
-        active: activity.active
-    };
-
-    // 4. Correct Header Config
-    const config = {
-        headers: { Authorization: `Bearer ${currentToken}` }
-    };
-
-    const baseUrl = `${import.meta.env.VITE_API_BASE_URL}/activityGroups`;
-
-    if (isEdit) {
-        // Use the PUT endpoint
         axios
-            .put(`${baseUrl}/edit`, payload, config)
-            .then((res) => {
-                toast.success("Activity updated successfully");
-                fetchActivities(); // Refresh the list
-                setOpenModal(false);
+            .put(`${import.meta.env.VITE_API_BASE_URL}/activityGroup/edit`, payload, {
+                headers: { Authorization: `Bearer ${currentToken}` }
             })
-            .catch((e) => {
-                console.error("Full Error Response:", e.response);
-                // This will tell you if it's a token issue or a permission issue
-                const errorMsg = e?.response?.data?.message || e?.response?.data || "Unauthorized Update";
-                toast.error(errorMsg);
-            });
-    } else {
-        // Use the POST endpoint for new entries
-        axios
-            .post(baseUrl, payload, config)
-            .then((res) => {
-                toast.success("Activity created successfully");
+            .then(() => {
+                toast.success("Activity deactivated");
                 fetchActivities();
-                setOpenModal(false);
             })
-            .catch((e) => toast.error("Save failed"));
-    }
-};
+            .catch((e) => toast.error(e?.response?.data || "Failed to deactivate"));
+    };
+
+    const handleReactivate = (a) => {
+        const currentToken = sessionStorage.getItem("token");
+
+        const payload = {
+            id: a.id,
+            activityCode: a.activityCode,
+            activityName: a.activityName,
+            costCodeTypeId: a.costCodeType?.id || a.costCodeTypeId,
+            active: true
+        };
+
+        axios
+            .put(`${import.meta.env.VITE_API_BASE_URL}/activityGroup/edit`, payload, {
+                headers: { Authorization: `Bearer ${currentToken}` }
+            })
+            .then(() => {
+                toast.success("Activity reactivated");
+                fetchActivities();
+            })
+            .catch((e) => toast.error(e?.response?.data || "Failed to reactivate"));
+    };
+
+    const handleSave = () => {
+        // 1. ALWAYS get a fresh token inside the function to avoid using a stale one
+        const currentToken = sessionStorage.getItem("token");
+
+        if (!currentToken) {
+            toast.error("Session expired. Please log in again.");
+            return;
+        }
+
+        // 2. Simple Validation
+        if (!activity.costCodeTypeId || !activity.activityCode.trim() || !activity.activityName.trim()) {
+            toast.warning("Please fill in all required fields.");
+            return;
+        }
+
+        // 3. CLEAN PAYLOAD: Do not spread the whole object. Only send these fields.
+        const payload = {
+            id: activity.id,
+            activityCode: activity.activityCode,
+            activityName: activity.activityName,
+            costCodeTypeId: activity.costCodeTypeId,
+            active: activity.active
+        };
+
+        // 4. Correct Header Config
+        const config = {
+            headers: { Authorization: `Bearer ${currentToken}` }
+        };
+
+        const baseUrl = `${import.meta.env.VITE_API_BASE_URL}/activityGroup`;
+
+        if (isEdit) {
+            // Use the PUT endpoint
+            axios
+                .put(`${baseUrl}/edit`, payload, config)
+                .then((res) => {
+                    toast.success("Activity updated successfully");
+                    fetchActivities(); // Refresh the list
+                    setOpenModal(false);
+                })
+                .catch((e) => {
+                    console.error("Full Error Response:", e.response);
+                    // This will tell you if it's a token issue or a permission issue
+                    const errorMsg = e?.response?.data?.message || e?.response?.data || "Unauthorized Update";
+                    toast.error(errorMsg);
+                });
+        } else {
+            // Use the POST endpoint for new entries
+            axios
+                .post(baseUrl, payload, config)
+                .then((res) => {
+                    toast.success("Activity created successfully");
+                    fetchActivities();
+                    setOpenModal(false);
+                })
+                .catch((e) => toast.error("Save failed"));
+        }
+    };
     const costCodeTypeOptions = costCodeTypes.map((t) => ({
         value: t.id,
         label: t.costCodeName,
