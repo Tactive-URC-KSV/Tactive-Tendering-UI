@@ -92,20 +92,18 @@ function CompanyDetails() {
             const headers = { Authorization: `Bearer ${token}` };
             let url = '';
             let response = [];
-
-            // Map territoryTypeId to appropriate endpoint
             switch (territoryTypeId) {
-                case 'Country': // or whatever ID represents "Country"
+                case 'Country': 
                     url = `${import.meta.env.VITE_API_BASE_URL}/countries`;
                     response = await axios.get(url, { headers });
                     setTerritoryOptions(toOptions(response.data, "country"));
                     break;
-                case 'state':   // or whatever ID represents "State"
+                case 'State':   
                     url = `${import.meta.env.VITE_API_BASE_URL}/states`;
                     response = await axios.get(url, { headers });
                     setTerritoryOptions(toOptions(response.data, "state"));
                     break;
-                case 'city':    // or whatever ID represents "City"
+                case 'City':    
                     url = `${import.meta.env.VITE_API_BASE_URL}/cities`;
                     response = await axios.get(url, { headers });
                     setTerritoryOptions(toOptions(response.data, "city"));
@@ -114,7 +112,6 @@ function CompanyDetails() {
                     setTerritoryOptions([]);
                     return;
             }
-            // adjust "name" to your API field
         } catch (error) {
             console.error("Error fetching territory:", error);
             setTerritoryOptions([]);
@@ -242,9 +239,6 @@ function CompanyDetails() {
 
         try {
             const formData = new FormData();
-            attachments.forEach((file) => {
-                formData.append("files", file);
-            });
             const companyDTO = {
                 companyId: null,
                 companyName: basicInfo.companyName.trim(),
@@ -320,7 +314,9 @@ function CompanyDetails() {
                 "companyDTO",
                 new Blob([JSON.stringify(companyDTO)], { type: "application/json" })
             );
-
+            attachments.forEach((file) => {
+                formData.append("files", file);
+            });
             const token = sessionStorage.getItem("token");
             const response = await axios.post(
                 `${import.meta.env.VITE_API_BASE_URL}/company/add`,
@@ -328,11 +324,9 @@ function CompanyDetails() {
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
-                        "Content-Type": "multipart/form-data"
                     }
                 }
             );
-
             if (response.status === 200) {
                 toast.success("Company saved Successfully");
             }
@@ -340,7 +334,7 @@ function CompanyDetails() {
         } catch (error) {
             console.error("Error saving company:", error);
             const msg = error.response?.data || error.message || "Failed to save company";
-            alert("Error: " + msg);
+            toast.error(msg);
         }
     };
 
