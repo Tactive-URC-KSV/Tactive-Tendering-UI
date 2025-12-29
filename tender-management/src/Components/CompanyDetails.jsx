@@ -44,7 +44,12 @@ function CompanyDetails() {
         const headers = { Authorization: `Bearer ${token}` };
         const baseUrl = import.meta.env.VITE_API_BASE_URL;
         axios.get(`${baseUrl}/companyType`, { headers })
-            .then(r => setCompanyTypeOptions(toOptions(r.data, "type")));
+            .then(r => setCompanyTypeOptions(
+                (r.data?.data ?? r.data ?? []).map(item => ({
+                    value: item.code,
+                    label: item.label
+                }))
+            ));
         axios.get(`${baseUrl}/companyLevel`, { headers })
             .then(r => setCompanyLevelOptions(toOptions(r.data, "level")));
         axios.get(`${baseUrl}/companyStatus`, { headers })
@@ -58,7 +63,7 @@ function CompanyDetails() {
         axios.get(`${baseUrl}/language`, { headers })
             .then(r => setLanguageOptions(toOptions(r.data, "language")));
         axios.get(`${baseUrl}/territoryType`, { headers })
-            .then(r => setTerritoryTypeOptions(toOptions(r.data, "territoryType")));
+            .then(r => setTerritoryTypeOptions(r.data.map(item => ({ value: item.code, label: item.label }))));
         axios.get(`${baseUrl}/taxType`, { headers })
             .then(r => setTaxTypeOptions(toOptions(r.data, "taxType")));
         axios.get(`${baseUrl}/identityType`, { headers })
@@ -93,17 +98,17 @@ function CompanyDetails() {
             let url = '';
             let response = [];
             switch (territoryTypeId) {
-                case 'Country': 
+                case 'COUNTRY':
                     url = `${import.meta.env.VITE_API_BASE_URL}/countries`;
                     response = await axios.get(url, { headers });
                     setTerritoryOptions(toOptions(response.data, "country"));
                     break;
-                case 'State':   
+                case 'STATE':
                     url = `${import.meta.env.VITE_API_BASE_URL}/states`;
                     response = await axios.get(url, { headers });
                     setTerritoryOptions(toOptions(response.data, "state"));
                     break;
-                case 'City':    
+                case 'CITY':
                     url = `${import.meta.env.VITE_API_BASE_URL}/cities`;
                     response = await axios.get(url, { headers });
                     setTerritoryOptions(toOptions(response.data, "city"));
@@ -134,7 +139,6 @@ function CompanyDetails() {
         defaultCurrency: null,
         bank: ""
     });
-
     const [addressDetails, setAddressDetails] = useState({
         addressTypeId: null,
         address1: '',
@@ -147,14 +151,12 @@ function CompanyDetails() {
         email: '',
         website: ''
     });
-
     const [contactDetails, setContactDetails] = useState({
         position: '',
         name: '',
         phoneNo: '',
         email: ''
     });
-
     const [taxDetails, setTaxDetails] = useState({
         effectiveFrom: '',
         effectiveTo: '',
@@ -170,30 +172,25 @@ function CompanyDetails() {
         email: '',
         isPrimary: false
     });
-
     const [directorDetails, setDirectorDetails] = useState({
         directorTypeId: null,
         directorName: '',
         sharePercentage: '',
         noOfShares: ''
     });
-
     const [jointVenture, setJointVenture] = useState({
         partnerId: '',
         sharePercentage: ''
     });
-
     const [companyProfile, setCompanyProfile] = useState({
         orderNo: '',
         description: '',
         remarks: ''
     });
-
     const [additionalInfo, setAdditionalInfo] = useState({
         idTypeId: null,
         registrationNo: ''
     });
-
     const [localName, setLocalName] = useState({
         languageId: null,
         name: ''
@@ -225,18 +222,16 @@ function CompanyDetails() {
         label: new Date(0, i).toLocaleString('default', { month: 'long' })
     }));
     const selectedCompanyType = companyTypeOptions.find(opt => opt.value === basicInfo.companyTypeId);
-    const isCompany = selectedCompanyType?.label === 'Company';
+    const isCompany = selectedCompanyType?.value === 'COMPANY';
     const handleSave = async () => {
         if (!basicInfo.companyName || !basicInfo.shortName || !basicInfo.companyTypeId) {
             toast.warn("Please fill all required fields in Basic Information");
             return;
         }
-
         if (isCompany && (!addressDetails.countryId || !addressDetails.cityId)) {
             toast.warn("Please select Country and City");
             return;
         }
-
         try {
             const formData = new FormData();
             const companyDTO = {
@@ -330,7 +325,6 @@ function CompanyDetails() {
             if (response.status === 200) {
                 toast.success("Company saved Successfully");
             }
-
         } catch (error) {
             console.error("Error saving company:", error);
             const msg = error.response?.data || error.message || "Failed to save company";
@@ -343,10 +337,8 @@ function CompanyDetails() {
             <div className="d-flex align-items-center mb-4 ps-2">
                 <h2 className="mb-0 fs-5 fw-bold" style={{ color: bluePrimary }}>Company Details</h2>
             </div>
-
             <div className="row">
                 <div className="col-12">
-                    {/* Basic Information */}
                     <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: "8px" }}>
                         <div className="card-header text-white text-center py-3" style={{ backgroundColor: bluePrimary }}>
                             <Building2 size={20} className="me-2" />
@@ -422,7 +414,6 @@ function CompanyDetails() {
                                         options={companyNatureOptions}
                                     />
                                 </div>
-
                                 {isCompany && (
                                     <>
                                         <div className="col-md-6 mb-4 position-relative">
@@ -734,17 +725,13 @@ function CompanyDetails() {
                                                 value={getSelectedOption(taxDetails.territoryTypeId, territoryTypeOptions)}
                                                 onChange={(selectedOption) => {
                                                     const newTerritoryTypeId = selectedOption ? selectedOption.value : null;
-
-                                                    // Reset territory when territory type changes
                                                     setTaxDetails(prev => ({
                                                         ...prev,
                                                         territoryTypeId: newTerritoryTypeId,
                                                         territory: null
                                                     }));
-
-                                                    // Fetch territories based on type
                                                     if (selectedOption) {
-                                                        fetchTerritory(selectedOption.label);
+                                                        fetchTerritory(selectedOption.value);
                                                     } else {
                                                         setTerritoryOptions([]);
                                                     }
