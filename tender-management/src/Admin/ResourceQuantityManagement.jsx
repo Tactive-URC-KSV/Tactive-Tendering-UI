@@ -123,7 +123,7 @@ export function ResourceNature() {
                 <div className="modal-content rounded-3">
                     <div className="modal-header d-flex justify-content-between">
                         <p className="fw-bold mb-0">
-                            {isEdit ? "Edit Resource Nature" : "Add Resource Nature"}
+                            {isEdit ? "Edit Identity Type" : "Add Identity Type"}
                         </p>
                         <button
                             className="modal-close-btn"
@@ -369,7 +369,7 @@ export function ResourceType() {
                 <div className="modal-content rounded-3">
                     <div className="modal-header d-flex justify-content-between">
                         <p className="fw-bold mb-0">
-                            {isEdit ? "Edit Resource Type" : "Add Resource Type"}
+                            {isEdit ? "Edit Identity Type" : "Add Identity Type"}
                         </p>
                         <button
                             className="modal-close-btn"
@@ -648,9 +648,12 @@ export function QuantityType() {
                 <div className="modal-content rounded-3">
                     <div className="modal-header d-flex justify-content-between">
                         <p className="fw-bold mb-0">
-                            {isEdit ? "Edit Quantity Type" : "Add Quantity Type"}
+                            {isEdit ? "Edit Identity Type" : "Add Identity Type"}
                         </p>
-                        <button className="modal-close-btn" onClick={() => setOpenModal(false)}>
+                        <button
+                            className="modal-close-btn"
+                            onClick={() => setOpenModal(false)}
+                        >
                             <X />
                         </button>
                     </div>
@@ -779,18 +782,16 @@ export function Resources() {
         resourceCode: "",
         resourceName: "",
         unitRate: "",
-        resourceType: null,
-        uom: null,
-        quantityType: null
+        resourceTypeId: null,
+        uomId: null,
+        active: true,
     });
 
-    /* 🔐 Auth failure */
     const handleUnauthorized = () => {
         sessionStorage.clear();
         navigate("/login");
     };
 
-    /* 🔹 Initial fetch */
     const fetchInitialData = useCallback(() => {
         axios
             .all([
@@ -822,21 +823,28 @@ export function Resources() {
         fetchInitialData();
     }, [fetchInitialData]);
 
-    /* 🔹 Dropdown masters */
     const fetchDropdownMasters = () => {
         axios
             .all([
-                axios.get(`${import.meta.env.VITE_API_BASE_URL}/uom`, {
+                axios.get(`http://localhost:8080/tactive/uoms`, {
                     headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
                 }),
                 axios.get(`${import.meta.env.VITE_API_BASE_URL}/quantityType`, {
                     headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+                }),
+                axios.get(`${import.meta.env.VITE_API_BASE_URL}/resourceType`, {
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
                 })
             ])
             .then(
-                axios.spread((uomRes, qtyRes) => {
-                    setUoms(uomRes.data.map(u => ({ value: u.id, label: u.uomName })));
+                axios.spread((uomRes, qtyRes, typeRes) => {
+                    setUoms(uomRes.data.map(u => ({
+                        value: u.id,
+                        label: u.uomName || u.uomCode
+                    })));
+
                     setQuantityTypes(qtyRes.data.map(q => ({ value: q.id, label: q.quantityType })));
+                    setResourceTypes(typeRes.data.map(t => ({ value: t.id, label: t.resourceTypeName })));
                 })
             )
             .catch(() => toast.error("Failed to load dropdowns"));
@@ -849,29 +857,32 @@ export function Resources() {
             resourceCode: "",
             resourceName: "",
             unitRate: "",
-            resourceType: null,
-            uom: null,
-            quantityType: null
+            resourceTypeId: null,
+            uomId: null,
+            active:true,
         });
         setOpenModal(true);
     };
+
     const handleEdit = (r) => {
         fetchDropdownMasters();
         setIsEdit(true);
         setEditingId(r.id);
-
         setResourceForm({
             resourceCode: r.resourceCode,
             resourceName: r.resourceName,
             unitRate: r.unitRate,
-            resourceType: { value: r.resourceType.id, label: r.resourceType.resourceTypeName },
-            uom: { value: r.uom.id, label: r.uom.uomName },
-            quantityType: { value: r.quantityType.id, label: r.quantityType.quantityType }
+            resourceTypeId: r.resourceType?.id || null,
+            uomId: r.uom?.id || null,
+            active:r.active,
         });
 
         setOpenModal(true);
     };
-    const handleDelete = (r) => {
+
+    const toggleStatus = (r) => {
+        const nextStatus = !r.active;
+
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/resource/edit`,
@@ -882,43 +893,44 @@ export function Resources() {
                     unitRate: r.unitRate,
                     resourceTypeId: r.resourceType.id,
                     uomId: r.uom.id,
-                    quantityTypeId: r.quantityType.id,
-                    active: false
+                    active: nextStatus
                 },
                 { headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` } }
             )
             .then(() => {
-                toast.success("Resource deactivated");
+                toast.success(nextStatus ? "Resource Activated" : "Resource Deactivated");
                 fetchInitialData();
             })
-            .catch(e => toast.error(e?.response?.data || "Delete failed"));
+            .catch(e => toast.error(e?.response?.data || "Update failed"));
     };
     const handleSaveResource = () => {
-        const { resourceCode, resourceName, unitRate, resourceType, uom, quantityType } = resourceForm;
+        const { resourceCode, resourceName, unitRate, resourceTypeId, uomId, active } = resourceForm;
 
-        if (!resourceCode || !resourceName || !unitRate || !resourceType || !uom || !quantityType) {
+        if (!resourceCode || !resourceName || !unitRate || !resourceTypeId || !uomId) {
             toast.warning("All fields are required");
             return;
         }
 
         const payload = {
-            id: isEdit ? editingId : null,
             resourceCode,
             resourceName,
-            unitRate: Number(unitRate),
-            resourceTypeId: resourceType.value,
-            uomId: uom.value,
-            quantityTypeId: quantityType.value,
-            active: true
+            unitRate,
+            resourceTypeId,
+            uomId,
+            active,
         };
 
         const api = isEdit
-            ? axios.put(`${import.meta.env.VITE_API_BASE_URL}/resource/edit`, payload, {
-                headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
-            })
-            : axios.post(`${import.meta.env.VITE_API_BASE_URL}/resource/add`, payload, {
-                headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
-            });
+            ? axios.put(
+                `${import.meta.env.VITE_API_BASE_URL}/resource/edit`,
+                { id: editingId, ...payload },
+                { headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` } }
+            )
+            : axios.post(
+                `${import.meta.env.VITE_API_BASE_URL}/resource/add`,
+                payload,
+                { headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` } }
+            );
 
         api
             .then(() => {
@@ -931,14 +943,13 @@ export function Resources() {
             .catch(e => toast.error(e?.response?.data || "Save failed"));
     };
 
-    /* 🔍 Filters */
+
     const displayData = allResources.filter(r => {
         const matchSearch = r.resourceName?.toLowerCase().includes(search.toLowerCase());
         const matchType = selectedResType ? r.resourceType.id === selectedResType.value : true;
         return matchSearch && matchType;
     });
 
-    /* ================= UI ================= */
     return (
         <div className="container-fluid p-4 mt-3">
             <div className="d-flex justify-content-between">
@@ -1001,12 +1012,33 @@ export function Resources() {
                                     <td>{r.resourceName}</td>
                                     <td>{r.uom.uomCode}</td>
                                     <td>{r.unitRate}</td>
-                                    <td className={r.active ? "text-success" : "text-danger"}>
-                                        {r.active ? "Active" : "Inactive"}
+
+                                    <td>
+                                        <span className={r.active ? "text-success" : ""}>
+                                            {r.active ? "Active" : "Inactive"}
+                                        </span>
                                     </td>
+
                                     <td className="text-end">
-                                        <Edit size={18} onClick={() => handleEdit(r)} />
-                                        <Trash2 size={18} className="ms-2" onClick={() => handleDelete(r)} />
+                                        <Edit
+                                            size={18}
+                                            className="cursor-pointer text-muted me-2"
+                                            onClick={() => handleEdit(r)}
+                                        />
+                                        {r.active ? (
+                                            <Trash2
+                                                size={18}
+                                                className="cursor-pointer text-dark"
+                                                onClick={() => toggleStatus(r)}
+                                            />
+                                        ) : (
+                                            <RotateCcw
+                                                size={18}
+                                                className="cursor-pointer"
+                                                style={{ color: '#0d6efd' }}
+                                                onClick={() => toggleStatus(r)}
+                                            />
+                                        )}
                                     </td>
                                 </tr>
                             ))}
@@ -1019,44 +1051,81 @@ export function Resources() {
                 <div className="modal fade show d-block" style={{ background: "rgba(0,0,0,.5)" }}>
                     <div className="modal-dialog modal-lg modal-dialog-centered">
                         <div className="modal-content">
-                            <div className="modal-header">
-                                <h6>{isEdit ? "Edit Resource" : "Add Resource"}</h6>
-                                <button className="btn-close" onClick={() => setOpenModal(false)} />
+                            <div className="modal-header d-flex justify-content-between">
+                                <p className="fw-bold mb-0">
+                                    {isEdit ? "Edit Identity Type" : "Add Identity Type"}
+                                </p>
+                                <button
+                                    className="modal-close-btn"
+                                    onClick={() => setOpenModal(false)}
+                                >
+                                    <X />
+                                </button>
                             </div>
 
                             <div className="modal-body row g-3">
+                                {/* 1. Code */}
                                 <div className="col-md-6">
-                                    <input className="form-control" placeholder="Code"
+                                    <label className="projectform d-block">Code<span className="text-danger">*</span></label>
+                                    <input className="form-input w-100" placeholder="Code"
                                         value={resourceForm.resourceCode}
                                         onChange={e => setResourceForm(p => ({ ...p, resourceCode: e.target.value }))} />
                                 </div>
+
+                                {/* 2. Name */}
                                 <div className="col-md-6">
-                                    <input className="form-control" placeholder="Name"
+                                    <label className="projectform d-block">Name<span className="text-danger">*</span></label>
+                                    <input className="form-input w-100" placeholder="Name"
                                         value={resourceForm.resourceName}
                                         onChange={e => setResourceForm(p => ({ ...p, resourceName: e.target.value }))} />
                                 </div>
+
+                                {/* 3. Rate */}
                                 <div className="col-md-6">
-                                    <input type="number" className="form-control" placeholder="Rate"
+                                    <label className="projectform d-block">Rate<span className="text-danger">*</span></label>
+                                    <input type="number" className="form-input w-100" placeholder="Rate"
                                         value={resourceForm.unitRate}
                                         onChange={e => setResourceForm(p => ({ ...p, unitRate: e.target.value }))} />
                                 </div>
+
                                 <div className="col-md-6">
-                                    <Select options={resourceTypes} value={resourceForm.resourceType}
-                                        onChange={opt => setResourceForm(p => ({ ...p, resourceType: opt }))} />
+                                    <label className="projectform-select d-block">UOM<span className="text-danger">*</span></label>
+                                    <Select
+                                        options={uoms}
+                                        classNamePrefix="select"
+                                        placeholder="Select UOM"
+                                        value={uoms.find(u => u.value === resourceForm.uomId) || null}
+                                        onChange={opt =>
+                                            setResourceForm(p => ({ ...p, uomId: opt?.value || null }))
+                                        }
+                                    />
                                 </div>
-                                <div className="col-md-6">
-                                    <Select options={uoms} value={resourceForm.uom}
-                                        onChange={opt => setResourceForm(p => ({ ...p, uom: opt }))} />
-                                </div>
-                                <div className="col-md-6">
-                                    <Select options={quantityTypes} value={resourceForm.quantityType}
-                                        onChange={opt => setResourceForm(p => ({ ...p, quantityType: opt }))} />
+
+                                <div className="col-md-12">
+                                    <label className="projectform-select d-block">Resource Type<span className="text-danger">*</span></label>
+                                    <Select
+                                        options={resourceTypes}
+                                        classNamePrefix="select"
+                                        placeholder="Select Type"
+                                        value={resourceTypes.find(t => t.value === resourceForm.resourceTypeId) || null}
+                                        onChange={opt =>
+                                            setResourceForm(p => ({ ...p, resourceTypeId: opt?.value || null }))
+                                        }
+                                    />
                                 </div>
                             </div>
 
                             <div className="modal-footer">
-                                <button className="btn btn-light" onClick={() => setOpenModal(false)}>Cancel</button>
-                                <button className="btn btn-primary" onClick={handleSaveResource}>
+                                <button className="btn btn-secondary" onClick={() => setOpenModal(false)}>Cancel</button>
+                                <button className="btn btn-primary" onClick={handleSaveResource}
+                                    disabled={
+                                        !resourceForm.resourceCode.trim() ||
+                                        !resourceForm.resourceName.trim() ||
+                                        !resourceForm.unitRate ||
+                                        !resourceForm.uomId ||
+                                        !resourceForm.resourceTypeId
+                                    }
+                                >
                                     {isEdit ? "Update" : "Save"}
                                 </button>
                             </div>

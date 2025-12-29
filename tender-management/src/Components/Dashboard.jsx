@@ -15,13 +15,14 @@ import '../CSS/Styles.css';
 import { useNavigate } from 'react-router-dom';
 import { IndianRupee } from 'lucide-react';
 
-const handleUnauthorized = () =>{
-   const navigate = useNavigate();
-   navigate('/login');
-}
+
 
 
 function ProjectWorklist() {
+    const navigate = useNavigate();
+    const handleUnauthorized = () => {
+        navigate('/');
+    }
 
     const [isListView, setIsListView] = useState(true);
     const [error, setError] = useState('');
@@ -29,7 +30,7 @@ function ProjectWorklist() {
     const [filteredProjects, setFilteredProjects] = useState([]);
     const [projects, setProjects] = useState([]);
     const regionList = useRegions();
-    const companyList = useSectors();
+    const [companyList, setCompanyList] = useState([]);
     const projectStatus = useProjectStatus();
     const [selectedCompany, setSelectedCompany] = useState(null);
     const [selectedRegion, setSelectedRegion] = useState(null);
@@ -83,7 +84,7 @@ function ProjectWorklist() {
                 }
             })
             .catch(error => {
-                if (err?.response?.status === 401) {
+                if (error?.response?.status === 401) {
                     handleUnauthorized();
                 }
                 console.error('Error fetching projects:', error);
@@ -107,7 +108,7 @@ function ProjectWorklist() {
     }
 
     const projectCounts = projects.reduce((acc, project) => {
-        acc[project.status] = (acc[projectStatus.find((state)=> state.id === project.status)] || 0) + 1;
+        acc[project.status] = (acc[projectStatus.find((state) => state.id === project.status)] || 0) + 1;
         return acc;
     }, {});
 
@@ -300,7 +301,7 @@ function ProjectWorklist() {
                                 <tr>
                                     <th>Project No</th>
                                     <th>Project Name</th>
-                                    <th>Value of Project(<IndianRupee size={14}/>) </th>
+                                    <th>Value of Project(<IndianRupee size={14} />) </th>
                                     <th>Start Date</th>
                                     <th>End Date</th>
                                     <th>Sector</th>
@@ -402,7 +403,7 @@ function ProjectWorklist() {
 
                                     <div className="d-flex justify-content-between mt-1 small">
                                         <span>Value:</span>
-                                        <span><IndianRupee size={14}/>{project.estimatedValue}</span>
+                                        <span><IndianRupee size={14} />{project.estimatedValue}</span>
                                     </div>
 
                                     <div className="progress mt-3" style={{ height: "10px" }}>
