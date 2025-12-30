@@ -28,6 +28,7 @@ function CompanyDetails() {
     const [cityOptions, setCityOptions] = useState([]);
     const [citiesOption, setCitiesOption] = useState([]);
     const [territoryOptions, setTerritoryOptions] = useState([]);
+    const [directorTypeOptions, setDirectorTypeOptions] = useState([]);
     const [isLoadingTerritory, setIsLoadingTerritory] = useState(false);
     const [attachments, setAttachments] = useState([]);
     const toOptions = (data, labelKey) =>
@@ -75,7 +76,9 @@ function CompanyDetails() {
         axios.get(`${baseUrl}/countries`, { headers })
             .then(r => setCountryOptions(toOptions(r.data, "country")))
         axios.get(`${baseUrl}/cities`, { headers })
-            .then(r => setCitiesOption(toOptions(r.data, "city")))
+            .then(r => setCitiesOption(toOptions(r.data, "city")));
+        axios.get(`${baseUrl}/directorType`, { headers })
+            .then(r => setDirectorTypeOptions(r.data.map(item => ({ value: item.code, label: item.label }))));
     }, []);
     const handleFiles = (e) => {
         const files = Array.from(e.target.files);
@@ -848,12 +851,10 @@ function CompanyDetails() {
                                             <Select
                                                 classNamePrefix="select"
                                                 placeholder="Select Director Type"
-                                                value={getSelectedOption(directorDetails.directorTypeId, [])}
+                                                value={getSelectedOption(directorDetails.directorTypeId, directorTypeOptions)}
                                                 onChange={handleSelectChange(setDirectorDetails, 'directorTypeId')}
-                                                options={[
-                                                    { value: 1, label: 'Full Time' },
-                                                    { value: 2, label: 'Part Time' }
-                                                ]}
+                                                options={directorTypeOptions}
+                                                isClearable
                                             />
                                         </div>
                                         <div className="col-md-6 mb-4 position-relative">
