@@ -388,7 +388,7 @@ function BOQStructureView({ projectId }) {
         <tr className="boq-leaf-row bg-white" style={{ borderBottom: '1px solid #eee' }}>
           <td className="px-2">{boq.boqCode}</td>
           <td className="px-2" title={boq.boqName}>{boqNameDisplay}</td>
-          <td className="px-2">{findUom(boq.uomId) || '-'}</td>
+          <td className="px-2">{boq?.uom?.uomCode || '-'}</td>
           <td className="px-2">{boq.quantity?.toFixed(3) || 0}</td>
           <td className="px-2">
             <button className="btn btn-sm" style={{ background: "#DCFCE7", cursor: "pointer" }} onClick={() => handleResource(boq.id)}><Eye color="#15803D" size={20} /><span className="ms-1" style={{ color: '#15803D' }}>View</span></button>
