@@ -771,7 +771,6 @@ export function Resources() {
 
     const [resourceTypes, setResourceTypes] = useState([]);
     const [uoms, setUoms] = useState([]);
-    const [quantityTypes, setQuantityTypes] = useState([]);
     const [allResources, setAllResources] = useState([]);
     const [selectedResType, setSelectedResType] = useState(null);
     const [search, setSearch] = useState("");
@@ -826,10 +825,7 @@ export function Resources() {
     const fetchDropdownMasters = () => {
         axios
             .all([
-                axios.get(`http://localhost:8080/tactive/uoms`, {
-                    headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
-                }),
-                axios.get(`${import.meta.env.VITE_API_BASE_URL}/quantityType`, {
+                axios.get(`${import.meta.env.VITE_API_BASE_URL}/uoms`, {
                     headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
                 }),
                 axios.get(`${import.meta.env.VITE_API_BASE_URL}/resourceType`, {
@@ -837,13 +833,11 @@ export function Resources() {
                 })
             ])
             .then(
-                axios.spread((uomRes, qtyRes, typeRes) => {
+                axios.spread((uomRes, typeRes) => {
                     setUoms(uomRes.data.map(u => ({
                         value: u.id,
                         label: u.uomName || u.uomCode
                     })));
-
-                    setQuantityTypes(qtyRes.data.map(q => ({ value: q.id, label: q.quantityType })));
                     setResourceTypes(typeRes.data.map(t => ({ value: t.id, label: t.resourceTypeName })));
                 })
             )

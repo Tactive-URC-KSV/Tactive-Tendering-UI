@@ -10,7 +10,7 @@ function MasterDataController({ children }) {
 
   const [openSections, setOpenSections] = useState({
     gm: true,
-    stam: true,
+    stam: false,
   });
 
  const toggleSection = (key) => {
