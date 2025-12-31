@@ -301,7 +301,7 @@ function AddResource() {
         [resourceNature]
     );
     const quantityTypeOption = useMemo(() => 
-        quantityType.map(item => ({ value: item.id, label: item.quantityType })), 
+        quantityType.map(item => ({ value: item.code, label: item.label })), 
         [quantityType]
     );
     const currencyOptions = useMemo(() => 
@@ -315,7 +315,6 @@ function AddResource() {
     const handleAddResource = useCallback(() => {
         const payload = {
             ...resourceData,
-            // Ensure required fields are present
             resourceTypeId: selectedResourceType?.value || resourceData.resourceTypeId,
             resourceId: selectedResource?.value || resourceData.resourceId,
             uomId: selectedUom?.value || resourceData.uomId,
@@ -548,12 +547,12 @@ function AddResource() {
                             type="number"
                             onWheel={(e) => e.target.blur()}
                             name="coEfficient"
-                            value={resourceData.coEfficient ?? 1}
+                            value={resourceData.coEfficient}
                             onChange={handleChange}
                             style={{ borderRadius: '0.5rem' }}
                             placeholder="1.00"
                             className="form-input w-100"
-                            step="0.01"
+                            disabled={resourceData.quantityTypeId === 'DIRECT'}
                         />
                     </div>
 

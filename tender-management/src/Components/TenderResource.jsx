@@ -312,7 +312,7 @@ function TenderResource() {
                         />
                       </td>
                       <td>{item.tenderEstimation?.resourceType?.resourceTypeName}</td>
-                      <td>{item.tenderEstimation?.resource?.resourceName}</td>
+                      <td>{item.tenderEstimation?.resources?.resourceName}</td>
                       <td>{item.tenderEstimation?.uom?.uomCode}</td>
                       <td>{(item.costDetails?.netQuantity).toFixed(3)}</td>
                       <td>{(item.costDetails?.costUnitRate).toFixed(2)}</td>

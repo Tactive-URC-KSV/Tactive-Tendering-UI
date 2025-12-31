@@ -408,7 +408,7 @@ function BOQOverview({ projectId }) {
                     </td>
                     <td className="px-2">{boq.boqCode}</td>
                     <td className="px-2" title={boq.boqName}>{boqNameDisplay}</td>
-                    <td className="px-2">{findUom(boq.uomId) || '-'}</td>
+                    <td className="px-2">{boq?.uom?.uomCode || '-'}</td>
                     <td className="px-2">{boq.quantity?.toFixed(3) || 0}</td>
                 </tr>
             );
