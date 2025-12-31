@@ -73,11 +73,13 @@ function ContractorReviewMinimal() {
         <div className="row g-4 m-0"> 
           <div className="col-lg-4 ps-4">
             <div className="card shadow-sm p-4 h-100 text-start"> 
+              <div className="mb-4 pb-3" style={{ borderBottom: '1px solid #f0f0f0' }}>
               <h5 className="fw-bold mb-2 d-flex align-items-center">
                 <CheckCircle size={18} className="me-2 text-success" />
                 Submissions
               </h5>
               <p className="text-secondary mb-3"> Review pending applications... </p>
+              </div>
               <div 
                 style={{maxHeight: 'calc(100vh - 250px)',  overflowY: 'auto', msOverflowStyle: 'none',   scrollbarWidth: 'none',  }}
               >
@@ -116,6 +118,7 @@ function ContractorReviewMinimal() {
               className="card shadow-sm p-4 text-start" 
               style={{ maxHeight: 'calc(100vh - 120px)',  overflowY: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none', }}
             >
+              <div className="mb-4 pb-3" style={{ borderBottom: '1px solid #f0f0f0' }}></div>
                 <h4 className="fw-bold text-dark">{selectedContractor.name}</h4>
               <p className="text-muted mb-4">
                 Submitted for verification. Please review the details below...
