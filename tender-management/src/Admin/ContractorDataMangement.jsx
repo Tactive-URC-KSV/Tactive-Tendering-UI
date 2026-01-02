@@ -540,7 +540,7 @@ export function NatureOfBusiness() {
     const [isEdit, setIsEdit] = useState(false);
     const [nature, setNature] = useState({
         id: null,
-        natureOfBusiness: "",
+        nature: "",
         entityTypeId: "",
         active: true,
     });
@@ -561,7 +561,7 @@ export function NatureOfBusiness() {
                 headers: { Authorization: `Bearer ${token}` },
             })
             .then((r) => {
-                if (r.status === 200) setEntityTypes(r.data || []);
+                if (r.status === 200) setEntityTypes((r.data || []).map((e) => ({ value: e.id, label: e.type })));
             })
             .catch(() => toast.error("Failed to load Entity Types"));
     };
@@ -576,7 +576,7 @@ export function NatureOfBusiness() {
         setIsEdit(false);
         setNature({
             id: null,
-            natureOfBusiness: "",
+            nature: "",
             entityTypeId: "",
             active: true,
         });
@@ -586,17 +586,24 @@ export function NatureOfBusiness() {
         setIsEdit(true);
         setNature({
             id: n.id,
-            natureOfBusiness: n.nature,
+            nature: n.nature,
             entityTypeId: n.contractorType.id,
             active: n.active,
         });
         setOpenModal(true);
     };
     const handleDelete = (n) => {
+        const active = !n.active;
+         const payload = {
+            id: n.id,
+            nature: n.nature,
+            active: active,
+            entityTypeId: n.contractorType?.id,
+        };
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/contractorNature/edit`,
-                { ...n, active: false },
+                payload,
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             .then((r) => {
@@ -610,10 +617,17 @@ export function NatureOfBusiness() {
             );
     };
     const handleReactivate = (n) => {
+        const active = !n.active;
+         const payload = {
+            id: n.id,
+            nature: n.nature,
+            active: active,
+            entityTypeId: n.contractorType?.id,
+        };
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/contractorNature/edit`,
-                { ...n, active: true },
+                payload,
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             .then((r) => {
@@ -627,10 +641,10 @@ export function NatureOfBusiness() {
             );
     };
     const handleSave = () => {
-        if (!nature.natureOfBusiness.trim() || !nature.entityTypeId) return;
+        if (!nature.nature.trim() || !nature.entityTypeId) return;
         const payload = {
             id: nature.id,
-            natureOfBusiness: nature.natureOfBusiness,
+            nature: nature.nature,
             active: nature.active,
             entityTypeId: nature.entityTypeId,
         };
@@ -652,7 +666,7 @@ export function NatureOfBusiness() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/contractorNature`,
+                    `${import.meta.env.VITE_API_BASE_URL}/contractorNature/add`,
                     payload,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -690,34 +704,33 @@ export function NatureOfBusiness() {
                         <label className="projectform-select d-block">
                             Entity Type <span className="text-danger">*</span>
                         </label>
-                        <select
-                            className="form-input w-100 mb-3"
-                            value={nature.entityTypeId}
-                            onChange={(e) =>
-                                setNature((p) => ({
-                                    ...p,
-                                    entityTypeId: e.target.value,
+                        <Select
+                            className="mb-3"
+                            classNamePrefix="select"
+                            placeholder="Select Entity Type"
+                            options={entityTypes}
+                            value={entityTypes.find(
+                                option => option.value === nature.entityTypeId
+                            ) || null}
+                            onChange={(selected) =>
+                                setNature(prev => ({
+                                    ...prev,
+                                    entityTypeId: selected ? selected.value : ""
                                 }))
                             }
-                        >
-                            <option value="">Select Entity Type</option>
-                            {entityTypes.map((e) => (
-                                <option key={e.id} value={e.id}>
-                                    {e.entityType}
-                                </option>
-                            ))}
-                        </select>
+                        />
+
                         <label className="projectform d-block">
                             Nature of Business <span className="text-danger">*</span>
                         </label>
                         <input
                             className="form-input w-100"
                             placeholder="Enter nature of business"
-                            value={nature.natureOfBusiness}
+                            value={nature.nature}
                             onChange={(e) =>
                                 setNature((p) => ({
                                     ...p,
-                                    natureOfBusiness: e.target.value,
+                                    nature: e.target.value,
                                 }))
                             }
                         />
@@ -730,7 +743,7 @@ export function NatureOfBusiness() {
                             className="btn btn-primary"
                             onClick={handleSave}
                             disabled={
-                                !nature.natureOfBusiness.trim() ||
+                                !nature.nature.trim() ||
                                 !nature.entityTypeId
                             }
                         >
@@ -797,7 +810,7 @@ export function NatureOfBusiness() {
                                         )}
                                     </div>
                                     <div className="mt-2 d-flex justify-content-between">
-                                        <span>{n.natureOfBusiness}</span>
+                                        <span>{n.nature}</span>
                                         <span className={n.active ? "text-success" : "text-muted"}>
                                             {n.active ? "Active" : "Inactive"}
                                         </span>
