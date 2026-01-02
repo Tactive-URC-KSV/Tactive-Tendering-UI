@@ -40,10 +40,9 @@ function Sidebar({ children }) {
     { label: "Tender Estimation", path: "tenderestimation", icon: <FaCalculator />, key: "TENDER_ESTIMATION" },
     { label: "Cost Code Mapping", path: "costcodemapping", icon: <FaMapSigns />, key: "COST_CODE_MAPPING" },
     { label: "Tender Floating", path: "tenderfloating", icon: <FaPaperPlane />, key: "TENDER_FLOATING" },
-    { label: "Receiving Offers", path: "ReceivingOffers", icon: <FaInbox />, key: "RECEIVING_OFFERS" },
-    { label: "Tender Tracking", path: "TenderTracking", icon: <FaSearch />, key: "TENDER_TRACKING" },
-    { label: "Tender Comparison", path: "TenderComparison", icon: <FaChartBar />, key: "TENDER_COMPARISON" },
-    { label: "Contractor Onboarding", path: "ContractorOnboarding", icon: <FaUserPlus />, key: "CONTRACTOR_ONBOARDING" },
+    { label: "Receiving Offers", path: "receivingoffers", icon: <FaInbox />, key: "RECEIVING_OFFERS" },
+    { label: "Tender Tracking", path: "tendertracking", icon: <FaSearch />, key: "TENDER_TRACKING" },
+    { label: "Contractor Onboarding", path: "contractoronboarding", icon: <FaUserPlus />, key: "CONTRACTOR_ONBOARDING" },
     
   ];
   useEffect(()=>{
