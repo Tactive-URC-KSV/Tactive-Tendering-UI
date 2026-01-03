@@ -6,8 +6,8 @@ import { FaCalendarAlt } from 'react-icons/fa';
 import Flatpickr from "react-flatpickr";
 import '../CSS/Styles.css';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
-// --- Constants & Helpers ---
 const bluePrimary = "#005197";
 const bluePrimaryLight = "#005197CC";
 const labelTextColor = '#00000080';
@@ -17,8 +17,6 @@ const formatDateForBackend = (dateStr) => {
     const [day, month, year] = dateStr.split('-');
     return `${year}-${month}-${day}`;
 };
-
-// --- Sub-Components Defined OUTSIDE ---
 
 const DetailItem = ({ label, value }) => {
     const adjustedValue = value === undefined || value === null || value === '' ? undefined : value;
@@ -51,7 +49,6 @@ const ManualEntryForm = ({
     handleRemoveFile,
     effectiveDateRef,
     taxRegDateRef,
-    // Options props
     entityTypeOptions,
     natureOfBusinessOptions,
     gradeOptions,
@@ -63,7 +60,6 @@ const ManualEntryForm = ({
     taxTypeOptions,
     taxCityOptions,
     additionalInfoTypeOptions,
-    // Fetch handlers
     fetchNatureOfBusiness,
     fetchCity,
     fetchTerritory
@@ -628,7 +624,6 @@ const ReviewSummaryContent = ({
     formData,
     handleGoBackToEntry,
     handleSubmitFinal,
-    // Add options props
     entityTypeOptions,
     natureOfBusinessOptions,
     gradeOptions,
@@ -648,7 +643,6 @@ const ReviewSummaryContent = ({
     const { accountHolderName, accountNo, bankName, branchName, bankAddress, } = formData;
     const { additionalInfoType, registrationNo, } = formData;
 
-    // Helper to get label
     const getLabel = (value, options) => {
         if (!value || !options) return value;
         const option = options.find(opt => opt.value === value);
@@ -668,12 +662,11 @@ const ReviewSummaryContent = ({
                     setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
                 };
             } else {
-                alert("The file view window was blocked. Please enable pop-ups for this site.");
+                toast.error("The file view window was blocked. Please enable pop-ups for this site.");
                 URL.revokeObjectURL(objectUrl);
             }
         } else {
-            console.error("File object not found or not a valid File/Blob:", fileData);
-            alert("Cannot view document. File data is corrupted or not accessible. (Ensure the file object was stored correctly during upload.)");
+            toast.error("Cannot view document. File data is corrupted or not accessible. (Ensure the file object was stored correctly during upload.)");
         }
     };
     return (
@@ -913,12 +906,7 @@ const ReviewSummaryContent = ({
     );
 };
 
-
-// --- Main Component ---
 function ContractorOverview() {
-    const handleSendInvitation = () => {
-        console.log("Send Invitation clicked");
-    };
     const navigate = useNavigate();
     const location = useLocation();
     const effectiveDateRef = useRef();
@@ -942,6 +930,34 @@ function ContractorOverview() {
     const token = sessionStorage.getItem("token");
     const headers = { Authorization: `Bearer ${token}` };
     const baseUrl = import.meta.env.VITE_API_BASE_URL;
+
+    const handleSendInvitation = async () => {
+        if (!formData.contractorEmailId) {
+            toast.error("Please enter the contractor's email address.");
+            return;
+        }
+
+        const payload = {
+            email: formData.contractorEmailId,
+            name: formData.contractorName,
+            message: formData.contractorMessage
+        };
+
+        try {
+            await axios.post(`${baseUrl}/contractor/invite`, payload, { headers });
+            toast.success("Invitation sent successfully!");
+            setFormData(prev => ({
+                ...prev,
+                contractorEmailId: '',
+                contractorName: '',
+                contractorMessage: ''
+            }));
+        } catch (error) {
+            console.error("Error sending invitation:", error);
+            const errorMessage = error.response?.data || "Failed to send invitation.";
+            toast.error(typeof errorMessage === 'string' ? errorMessage : "Failed to send invitation.");
+        }
+    };
 
     useEffect(() => {
         if (!token) return;
@@ -1060,7 +1076,6 @@ function ContractorOverview() {
     const fetchTerritory = async (territoryTypeId) => {
         if (!territoryTypeId) {
             setTerritoryOptions([]);
-            // Updated to direct spread
             setFormData({ ...formData, territoryTypeId: null, territory: null });
             return;
         }
@@ -1129,7 +1144,6 @@ function ContractorOverview() {
     const handleSubmitFinal = async () => {
         const data = new FormData();
 
-        // 1. ContractorInputDto
         const inputDto = {
             entityCode: formData.entityCode,
             entityName: formData.entityName,
@@ -1145,7 +1159,6 @@ function ContractorOverview() {
         };
         data.append("contractorInputDto", new Blob([JSON.stringify(inputDto)], { type: "application/json" }));
 
-        // 2. ContractorAddress
         const addressObj = {
             addressType: { id: formData.addressType },
             address1: formData.address1,
@@ -1158,7 +1171,6 @@ function ContractorOverview() {
         };
         data.append("contractorAddress", new Blob([JSON.stringify(addressObj)], { type: "application/json" }));
 
-        // 3. ContractorContacts
         const contactsObj = {
             name: formData.contactName,
             designation: formData.contactPosition,
@@ -1167,7 +1179,6 @@ function ContractorOverview() {
         };
         data.append("contractorContacts", new Blob([JSON.stringify(contactsObj)], { type: "application/json" }));
 
-        // 4. ContractorTaxDetails
         const taxObj = {
             taxType: { id: formData.taxType },
             territoryType: formData.territoryType,
@@ -1182,7 +1193,6 @@ function ContractorOverview() {
         };
         data.append("contractorTaxDetails", new Blob([JSON.stringify(taxObj)], { type: "application/json" }));
 
-        // 5. ContractorBankDetails
         const bankObj = {
             accHolderName: formData.accountHolderName,
             accNumber: formData.accountNo,
@@ -1192,14 +1202,12 @@ function ContractorOverview() {
         };
         data.append("contractorBankDetails", new Blob([JSON.stringify(bankObj)], { type: "application/json" }));
 
-        // 6. ContractorAddInfo
         const addInfoObj = {
             identityType: { id: formData.additionalInfoType },
             regNo: formData.registrationNo
         };
         data.append("contractorAddInfo", new Blob([JSON.stringify(addInfoObj)], { type: "application/json" }));
 
-        // 7. Files
         if (formData.attachmentMetadata) {
             formData.attachmentMetadata.forEach(fileData => {
                 if (fileData.fileObject) {
@@ -1213,10 +1221,11 @@ function ContractorOverview() {
                 headers: { ...headers, "Content-Type": "multipart/form-data" }
             });
             sessionStorage.removeItem(STORAGE_KEY);
+            toast.success("Contractor details submitted successfully!");
             navigate("/ContractorOnboarding");
         } catch (error) {
             console.error("Error submitting form", error);
-            alert("Failed to submit contractor details.");
+            toast.error("Failed to submit contractor details.");
         }
     };
 
@@ -1312,7 +1321,6 @@ function ContractorOverview() {
                                             })
                                         }
                                         datePickerRef={datePickerRef}
-                                        // Pass options down
                                         entityTypeOptions={entityTypeOptions}
                                         natureOfBusinessOptions={natureOfBusinessOptions}
                                         gradeOptions={gradeOptions}
@@ -1324,7 +1332,6 @@ function ContractorOverview() {
                                         taxTypeOptions={taxTypeOptions}
                                         taxCityOptions={taxCityOptions}
                                         additionalInfoTypeOptions={additionalInfoTypeOptions}
-                                        // Pass fetch handlers
                                         fetchNatureOfBusiness={fetchNatureOfBusiness}
                                         fetchCity={fetchCity}
                                         fetchTerritory={fetchTerritory}
@@ -1380,7 +1387,6 @@ function ContractorOverview() {
                             formData={formData}
                             handleGoBackToEntry={handleGoBackToEntry}
                             handleSubmitFinal={handleSubmitFinal}
-                            // Pass options down to Review
                             entityTypeOptions={entityTypeOptions}
                             natureOfBusinessOptions={natureOfBusinessOptions}
                             gradeOptions={gradeOptions}
@@ -1398,6 +1404,5 @@ function ContractorOverview() {
             </div>
         </div>
     );
-
 }
 export default ContractorOverview;
