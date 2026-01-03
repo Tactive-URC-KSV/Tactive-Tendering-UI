@@ -7,7 +7,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/contractor-form" />} />
+        <Route path="/" element={<ContractorForm />} />
         <Route path="/contractor-form" element={<ContractorForm />} />
       </Routes>
     </BrowserRouter>
