@@ -3,7 +3,7 @@ name: UAT - Deploy React Apps to Render
 on:
   push:
     branches:
-      - UAT-branch
+      - UAT
 
 jobs:
   deploy-tender-management:
