@@ -6,16 +6,16 @@ import { useState, useRef, useEffect } from 'react';
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/themes/material_blue.css";
 import axios from 'axios';
-// import { useNavigate } from 'react-router-dom'; // Uncomment if using routing
 import { useSearchParams } from 'react-router-dom';
 
 function ContractorForm() {
   const [searchParams] = useSearchParams();
   const id = searchParams.get("id");
+  const [inviteStatus, setInviteStatus] = useState('loading');
+  const [authToken, setAuthToken] = useState(sessionStorage.getItem("token"));
   const [showReview, setShowReview] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [effectiveDate, setEffectiveDate] = useState(new Date());
-
   const [entityTypeOptions, setEntityTypeOptions] = useState([]);
   const [natureOfBusinessOptions, setNatureOfBusinessOptions] = useState([]);
   const [gradeOptions, setGradeOptions] = useState([]);
@@ -38,10 +38,8 @@ function ContractorForm() {
   const fpTaxReg = useRef(null);
 
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
-  const token = sessionStorage.getItem("token");
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers = { Authorization: `Bearer ${authToken}` };
 
-  // Helper: Format Date for Backend
   const formatDateForBackend = (date) => {
     if (!date) return null;
     const d = new Date(date);
@@ -51,66 +49,77 @@ function ContractorForm() {
     return [year, month.padStart(2, '0'), day.padStart(2, '0')].join('-');
   };
 
-  // Helper: Get Label from Options
   const getLabel = (value, options) => {
     const option = options.find(opt => opt.value === value);
     return option ? option.label : value;
   };
 
-  // --- API Calls ---
   useEffect(() => {
-    console.log(id);
-    if (!token) return;
+    if (!id) {
+      setInviteStatus('invalid');
+      return;
+    }
 
-    // Fetch Entity Types
+    axios.get(`${baseUrl}/validateInvite?id=${id}`)
+      .then(response => {
+        const token = response.data.token;
+        sessionStorage.setItem("token", token);
+        setAuthToken(token);
+        setInviteStatus('valid');
+      })
+      .catch(error => {
+        if (error.response && error.response.status === 409) {
+          setInviteStatus('submitted');
+        } else {
+          setInviteStatus('invalid');
+        }
+      });
+  }, [id, baseUrl]);
+
+  useEffect(() => {
+    if (!authToken || inviteStatus !== 'valid') return;
+
     axios.get(`${baseUrl}/contractorType`, { headers }).then(r => {
       const list = r.data?.data ?? r.data ?? [];
       setEntityTypeOptions(list.map(item => ({ value: item.id, label: item.type })));
     });
 
-    // Fetch Grades
     axios.get(`${baseUrl}/contractorGrade`, { headers }).then(r => {
       const list = r.data?.data ?? r.data ?? [];
       setGradeOptions(list.map(item => ({ value: item.id, label: item.gradeName })));
     });
 
-    // Fetch Address Types
     axios.get(`${baseUrl}/addressType`, { headers }).then(r => {
       const list = r.data?.data ?? r.data ?? [];
       setAddressTypeOptions(list.map(item => ({ value: item.id, label: item.addressType })));
     });
 
-    // Fetch Countries
     axios.get(`${baseUrl}/countries`, { headers }).then(r => {
       const list = r.data?.data ?? r.data ?? [];
       setCountryOptions(list.map(item => ({ value: item.id, label: item.country })));
     });
 
-    // Fetch Tax Types
     axios.get(`${baseUrl}/taxType`, { headers }).then(r => {
       const list = r.data?.data ?? r.data ?? [];
       setTaxTypeOptions(list.map(item => ({ value: item.id, label: item.taxType })));
     });
 
-    // Fetch Territory Types
     axios.get(`${baseUrl}/territoryType`, { headers }).then(r => {
       const list = r.data?.data ?? r.data ?? [];
       setTerritoryTypeOptions(list.map(item => ({ value: item.code, label: item.label })));
     });
 
-    // Fetch Identity Types (Additional Info)
     axios.get(`${baseUrl}/identityType`, { headers }).then(r => {
       const list = r.data?.data ?? r.data ?? [];
       setAdditionalInfoTypeOptions(list.map(item => ({ value: item.id, label: item.idType })));
     });
 
-    // Fetch All Cities (For Tax City, etc.)
     axios.get(`${baseUrl}/cities`, { headers }).then(r => {
       const list = r.data?.data ?? r.data ?? [];
       setCityOptions(list.map(item => ({ value: item.id, label: item.city })));
     });
 
-  }, [token, baseUrl]);
+  }, [authToken, inviteStatus, baseUrl]);
 
   const fetchNatureOfBusiness = (entityTypeId) => {
     axios.get(`${baseUrl}/contractorNature/${entityTypeId}`, { headers }).then(r => {
@@ -133,7 +142,6 @@ function ContractorForm() {
 
       if (url) {
         const response = await axios.get(url, { headers });
-        // Determine label key based on type
         const labelKey = territoryTypeId === 'COUNTRY' ? 'country' : territoryTypeId === 'STATE' ? 'state' : 'city';
         setTerritoryOptions(response.data.map(item => ({ value: item.id, label: item[labelKey] })));
       }
@@ -142,8 +150,6 @@ function ContractorForm() {
       setTerritoryOptions([]);
     }
   };
-
-  // --- Handlers ---
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
@@ -198,19 +204,18 @@ function ContractorForm() {
     setAdditionalInfo(prev => ({ ...prev, [name]: value }));
   };
 
-  // --- Submit Logic ---
   const handleSubmitFinal = async () => {
     const data = new FormData();
 
-    // 1. ContractorInputDto
     const inputDto = {
+      id: id,
       entityCode: basicInfo.entityCode,
       entityName: basicInfo.entityName,
       effectiveDate: formatDateForBackend(basicInfo.effectiveDate || effectiveDate),
       contractorTypeId: basicInfo.entityType,
       contractorGradeId: basicInfo.grade,
-      contractorNatureId: [basicInfo.natureOfBusiness], // Sending as array as per previous logic
-      subbmissionMode: "MANUAL",
+      contractorNatureId: [basicInfo.natureOfBusiness],
+      subbmissionMode: "EMAIL",
       taxTypeId: taxDetails.taxType,
       addressTypeId: addressDetails.addressType,
       idTypeId: additionalInfo.type,
@@ -218,7 +223,6 @@ function ContractorForm() {
     };
     data.append("contractorInputDto", new Blob([JSON.stringify(inputDto)], { type: "application/json" }));
 
-    // 2. ContractorAddress
     const addressObj = {
       addressType: { id: addressDetails.addressType },
       address1: addressDetails.address1,
@@ -231,7 +235,6 @@ function ContractorForm() {
     };
     data.append("contractorAddress", new Blob([JSON.stringify(addressObj)], { type: "application/json" }));
 
-    // 3. ContractorContacts
     const contactsObj = {
       name: contactDetails.name,
       designation: contactDetails.position,
@@ -240,7 +243,6 @@ function ContractorForm() {
     };
     data.append("contractorContacts", new Blob([JSON.stringify(contactsObj)], { type: "application/json" }));
 
-    // 4. ContractorTaxDetails
     const taxObj = {
       taxType: { id: taxDetails.taxType },
       territoryType: taxDetails.territoryType,
@@ -255,7 +257,6 @@ function ContractorForm() {
     };
     data.append("contractorTaxDetails", new Blob([JSON.stringify(taxObj)], { type: "application/json" }));
 
-    // 5. ContractorBankDetails
     const bankObj = {
       accHolderName: bankDetails.accountHolderName,
       accNumber: bankDetails.accountNo,
@@ -265,14 +266,12 @@ function ContractorForm() {
     };
     data.append("contractorBankDetails", new Blob([JSON.stringify(bankObj)], { type: "application/json" }));
 
-    // 6. ContractorAddInfo
     const addInfoObj = {
       identityType: { id: additionalInfo.type },
       regNo: additionalInfo.registrationNo
     };
     data.append("contractorAddInfo", new Blob([JSON.stringify(addInfoObj)], { type: "application/json" }));
 
-    // 7. Files
     if (selectedFiles) {
       selectedFiles.forEach(file => {
         data.append("files", file);
@@ -284,7 +283,7 @@ function ContractorForm() {
         headers: { ...headers, "Content-Type": "multipart/form-data" }
       });
       alert("Contractor submitted successfully!");
-      // navigate("/ContractorOnboarding"); 
+      setInviteStatus('submitted');
       setShowReview(false);
     } catch (error) {
       console.error("Error submitting form", error);
@@ -433,7 +432,6 @@ function ContractorForm() {
             </Row>
           </Col>
         </Row>
-        {/* Contact Details Review */}
         <Row className="mb-5 pb-5 align-items-start" style={{ borderBottom: '1px solid #0051973D' }}>
           <Col md={3} className="d-flex align-items-start border-end border-light px-3">
             <div className="bg-primary bg-opacity-10 p-2 rounded-3 me-3 d-flex align-items-center justify-content-center" style={{ width: '48px', height: '48px' }}>
@@ -465,7 +463,6 @@ function ContractorForm() {
             </Row>
           </Col>
         </Row>
-        {/* Tax Details Review */}
         <Row className="mb-5 pb-5 align-items-start" style={{ borderBottom: '1px solid #0051973D' }}>
           <Col md={3} className="d-flex align-items-start border-end border-light px-3">
             <div className="bg-primary bg-opacity-10 p-2 rounded-3 me-3 d-flex align-items-center justify-content-center" style={{ width: '48px', height: '48px' }}>
@@ -503,7 +500,6 @@ function ContractorForm() {
             </Row>
           </Col>
         </Row>
-        {/* Bank Details Review */}
         <Row className="mb-5 pb-5 align-items-start" style={{ borderBottom: '1px solid #0051973D' }}>
           <Col md={3} className="d-flex align-items-start border-end border-light px-3">
             <div className="bg-primary bg-opacity-10 p-2 rounded-3 me-3 d-flex align-items-center justify-content-center" style={{ width: '48px', height: '48px' }}>
@@ -539,7 +535,6 @@ function ContractorForm() {
             </Row>
           </Col>
         </Row>
-        {/* Additional Info Review */}
         <Row className="mb-5 pb-5 align-items-start" style={{ borderBottom: '1px solid #0051973D' }}>
           <Col md={3} className="d-flex align-items-start border-end border-light px-3">
             <div className="bg-primary bg-opacity-10 p-2 rounded-3 me-3 d-flex align-items-center justify-content-center" style={{ width: '48px', height: '48px' }}>
@@ -570,6 +565,45 @@ function ContractorForm() {
       </Card>
     </Container>
   );
+
+  if (inviteStatus === 'loading') {
+    return (
+      <Container className="d-flex justify-content-center align-items-center min-vh-100">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+        <span className="ms-3">Validating Invitation...</span>
+      </Container>
+    );
+  }
+
+  if (inviteStatus === 'submitted') {
+    return (
+      <Container className="d-flex justify-content-center align-items-center min-vh-100">
+        <Card className="text-center p-5 shadow-sm" style={{ maxWidth: '500px' }}>
+          <div className="mb-3">
+            <i className="bi bi-check-circle-fill text-success" style={{ fontSize: '3rem' }}></i>
+          </div>
+          <h3 className="fw-bold">Already Submitted</h3>
+          <p className="text-muted">The response for this invitation has already been recorded. You cannot submit it again.</p>
+        </Card>
+      </Container>
+    );
+  }
+
+  if (inviteStatus === 'invalid') {
+    return (
+      <Container className="d-flex justify-content-center align-items-center min-vh-100">
+        <Card className="text-center p-5 shadow-sm" style={{ maxWidth: '500px' }}>
+          <div className="mb-3">
+            <i className="bi bi-x-circle-fill text-danger" style={{ fontSize: '3rem' }}></i>
+          </div>
+          <h3 className="fw-bold">Invalid Invitation</h3>
+          <p className="text-muted">The invitation link is invalid or has expired.</p>
+        </Card>
+      </Container>
+    );
+  }
 
   return (
     <>
