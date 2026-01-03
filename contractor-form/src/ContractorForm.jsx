@@ -7,18 +7,21 @@ import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/themes/material_blue.css";
 import axios from 'axios';
 // import { useNavigate } from 'react-router-dom'; // Uncomment if using routing
+import { useSearchParams } from 'react-router-dom';
 
 function ContractorForm() {
+  const [searchParams] = useSearchParams();
+  const id = searchParams.get("id");
   const [showReview, setShowReview] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [effectiveDate, setEffectiveDate] = useState(new Date());
-  
+
   const [entityTypeOptions, setEntityTypeOptions] = useState([]);
   const [natureOfBusinessOptions, setNatureOfBusinessOptions] = useState([]);
   const [gradeOptions, setGradeOptions] = useState([]);
   const [addressTypeOptions, setAddressTypeOptions] = useState([]);
   const [countryOptions, setCountryOptions] = useState([]);
-  const [cityOptions, setCityOptions] = useState([]); 
+  const [cityOptions, setCityOptions] = useState([]);
   const [taxTypeOptions, setTaxTypeOptions] = useState([]);
   const [territoryTypeOptions, setTerritoryTypeOptions] = useState([]);
   const [territoryOptions, setTerritoryOptions] = useState([]);
@@ -56,6 +59,7 @@ function ContractorForm() {
 
   // --- API Calls ---
   useEffect(() => {
+    console.log(id);
     if (!token) return;
 
     // Fetch Entity Types
@@ -117,25 +121,25 @@ function ContractorForm() {
 
   const fetchTerritory = async (territoryTypeId) => {
     if (!territoryTypeId) {
-        setTerritoryOptions([]);
-        setTaxDetails(prev => ({ ...prev, territory: null }));
-        return;
+      setTerritoryOptions([]);
+      setTaxDetails(prev => ({ ...prev, territory: null }));
+      return;
     }
     try {
-        let url = '';
-        if (territoryTypeId === 'COUNTRY') url = `${baseUrl}/countries`;
-        else if (territoryTypeId === 'STATE') url = `${baseUrl}/states`;
-        else if (territoryTypeId === 'CITY') url = `${baseUrl}/cities`;
-        
-        if (url) {
-            const response = await axios.get(url, { headers });
-            // Determine label key based on type
-            const labelKey = territoryTypeId === 'COUNTRY' ? 'country' : territoryTypeId === 'STATE' ? 'state' : 'city';
-            setTerritoryOptions(response.data.map(item => ({ value: item.id, label: item[labelKey] })));
-        }
+      let url = '';
+      if (territoryTypeId === 'COUNTRY') url = `${baseUrl}/countries`;
+      else if (territoryTypeId === 'STATE') url = `${baseUrl}/states`;
+      else if (territoryTypeId === 'CITY') url = `${baseUrl}/cities`;
+
+      if (url) {
+        const response = await axios.get(url, { headers });
+        // Determine label key based on type
+        const labelKey = territoryTypeId === 'COUNTRY' ? 'country' : territoryTypeId === 'STATE' ? 'state' : 'city';
+        setTerritoryOptions(response.data.map(item => ({ value: item.id, label: item[labelKey] })));
+      }
     } catch (error) {
-        console.error("Error fetching territory:", error);
-        setTerritoryOptions([]);
+      console.error("Error fetching territory:", error);
+      setTerritoryOptions([]);
     }
   };
 
@@ -200,91 +204,91 @@ function ContractorForm() {
 
     // 1. ContractorInputDto
     const inputDto = {
-        entityCode: basicInfo.entityCode,
-        entityName: basicInfo.entityName,
-        effectiveDate: formatDateForBackend(basicInfo.effectiveDate || effectiveDate),
-        contractorTypeId: basicInfo.entityType,
-        contractorGradeId: basicInfo.grade,
-        contractorNatureId: [basicInfo.natureOfBusiness], // Sending as array as per previous logic
-        subbmissionMode: "MANUAL",
-        taxTypeId: taxDetails.taxType,
-        addressTypeId: addressDetails.addressType,
-        idTypeId: additionalInfo.type,
-        territoryTypeId: taxDetails.territoryType
+      entityCode: basicInfo.entityCode,
+      entityName: basicInfo.entityName,
+      effectiveDate: formatDateForBackend(basicInfo.effectiveDate || effectiveDate),
+      contractorTypeId: basicInfo.entityType,
+      contractorGradeId: basicInfo.grade,
+      contractorNatureId: [basicInfo.natureOfBusiness], // Sending as array as per previous logic
+      subbmissionMode: "MANUAL",
+      taxTypeId: taxDetails.taxType,
+      addressTypeId: addressDetails.addressType,
+      idTypeId: additionalInfo.type,
+      territoryTypeId: taxDetails.territoryType
     };
     data.append("contractorInputDto", new Blob([JSON.stringify(inputDto)], { type: "application/json" }));
 
     // 2. ContractorAddress
     const addressObj = {
-        addressType: { id: addressDetails.addressType },
-        address1: addressDetails.address1,
-        address2: addressDetails.address2,
-        country: addressDetails.country, 
-        city: addressDetails.city, 
-        zipCode: addressDetails.zipCode,
-        phoneNumber: addressDetails.phoneNo,
-        email: addressDetails.emailId
+      addressType: { id: addressDetails.addressType },
+      address1: addressDetails.address1,
+      address2: addressDetails.address2,
+      country: addressDetails.country,
+      city: addressDetails.city,
+      zipCode: addressDetails.zipCode,
+      phoneNumber: addressDetails.phoneNo,
+      email: addressDetails.emailId
     };
     data.append("contractorAddress", new Blob([JSON.stringify(addressObj)], { type: "application/json" }));
 
     // 3. ContractorContacts
     const contactsObj = {
-        name: contactDetails.name,
-        designation: contactDetails.position, 
-        phoneNumber: contactDetails.phoneNo,
-        email: contactDetails.emailId
+      name: contactDetails.name,
+      designation: contactDetails.position,
+      phoneNumber: contactDetails.phoneNo,
+      email: contactDetails.emailId
     };
     data.append("contractorContacts", new Blob([JSON.stringify(contactsObj)], { type: "application/json" }));
 
     // 4. ContractorTaxDetails
     const taxObj = {
-        taxType: { id: taxDetails.taxType },
-        territoryType: taxDetails.territoryType,
-        territory: taxDetails.territory,
-        taxRegNumber: taxDetails.taxRegNo,
-        taxRegDate: formatDateForBackend(taxDetails.taxRegDate),
-        address1: taxDetails.address1,
-        address2: taxDetails.address2,
-        city: taxDetails.city,
-        pinCode: taxDetails.zipCode,
-        email: taxDetails.emailId
+      taxType: { id: taxDetails.taxType },
+      territoryType: taxDetails.territoryType,
+      territory: taxDetails.territory,
+      taxRegNumber: taxDetails.taxRegNo,
+      taxRegDate: formatDateForBackend(taxDetails.taxRegDate),
+      address1: taxDetails.address1,
+      address2: taxDetails.address2,
+      city: taxDetails.city,
+      pinCode: taxDetails.zipCode,
+      email: taxDetails.emailId
     };
     data.append("contractorTaxDetails", new Blob([JSON.stringify(taxObj)], { type: "application/json" }));
 
     // 5. ContractorBankDetails
     const bankObj = {
-        accHolderName: bankDetails.accountHolderName,
-        accNumber: bankDetails.accountNo,
-        bankName: bankDetails.bankName,
-        branch: bankDetails.branchName,
-        bankAddress: bankDetails.bankAddress
+      accHolderName: bankDetails.accountHolderName,
+      accNumber: bankDetails.accountNo,
+      bankName: bankDetails.bankName,
+      branch: bankDetails.branchName,
+      bankAddress: bankDetails.bankAddress
     };
     data.append("contractorBankDetails", new Blob([JSON.stringify(bankObj)], { type: "application/json" }));
 
     // 6. ContractorAddInfo
     const addInfoObj = {
-        identityType: { id: additionalInfo.type },
-        regNo: additionalInfo.registrationNo
+      identityType: { id: additionalInfo.type },
+      regNo: additionalInfo.registrationNo
     };
     data.append("contractorAddInfo", new Blob([JSON.stringify(addInfoObj)], { type: "application/json" }));
 
     // 7. Files
     if (selectedFiles) {
-        selectedFiles.forEach(file => {
-            data.append("files", file);
-        });
+      selectedFiles.forEach(file => {
+        data.append("files", file);
+      });
     }
 
     try {
-        await axios.post(`${baseUrl}/addContractor`, data, {
-            headers: { ...headers, "Content-Type": "multipart/form-data" }
-        });
-        alert("Contractor submitted successfully!");
-        // navigate("/ContractorOnboarding"); 
-        setShowReview(false);
+      await axios.post(`${baseUrl}/addContractor`, data, {
+        headers: { ...headers, "Content-Type": "multipart/form-data" }
+      });
+      alert("Contractor submitted successfully!");
+      // navigate("/ContractorOnboarding"); 
+      setShowReview(false);
     } catch (error) {
-        console.error("Error submitting form", error);
-        alert("Failed to submit contractor details.");
+      console.error("Error submitting form", error);
+      alert("Failed to submit contractor details.");
     }
   };
 
@@ -596,7 +600,7 @@ function ContractorForm() {
                       onChange={([date]) => {
                         setEffectiveDate(date);
                         setBasicInfo(prev => ({ ...prev, effectiveDate: date }));
-                      }} 
+                      }}
                       className="form-control outline-input"
                       placeholder="mm/dd/yyyy"
                       options={{ dateFormat: "m/d/Y" }}
@@ -611,8 +615,8 @@ function ContractorForm() {
                     placeholder="Select entity type"
                     value={entityTypeOptions.find(opt => opt.value === basicInfo.entityType)}
                     onChange={(opt) => {
-                        setBasicInfo(prev => ({ ...prev, entityType: opt.value }));
-                        fetchNatureOfBusiness(opt.value);
+                      setBasicInfo(prev => ({ ...prev, entityType: opt.value }));
+                      fetchNatureOfBusiness(opt.value);
                     }}
                     styles={customSelectStyles}
                   />
@@ -701,13 +705,13 @@ function ContractorForm() {
                 </Col>
                 <Col md={6} className="outline-group">
                   <label className="outline-label">Country <span className="text-danger">*</span></label>
-                  <Select 
+                  <Select
                     options={countryOptions}
-                    styles={customSelectStyles} 
-                    placeholder="Select Country" 
-                    menuPortalTarget={document.body} 
+                    styles={customSelectStyles}
+                    placeholder="Select Country"
+                    menuPortalTarget={document.body}
                     value={countryOptions.find(opt => opt.value === addressDetails.country)}
-                    onChange={(opt) => setAddressDetails(prev => ({...prev, country: opt.value}))}
+                    onChange={(opt) => setAddressDetails(prev => ({ ...prev, country: opt.value }))}
                   />
                 </Col>
               </Row>
@@ -782,8 +786,8 @@ function ContractorForm() {
                     menuPortalTarget={document.body}
                     value={territoryTypeOptions.find(opt => opt.value === taxDetails.territoryType)}
                     onChange={(selectedOption) => {
-                        setTaxDetails(prev => ({ ...prev, territoryType: selectedOption.value }));
-                        fetchTerritory(selectedOption.value);
+                      setTaxDetails(prev => ({ ...prev, territoryType: selectedOption.value }));
+                      fetchTerritory(selectedOption.value);
                     }}
                   />
                 </Col>
@@ -833,13 +837,13 @@ function ContractorForm() {
                 </Col>
                 <Col md={6} className="outline-group">
                   <label className="outline-label">City <span className="text-danger">*</span></label>
-                  <Select 
-                    styles={customSelectStyles} 
-                    placeholder="Select City" 
-                    menuPortalTarget={document.body} 
+                  <Select
+                    styles={customSelectStyles}
+                    placeholder="Select City"
+                    menuPortalTarget={document.body}
                     options={cityOptions}
                     value={cityOptions.find(opt => opt.value === taxDetails.city)}
-                    onChange={(opt) => setTaxDetails(prev => ({...prev, city: opt.value}))}
+                    onChange={(opt) => setTaxDetails(prev => ({ ...prev, city: opt.value }))}
                   />
                 </Col>
               </Row>
