@@ -1,0 +1,66 @@
+name: UAT - Deploy React Apps to Render
+
+on:
+  push:
+    branches:
+      - UAT-branch
+
+jobs:
+  deploy-tender-management:
+    name: Deploy Tender Management UI
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: tender-management
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: tender-management/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Tender Management
+        run: npm run build
+
+      - name: Trigger Render Deployment
+        run: |
+          curl -X POST "${{ secrets.RENDER_TENDER_DEPLOY_HOOK }}"
+
+
+  deploy-contractor-form:
+    name: Deploy Contractor Form UI
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: contractor-form
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: contractor-form/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Contractor Form
+        run: npm run build
+
+      - name: Trigger Render Deployment
+        run: |
+          curl -X POST "${{ secrets.RENDER_CONTRACTOR_DEPLOY_HOOK }}"
