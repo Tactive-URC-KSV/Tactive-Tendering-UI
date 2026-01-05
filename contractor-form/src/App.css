@@ -38,7 +38,7 @@
   font-size: 0.85rem;
   color: #005bb7;
   font-weight: 500;
-  z-index: 9999;
+  z-index: 1;
 }
 
 .outline-input,
@@ -169,7 +169,7 @@
 }
 
 .btn-submit {
-  background-color: #3681d8 !important;
+  background-color: #005197 !important;
   border: none !important;
   padding: 10px 25px !important;
   border-radius: 6px !important;
