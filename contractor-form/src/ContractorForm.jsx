@@ -66,6 +66,7 @@ function ContractorForm() {
         sessionStorage.setItem("token", token);
         setAuthToken(token);
         setInviteStatus('valid');
+        setContactDetails(prev => ({ ...prev, emailId: response.data.contractor.email }));
       })
       .catch(error => {
         if (error.response && error.response.status === 409) {
@@ -304,6 +305,7 @@ function ContractorForm() {
     placeholder: (base) => ({ ...base, color: '#6c757d', fontSize: '0.9rem' }),
     indicatorSeparator: () => ({ display: 'none' }),
     menuPortal: (base) => ({ ...base, zIndex: 9999 })
+    
   };
 
   const renderReviewForm = () => (
@@ -789,7 +791,7 @@ function ContractorForm() {
                 </Col>
                 <Col md={6} className="outline-group">
                   <label className="outline-label">Email ID</label>
-                  <Form.Control type="email" name="emailId" value={contactDetails.emailId} onChange={handleContactChange} className="outline-input" placeholder="Enter email id" />
+                  <Form.Control type="email" name="emailId" value={contactDetails.emailId} onChange={handleContactChange} className="outline-input" placeholder="Enter email id" disabled={true} />
                 </Col>
               </Row>
             </Card.Body>
