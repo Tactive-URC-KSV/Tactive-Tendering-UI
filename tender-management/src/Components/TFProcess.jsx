@@ -44,6 +44,10 @@ function TFProcess({ projectId }) {
         contactEmail: '',
         contactMobile: '',
         scopeOfPackage: '',
+        preBidMeeting: false,
+        preBidMeetingDate: '',
+        siteInvestigation: false,
+        siteInvestigationDate: '',
         boqIds: Array.from(selectedBoq),
         contractorIds: ''
     });
@@ -57,6 +61,10 @@ function TFProcess({ projectId }) {
     const scopeOptions = scopes.map(s => ({ value: s.id, label: s.scope }));
     const [selectedScopes, setSelectedScopes] = useState([]);
     const [openNodes, setOpenNodes] = useState(new Set());
+    const booleanOptions = [
+        { value: true, label: 'Yes' },
+        { value: false, label: 'No' }
+    ];
     const handleUnauthorized = () => {
         console.error("Unauthorized access, attempting to redirect to login...");
     }
@@ -458,32 +466,23 @@ function TFProcess({ projectId }) {
             <div className="p-2">
                 <div className="text-start ms-1 mt-4">
                     <Info size={20} color="#2BA95A" />
-                    <span className="ms-2 fw-bold">General Details</span>
+                    <span className="ms-2 text-muted"><span className="fw-bold text-dark">General Details - </span>{tenderDetail.tenderFloatingNo || ''}</span>
                 </div>
                 <div className="row align-items-center justify-content-between ms-1 mt-5">
                     <div className="col-md-4 col-lg-4 ">
-                        <label className="projectform text-start d-block">Tender Floating No </label>
+                        <label className="projectform text-start d-block">Tender Name <span className="text-danger">*</span></ label>
                         <input type="text" className="form-input w-100"
-                            value={tenderDetail.tenderFloatingNo}
-                            readOnly
+                            value={tenderDetail.tenderName || ''}
+                            placeholder="Enter Tender Name"
                         />
                     </div>
                     <div className="col-md-4 col-lg-4 ">
                         <label className="projectform text-start d-block">Tender Floating Date </label>
                         <input type="text" className="form-input w-100"
-                            value={tenderDetail.tenderFloatingDate}
+                            value={tenderDetail.tenderFloatingDate || ''}
                             readOnly
                         />
                     </div>
-                    <div className="col-md-4 col-lg-4">
-                        <label className="projectform text-start d-block">Project Name </label>
-                        <input type="text" className="form-input w-100"
-                            value={project.projectName}
-                            readOnly
-                        />
-                    </div>
-                </div>
-                <div className="row align-items-center justify-content-between ms-1 mt-5">
                     <div className="col-md-4 col-lg-4">
                         <label className="projectform-select text-start d-block">Offer Submission Mode</label>
                         <Select
@@ -496,7 +495,7 @@ function TFProcess({ projectId }) {
                             classNamePrefix="select"
                             value={
                                 tenderDetail.offerSubmissionMode
-                                    ? [{ value: tenderDetail.offerSubmissionMode, label: tenderDetail.offerSubmissionMode.charAt(0).toUpperCase() + tenderDetail.offerSubmissionMode.slice(1) }]
+                                    ? { value: tenderDetail.offerSubmissionMode, label: tenderDetail.offerSubmissionMode.charAt(0).toUpperCase() + tenderDetail.offerSubmissionMode.slice(1) }
                                     : null
                             }
                             onChange={(selected) =>
@@ -508,8 +507,10 @@ function TFProcess({ projectId }) {
                             isClearable
                         />
                     </div>
+                </div>
+                <div className="row align-items-center justify-content-between ms-1 mt-5">
                     <div className="col-md-4 col-lg-4">
-                        <label className="projectform text-start d-block">Bid Opening Date</label>
+                        <label className="projectform text-start d-block">Bid Opening Date <span className="text-danger">*</span></label>
                         <Flatpickr
                             id="bidOpeningDate"
                             className="form-input w-100"
@@ -519,10 +520,13 @@ function TFProcess({ projectId }) {
                             onChange={([date]) => setTenderDetail({ ...tenderDetail, bidOpeningDate: date })}
                             ref={datePickerRef}
                         />
-                        <span className='calender-icon' onClick={() => openCalendar('bidOpeningDate')}><FaCalendarAlt size={18} color='#005197' /></span>
+                        <span className='calender-icon'
+                            onClick={() => openCalendar('bidOpeningDate')}>
+                            <FaCalendarAlt size={18} color='#005197' />
+                        </span>
                     </div>
                     <div className="col-md-4 col-lg-4">
-                        <label className="projectform text-start d-block">Submission Last Date</label>
+                        <label className="projectform text-start d-block">Submission Last Date <span className="text-danger">*</span></label>
                         <Flatpickr
                             id="submissionLastDate"
                             className="form-input w-100"
@@ -532,64 +536,93 @@ function TFProcess({ projectId }) {
                             onChange={([date]) => setTenderDetail({ ...tenderDetail, submissionLastDate: date })}
                             ref={datePickerRef}
                         />
-                        <span className='calender-icon' onClick={() => openCalendar('submissionLastDate')}><FaCalendarAlt size={18} color='#005197' /></span>
+                        <span className='calender-icon'
+                            onClick={() => openCalendar('submissionLastDate')}>
+                            <FaCalendarAlt size={18} color='#005197' />
+                        </span>
                     </div>
-                </div>
-                <div className="row align-items-center justify-content-between ms-1 mt-5">
-                    <div className="col-md-4 col-lg-4 ">
+                    <div className="col-md-4 col-lg-4">
                         <label className="projectform text-start d-block">Contact Person</label>
                         <input type="text" className="form-input w-100"
-                            value={tenderDetail.contactPerson}
-                            readOnly
-                        />
-                    </div>
-                    <div className="col-md-4 col-lg-4">
-                        <label className="projectform text-start d-block">Contact Email</label>
-                        <input type="text" className="form-input w-100"
-                            value={tenderDetail.contactEmail}
-                            readOnly
-                        />
-                    </div>
-                    <div className="col-md-4 col-lg-4">
-                        <label className="projectform text-start d-block">Contact Number</label>
-                        <input type="text" className="form-input w-100"
-                            value={tenderDetail.contactMobile}
+                            value={tenderDetail.contactPerson || ''}
                             readOnly
                         />
                     </div>
                 </div>
                 <div className="row align-items-center justify-content-between ms-1 mt-5">
                     <div className="col-md-4 col-lg-4 ">
-                        <label className="projectform text-start d-block">Pre Bid Meeting</label>
+                        <label className="projectform text-start d-block">Contact Email</label>
                         <input type="text" className="form-input w-100"
-                            value={tenderDetail.contactPerson}
+                            value={tenderDetail.contactEmail || ''}
                             readOnly
                         />
                     </div>
                     <div className="col-md-4 col-lg-4">
+                         <label className="projectform text-start d-block">Contact Number</label>
+                        <input type="text" className="form-input w-100"
+                            value={tenderDetail.contactMobile || ''}
+                            readOnly
+                        />
+                    </div>
+                    <div className="col-md-4 col-lg-4">
+                       <label className="projectform-select text-start d-block">Pre Bid Meeting</label>
+                        <Select
+                            classNamePrefix="select"
+                            options={booleanOptions}
+                            className="w-100"
+                            placeholder="Select..."
+                            value={booleanOptions.find(option => option.value === tenderDetail.preBidMeeting)}
+                            onChange={(selectedOption) => setTenderDetail({ ...tenderDetail, preBidMeeting: selectedOption?.value })}
+                        />
+                    </div>
+                </div>
+                <div className="row align-items-center justify-content-between ms-1 mt-5">
+                    <div className="col-md-4 col-lg-4 ">
                         <label className="projectform text-start d-block">Pre Bid Meeting Date</label>
-                        <input type="text" className="form-input w-100"
-                            value={tenderDetail.contactEmail}
-                            readOnly
+                        <Flatpickr
+                            id="preBidMeetingDate"
+                            className="form-input w-100"
+                            placeholder="dd - mm - yyyy"
+                            options={{ dateFormat: "d-m-Y" }}
+                            value={tenderDetail.preBidMeetingDate}
+                            onChange={([date]) => setTenderDetail({ ...tenderDetail, preBidMeetingDate: date })}
+                            ref={datePickerRef}
+                        />
+                        <span className='calender-icon'
+                            onClick={() => openCalendar('preBidMeetingDate')}>
+                            <FaCalendarAlt size={18} color='#005197' />
+                        </span>
+                    </div>
+                    <div className="col-md-4 col-lg-4">
+                        <label className="projectform-select text-start d-block">Site Investigation</label>
+                        <Select
+                            classNamePrefix="select"
+                            className="w-100"
+                            options={booleanOptions}
+                            placeholder="Select..."
+                            value={booleanOptions.find(option => option.value === tenderDetail.siteInvestigation)}
+                            onChange={(option) => setTenderDetail({...tenderDetail, siteInvestigation : option?.value})}
                         />
                     </div>
                     <div className="col-md-4 col-lg-4">
-                        <label className="projectform text-start d-block">Site Investigation</label>
-                        <input type="text" className="form-input w-100"
-                            value={tenderDetail.contactMobile}
-                            readOnly
+                        <label className="projectform text-start d-block">Site Investigation Date</label>
+                        <Flatpickr
+                            id="siteInvestigationDate"
+                            className="form-input w-100"
+                            placeholder="dd - mm - yyyy"
+                            options={{ dateFormat: "d-m-Y" }}
+                            value={tenderDetail.siteInvestigationDate}
+                            onChange={([date]) => setTenderDetail({ ...tenderDetail, siteInvestigationDate: date })}
+                            ref={datePickerRef}
                         />
+                        <span className='calender-icon'
+                            onClick={() => openCalendar('siteInvestigationDate')}>
+                            <FaCalendarAlt size={18} color='#005197' />
+                        </span>
                     </div>
                 </div>
                 <div className="row align-items-center ms-1 mt-5">
-                    <div className="col-md-6 col-lg-6">
-                        <label className="projectform text-start d-block">Site Investigation Date</label>
-                        <input type="text" className="form-input w-100"
-                            value={tenderDetail.contactMobile}
-                            readOnly
-                        />
-                    </div>
-                    <div className="col-md-6 col-lg-6 ">
+                    <div className="col-md-12 col-lg-12 ">
                         <label className="projectform-select text-start d-block">Scope of Package</label>
                         <Select options={scopeOptions} isMulti placeholder="Select Scope of Package" className="w-100" classNamePrefix="select"
                             value={scopeOptions.filter(opt => selectedScopes.includes(opt.value))}
@@ -634,7 +667,7 @@ function TFProcess({ projectId }) {
                 return updated;
             });
         };
-         const buildBoqTree = (selected) => {
+        const buildBoqTree = (selected) => {
             const nodes = new Map();
             const ensureNode = (boq) => {
                 if (!boq) return null;
