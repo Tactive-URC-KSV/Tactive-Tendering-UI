@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { ArrowLeft, ArrowRight, BoxesIcon, ChevronDown, ChevronRight, Folder, Info, Paperclip, Plus, User2, X, Download, Edit, Send, File } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BoxesIcon, ChevronDown, ChevronRight, Folder, Info, Paperclip, Plus, User2, X, Download, Edit, Send, File, Building, Dot, Eye } from 'lucide-react';
 import axios from "axios";
 import Flatpickr from "react-flatpickr";
 import { FaCalendarAlt, FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
 import Select from "react-select";
 import { useScope } from "../Context/ScopeContext";
+import { toast } from 'react-toastify';
 function TFProcess({ projectId }) {
     const datePickerRef = useRef();
     const [project, setProject] = useState('');
@@ -15,6 +16,10 @@ function TFProcess({ projectId }) {
     const [parentBoq, setParentBoq] = useState([]);
     const [parentTree, setParentTree] = useState([]);
     const [expandedParentIds, setExpandedParentIds] = useState(new Set());
+    const [contractorInfo, setContractorInfo] = useState([]);
+    const [contractorTypeOptions, setContractorTypeOptions] = useState([]);
+    const [contractorGradeOptions, setContractorGradeOptions] = useState([]);
+    const [offerSubmissionOptions, setOfferSubmissionOptions] = useState([]);
     const generateTenderNumber = () => {
         const year = new Date().getFullYear();
         const randomNum = Math.floor(Math.random() * 999999) + 1;
@@ -30,26 +35,28 @@ function TFProcess({ projectId }) {
     };
     const getCurrentDate = () => {
         const today = new Date();
-        return today.toISOString().split("T")[0];
+        const offset = today.getTimezoneOffset();
+        const localDate = new Date(today.getTime() - (offset * 60 * 1000));
+        return localDate.toISOString().split("T")[0];
     }
     const [tenderDetail, setTenderDetail] = useState({
         tenderFloatingNo: generateTenderNumber(),
         tenderFloatingDate: getCurrentDate(),
+        tenderName: '',
         projectId: projectId,
         offerSubmissionMode: '',
-        offerSubmissionDate: '',
         submissionLastDate: '',
         bidOpeningDate: '',
         contactPerson: '',
         contactEmail: '',
         contactMobile: '',
-        scopeOfPackage: '',
+        scopeOfPackage: [],
         preBidMeeting: false,
         preBidMeetingDate: '',
         siteInvestigation: false,
         siteInvestigationDate: '',
         boqIds: Array.from(selectedBoq),
-        contractorIds: ''
+        contractorIds: []
     });
     const [attachments, setAttachments] = useState({
         technical: { files: [], notes: '' },
@@ -61,6 +68,10 @@ function TFProcess({ projectId }) {
     const scopeOptions = scopes.map(s => ({ value: s.id, label: s.scope }));
     const [selectedScopes, setSelectedScopes] = useState([]);
     const [openNodes, setOpenNodes] = useState(new Set());
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedType, setSelectedType] = useState(null);
+    const [selectedGrade, setSelectedGrade] = useState(null);
+    const [selectedContractor, setSelectedContractor] = useState([]);
     const booleanOptions = [
         { value: true, label: 'Yes' },
         { value: false, label: 'No' }
@@ -79,6 +90,8 @@ function TFProcess({ projectId }) {
                 setProject(res.data);
                 fetchParentBoqData();
                 getLoggedInUser();
+                fetchContractorDetails();
+                fetchFilterOptions();
             }
         }).catch(err => {
             if (err.response.status === 401) {
@@ -108,6 +121,59 @@ function TFProcess({ projectId }) {
             }
         })
     }
+    const fetchFilterOptions = () => {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/contractorType`, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        }).then(res => {
+            if (res.status === 200) {
+                setContractorTypeOptions(res?.data?.map(item => ({
+                    value: item.id,
+                    label: item.type
+                })));
+            }
+        }).catch(err => {
+            if (err.response && err.response.status === 401) {
+                handleUnauthorized();
+            }
+        });
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/contractorGrade`, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        }).then(res => {
+            if (res.status === 200) {
+                setContractorGradeOptions(res?.data?.map(item => ({
+                    value: item.id,
+                    label: item.gradeName
+                })));
+            }
+        }).catch(err => {
+            if (err.response && err.response.status === 401) {
+                handleUnauthorized();
+            }
+        });
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/offerSubmissionMode`, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        }).then(res => {
+            if (res.status === 200) {
+                setOfferSubmissionOptions(res?.data?.map(item => ({
+                    value: item.code,
+                    label: item.label
+                })));
+            }
+        }).catch(err => {
+            if (err.response && err.response.status === 401) {
+                handleUnauthorized();
+            }
+        });
+    }
     const fetchParentBoqData = async () => {
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getParentBoq/${projectId}`, {
@@ -125,6 +191,7 @@ function TFProcess({ projectId }) {
             }
         } catch (err) {
             if (err?.response?.status === 401) {
+                handleUnauthorized();
             }
             setParentBoq([]);
         }
@@ -170,7 +237,6 @@ function TFProcess({ projectId }) {
                     }
                 }
             );
-
             if (response.status === 200) {
                 const childrenData = (response.data || []).map(child => ({
                     ...child,
@@ -282,6 +348,93 @@ function TFProcess({ projectId }) {
             setSelectedScopes(tenderDetail.scopeOfPackage);
         }
     }, [tenderDetail?.scopeOfPackage]);
+    const handleFloatTender = async () => {
+        const formData = new FormData();
+        const formatDate = (date) => {
+            if (!date) return null;
+            const d = new Date(date);
+            const offset = d.getTimezoneOffset();
+            const localDate = new Date(d.getTime() - (offset * 60 * 1000));
+            return localDate.toISOString().split("T")[0];
+        };
+        const tenderInputDto = {
+            tenderFloatingNo: tenderDetail.tenderFloatingNo,
+            tenderFloatingDate: tenderDetail.tenderFloatingDate,
+            tenderName: tenderDetail.tenderName,
+            contactName: tenderDetail.contactPerson,
+            contactNumber: tenderDetail.contactMobile,
+            contactEmail: tenderDetail.contactEmail,
+            floatedBy: tenderDetail.contactPerson,
+            bidOpeningDate: formatDate(tenderDetail.bidOpeningDate),
+            lastDate: formatDate(tenderDetail.submissionLastDate),
+            siteInvestigation: tenderDetail.siteInvestigation === true,
+            preBidMeeting: tenderDetail.preBidMeeting === true,
+            siteInvestigationDate: formatDate(tenderDetail.siteInvestigationDate),
+            preBidMeetingDate: formatDate(tenderDetail.preBidMeetingDate),
+            scopeId: Array.isArray(selectedScopes) && Array.from(selectedScopes),
+            contractorId: selectedContractor,
+            boqId: Array.from(selectedBoq),
+            projectId: projectId,
+            submissionMode: tenderDetail.offerSubmissionMode
+        };
+        formData.append("tenderInputDto", new Blob([JSON.stringify(tenderInputDto)], {
+            type: "application/json"
+        }));
+        const fileMapping = {
+            technical: "technicalTerms",
+            commercial: "commercialTerms",
+            drawings: "drawings",
+            others: "others"
+        };
+        Object.keys(attachments).forEach(key => {
+            const backendKey = fileMapping[key];
+            const attachmentData = attachments[key];
+            if (backendKey && attachmentData.files && attachmentData.files.length > 0) {
+                attachmentData.files.forEach(file => {
+                    formData.append(backendKey, file);
+                });
+
+                if (attachmentData.notes) {
+                    formData.append(`${backendKey}Notes`, attachmentData.notes);
+                }
+            }
+        });
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/tender`, formData, {
+                headers: {
+                    Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                }
+            });
+
+            if (response.status === 200 || response.status === 201) {
+                console.log("Tender floated successfully:", response.data);
+                toast.success("Tender Floated Successfully!");
+            }
+        } catch (error) {
+            console.error("Error floating tender:", error);
+            if (error.response?.status === 401) {
+                handleUnauthorized();
+            } else {
+                toast.error("Failed to float tender. Please try again.");
+            }
+        }
+    };
+    const fetchContractorDetails = () => {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/contractor`, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        }).then(res => {
+            if (res.status === 200) {
+                setContractorInfo(res.data);
+            }
+        }).catch(err => {
+            if (err.response.status === 401) {
+                handleUnauthorized();
+            }
+        })
+    }
     const BOQNode = ({ boq, level = 0 }) => {
         const canExpand = boq.level === 1 || boq.level === 2;
         const isExpanded = expandedParentIds.has(boq.id);
@@ -471,9 +624,14 @@ function TFProcess({ projectId }) {
                 <div className="row align-items-center justify-content-between ms-1 mt-5">
                     <div className="col-md-4 col-lg-4 ">
                         <label className="projectform text-start d-block">Tender Name <span className="text-danger">*</span></ label>
-                        <input type="text" className="form-input w-100"
+                        <input
+                            type="text"
+                            className="form-input w-100"
                             value={tenderDetail.tenderName || ''}
                             placeholder="Enter Tender Name"
+                            onChange={(e) => {
+                                setTenderDetail({ ...tenderDetail, tenderName: e.target.value });
+                            }}
                         />
                     </div>
                     <div className="col-md-4 col-lg-4 ">
@@ -486,22 +644,15 @@ function TFProcess({ projectId }) {
                     <div className="col-md-4 col-lg-4">
                         <label className="projectform-select text-start d-block">Offer Submission Mode</label>
                         <Select
-                            options={[
-                                { value: 'online', label: 'Online' },
-                                { value: 'offline', label: 'Offline' }
-                            ]}
+                            options={offerSubmissionOptions}
                             placeholder="Select Mode"
                             className="w-100"
                             classNamePrefix="select"
-                            value={
-                                tenderDetail.offerSubmissionMode
-                                    ? { value: tenderDetail.offerSubmissionMode, label: tenderDetail.offerSubmissionMode.charAt(0).toUpperCase() + tenderDetail.offerSubmissionMode.slice(1) }
-                                    : null
-                            }
+                            value={offerSubmissionOptions.find(option => option.value === tenderDetail.offerSubmissionMode)}
                             onChange={(selected) =>
                                 setTenderDetail({
                                     ...tenderDetail,
-                                    offerSubmissionMode: selected ? selected.value : ''
+                                    offerSubmissionMode: selected.value
                                 })
                             }
                             isClearable
@@ -558,14 +709,14 @@ function TFProcess({ projectId }) {
                         />
                     </div>
                     <div className="col-md-4 col-lg-4">
-                         <label className="projectform text-start d-block">Contact Number</label>
+                        <label className="projectform text-start d-block">Contact Number</label>
                         <input type="text" className="form-input w-100"
                             value={tenderDetail.contactMobile || ''}
                             readOnly
                         />
                     </div>
                     <div className="col-md-4 col-lg-4">
-                       <label className="projectform-select text-start d-block">Pre Bid Meeting</label>
+                        <label className="projectform-select text-start d-block">Pre Bid Meeting</label>
                         <Select
                             classNamePrefix="select"
                             options={booleanOptions}
@@ -601,7 +752,7 @@ function TFProcess({ projectId }) {
                             options={booleanOptions}
                             placeholder="Select..."
                             value={booleanOptions.find(option => option.value === tenderDetail.siteInvestigation)}
-                            onChange={(option) => setTenderDetail({...tenderDetail, siteInvestigation : option?.value})}
+                            onChange={(option) => setTenderDetail({ ...tenderDetail, siteInvestigation: option?.value })}
                         />
                     </div>
                     <div className="col-md-4 col-lg-4">
@@ -658,7 +809,6 @@ function TFProcess({ projectId }) {
             </div>
         );
     }
-
     const packageDetails = (selectedBoqArray) => {
         const toggleNode = (id) => {
             setOpenNodes((prev) => {
@@ -846,12 +996,101 @@ function TFProcess({ projectId }) {
         );
     };
     const contractorDetails = () => {
+        const filteredContractors = contractorInfo.filter((con) => {
+            const matchesSearch = searchTerm === '' ||
+                con?.contractor?.entityName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                con?.contractor?.entityCode?.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesType = selectedType === null ||
+                con?.contractor?.contractorType?.id === selectedType.value;
+            const matchesGrade = selectedGrade === null ||
+                con?.contractor?.contractorGrade?.id === selectedGrade.value;
+            return matchesSearch && matchesType && matchesGrade;
+        });
         return (
             <div className="p-2">
                 <div className="text-start ms-1 mt-3">
                     <User2 size={20} color="#2BA95A" />
                     <span className="ms-2 fw-bold">Contractor Details</span>
+                    <div className="text-muted mt-2 ms-4">Select Multiple contractors from the list</div>
                 </div>
+                <div className="row d-flex mt-4 justify-content-between ms-3 me-3">
+                    <div className="col-md-4 mb-4">
+                        <label className="projectform text-start d-block"> Search </label>
+                        <input
+                            type="text"
+                            className="form-input w-100"
+                            placeholder="Search by Contractor"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <div className="col-md-4 mb-4">
+                        <label className="projectform-select text-start d-block">
+                            Contractor Type
+                        </label>
+                        <Select
+                            placeholder="Select Contractor Type"
+                            className="w-100"
+                            classNamePrefix="select"
+                            isClearable
+                            options={contractorTypeOptions}
+                            value={selectedType}
+                            onChange={setSelectedType}
+                        />
+                    </div>
+                    <div className="col-md-4 mb-4">
+                        <label className="projectform-select text-start d-block">
+                            Contractor Grade
+                        </label>
+                        <Select
+                            placeholder="Select Contractor Grade"
+                            className="w-100"
+                            classNamePrefix="select"
+                            options={contractorGradeOptions}
+                            isClearable
+                            value={selectedGrade}
+                            onChange={setSelectedGrade}
+                        />
+                    </div>
+                </div>
+                {filteredContractors.length > 0 ? (
+                    filteredContractors.map((con, index) => (
+                        <div className="contractor-card ms-3 me-3 mb-3 p-3 border-1" key={index}>
+                            <div className="d-flex justify-content-between">
+                                <div className="fw-bold text-dark">
+                                    <input
+                                        type="checkbox"
+                                        className="form-check-input me-2"
+                                        style={{ borderColor: '#005197' }}
+                                        checked={selectedContractor.includes(con?.contractor?.id)}
+                                        onChange={() => {
+                                            const id = con?.contractor?.id;
+                                            if (selectedContractor.includes(id)) {
+                                                setSelectedContractor(selectedContractor.filter(item => item !== id));
+                                            } else {
+                                                setSelectedContractor([...selectedContractor, id]);
+                                            }
+                                        }}
+                                    />
+                                    {con?.contractor?.entityName}
+                                </div>
+                                <div className="badge badge-md me-2 rounded-pill py-2 px-3" style={{ background: '#DBEAFE', color: '#2563EB' }}>
+                                    {con?.contractor?.contractorType?.type}
+                                </div>
+                            </div>
+                            <div className="d-flex justify-content-between mt-2" style={{ fontSize: '13px' }}>
+                                <span className="text-muted">Entity Code: <span className="text-dark"> {con?.contractor?.entityCode || '-'}</span></span>
+                                <span className="text-muted">Name: <span className="text-dark">{con?.contact?.name || '-'}</span></span>
+                                <span className="text-muted">Mobile: <span className="text-dark">{con?.contact?.phoneNumber || '-'}</span></span>
+                                <span className="text-muted">E-mail: <span className="text-dark">{con?.contact?.email || '-'}</span></span>
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <div className="text-center mt-4 text-muted">
+                        No contractors found matching your criteria.
+                    </div>
+                )}
             </div>
         );
     }
@@ -1008,12 +1247,20 @@ function TFProcess({ projectId }) {
 
         const handleNext = () => {
             if (tab === 'general') {
+                if(!tenderDetail.tenderName || !tenderDetail.bidOpeningDate || !tenderDetail.submissionLastDate){
+                    toast.error("Enter all mandatory feilds")
+                    return
+                }
                 setTab('package');
             }
             else if (tab === 'package') {
                 setTab('contractor');
             }
             else if (tab === 'contractor') {
+                if(selectedContractor.length === 0){
+                    toast.error("Select atleast one contractor")
+                    return
+                }
                 setTab('attachment');
             }
             else if (tab === 'attachment') {
@@ -1063,17 +1310,17 @@ function TFProcess({ projectId }) {
             </>
         );
     }
-    const AttachmentRow = ({ title, files, notes }) => (
-        <div className="d-flex justify-content-between py-2" style={{ borderBottom: '1px solid #eee' }}>
-            <div className="text-start">
-                <span className="fw-medium" style={{ color: '#333' }}>{title}</span>
-                <p className="text-muted mb-0" style={{ fontSize: '13px' }}>
-                    {files.length > 0 ? `${files.length} file(s) attached.` : 'No files attached.'}
-                    {notes && ` (Notes: ${notes})`}
-                </p>
-            </div>
-        </div>
-    );
+    // const AttachmentRow = ({ title, files, notes }) => (
+    //     <div className="d-flex justify-content-between py-2" style={{ borderBottom: '1px solid #eee' }}>
+    //         <div className="text-start">
+    //             <span className="fw-medium" style={{ color: '#333' }}>{title}</span>
+    //             <p className="text-muted mb-0" style={{ fontSize: '13px' }}>
+    //                 {files.length > 0 ? `${files.length} file(s) attached.` : 'No files attached.'}
+    //                 {notes && ` (Notes: ${notes})`}
+    //             </p>
+    //         </div>
+    //     </div>
+    // );
     const formatFileSize = (bytes) => {
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
@@ -1103,10 +1350,7 @@ function TFProcess({ projectId }) {
     }
     const reviewTender = () => {
         const boqArray = getSelectedLeafBoqs(parentTree);
-        const contractorsList = [];
-
-        const getDisplayMode = (mode) =>
-            mode ? mode.charAt(0).toUpperCase() + mode.slice(1) : '-';
+        const contractorsList = contractorInfo.filter(con => selectedContractor.includes(con.contractor.id));
 
         const getAttachmentTitle = (key) => {
             if (key === 'others') return 'Others';
@@ -1121,6 +1365,23 @@ function TFProcess({ projectId }) {
                 ? boqName.substring(0, 20) + '...'
                 : boqName;
         }
+
+        const handleViewFile = (file) => {
+            if (file) {
+                const fileURL = URL.createObjectURL(file);
+                window.open(fileURL, '_blank');
+            }
+        };
+
+        const handleRemoveFile = (key, index) => {
+            setAttachments(prev => ({
+                ...prev,
+                [key]: {
+                    ...prev[key],
+                    files: prev[key].files.filter((_, i) => i !== index)
+                }
+            }));
+        };
 
         return (
             <div className="p-4">
@@ -1137,8 +1398,8 @@ function TFProcess({ projectId }) {
                         <div className="text-end">
                             <span className="text-muted d-block" style={{ fontSize: '14px' }}>Floating Date</span>
                             <span className="fw-medium" style={{ fontSize: '16px' }}>
-                                {tenderDetail.floatingDate
-                                    ? new Date(tenderDetail.floatingDate).toLocaleDateString('en-US', {
+                                {tenderDetail.tenderFloatingDate
+                                    ? new Date(tenderDetail.tenderFloatingDate).toLocaleDateString('en-US', {
                                         month: 'long',
                                         day: 'numeric',
                                         year: 'numeric'
@@ -1148,6 +1409,7 @@ function TFProcess({ projectId }) {
                         </div>
                     </div>
                 </div>
+
                 <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
                     <div className="text-start ms-1 mt-2 mb-3">
                         <Info size={20} color="#2BA95A" />
@@ -1155,19 +1417,16 @@ function TFProcess({ projectId }) {
                     </div>
                     <div className="row g-4 ms-1">
                         <div className="col-md-4 text-start">
-                            <span className="text-muted d-block">Project Name</span>
-                            <span className="fw-medium">{project?.projectName || 'N/A'}</span>
+                            <span className="text-muted d-block">Tender Name</span>
+                            <span className="fw-medium">{tenderDetail.tenderName || 'N/A'}</span>
                         </div>
                         <div className="col-md-4 text-start">
                             <span className="text-muted d-block">Offer Submission Mode</span>
-                            <span className="fw-medium">{getDisplayMode(tenderDetail.offerSubmissionMode)}</span>
+                            <span className="fw-medium">{tenderDetail.offerSubmissionMode}</span>
                         </div>
                         <div className="col-md-4 text-start">
                             <span className="text-muted d-block">Submission Last Date</span>
-                            <span
-                                className="fw-medium"
-                                style={{ color: '#dc3545' }}
-                            >
+                            <span className="fw-medium" style={{ color: '#dc3545' }}>
                                 {tenderDetail.submissionLastDate
                                     ? new Date(tenderDetail.submissionLastDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
                                     : 'N/A'}
@@ -1181,7 +1440,6 @@ function TFProcess({ projectId }) {
                                     : 'N/A'}
                             </span>
                         </div>
-
                         <div className="col-md-4 text-start">
                             <span className="text-muted d-block">Contact Person</span>
                             <span className="fw-medium">{tenderDetail.contactPerson || 'N/A'}</span>
@@ -1194,8 +1452,22 @@ function TFProcess({ projectId }) {
                             <span className="text-muted d-block">Contact Email ID</span>
                             <span className="fw-medium">{tenderDetail.contactEmail || 'N/A'}</span>
                         </div>
-
-
+                        <div className="col-md-4 text-start">
+                            <span className="text-muted d-block">Site Investigation date</span>
+                            <span className="fw-medium">
+                                {tenderDetail.siteInvestigationDate
+                                    ? new Date(tenderDetail.siteInvestigationDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                                    : 'N/A'}
+                            </span>
+                        </div>
+                        <div className="col-md-4 text-start">
+                            <span className="text-muted d-block">Pre-bid Meeting date</span>
+                            <span className="fw-medium">
+                                {tenderDetail.preBidMeetingDate
+                                    ? new Date(tenderDetail.preBidMeetingDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                                    : 'N/A'}
+                            </span>
+                        </div>
                         <div className="col-md-12 text-start">
                             <span className="text-muted d-block">Scope of Packages</span>
                             <div className="d-flex flex-wrap gap-2 mt-1">
@@ -1216,6 +1488,7 @@ function TFProcess({ projectId }) {
                         </div>
                     </div>
                 </div>
+
                 <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
                     <div className="text-start ms-1 mb-3">
                         <BoxesIcon size={20} color="#2BA95A" />
@@ -1248,6 +1521,7 @@ function TFProcess({ projectId }) {
                         </table>
                     </div>
                 </div>
+
                 <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
                     <div className="text-start ms-1 mb-3">
                         <User2 size={20} color="#dc3545" />
@@ -1255,18 +1529,29 @@ function TFProcess({ projectId }) {
                         <p className="text-muted mt-1" style={{ fontSize: '14px' }}>{contractorsList.length} contractors selected for tender invitation</p>
                     </div>
                     <div className="d-flex flex-wrap gap-3 ms-1">
-                        {contractorsList.map((contractor, index) => (
-                            <div key={index} className="p-3" style={{ border: '1px solid #ccc', borderRadius: '8px', minWidth: '300px' }}>
+                        {contractorsList.map((con, index) => (
+                            <div key={index} className="col-md-4 p-3" style={{ border: '1px solid #ccc', borderRadius: '8px', minWidth: '300px' }}>
                                 <div className="d-flex justify-content-between align-items-start">
-                                    <span className="fw-bold" style={{ color: '#333' }}>{contractor.name}</span>
+                                    <div className="d-flex">
+                                        <div className="d-flex me-2 px-3 align-items-center h-100 py-2 rounded-2" style={{ background: '#EAF2FE' }}>
+                                            <Building style={{ color: '#2563EB' }} size={26} />
+                                        </div>
+                                        <div className="text-start">
+                                            <p className="fw-bold mb-0" style={{ color: '#333' }}>{con?.contractor?.entityName}</p>
+                                            <p className="text-muted mb-0" style={{ fontSize: '13px' }}>{con?.contact?.name}<Dot size={24} /><span>{con?.contact?.email}</span></p>
+                                        </div>
+                                    </div>
                                     <span style={{ color: '#dc3545', cursor: 'pointer' }}>
-                                        <X size={16} />
+                                        <X size={16} onClick={() => {
+                                            setSelectedContractor(prev => prev.filter(id => id !== con?.contractor?.id));
+                                        }} />
                                     </span>
                                 </div>
                             </div>
                         ))}
                     </div>
                 </div>
+
                 <div className="p-4 mt-5 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
                     <div className="text-start ms-1 mb-3">
                         <Paperclip size={20} color="#005197" />
@@ -1274,13 +1559,11 @@ function TFProcess({ projectId }) {
                     </div>
 
                     <div className="ms-1 me-1">
-                        {Object.keys(attachments).map((key, index) => {
+                        {Object.keys(attachments).map((key) => {
                             const attachmentData = attachments[key];
                             const title = getAttachmentTitle(key);
                             const files = attachmentData.files || [];
                             const notes = attachmentData.notes || '';
-
-                            const fileInfo = files.length > 0 ? files[0] : null;
 
                             return (
                                 <div
@@ -1288,38 +1571,54 @@ function TFProcess({ projectId }) {
                                     className="p-3 rounded-3 mb-3"
                                     style={{
                                         backgroundColor: '#FAFAFA',
+                                        border: '1px solid #eee'
                                     }}
                                 >
-                                    <div className="d-flex justify-content-between align-items-start">
-
-                                        <div className="text-start me-4 flex-grow-1">
-                                            <span className="fw-medium d-block mb-1" style={{ color: '#333' }}>{title}</span>
-                                            {fileInfo ? (
-                                                <div className="d-block mt-1">
-                                                    <span style={{ fontSize: '13px', color: '#00000080' }}>
-                                                        {getFriendlyFileType(fileInfo.type || fileInfo.extension)} {formatFileSize(fileInfo.size) || fileInfo.id || 'N/A'}
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-muted" style={{ fontSize: '13px' }}>No file uploaded</span>
+                                    <div className="d-flex flex-column text-start">
+                                        <div className="mb-2">
+                                            <span className="fw-bold d-block" style={{ color: '#333' }}>{title}</span>
+                                            {notes && (
+                                                <span className="text-muted d-block small mt-1">
+                                                    Note: {notes}
+                                                </span>
                                             )}
-                                            <span
-                                                className="d-block mt-1"
-                                                style={{
-                                                    fontSize: '13px',
-                                                    color: 'rgba(0, 0, 0, 0.5)'
-                                                }}
-                                            >
-                                                {notes}
-                                            </span>
                                         </div>
-                                        {fileInfo && (
-                                            <span
-                                                className="p-2 rounded-circle flex-shrink-0"
-                                                style={{ cursor: 'pointer', color: '#005197' }}
-                                            >
-                                                <Download size={18} />
-                                            </span>
+
+                                        {files.length > 0 ? (
+                                            <div className="d-flex flex-column gap-2 mt-2">
+                                                {files.map((file, idx) => (
+                                                    <div key={idx} className="d-flex justify-content-between align-items-center bg-white p-2 rounded border">
+                                                        <div className="d-flex flex-column">
+                                                            <span className="small fw-medium text-truncate" style={{ maxWidth: '300px' }}>
+                                                                {file.name}
+                                                            </span>
+                                                            <span className="text-muted" style={{ fontSize: '11px' }}>
+                                                                {getFriendlyFileType(file.type)} • {formatFileSize(file.size)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="d-flex gap-2">
+                                                            <button
+                                                                className="btn btn-sm btn-light border-0"
+                                                                style={{ color: '#005197' }}
+                                                                onClick={() => handleViewFile(file)}
+                                                                title="View File"
+                                                            >
+                                                                <Eye size={18} />
+                                                            </button>
+                                                            <button
+                                                                className="btn btn-sm btn-light border-0"
+                                                                style={{ color: '#dc3545' }}
+                                                                onClick={() => handleRemoveFile(key, idx)}
+                                                                title="Remove File"
+                                                            >
+                                                                <X size={18} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <span className="text-muted small fst-italic">No files attached</span>
                                         )}
                                     </div>
                                 </div>
@@ -1327,6 +1626,7 @@ function TFProcess({ projectId }) {
                         })}
                     </div>
                 </div>
+
                 <div className="mt-5 mb-5">
                     <div
                         className="p-4 d-flex flex-column rounded-3"
@@ -1340,13 +1640,7 @@ function TFProcess({ projectId }) {
                         </div>
                         <div className="d-flex flex-column" style={{ color: '#005197', fontSize: '14px' }}>
                             <div className="d-flex mb-2">
-                                <div
-                                    className="d-flex justify-content-between pe-2 me-4"
-                                    style={{
-                                        width: '50%',
-                                        borderRight: '1px solid #D2E3F4',
-                                    }}
-                                >
+                                <div className="d-flex justify-content-between pe-2 me-4" style={{ width: '50%', borderRight: '1px solid #D2E3F4' }}>
                                     <span>Total Packages</span> <span style={{ color: '#005197' }}>{boqArray.length > 0 ? 1 : 0}</span>
                                 </div>
                                 <div className="d-flex justify-content-between ps-4" style={{ width: '50%' }}>
@@ -1355,38 +1649,37 @@ function TFProcess({ projectId }) {
                             </div>
 
                             <div className="d-flex">
-                                <div
-                                    className="d-flex justify-content-between pe-2 me-4"
-                                    style={{
-                                        width: '50%',
-                                        borderRight: '1px solid #D2E3F4'
-                                    }}
-                                >
-                                    <span>Attachments</span> <span style={{ color: '#005197' }}>{Object.keys(attachments).filter(key => attachments[key].files?.length > 0 || attachments[key].notes).length}</span>
+                                <div className="d-flex justify-content-between pe-2 me-4" style={{ width: '50%', borderRight: '1px solid #D2E3F4' }}>
+                                    <span>Attachments</span>
+                                    <span style={{ color: '#005197' }}>
+                                        {Object.values(attachments).reduce((acc, curr) => acc + (curr.files ? curr.files.length : 0), 0)}
+                                    </span>
                                 </div>
                                 <div className="d-flex justify-content-between ps-4" style={{ width: '50%' }}>
                                     <span>Submission Deadline</span>
-                                    <span
-                                        style={{
-                                            color: '#dc3545'
-                                        }}
-                                    >
-                                        {tenderDetail.offerSubmissionDate || 'Not Set'}
+                                    <span style={{ color: '#dc3545' }}>
+                                        {tenderDetail.submissionLastDate
+                                            ? new Date(tenderDetail.submissionLastDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                                            : 'N/A'}
                                     </span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
                 <div className="d-flex justify-content-between mt-3">
-                    <button className="btn cancel-button" onClick={() => setCurrentTab('tender')}> <Edit size={18} color="#005197" /> <span className="ms-2">Edit Details</span></button>
-                    <button className="btn btn-lg action-button">
+                    <button className="btn cancel-button" onClick={() => setCurrentTab('tender')}>
+                        <Edit size={18} color="#005197" /> <span className="ms-2">Edit Details</span>
+                    </button>
+                    <button className="btn btn-lg action-button" onClick={handleFloatTender}>
                         <Send size={20} color="#FFFFFF" /><span className="ms-2">Float Tender</span>
                     </button>
                 </div>
             </div>
         );
     };
+
     const renderContent = () => {
         switch (currentTab) {
             case 'boq':
