@@ -517,7 +517,7 @@ const ManualEntryForm = ({
     );
 };
 
-const EmailInviteForm = ({ formData, setFormData, handleSendInvitation }) => (
+const EmailInviteForm = ({ formData, setFormData, handleSendInvitation, isLoading }) => (
     <>
         <div className="text-center pt-2 pb-4">
             <div
@@ -612,6 +612,7 @@ const EmailInviteForm = ({ formData, setFormData, handleSendInvitation }) => (
                     color: "white",
                     borderRadius: "6px",
                 }}
+                disabled={isLoading}
             >
                 <Mail size={18} className="me-2" />
                 Send Invitation Link
@@ -916,6 +917,7 @@ function ContractorOverview() {
     const [selectedView, setSelectedView] = useState('manual');
     const [viewMode, setViewMode] = useState('entry');
     const STORAGE_KEY = 'contractorFormData';
+    const [isLoading, setIsLoadnig] = useState(false);
     const [entityTypeOptions, setEntityTypeOptions] = useState([]);
     const [natureOfBusinessOptions, setNatureOfBusinessOptions] = useState([]);
     const [gradeOptions, setGradeOptions] = useState([]);
@@ -1142,6 +1144,7 @@ function ContractorOverview() {
     });
 
     const handleSubmitFinal = async () => {
+        setIsLoadnig(true);
         const data = new FormData();
 
         const inputDto = {
@@ -1226,6 +1229,9 @@ function ContractorOverview() {
         } catch (error) {
             console.error("Error submitting form", error);
             toast.error("Failed to submit contractor details.");
+        }
+        finally{
+            setIsLoadnig(false);
         }
     };
 
@@ -1354,6 +1360,7 @@ function ContractorOverview() {
                                                 formData={formData}
                                                 setFormData={setFormData}
                                                 handleSendInvitation={handleSendInvitation}
+                                                isLoading = {isLoading}
                                             />
                                         </div>
                                     </>

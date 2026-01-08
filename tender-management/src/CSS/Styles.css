@@ -950,4 +950,7 @@ label {
 .modal-close-btn svg {
     pointer-events: none;
 }
-
+.contractor-card{
+  border: 1px solid #00519726;
+  border-radius: 10px
+}
