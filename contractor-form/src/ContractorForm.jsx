@@ -54,13 +54,29 @@ function ContractorForm() {
     return option ? option.label : value;
   };
 
- useEffect(() => {
-  if (id) {
-    validateInvitation(id);
-  } else {
-    setInviteStatus('idle');
-  }
-}, [id]);
+  useEffect(() => {
+    if (!id) {
+      setInviteStatus('invalid');
+      return;
+    }
+
+    axios.get(`${baseUrl}/validateInvite?id=${id}`)
+      .then(response => {
+        const token = response.data.token;
+        sessionStorage.setItem("token", token);
+        setAuthToken(token);
+        setInviteStatus('valid');
+        setContactDetails(prev => ({ ...prev, emailId: response.data.contractor.email }));
+      })
+      .catch(error => {
+        if (error.response && error.response.status === 409) {
+          setInviteStatus('submitted');
+        } else {
+          setInviteStatus('invalid');
+        }
+      });
+  }, [id, baseUrl]);
+
 
   useEffect(() => {
     if (!authToken || inviteStatus !== 'valid') return;
@@ -290,7 +306,7 @@ function ContractorForm() {
     placeholder: (base) => ({ ...base, color: '#6c757d', fontSize: '0.9rem' }),
     indicatorSeparator: () => ({ display: 'none' }),
     menuPortal: (base) => ({ ...base, zIndex: 9999 })
-    
+
   };
 
   const renderReviewForm = () => (

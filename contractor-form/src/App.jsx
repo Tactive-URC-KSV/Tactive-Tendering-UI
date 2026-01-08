@@ -10,7 +10,7 @@ function App() {
       <Routes>
         <Route path="/" element={<ContractorForm />} />
         <Route path="/contractor-form" element={<ContractorForm />} />
-        <Route path="/contractor-details" element={<ContractorDetails />} />
+        <Route path="/contractor-tender-quotation" element={<ContractorDetails />} />
       </Routes>
     </BrowserRouter>
   );
