@@ -1,8 +1,9 @@
-import React from "react";
 import { Container, Row, Col, Card, Badge } from "react-bootstrap";
 import { Gavel, UserRound, Mail, Package, Paperclip, FileText, Download } from "lucide-react";
+import { useSearchParams } from 'react-router-dom';
 
 function ContractorDetails() {
+  const params = useSearchParams();
   return (
     <Container fluid className="p-4 bg-light">
       <Row className="g-4 align-items-stretch">
