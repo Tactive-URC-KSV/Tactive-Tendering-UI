@@ -11,7 +11,7 @@ import { useSearchParams } from 'react-router-dom';
 function ContractorForm() {
   const [searchParams] = useSearchParams();
   const id = searchParams.get("id");
-  const [inviteStatus, setInviteStatus] = useState('loading');
+  const [inviteStatus, setInviteStatus] = useState('idle');
   const [authToken, setAuthToken] = useState(sessionStorage.getItem("token"));
   const [showReview, setShowReview] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -54,28 +54,13 @@ function ContractorForm() {
     return option ? option.label : value;
   };
 
-  useEffect(() => {
-    if (!id) {
-      setInviteStatus('invalid');
-      return;
-    }
-
-    axios.get(`${baseUrl}/validateInvite?id=${id}`)
-      .then(response => {
-        const token = response.data.token;
-        sessionStorage.setItem("token", token);
-        setAuthToken(token);
-        setInviteStatus('valid');
-        setContactDetails(prev => ({ ...prev, emailId: response.data.contractor.email }));
-      })
-      .catch(error => {
-        if (error.response && error.response.status === 409) {
-          setInviteStatus('submitted');
-        } else {
-          setInviteStatus('invalid');
-        }
-      });
-  }, [id, baseUrl]);
+ useEffect(() => {
+  if (id) {
+    validateInvitation(id);
+  } else {
+    setInviteStatus('idle');
+  }
+}, [id]);
 
   useEffect(() => {
     if (!authToken || inviteStatus !== 'valid') return;
