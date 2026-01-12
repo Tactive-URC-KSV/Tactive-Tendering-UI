@@ -6,7 +6,9 @@ import { FaCalendarAlt, FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
 import Select from "react-select";
 import { useScope } from "../Context/ScopeContext";
 import { toast } from 'react-toastify';
+import { useNavigate } from "react-router-dom";
 function TFProcess({ projectId }) {
+    const navigate = useNavigate();
     const datePickerRef = useRef();
     const [project, setProject] = useState('');
     const [currentTab, setCurrentTab] = useState('boq');
@@ -20,6 +22,7 @@ function TFProcess({ projectId }) {
     const [contractorTypeOptions, setContractorTypeOptions] = useState([]);
     const [contractorGradeOptions, setContractorGradeOptions] = useState([]);
     const [offerSubmissionOptions, setOfferSubmissionOptions] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
     const generateTenderNumber = () => {
         const year = new Date().getFullYear();
         const randomNum = Math.floor(Math.random() * 999999) + 1;
@@ -349,6 +352,7 @@ function TFProcess({ projectId }) {
         }
     }, [tenderDetail?.scopeOfPackage]);
     const handleFloatTender = async () => {
+        setIsLoading(true);
         const formData = new FormData();
         const formatDate = (date) => {
             if (!date) return null;
@@ -407,8 +411,8 @@ function TFProcess({ projectId }) {
             });
 
             if (response.status === 200 || response.status === 201) {
-                console.log("Tender floated successfully:", response.data);
                 toast.success("Tender Floated Successfully!");
+                navigate(`/tendertracking/${projectId}`);
             }
         } catch (error) {
             console.error("Error floating tender:", error);
@@ -417,6 +421,8 @@ function TFProcess({ projectId }) {
             } else {
                 toast.error("Failed to float tender. Please try again.");
             }
+        }finally{
+            setIsLoading(false);
         }
     };
     const fetchContractorDetails = () => {
@@ -1672,7 +1678,7 @@ function TFProcess({ projectId }) {
                     <button className="btn cancel-button" onClick={() => setCurrentTab('tender')}>
                         <Edit size={18} color="#005197" /> <span className="ms-2">Edit Details</span>
                     </button>
-                    <button className="btn btn-lg action-button" onClick={handleFloatTender}>
+                    <button className="btn btn-lg action-button" onClick={handleFloatTender} disabled={isLoading}>
                         <Send size={20} color="#FFFFFF" /><span className="ms-2">Float Tender</span>
                     </button>
                 </div>
