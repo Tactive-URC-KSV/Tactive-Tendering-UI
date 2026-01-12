@@ -289,7 +289,7 @@ function ContractorDetails() {
           <Button variant="primary" className="px-5 py-2 fw-bold d-flex align-items-center gap-2" style={{ backgroundColor: '#337ab7', border: 'none', borderRadius: '8px' }}>
             Submit Offer <Send size={18} />
           </Button>
-        </div>
+      </div>
 
       </Container>
     </div>
