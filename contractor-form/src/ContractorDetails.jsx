@@ -1,202 +1,300 @@
-import { Container, Row, Col, Card, Badge } from "react-bootstrap";
-import { Gavel, UserRound, Mail, Package, Paperclip, FileText, Download } from "lucide-react";
+
+import { Container, Row, Col, Card, Badge, Table, Form, Button } from "react-bootstrap";
+import { Gavel, UserRound, Mail, Package, Paperclip, FileText, Download, FileImage, FileSpreadsheet, ClipboardCheck, Pencil, Send } from "lucide-react"; 
 import { useSearchParams } from 'react-router-dom';
 
 function ContractorDetails() {
-  const params = useSearchParams();
+  const [params] = useSearchParams();
+
   return (
-    <Container fluid className="p-4 bg-light">
-      <Row className="g-4 align-items-stretch">
+     <>
+      <div
+        className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom bg-white"
+        style={{ height: "84px" }}>
+       <div className="d-flex flex-column lh-sm">
+        <div className="fw-bold fs-4 text-primary">TACTIVE</div> 
+        <div className="small text-muted">PRACTISING VALUES</div>
+       </div>
 
-        <Col lg={9}>
-          <Card className="border rounded-3 h-100" style={{ borderColor: "#0051973D" }}>
-            <Card.Body className="p-4">
-              <div className="d-flex justify-content-between align-items-start mb-2">
-                <div className="d-flex align-items-center gap-3">
-                  <div className="text-primary">
-                    <Gavel size={28} />
-                  </div>
-                  <h5 className="mb-0 fw-bold" style={{ fontSize: '1.25rem' }}>
-                    Tender Floated Details – Green Heights
-                  </h5>
-                </div>
-
-                <div className="d-flex gap-5 text-end">
-                  <div>
-                    <div className="text-muted small mb-1" style={{ fontSize: '0.8rem' }}>Floating No</div>
-                    <div className="fw-bold text-dark">TF – 2025 – 001</div>
-                  </div>
-                  <div>
-                    <div className="text-muted small mb-1" style={{ fontSize: '0.8rem' }}>Floating Date</div>
-                    <div className="text-muted fw-normal" style={{ fontSize: '0.95rem' }}>November 20, 2025</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <Badge
-                  bg="none"
-                  className="rounded-pill px-3 py-2 fw-normal"
-                  style={{ 
-                    backgroundColor: '#F3F8FF', 
-                    color: '#2563EB',
-                    fontSize: '0.9rem' 
-                  }}
-                >
-                  Tender Name : Urban Sky Residential Hub
-                </Badge>
-              </div>
-
-              <Row className="g-3">
-                <Col md={4}>
-                  <div className="p-4 rounded-4 h-100" style={{ backgroundColor: '#F8FAFC' }}>
-                    <div className="text-muted mb-3" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
-                      Offer Submission Mode
-                    </div>
-                    <div className="fw-bold text-dark fs-5">Online</div>
-                  </div>
-                </Col>
-
-                <Col md={4}>
-                  <div className="p-4 rounded-4 h-100" style={{ backgroundColor: '#F8FAFC' }}>
-                    <div className="text-muted mb-3" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
-                      Bid Opening
-                    </div>
-                    <div className="fw-bold text-dark fs-5">
-                      December 01, 2025
-                    </div>
-                  </div>
-                </Col>
-
-                <Col md={4}>
-                  <div
-                    className="p-4 rounded-4 h-100 position-relative"
-                    style={{
-                      backgroundColor: "#FEF2F2",
-                      borderLeft: "4px solid #DC2626", 
-                    }}
-                  >
-                    <div className="text-danger mb-3" style={{ fontSize: '0.85rem', fontWeight: '500' }}>
-                      Submission Last Date
-                    </div>
-                    <div className="fw-bold fs-5" style={{ color: '#D90707' }}>
-                      November 30, 2025
-                    </div>
-                  </div>
-                </Col>
-              </Row>
-            </Card.Body>
-          </Card>
-        </Col>
-
-        <Col lg={3}>
-          <Card
-            className="border rounded-3 h-100 text-white"
-            style={{ background: "linear-gradient(135deg, #005197, #007BFF)", borderColor: "#0051973D" }}
-          >
-            <Card.Body className="p-4">
-              <div className="d-flex align-items-center gap-2 mb-4">
-                <UserRound size={20} style={{ color: '#FFD700' }} />
-                <h5 className="mb-0 fw-normal">Contact Person</h5>
-              </div>
-
-              <div className="mb-3">
-                <div className="opacity-75" style={{ fontSize: '0.85rem' }}>Name</div>
-                <div className="fw-normal">Sarah Mitchell</div>
-              </div>
-
-              <div className="mb-3">
-                <div className="opacity-75" style={{ fontSize: '0.85rem' }}>Phone</div>
-                <div className="fw-normal">+1 (555) 123-4567</div>
-              </div>
-
-              <div>
-                <div className="opacity-75 mb-2" style={{ fontSize: '0.85rem' }}>Email</div>
-                
-                <Badge
-                  bg="white"
-                  className="rounded-pill px-3 py-2 d-flex align-items-center border-0"
-                  style={{ width: 'fit-content' }}
-                >
-                  <Mail size={16} className="me-2" style={{ color: '#2563EB' }} />
-                  <span 
-                    className="fw-normal" 
-                    style={{ color: '#2563EB', fontSize: '0.8rem' }}
-                  >
-                    sarah.mitchell@greenheights.com
-                  </span>
-                </Badge>
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
-
-      </Row>
-
-      <Card className=" mt-4 border rounded-3 h-100" style={{ borderColor: "#0051973D" }}>
-        <Card.Body className="p-4">
-          <div className="d-flex align-items-center gap-2 mb-3">
-            <Package size={20} className="text-primary" />
-            <h5 className="mb-0 fw-bold text-dark">
-              Scope of Work & Scope of Packages
-            </h5>
+        <div className="d-flex align-items-center gap-4"> 
+          <div className="d-flex align-items-center gap-2 px-3 py-1 rounded-pill"
+           style={{ backgroundColor: "#FFF1F2", color: "#DC2626", fontSize: "0.85rem", fontWeight: 500 }} >
+            <span
+              className="d-inline-block rounded-circle"
+              style={{width: "8px",height: "8px",backgroundColor: "#DC2626"}}>
+            </span>
+            Time Remaining: 04d : 12h : 29m
           </div>
-          <p className="mb-4" style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.5' }}>
-            Complete construction of 5-story commercial complex including foundation, structure, MEP systems, and finishing works...
-          </p>
-          <div className="d-flex flex-wrap gap-3">
-            {['Civil Works', 'Electrical Systems', 'Safety Equipment', 'HVAC Installation'].map((text) => (
-              <Badge 
-                key={text}
-                pill 
-                bg="none" 
-                className="px-3 py-2 fw-normal"
-                style={{ 
-                  backgroundColor: '#EBF2FF', 
-                  color: '#3B82F6',
-                  fontSize: '0.85rem'
-                }}
-              >
-                {text}
-              </Badge>
-            ))}
-          </div>
-        </Card.Body>
-      </Card>
 
-      <Card className="border rounded-3 mt-4 h-100" style={{ borderColor: "#0051973D" }}>
-        <Card.Body className="p-4">
-          <div className="d-flex align-items-center gap-2 mb-4">
-            <Paperclip size={20} className="text-primary" style={{ transform: 'rotate(15deg)' }} />
-            <h5 className="mb-0 fw-bold text-dark">Attachments</h5>
-          </div>
-          <div 
-            className="d-flex justify-content-between align-items-center p-4 rounded-4" 
-            style={{ backgroundColor: '#F8FAFC' }}
-          >
-            <div className="d-flex gap-3">
-              <FileText size={32} className="text-danger" />
-              <div>
-                <div className="fw-bold text-dark" style={{ fontSize: '0.95rem' }}>
-                  Technical Specifications
-                </div>
-                <div className="text-muted small mb-1">
-                  pdf • 4.2 MB
-                </div>
-                <div className="text-muted" style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>
-                  Detailed technical requirements for all construction phases including material specifications and quality standards.
-                </div>
+          <div className="d-flex align-items-center gap-2">
+            <div className="rounded-circle d-flex align-items-center justify-content-center text-white"
+              style={{width: "34px",height: "34px",backgroundColor: "#2563EB",fontSize: "0.85rem", fontWeight: "600"}} >
+              B
+            </div>
+            <div className="text-end">
+              <div className="fw-semibold" style={{ fontSize: "0.9rem" }}>
+                Build Tech Solutions
+              </div>
+              <div className="text-muted" style={{ fontSize: "0.75rem" }}>
+                Contractor Code : C#001
               </div>
             </div>
-            
-            <div className="ps-3">
-              <Download size={24} className="text-primary" style={{ cursor: 'pointer' }} />
-            </div>
           </div>
-        </Card.Body>
-      </Card>
+        </div>
+      </div>
 
-    </Container>
+    <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh', width: '100%' }}>
+      <Container 
+        fluid 
+        className="p-4" 
+        style={{ width: '95%', margin: '0 auto' }}>
+
+        <Row className="g-4 align-items-stretch">
+          <Col lg={9}>
+            <Card className="border rounded-3 h-100" style={{ borderColor: "#0051973D" }}>
+              <Card.Body className="p-4">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="text-primary">
+                      <Gavel size={28} />
+                    </div>
+                    <h5 className="mb-0 fw-bold" style={{ fontSize: '1.25rem' }}>
+                      Tender Floated Details – Green Heights
+                    </h5>
+                  </div>
+                  <div className="d-flex gap-5 text-end">
+                    <div>
+                      <div className="text-muted small mb-1" style={{ fontSize: '0.8rem' }}>Floating No</div>
+                      <div className="fw-bold text-dark">TF – 2025 – 001</div>
+                    </div>
+                    <div>
+                      <div className="text-muted small mb-1" style={{ fontSize: '0.8rem' }}>Floating Date</div>
+                      <div className="text-muted fw-normal" style={{ fontSize: '0.95rem' }}>November 20, 2025</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <Badge bg="none" className="rounded-pill px-3 py-2 fw-normal" style={{ backgroundColor: '#F3F8FF', color: '#2563EB', fontSize: '0.9rem' }}>
+                    Tender Name : Urban Sky Residential Hub
+                  </Badge>
+                </div>
+                <Row className="g-3">
+                  <Col md={4}>
+                    <div className="p-4 rounded-4 h-100" style={{ backgroundColor: '#F8FAFC' }}>
+                      <div className="text-muted mb-3" style={{ fontSize: '0.9rem', fontWeight: '500' }}>Offer Submission Mode</div>
+                      <div className="fw-bold text-dark fs-5">Online</div>
+                    </div>
+                  </Col>
+                  <Col md={4}>
+                    <div className="p-4 rounded-4 h-100" style={{ backgroundColor: '#F8FAFC' }}>
+                      <div className="text-muted mb-3" style={{ fontSize: '0.9rem', fontWeight: '500' }}>Bid Opening</div>
+                      <div className="fw-bold text-dark fs-5">December 01, 2025</div>
+                    </div>
+                  </Col>
+                  <Col md={4}>
+                    <div className="p-4 rounded-4 h-100 position-relative" style={{ backgroundColor: "#FEF2F2", borderLeft: "4px solid #DC2626" }}>
+                      <div className="text-danger mb-3" style={{ fontSize: '0.85rem', fontWeight: '500' }}>Submission Last Date</div>
+                      <div className="fw-bold fs-5" style={{ color: '#D90707' }}>November 30, 2025</div>
+                    </div>
+                  </Col>
+                </Row>
+              </Card.Body>
+            </Card>
+          </Col>
+
+          <Col lg={3}>
+            <Card className="border rounded-3 h-100 text-white" style={{ background: "linear-gradient(135deg, #005197, #007BFF)", borderColor: "#0051973D" }}>
+              <Card.Body className="p-4">
+                <div className="d-flex align-items-center gap-2 mb-4">
+                  <UserRound size={20} style={{ color: '#FFD700' }} />
+                  <h5 className="mb-0 fw-normal">Contact Person</h5>
+                </div>
+                <div className="mb-3">
+                  <div className="opacity-75" style={{ fontSize: '0.85rem' }}>Name</div>
+                  <div className="fw-normal">Sarah Mitchell</div>
+                </div>
+                <div className="mb-3">
+                  <div className="opacity-75" style={{ fontSize: '0.85rem' }}>Phone</div>
+                  <div className="fw-normal">+1 (555) 123-4567</div>
+                </div>
+                <div>
+                  <div className="opacity-75 mb-2" style={{ fontSize: '0.85rem' }}>Email</div>
+                  <Badge bg="white" className="rounded-pill px-3 py-2 d-flex align-items-center border-0" style={{ width: 'fit-content' }}>
+                    <Mail size={16} className="me-2" style={{ color: '#2563EB' }} />
+                    <span className="fw-normal" style={{ color: '#2563EB', fontSize: '0.8rem' }}>sarah.mitchell@greenheights.com</span>
+                  </Badge>
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+
+        <Card className="mt-4 border rounded-3 h-100" style={{ borderColor: "#0051973D" }}>
+          <Card.Body className="p-4">
+            <div className="d-flex align-items-center gap-2 mb-3">
+              <Package size={20} className="text-primary" />
+              <h5 className="mb-0 fw-bold text-dark">Scope of Work & Scope of Packages</h5>
+            </div>
+            <p className="mb-4" style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.5' }}>
+              Complete construction of 5-story commercial complex including foundation, structure, MEP systems, and finishing works...
+            </p>
+            <div className="d-flex flex-wrap gap-3">
+              {['Civil Works', 'Electrical Systems', 'Safety Equipment', 'HVAC Installation'].map((text) => (
+                <Badge key={text} pill bg="none" className="px-3 py-2 fw-normal" style={{ backgroundColor: '#EBF2FF', color: '#3B82F6', fontSize: '0.85rem' }}>
+                  {text}
+                </Badge>
+              ))}
+            </div>
+          </Card.Body>
+        </Card>
+
+        <Card className="border rounded-3 mt-4 h-100" style={{ borderColor: "#0051973D" }}>
+          <Card.Body className="p-4">
+            <div className="d-flex align-items-center gap-2 mb-4">
+              <Paperclip size={20} className="text-primary" style={{ transform: 'rotate(15deg)' }} />
+              <h5 className="mb-0 fw-bold text-dark">Attachments</h5>
+            </div>
+            <div className="d-flex flex-column gap-3">
+              {[
+                { title: "Technical Specifications", info: "pdf • 4.2 MB", desc: "Detailed technical requirements for all construction phases including material specifications and quality standards.", icon: <FileText size={32} className="text-danger" /> },
+                { title: "Drawings", info: "png • 1.2 MB", desc: "Complete set of architectural and engineering drawings including structural, electrical, and HVAC layouts.", icon: <FileImage size={32} className="text-primary" /> },
+                { title: "Commercial Conditions", info: "Excel • 4.2 MB", desc: "Payment terms, penalties, insurance requirements, and other commercial conditions for the tender.", icon: <FileSpreadsheet size={32} className="text-success" /> },
+                { title: "Others", info: "Excel • 4.2 MB", desc: "Safety protocols and environmental compliance requirements", icon: <FileText size={32} style={{ color: '#64748B' }} /> }
+               ].map((file, index) => (
+                <div key={index} className="d-flex justify-content-between align-items-center p-4 rounded-4" style={{ backgroundColor: '#F8FAFC' }}>
+                  <div className="d-flex gap-3">
+                    <div className="flex-shrink-0">{file.icon}</div>
+                    <div>
+                      <div className="fw-bold text-dark" style={{ fontSize: '0.95rem' }}>{file.title}</div>
+                      <div className="text-muted small mb-1">{file.info}</div>
+                      <div className="text-muted" style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>{file.desc}</div>
+                    </div>
+                  </div>
+                  <div className="ps-3">
+                    <Download size={24} className="text-primary" style={{ cursor: 'pointer' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card.Body>
+        </Card>
+
+        <Card className="border rounded-3 mt-4 overflow-hidden" style={{ borderColor: "#0051973D" }}>
+            <Card.Body className="p-4 pb-0">
+              <div className="d-flex align-items-center gap-2 mb-1">
+                <div className="text-primary">
+                <ClipboardCheck size={24} />
+                </div>
+                <h5 className="mb-0 fw-bold text-dark">Package Details</h5>
+              </div>
+              <p className="text-muted mb-4" style={{ fontSize: '0.9rem' }}>Quote your rates for each item below</p>
+    
+              <Table responsive className="mb-0">
+                <thead style={{ backgroundColor: '#F4F9FF' }}> 
+                  <tr> 
+                    {[
+                      { label: 'BOQ Code', align: 'text-start' },
+                      { label: 'BOQ Name', align: 'text-start' },
+                      { label: 'Unit', align: 'text-center' },
+                      { label: 'Quantity', align: 'text-center' },
+                      { label: 'Rate', align: 'text-center' },
+                      { label: 'Amount', align: 'text-end' }
+                    ].map((head, i) => (
+                      <th 
+                        key={i} 
+                        className={`py-3 px-4 text-muted fw-normal border-0 ${head.align}`} 
+                        style={{ fontSize: '0.9rem',  backgroundColor: 'transparent',  whiteSpace: 'nowrap' }} >
+                        {head.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { code: 'a', name: 'Upto 1.5m depth', unit: 'Cum', qty: '3922.49364' },
+                    { code: 'b', name: 'From 1.5m to 3m depth', unit: 'Cum', qty: '2941.87023' },
+                    { code: 'c', name: 'From 3.1m to 4.5m depth', unit: 'Cum', qty: '588.443895' },
+                    { code: 'd', name: 'From 4.6m to 6.0m depth', unit: 'Cum', qty: '1200' },
+                  ].map((row, idx) => (
+                  <tr key={idx} className="align-middle" style={{ borderBottom: '1px solid #EDF2F7' }}>
+                  <td className="py-4 px-4 text-dark">{row.code}</td>
+                  <td className="py-4 px-4 text-dark">{row.name}</td>
+                  <td className="py-4 px-4 text-dark text-center">{row.unit}</td>
+                  <td className="py-4 px-4 text-dark text-center">{row.qty}</td>
+                  <td className="py-4 px-4 text-center" style={{ width: '180px' }}>
+              
+                  <div className="position-relative" 
+                    style={{ cursor: 'pointer' }}
+                      onClick={(e) => {
+                      const input = e.currentTarget.querySelector('input');
+                      input.readOnly = false;
+                      input.focus();
+                      }}
+                    >
+                    <Form.Control 
+                      type="text" 
+                      defaultValue="0.00" 
+                      readOnly 
+                      className="text-start ps-3 pe-4 shadow-none"
+                      style={{ fontSize: '0.95rem',  borderColor: '#3B82F6',  borderRadius: '6px', color: '#3B82F6', height: '38px', backgroundColor: '#FFF' }}
+                      onBlur={(e) => { e.target.readOnly = true; }}
+                    />
+                    <Pencil 
+                     size={14} 
+                     className="position-absolute" 
+                     style={{ right: '10px',  top: '50%',  transform: 'translateY(-50%)',  color: '#3B82F6', pointerEvents: 'none'}}
+                    />
+                  </div>
+                  </td>
+                    <td className="py-4 px-4 text-end fw-bold text-dark">0.00</td>
+                  </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </Card.Body>
+  
+  <div
+  className="d-flex justify-content-end align-items-center gap-3 px-4 py-3 text-white"
+  style={{ backgroundColor: "#005197" }}
+>
+  <span className="fs-5 fw-normal">Total Estimated Offer</span>
+  <span className="fs-4 fw-bold">0.00</span>
+</div>
+
+        </Card>
+
+        <Card className="border rounded-3 mt-4" style={{ borderColor: "#0051973D" }}>
+          <Card.Body className="p-4">
+              <div className="d-flex align-items-center gap-2 mb-3">
+                <Badge bg="primary" className="p-1 rounded d-flex align-items-center justify-content-center"
+                  style={{ width: "24px", height: "24px" }}>
+                  <span style={{ fontSize: "8px", fontWeight: "bold" }}>CARD</span>
+                </Badge>
+                <h5 className="mb-0 fw-bold text-dark">Payment Terms</h5>
+              </div>
+
+          <Form.Control as="textarea" rows={3}
+            placeholder="Enter payment terms here..."
+            className="shadow-none"
+            style={{border: "1px solid #337ab7", borderRadius: "8px", outline: "none", boxShadow: "none"}}
+          />
+
+          </Card.Body>
+        </Card>
+
+        <div className="d-flex justify-content-end gap-3 mt-4 mb-5">
+          <Button variant="primary" className="px-5 py-2 fw-bold d-flex align-items-center gap-2" style={{ backgroundColor: '#ffffff',  color:"#337ab7",borderRadius: '8px', border: '1px solid #337ab7', }}>
+            Save Draft 
+          </Button>
+          <Button variant="primary" className="px-5 py-2 fw-bold d-flex align-items-center gap-2" style={{ backgroundColor: '#337ab7', border: 'none', borderRadius: '8px' }}>
+            Submit Offer <Send size={18} />
+          </Button>
+        </div>
+
+      </Container>
+    </div>
+
+    </>
   );
 }
 
