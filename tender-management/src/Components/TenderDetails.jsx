@@ -16,6 +16,7 @@ function TenderDetails() {
   const { projectId } = useParams();
   const [projectName, setProjectName] = useState("");
   const [expandedNodes, setExpandedNodes] = useState({});
+  const [attachmentData, setAttachmentData] = useState(null);
 
   useEffect(() => {
     const fetchProjectName = async () => {
@@ -46,7 +47,7 @@ function TenderDetails() {
 
   const fetchTender = async (projectId) => {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/tender/${projectId}`,
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/tenders/${projectId}`,
         {
           headers: {
             Authorization: `Bearer ${sessionStorage.getItem('token')}`,
@@ -64,6 +65,33 @@ function TenderDetails() {
       console.log(err);
     }
   }
+
+  const fetchAttachments = async (tenderId) => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/tenderAttachments/${tenderId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      if (res.status === 200) {
+        setAttachmentData(res.data);
+      } else {
+        setAttachmentData(null);
+      }
+    } catch (err) {
+      console.log(err);
+      setAttachmentData(null);
+    }
+  }
+
+  useEffect(() => {
+    if (selectedTenderId) {
+      fetchAttachments(selectedTenderId);
+    }
+  }, [selectedTenderId]);
 
   const selectedTenderData = tenderList.find(t => t.id === selectedTenderId);
   
@@ -222,31 +250,41 @@ function TenderDetails() {
     });
   };
 
-  // Static Categories for Attachments
+  const getFileNameFromUrl = (url) => {
+    if (!url) return "Unknown File";
+    try {
+        return url.substring(url.lastIndexOf('/') + 1);
+    } catch (e) {
+        return url;
+    }
+  };
+
+  const transformFiles = (urls) => {
+    if (!urls || !Array.isArray(urls)) return [];
+    return urls.map(url => ({
+        name: getFileNameFromUrl(url),
+        size: "-", 
+        url: url,
+        type: url.split('.').pop()
+    }));
+  };
+
   const attachmentCategories = [
     { 
         name: "Technical Specifications", 
-        files: [
-            { name: "Technical_Specs_v1.pdf", size: "4.2 MB", type: "pdf" },
-            { name: "Material_Requirements.docx", size: "2.1 MB", type: "doc" }
-        ] 
+        files: transformFiles(attachmentData?.technicalTermsUrl) 
     },
     { 
         name: "Drawings", 
-        files: [
-            { name: "Site_Layout_Plan.dwg", size: "15.4 MB", type: "cad" },
-            { name: "Elevation_Drawings.pdf", size: "8.5 MB", type: "pdf" }
-        ] 
+        files: transformFiles(attachmentData?.drawingUrl) 
     },
     { 
         name: "Commercial Conditions", 
-        files: [
-            { name: "General_Conditions_of_Contract.pdf", size: "3.5 MB", type: "pdf" }
-        ] 
+        files: transformFiles(attachmentData?.commercialTermsUrl) 
     },
     { 
         name: "Others", 
-        files: [] 
+        files: transformFiles(attachmentData?.otherUrl) 
     }
   ];
 
@@ -502,6 +540,7 @@ function TenderDetails() {
                                                             className="btn btn-light btn-sm d-flex align-items-center justify-content-center" 
                                                             style={{color: '#005197', width: '32px', height: '32px'}}
                                                             title="View"
+                                                            onClick={() => window.open(file.url, '_blank')}
                                                         >
                                                             <Eye size={16}/>
                                                         </button>
@@ -509,6 +548,7 @@ function TenderDetails() {
                                                             className="btn btn-light btn-sm d-flex align-items-center justify-content-center" 
                                                             style={{color: '#005197', width: '32px', height: '32px'}}
                                                             title="Download"
+                                                            onClick={() => window.open(file.url, '_blank')}
                                                         >
                                                             <Download size={16}/>
                                                         </button>
