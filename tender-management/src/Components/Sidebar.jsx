@@ -45,9 +45,6 @@ function Sidebar({ children }) {
     { label: "Contractor Onboarding", path: "contractoronboarding", icon: <FaUserPlus />, key: "CONTRACTOR_ONBOARDING" },
     
   ];
-  useEffect(()=>{
-    console.log(userName);
-  })
   const handleLogout = () => {
     sessionStorage.removeItem("token");
     navigate("/login");
@@ -89,7 +86,7 @@ function Sidebar({ children }) {
                 {sections
                   .filter(section => canAccessMenu(role, section.key))
                   .map((section, index) => (
-                    <li key={index} className="mt-3">
+                    <li key={index} className="mt-4">
                       <button
                         className={`btn nav-btn ${currentPath === section.path ? "active" : ""}`}
                         onClick={() => navigate(`/${section.path}`)}
@@ -99,7 +96,6 @@ function Sidebar({ children }) {
                       </button>
                     </li>
                   ))}
-
               </ul>
             </nav>
           </div>

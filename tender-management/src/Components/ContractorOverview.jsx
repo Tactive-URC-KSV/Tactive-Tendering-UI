@@ -308,7 +308,7 @@ const ManualEntryForm = ({
                             }} />
                     </div>
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block"> Email ID </label>
+                        <label className="projectform text-start d-block"> Email ID <span className="text-danger">*</span></label>
                         <input type="text" name="contactEmailID" className="form-input w-100" placeholder="Enter email ID" value={formData.contactEmailID}
                             onChange={(e) => {
                                 setFormData({ ...formData, contactEmailID: e.target.value });
@@ -517,7 +517,7 @@ const ManualEntryForm = ({
     );
 };
 
-const EmailInviteForm = ({ formData, setFormData, handleSendInvitation }) => (
+const EmailInviteForm = ({ formData, setFormData, handleSendInvitation, isLoading }) => (
     <>
         <div className="text-center pt-2 pb-4">
             <div
@@ -561,7 +561,7 @@ const EmailInviteForm = ({ formData, setFormData, handleSendInvitation }) => (
 
             <div className="col-md-6" style={{ marginBottom: "32px" }}>
                 <label className="projectform d-block mb-1">
-                    Contractor Name
+                    Contractor Name <span style={{ color: "red" }}>*</span>
                 </label>
                 <input
                     type="text"
@@ -612,6 +612,7 @@ const EmailInviteForm = ({ formData, setFormData, handleSendInvitation }) => (
                     color: "white",
                     borderRadius: "6px",
                 }}
+                disabled={isLoading}
             >
                 <Mail size={18} className="me-2" />
                 Send Invitation Link
@@ -634,7 +635,8 @@ const ReviewSummaryContent = ({
     territoryOptions,
     taxTypeOptions,
     taxCityOptions,
-    additionalInfoTypeOptions
+    additionalInfoTypeOptions,
+    isLoading,
 }) => {
     const { entityCode, entityName, effectiveDate, entityType, natureOfBusiness, grade, attachmentMetadata = [] } = formData;
     const { phoneNo, emailID, addressType, address1, address2, country, addresscity, zipCode, } = formData;
@@ -885,6 +887,7 @@ const ReviewSummaryContent = ({
                         color: bluePrimaryLight,
                         backgroundColor: 'white'
                     }}
+
                 >
                     Edit
                 </button>
@@ -898,6 +901,7 @@ const ReviewSummaryContent = ({
                         borderRadius: "6px",
                         border: 'none'
                     }}
+                    disabled={isLoading}
                 >
                     Submit
                 </button>
@@ -916,6 +920,7 @@ function ContractorOverview() {
     const [selectedView, setSelectedView] = useState('manual');
     const [viewMode, setViewMode] = useState('entry');
     const STORAGE_KEY = 'contractorFormData';
+    const [isLoading, setIsLoadnig] = useState(false);
     const [entityTypeOptions, setEntityTypeOptions] = useState([]);
     const [natureOfBusinessOptions, setNatureOfBusinessOptions] = useState([]);
     const [gradeOptions, setGradeOptions] = useState([]);
@@ -1142,6 +1147,26 @@ function ContractorOverview() {
     });
 
     const handleSubmitFinal = async () => {
+        setIsLoadnig(true);
+
+        const requiredFields = [
+            'entityCode', 'entityName', 'effectiveDate', 'entityType',
+            'addressType', 'country', 'addresscity', 'zipCode',
+            'contactName', 'contactPosition', 'contactEmailID',
+            'taxType', 'territoryType', 'territory', 'taxRegNo',
+            'taxRegDate', 'taxCity',
+            'accountHolderName', 'accountNo', 'bankName', 'branchName',
+            'additionalInfoType', 'registrationNo'
+        ];
+
+        const missingFields = requiredFields.filter(field => !formData[field]);
+
+        if (missingFields.length > 0) {
+            toast.error("Please fill in all mandatory fields.");
+            setIsLoadnig(false);
+            return;
+        }
+
         const data = new FormData();
 
         const inputDto = {
@@ -1226,6 +1251,9 @@ function ContractorOverview() {
         } catch (error) {
             console.error("Error submitting form", error);
             toast.error("Failed to submit contractor details.");
+        }
+        finally{
+            setIsLoadnig(false);
         }
     };
 
@@ -1354,6 +1382,7 @@ function ContractorOverview() {
                                                 formData={formData}
                                                 setFormData={setFormData}
                                                 handleSendInvitation={handleSendInvitation}
+                                                isLoading = {isLoading}
                                             />
                                         </div>
                                     </>
@@ -1398,6 +1427,7 @@ function ContractorOverview() {
                             taxTypeOptions={taxTypeOptions}
                             taxCityOptions={taxCityOptions}
                             additionalInfoTypeOptions={additionalInfoTypeOptions}
+                            isLoading = {isLoading}
                         />
                     )}
                 </div>

@@ -10,7 +10,7 @@ function TenderTracking() {
     const [projects, setProjects] = useState([]);
 
     useEffect(() => {
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllBoqUploadedProject`, {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/tenderFloatedProject`, {
             headers: {
                 Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                 'Content-Type': 'application/json',

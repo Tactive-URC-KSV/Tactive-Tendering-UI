@@ -11,7 +11,7 @@ import { useSearchParams } from 'react-router-dom';
 function ContractorForm() {
   const [searchParams] = useSearchParams();
   const id = searchParams.get("id");
-  const [inviteStatus, setInviteStatus] = useState('loading');
+  const [inviteStatus, setInviteStatus] = useState('idle');
   const [authToken, setAuthToken] = useState(sessionStorage.getItem("token"));
   const [showReview, setShowReview] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -76,6 +76,7 @@ function ContractorForm() {
         }
       });
   }, [id, baseUrl]);
+
 
   useEffect(() => {
     if (!authToken || inviteStatus !== 'valid') return;
@@ -305,7 +306,7 @@ function ContractorForm() {
     placeholder: (base) => ({ ...base, color: '#6c757d', fontSize: '0.9rem' }),
     indicatorSeparator: () => ({ display: 'none' }),
     menuPortal: (base) => ({ ...base, zIndex: 9999 })
-    
+
   };
 
   const renderReviewForm = () => (
