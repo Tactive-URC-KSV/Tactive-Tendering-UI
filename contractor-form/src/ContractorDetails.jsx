@@ -14,7 +14,6 @@ function ContractorDetails() {
   const [errorDetails, setErrorDetails] = useState({ title: "", message: "" });
   
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
-  const headers = { Authorization: `Bearer ${authToken}` };
 
   useEffect(() => {
     if (!id || !tenderId) {
@@ -93,7 +92,7 @@ function ContractorDetails() {
             {getIcon()}
             <h4 className="fw-bold text-dark mb-2">{errorDetails.title}</h4>
             <p className="text-muted mb-4">{errorDetails.message}</p>
-            <Button onClick={() => window.location.reload()} className="px-4" style={{backgroundColor: "#005197"}}>
+            <Button variant="primary" onClick={() => window.location.reload()} className="px-4">
               Refresh Page
             </Button>
           </Card.Body>
@@ -155,13 +154,13 @@ function ContractorDetails() {
                         <Gavel size={28} />
                       </div>
                       <h5 className="mb-0 fw-bold" style={{ fontSize: '1.25rem' }}>
-                        Tender Floated Details – {tender?.title || 'Green Heights'}
+                        Tender Floated Details – {tender?.tenderName}
                       </h5>
                     </div>
                     <div className="d-flex gap-5 text-end">
                       <div>
                         <div className="text-muted small mb-1" style={{ fontSize: '0.8rem' }}>Floating No</div>
-                        <div className="fw-bold text-dark">{tender?.floatingNo || 'TF – 2025 – 001'}</div>
+                        <div className="fw-bold text-dark">{tender?.tenderNumber}</div>
                       </div>
                       <div>
                         <div className="text-muted small mb-1" style={{ fontSize: '0.8rem' }}>Floating Date</div>
@@ -171,26 +170,26 @@ function ContractorDetails() {
                   </div>
                   <div className="mb-4">
                     <Badge bg="none" className="rounded-pill px-3 py-2 fw-normal" style={{ backgroundColor: '#F3F8FF', color: '#2563EB', fontSize: '0.9rem' }}>
-                      Tender Name : {tender?.tenderName || 'Urban Sky Residential Hub'}
+                      Tender Name : {tender?.tenderName}
                     </Badge>
                   </div>
                   <Row className="g-3">
                     <Col md={4}>
                       <div className="p-4 rounded-4 h-100" style={{ backgroundColor: '#F8FAFC' }}>
                         <div className="text-muted mb-3" style={{ fontSize: '0.9rem', fontWeight: '500' }}>Offer Submission Mode</div>
-                        <div className="fw-bold text-dark fs-5">Online</div>
+                        <div className="fw-bold text-dark fs-5">{tender?.submissionMode}</div>
                       </div>
                     </Col>
                     <Col md={4}>
                       <div className="p-4 rounded-4 h-100" style={{ backgroundColor: '#F8FAFC' }}>
                         <div className="text-muted mb-3" style={{ fontSize: '0.9rem', fontWeight: '500' }}>Bid Opening</div>
-                        <div className="fw-bold text-dark fs-5">December 01, 2025</div>
+                        <div className="fw-bold text-dark fs-5">{tender?.bidOpeningdate}</div>
                       </div>
                     </Col>
                     <Col md={4}>
                       <div className="p-4 rounded-4 h-100 position-relative" style={{ backgroundColor: "#FEF2F2", borderLeft: "4px solid #DC2626" }}>
                         <div className="text-danger mb-3" style={{ fontSize: '0.85rem', fontWeight: '500' }}>Submission Last Date</div>
-                        <div className="fw-bold fs-5" style={{ color: '#D90707' }}>November 30, 2025</div>
+                        <div className="fw-bold fs-5" style={{ color: '#D90707' }}>{tender?.lastDate}</div>
                       </div>
                     </Col>
                   </Row>
@@ -207,17 +206,17 @@ function ContractorDetails() {
                   </div>
                   <div className="mb-3">
                     <div className="opacity-75" style={{ fontSize: '0.85rem' }}>Name</div>
-                    <div className="fw-normal">Sarah Mitchell</div>
+                    <div className="fw-normal">{tender?.contactName}</div>
                   </div>
                   <div className="mb-3">
                     <div className="opacity-75" style={{ fontSize: '0.85rem' }}>Phone</div>
-                    <div className="fw-normal">+1 (555) 123-4567</div>
+                    <div className="fw-normal">{tender?.contactNumber}</div>
                   </div>
                   <div>
                     <div className="opacity-75 mb-2" style={{ fontSize: '0.85rem' }}>Email</div>
                     <Badge bg="white" className="rounded-pill px-3 py-2 d-flex align-items-center border-0" style={{ width: 'fit-content' }}>
                       <Mail size={16} className="me-2" style={{ color: '#2563EB' }} />
-                      <span className="fw-normal" style={{ color: '#2563EB', fontSize: '0.8rem' }}>sarah.mitchell@greenheights.com</span>
+                      <span className="fw-normal" style={{ color: '#2563EB', fontSize: '0.8rem' }}>{tender?.contactEmail}</span>
                     </Badge>
                   </div>
                 </Card.Body>
@@ -232,12 +231,12 @@ function ContractorDetails() {
                 <h5 className="mb-0 fw-bold text-dark">Scope of Work & Scope of Packages</h5>
               </div>
               <p className="mb-4" style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.5' }}>
-                Complete construction of 5-story commercial complex including foundation, structure, MEP systems, and finishing works...
+                Complete construction work including foundation, structure, MEP systems, and finishing works based on the packages listed below.
               </p>
               <div className="d-flex flex-wrap gap-3">
-                {['Civil Works', 'Electrical Systems', 'Safety Equipment', 'HVAC Installation'].map((text) => (
-                  <Badge key={text} pill bg="none" className="px-3 py-2 fw-normal" style={{ backgroundColor: '#EBF2FF', color: '#3B82F6', fontSize: '0.85rem' }}>
-                    {text}
+                {tender?.scopeOfPackages?.map((pkg) => (
+                  <Badge key={pkg.id} pill bg="none" className="px-3 py-2 fw-normal" style={{ backgroundColor: '#EBF2FF', color: '#3B82F6', fontSize: '0.85rem' }}>
+                    {pkg.scope}
                   </Badge>
                 ))}
               </div>
@@ -311,17 +310,12 @@ function ContractorDetails() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[
-                    { code: 'a', name: 'Upto 1.5m depth', unit: 'Cum', qty: '3922.49364' },
-                    { code: 'b', name: 'From 1.5m to 3m depth', unit: 'Cum', qty: '2941.87023' },
-                    { code: 'c', name: 'From 3.1m to 4.5m depth', unit: 'Cum', qty: '588.443895' },
-                    { code: 'd', name: 'From 4.6m to 6.0m depth', unit: 'Cum', qty: '1200' },
-                  ].map((row, idx) => (
+                  {tender?.boq?.map((row, idx) => (
                     <tr key={idx} className="align-middle" style={{ borderBottom: '1px solid #EDF2F7' }}>
-                      <td className="py-4 px-4 text-dark">{row.code}</td>
-                      <td className="py-4 px-4 text-dark">{row.name}</td>
-                      <td className="py-4 px-4 text-dark text-center">{row.unit}</td>
-                      <td className="py-4 px-4 text-dark text-center">{row.qty}</td>
+                      <td className="py-4 px-4 text-dark">{row.boqCode}</td>
+                      <td className="py-4 px-4 text-dark">{row.boqName}</td>
+                      <td className="py-4 px-4 text-dark text-center">{row.uom?.uomCode || '-'}</td>
+                      <td className="py-4 px-4 text-dark text-center">{row.quantity}</td>
                       <td className="py-4 px-4 text-center" style={{ width: '180px' }}>
 
                         <div className="position-relative"
@@ -334,7 +328,7 @@ function ContractorDetails() {
                         >
                           <Form.Control
                             type="text"
-                            defaultValue="0.00"
+                            defaultValue={row.totalRate || "0.00"}
                             readOnly
                             className="text-start ps-3 pe-4 shadow-none"
                             style={{ fontSize: '0.95rem', borderColor: '#3B82F6', borderRadius: '6px', color: '#3B82F6', height: '38px', backgroundColor: '#FFF' }}
@@ -347,7 +341,7 @@ function ContractorDetails() {
                           />
                         </div>
                       </td>
-                      <td className="py-4 px-4 text-end fw-bold text-dark">0.00</td>
+                      <td className="py-4 px-4 text-end fw-bold text-dark">{row.totalAmount || "0.00"}</td>
                     </tr>
                   ))}
                 </tbody>
