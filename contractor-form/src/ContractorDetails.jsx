@@ -1,6 +1,5 @@
-
-import { Container, Row, Col, Card, Badge, Table, Form, Button } from "react-bootstrap";
-import { Gavel, UserRound, Mail, Package, Paperclip, FileText, Download, FileImage, FileSpreadsheet, ClipboardCheck, Pencil, Send, ImportIcon } from "lucide-react";
+import { Container, Row, Col, Card, Badge, Table, Form, Button, Spinner } from "react-bootstrap";
+import { Gavel, UserRound, Mail, Package, Paperclip, FileText, Download, FileImage, FileSpreadsheet, ClipboardCheck, Pencil, Send, ImportIcon, AlertCircle, Clock, CheckCircle } from "lucide-react";
 import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -11,40 +10,98 @@ function ContractorDetails() {
   const tenderId = params.get("tenderId");
   const [authToken, setAuthToken] = useState(sessionStorage.getItem("token"));
   const [tender, setTender] = useState();
+  const [pageStatus, setPageStatus] = useState("LOADING"); 
+  const [errorDetails, setErrorDetails] = useState({ title: "", message: "" });
+  
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
   const headers = { Authorization: `Bearer ${authToken}` };
+
   useEffect(() => {
-    console.log(id);
-    console.log(tenderId);
-    if (!id) {
+    if (!id || !tenderId) {
+      setPageStatus("INVALID");
+      setErrorDetails({ title: "Invalid Link", message: "The link you followed is incomplete or incorrect." });
       return;
     }
-    axios.get(`${baseUrl}/validateInvite?id=${id}`)
+
+    axios.get(`${baseUrl}/validateTenderInvite?id=${id}&tenderId=${tenderId}`)
       .then(response => {
         const token = response.data.token;
         sessionStorage.setItem("token", token);
         setAuthToken(token);
-        fetchTenderDetails();
+        fetchTenderDetails(token); 
       })
       .catch(error => {
-        if (error.response && error.response.status === 409) {
-          console.log("Invalid");
+        let status = "INVALID";
+        let title = "Invalid Invitation";
+        let msg = "We could not verify your invitation. Please contact the administrator.";
+
+        if (error.response) {
+          const errorMessage = typeof error.response.data === 'string' 
+            ? error.response.data.toLowerCase() 
+            : '';
+
+          if (error.response.status === 409 || errorMessage.includes("submitted")) {
+            status = "SUBMITTED";
+            title = "Quote Already Submitted";
+            msg = "You have already submitted your quote for this tender.";
+          } else if (errorMessage.includes("expired")) {
+            status = "EXPIRED";
+            title = "Invitation Expired";
+            msg = "This tender invitation link has expired.";
+          }
         }
+        
+        setPageStatus(status);
+        setErrorDetails({ title, message: msg });
       });
-  }, [id, baseUrl]);
-  const fetchTenderDetails = () => {
-    axios.get(`${baseUrl}/tender/${tenderId}`,{
-      headers: headers
-    }).then((res)=>{
-      if(res.status === 200){
+  }, [id, tenderId, baseUrl]);
+
+  const fetchTenderDetails = (token) => {
+    axios.get(`${baseUrl}/tender/${tenderId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then((res) => {
+      if (res.status === 200) {
         setTender(res.data);
+        setPageStatus("CONTENT");
       }
     }).catch((err) => {
-      if(err.response && err.response.status === 409){
-        console.log("Invalid");
-      }
-    })
+      setPageStatus("INVALID");
+      setErrorDetails({ title: "Error Loading Data", message: "Unable to fetch tender details." });
+    });
   }
+
+  if (pageStatus === "LOADING") {
+    return (
+      <div className="d-flex flex-column align-items-center justify-content-center vh-100 bg-light">
+        <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} />
+        <p className="mt-3 text-muted fw-medium">Verifying Invitation...</p>
+      </div>
+    );
+  }
+
+  if (pageStatus === "INVALID" || pageStatus === "EXPIRED" || pageStatus === "SUBMITTED") {
+    const getIcon = () => {
+      if (pageStatus === "EXPIRED") return <Clock size={48} className="text-warning mb-3" />;
+      if (pageStatus === "SUBMITTED") return <CheckCircle size={48} className="text-success mb-3" />;
+      return <AlertCircle size={48} className="text-danger mb-3" />;
+    };
+
+    return (
+      <div className="d-flex align-items-center justify-content-center vh-100" style={{ backgroundColor: '#F8F9FA' }}>
+        <Card className="text-center shadow-sm border-0" style={{ maxWidth: '450px', width: '90%' }}>
+          <Card.Body className="p-5">
+            {getIcon()}
+            <h4 className="fw-bold text-dark mb-2">{errorDetails.title}</h4>
+            <p className="text-muted mb-4">{errorDetails.message}</p>
+            <Button onClick={() => window.location.reload()} className="px-4" style={{backgroundColor: "#005197"}}>
+              Refresh Page
+            </Button>
+          </Card.Body>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <>
       <div
@@ -98,13 +155,13 @@ function ContractorDetails() {
                         <Gavel size={28} />
                       </div>
                       <h5 className="mb-0 fw-bold" style={{ fontSize: '1.25rem' }}>
-                        Tender Floated Details – Green Heights
+                        Tender Floated Details – {tender?.title || 'Green Heights'}
                       </h5>
                     </div>
                     <div className="d-flex gap-5 text-end">
                       <div>
                         <div className="text-muted small mb-1" style={{ fontSize: '0.8rem' }}>Floating No</div>
-                        <div className="fw-bold text-dark">TF – 2025 – 001</div>
+                        <div className="fw-bold text-dark">{tender?.floatingNo || 'TF – 2025 – 001'}</div>
                       </div>
                       <div>
                         <div className="text-muted small mb-1" style={{ fontSize: '0.8rem' }}>Floating Date</div>
@@ -114,7 +171,7 @@ function ContractorDetails() {
                   </div>
                   <div className="mb-4">
                     <Badge bg="none" className="rounded-pill px-3 py-2 fw-normal" style={{ backgroundColor: '#F3F8FF', color: '#2563EB', fontSize: '0.9rem' }}>
-                      Tender Name : Urban Sky Residential Hub
+                      Tender Name : {tender?.tenderName || 'Urban Sky Residential Hub'}
                     </Badge>
                   </div>
                   <Row className="g-3">
@@ -337,7 +394,6 @@ function ContractorDetails() {
 
         </Container>
       </div>
-
     </>
   );
 }
