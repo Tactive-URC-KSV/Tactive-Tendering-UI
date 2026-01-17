@@ -10,10 +10,20 @@ function ContractorDetails() {
   const tenderId = params.get("tenderId");
   const [authToken, setAuthToken] = useState(sessionStorage.getItem("token"));
   const [tender, setTender] = useState();
-  const [pageStatus, setPageStatus] = useState("LOADING"); 
+  const [contractor, setContractor] = useState(null);
+  const [attachmentData, setAttachmentData] = useState(null);
+  const [pageStatus, setPageStatus] = useState("LOADING");
   const [errorDetails, setErrorDetails] = useState({ title: "", message: "" });
-  
+  const [headerStatus, setHeaderStatus] = useState({ text: "Loading...", bg: "#F3F4F6", color: "#6B7280" });
+
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
+
+  const attachmentTypes = [
+    { title: "Technical Specifications", urlKey: "technicalTermsUrl", textKey: "technicalTerms", icon: <FileText size={24} className="text-danger" /> },
+    { title: "Drawings", urlKey: "drawingUrl", textKey: "drawings", icon: <FileImage size={24} className="text-primary" /> },
+    { title: "Commercial Conditions", urlKey: "commercialTermsUrl", textKey: "commercialTerms", icon: <FileSpreadsheet size={24} className="text-success" /> },
+    { title: "Others", urlKey: "otherUrl", textKey: "others", icon: <FileText size={24} style={{ color: '#64748B' }} /> }
+  ];
 
   useEffect(() => {
     if (!id || !tenderId) {
@@ -21,13 +31,14 @@ function ContractorDetails() {
       setErrorDetails({ title: "Invalid Link", message: "The link you followed is incomplete or incorrect." });
       return;
     }
-
     axios.get(`${baseUrl}/validateTenderInvite?id=${id}&tenderId=${tenderId}`)
       .then(response => {
         const token = response.data.token;
         sessionStorage.setItem("token", token);
         setAuthToken(token);
-        fetchTenderDetails(token); 
+        fetchTenderDetails(token);
+        fetchAttachments(token);
+        fetchContractorDetails(token);
       })
       .catch(error => {
         let status = "INVALID";
@@ -35,8 +46,8 @@ function ContractorDetails() {
         let msg = "We could not verify your invitation. Please contact the administrator.";
 
         if (error.response) {
-          const errorMessage = typeof error.response.data === 'string' 
-            ? error.response.data.toLowerCase() 
+          const errorMessage = typeof error.response.data === 'string'
+            ? error.response.data.toLowerCase()
             : '';
 
           if (error.response.status === 409 || errorMessage.includes("submitted")) {
@@ -49,11 +60,83 @@ function ContractorDetails() {
             msg = "This tender invitation link has expired.";
           }
         }
-        
         setPageStatus(status);
         setErrorDetails({ title, message: msg });
       });
   }, [id, tenderId, baseUrl]);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
+  };
+
+  useEffect(() => {
+    if (tender) {
+      const updateTimer = () => {
+        const now = new Date();
+        const openDate = tender.bidOpeningdate ? new Date(tender.bidOpeningdate) : null;
+        const endDate = tender.lastDate ? new Date(tender.lastDate) : null;
+
+        if (openDate && now < openDate) {
+          const diff = openDate - now;
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+          let timeString = "";
+
+          if (days > 0) {
+            timeString = `${String(days).padStart(2, '0')} Day`;
+          } else {
+            timeString = `${String(hours).padStart(2, '0')}h : ${String(minutes).padStart(2, '0')}m : ${String(seconds).padStart(2, '0')}s`;
+          }
+
+          setHeaderStatus({
+            text: `Bid Opening in: ${timeString}`,
+            bg: "#FEFCE8",
+            color: "#CA8A04"
+          });
+
+        } else if (endDate) {
+          const diff = endDate - now;
+          if (diff <= 0) {
+            setHeaderStatus({
+              text: "Expired",
+              bg: "#FFF1F2",
+              color: "#DC2626"
+            });
+          } else {
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            let timeString = "";
+
+            if (days > 0) {
+              timeString = `${String(days).padStart(2, '0')} Days`;
+            } else {
+              timeString = `${String(hours).padStart(2, '0')}h : ${String(minutes).padStart(2, '0')}m : ${String(seconds).padStart(2, '0')}s`;
+            }
+
+            setHeaderStatus({
+              text: `Time Remaining: ${timeString}`,
+              bg: "#FFF1F2",
+              color: "#DC2626"
+            });
+          }
+        } else {
+          setHeaderStatus({ text: "", bg: "transparent", color: "inherit" });
+        }
+      };
+
+      updateTimer();
+      const timer = setInterval(updateTimer, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [tender]);
 
   const fetchTenderDetails = (token) => {
     axios.get(`${baseUrl}/tender/${tenderId}`, {
@@ -68,6 +151,52 @@ function ContractorDetails() {
       setErrorDetails({ title: "Error Loading Data", message: "Unable to fetch tender details." });
     });
   }
+
+  const fetchContractorDetails = (token) => {
+    if(!id) return;
+    axios.get(`${baseUrl}/contractor/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then((res) => {
+      if(res.status === 200){
+        setContractor(res.data);
+      }
+    }).catch((err) => {
+      console.log("Error fetching contractor details:", err);
+    });
+  }
+
+  const fetchAttachments = async (token) => {
+    try {
+      const res = await axios.get(`${baseUrl}/tenderAttachments/${tenderId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      if (res.status === 200) {
+        setAttachmentData(res.data);
+      } else {
+        setAttachmentData(null);
+      }
+    } catch (err) {
+      console.log(err);
+      setAttachmentData(null);
+    }
+  }
+
+  const isBidOpeningPending = () => {
+    if (!tender?.bidOpeningdate) return false;
+    const now = new Date();
+    const openDate = new Date(tender.bidOpeningdate);
+    return now < openDate;
+  };
+
+  const getFileName = (path) => {
+    if (!path) return "Unknown File";
+    return path.split(/[/\\]/).pop();
+  };
 
   if (pageStatus === "LOADING") {
     return (
@@ -113,25 +242,25 @@ function ContractorDetails() {
 
         <div className="d-flex align-items-center gap-4">
           <div className="d-flex align-items-center gap-2 px-3 py-1 rounded-pill"
-            style={{ backgroundColor: "#FFF1F2", color: "#DC2626", fontSize: "0.85rem", fontWeight: 500 }} >
+            style={{ backgroundColor: headerStatus.bg, color: headerStatus.color, fontSize: "0.85rem", fontWeight: 500 }} >
             <span
               className="d-inline-block rounded-circle"
-              style={{ width: "8px", height: "8px", backgroundColor: "#DC2626" }}>
+              style={{ width: "8px", height: "8px", backgroundColor: headerStatus.color }}>
             </span>
-            Time Remaining: 04d : 12h : 29m
+            {headerStatus.text}
           </div>
 
           <div className="d-flex align-items-center gap-2">
             <div className="rounded-circle d-flex align-items-center justify-content-center text-white"
               style={{ width: "34px", height: "34px", backgroundColor: "#2563EB", fontSize: "0.85rem", fontWeight: "600" }} >
-              B
+              {contractor?.entityName ? contractor.entityName.charAt(0) : 'C'}
             </div>
             <div className="text-end">
               <div className="fw-semibold" style={{ fontSize: "0.9rem" }}>
-                Build Tech Solutions
+                {contractor?.entityName || 'Loading...'}
               </div>
               <div className="text-muted" style={{ fontSize: "0.75rem" }}>
-                Contractor Code : C#001
+                Contractor Code : {contractor?.entityCode || '-'}
               </div>
             </div>
           </div>
@@ -183,13 +312,17 @@ function ContractorDetails() {
                     <Col md={4}>
                       <div className="p-4 rounded-4 h-100" style={{ backgroundColor: '#F8FAFC' }}>
                         <div className="text-muted mb-3" style={{ fontSize: '0.9rem', fontWeight: '500' }}>Bid Opening</div>
-                        <div className="fw-bold text-dark fs-5">{tender?.bidOpeningdate}</div>
+                        <div className="fw-bold text-dark fs-5">
+                          {isBidOpeningPending()
+                            ? `Bid opening from ${formatDate(tender?.bidOpeningdate)}`
+                            : formatDate(tender?.bidOpeningdate)}
+                        </div>
                       </div>
                     </Col>
                     <Col md={4}>
                       <div className="p-4 rounded-4 h-100 position-relative" style={{ backgroundColor: "#FEF2F2", borderLeft: "4px solid #DC2626" }}>
                         <div className="text-danger mb-3" style={{ fontSize: '0.85rem', fontWeight: '500' }}>Submission Last Date</div>
-                        <div className="fw-bold fs-5" style={{ color: '#D90707' }}>{tender?.lastDate}</div>
+                        <div className="fw-bold fs-5" style={{ color: '#D90707' }}>{formatDate(tender?.lastDate)}</div>
                       </div>
                     </Col>
                   </Row>
@@ -218,6 +351,7 @@ function ContractorDetails() {
                       <Mail size={16} className="me-2" style={{ color: '#2563EB' }} />
                       <span className="fw-normal" style={{ color: '#2563EB', fontSize: '0.8rem' }}>{tender?.contactEmail}</span>
                     </Badge>
+
                   </div>
                 </Card.Body>
               </Card>
@@ -230,9 +364,6 @@ function ContractorDetails() {
                 <Package size={20} className="text-primary" />
                 <h5 className="mb-0 fw-bold text-dark">Scope of Work & Scope of Packages</h5>
               </div>
-              <p className="mb-4" style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.5' }}>
-                Complete construction work including foundation, structure, MEP systems, and finishing works based on the packages listed below.
-              </p>
               <div className="d-flex flex-wrap gap-3">
                 {tender?.scopeOfPackages?.map((pkg) => (
                   <Badge key={pkg.id} pill bg="none" className="px-3 py-2 fw-normal" style={{ backgroundColor: '#EBF2FF', color: '#3B82F6', fontSize: '0.85rem' }}>
@@ -242,7 +373,6 @@ function ContractorDetails() {
               </div>
             </Card.Body>
           </Card>
-
           <Card className="border rounded-3 mt-4 h-100" style={{ borderColor: "#0051973D" }}>
             <Card.Body className="p-4">
               <div className="d-flex align-items-center gap-2 mb-4">
@@ -250,30 +380,43 @@ function ContractorDetails() {
                 <h5 className="mb-0 fw-bold text-dark">Attachments</h5>
               </div>
               <div className="d-flex flex-column gap-3">
-                {[
-                  { title: "Technical Specifications", info: "pdf • 4.2 MB", desc: "Detailed technical requirements for all construction phases including material specifications and quality standards.", icon: <FileText size={32} className="text-danger" /> },
-                  { title: "Drawings", info: "png • 1.2 MB", desc: "Complete set of architectural and engineering drawings including structural, electrical, and HVAC layouts.", icon: <FileImage size={32} className="text-primary" /> },
-                  { title: "Commercial Conditions", info: "Excel • 4.2 MB", desc: "Payment terms, penalties, insurance requirements, and other commercial conditions for the tender.", icon: <FileSpreadsheet size={32} className="text-success" /> },
-                  { title: "Others", info: "Excel • 4.2 MB", desc: "Safety protocols and environmental compliance requirements", icon: <FileText size={32} style={{ color: '#64748B' }} /> }
-                ].map((file, index) => (
-                  <div key={index} className="d-flex justify-content-between align-items-center p-4 rounded-4" style={{ backgroundColor: '#F8FAFC' }}>
-                    <div className="d-flex gap-3">
-                      <div className="flex-shrink-0">{file.icon}</div>
-                      <div>
-                        <div className="fw-bold text-dark" style={{ fontSize: '0.95rem' }}>{file.title}</div>
-                        <div className="text-muted small mb-1">{file.info}</div>
-                        <div className="text-muted" style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>{file.desc}</div>
-                      </div>
-                    </div>
-                    <div className="ps-3">
-                      <Download size={24} className="text-primary" style={{ cursor: 'pointer' }} />
-                    </div>
-                  </div>
-                ))}
+                {attachmentData ? (
+                  attachmentTypes.map((type, index) => {
+                    const urls = attachmentData[type.urlKey];
+                    const comments = attachmentData[type.textKey];
+                    if (urls && Array.isArray(urls) && urls.length > 0) {
+                      return (
+                        <div key={index} className="p-3 rounded-4" style={{ backgroundColor: '#F8FAFC' }}>
+                          <div className="d-flex align-items-center gap-2 mb-3 border-bottom pb-2">
+                            {type.icon}
+                            <h6 className="mb-0 fw-bold text-dark">{type.title}</h6>
+                          </div>
+                          <div className="d-flex flex-column gap-2">
+                            {urls.map((url, urlIndex) => (
+                              <div key={`${index}-${urlIndex}`} className="d-flex justify-content-between align-items-center bg-white p-3 rounded-3 border">
+                                <div>
+                                  <div className="fw-medium text-dark">{getFileName(url)}</div>
+                                </div>
+                                <a href={url} download target="_blank" rel="noopener noreferrer">
+                                  <Download size={20} className="text-primary" />
+                                </a>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-2 text-muted small px-1">
+                            <span className="fw-semibold">Description: </span> {comments || "No comments provided"}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })
+                ) : (
+                  <div className="text-center p-4 text-muted">No attachments available</div>
+                )}
               </div>
             </Card.Body>
           </Card>
-
           <Card className="border rounded-3 mt-4 overflow-hidden" style={{ borderColor: "#0051973D" }}>
             <Card.Body className="p-4 pb-0">
               <div className="d-flex align-items-center justify-content-between gap-2 mb-1">
@@ -281,14 +424,13 @@ function ContractorDetails() {
                   <ClipboardCheck size={24} />
                   <div className="ms-2 mt-3 align-items-center">
                     <p className="mb-0 fw-bold text-dark text-start">Package Details</p>
-                    <p className="text-muted" style={{ fontSize: '0.9rem' }}>Quote your rates for each item below</p>
+                    <p className="text-muted" style={{ fontSize: '0.9rem' }}>
+                      Quote your rates for the items below, or use the Excel file shared via email.
+                    </p>
                   </div>
-
                 </div>
                 <button className="btn bg-success text-white px-3"> <ImportIcon /> Import Excel</button>
               </div>
-
-
               <Table responsive className="mb-0">
                 <thead style={{ backgroundColor: '#F4F9FF' }}>
                   <tr>
@@ -317,7 +459,6 @@ function ContractorDetails() {
                       <td className="py-4 px-4 text-dark text-center">{row.uom?.uomCode || '-'}</td>
                       <td className="py-4 px-4 text-dark text-center">{row.quantity}</td>
                       <td className="py-4 px-4 text-center" style={{ width: '180px' }}>
-
                         <div className="position-relative"
                           style={{ cursor: 'pointer' }}
                           onClick={(e) => {
@@ -347,7 +488,6 @@ function ContractorDetails() {
                 </tbody>
               </Table>
             </Card.Body>
-
             <div
               className="d-flex justify-content-end align-items-center gap-3 px-4 py-3 text-white"
               style={{ backgroundColor: "#005197" }}
@@ -355,9 +495,7 @@ function ContractorDetails() {
               <span className="fs-5 fw-normal">Total Estimated Offer</span>
               <span className="fs-4 fw-bold">0.00</span>
             </div>
-
           </Card>
-
           <Card className="border rounded-3 mt-4" style={{ borderColor: "#0051973D" }}>
             <Card.Body className="p-4">
               <div className="d-flex align-items-center gap-2 mb-3">
@@ -367,16 +505,13 @@ function ContractorDetails() {
                 </Badge>
                 <h5 className="mb-0 fw-bold text-dark">Payment Terms</h5>
               </div>
-
               <Form.Control as="textarea" rows={3}
                 placeholder="Enter payment terms here..."
                 className="shadow-none"
                 style={{ border: "1px solid #337ab7", borderRadius: "8px", outline: "none", boxShadow: "none" }}
               />
-
             </Card.Body>
           </Card>
-
           <div className="d-flex justify-content-end gap-3 mt-4 mb-5">
             <Button variant="primary" className="px-5 py-2 fw-bold d-flex align-items-center gap-2" style={{ backgroundColor: '#ffffff', color: "#337ab7", borderRadius: '8px', border: '1px solid #337ab7', }}>
               Save Draft
@@ -385,11 +520,9 @@ function ContractorDetails() {
               Submit Offer <Send size={18} />
             </Button>
           </div>
-
         </Container>
       </div>
     </>
   );
 }
-
 export default ContractorDetails;
