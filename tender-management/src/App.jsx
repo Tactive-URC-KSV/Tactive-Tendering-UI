@@ -40,6 +40,7 @@ import {ResourceNature,ResourceType,QuantityType,Resources} from './Admin/Resour
 import CompanyDetails from './Components/CompanyDetails';
 import TenderTracking from './Components/TenderTracking';
 import ReceivingOffers from './Components/RecievingOffers';
+import CompareOffers from './Components/CompareOffers';
 
 
 
@@ -114,6 +115,7 @@ function App() {
                             <Route path="/tendertracking/:projectId" element={<TenderTracking />} caseSensitive={false} />
                             <Route path="/receivingoffers" element={<ReceivingOffers />} caseSensitive={false} />
                             <Route path="/receivingoffers/:projectId" element={<ReceivingOffers />} caseSensitive={false} />
+                            <Route path="/receivingoffers/:projectId/compare" element={<CompareOffers />} caseSensitive={false} />
                             <Route path="/ContractorOnboarding" element={<Contractor />} caseSensitive={false} />
                             <Route path="ContractorOnboarding/review-submissions" element={<ContractorReview />} caseSensitive={false} />
                             <Route path="/add-resource/:projectId/:boqId" element={<AddResource />} caseSensitive={false} />
