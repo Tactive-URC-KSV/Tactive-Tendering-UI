@@ -444,15 +444,15 @@ function TenderDetails() {
                             </div>
                           </div>
                           <div className="col-12 mb-4">
-                            <p className="text-muted d-block text-uppercase fw-bold mb-1" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Pre-Bid Meeting Date</p>
-                            <div className="border-bottom pb-2">
-                              {formatDate(selectedTenderData.preBiddingDate)}
+                            <p className="text-start text-muted mb-1" style={{ fontSize: '0.75rem' }}>Pre-Bid Meeting Date</p>
+                            <div className="text-start border-bottom fw-bold pb-2" style={{ fontSize: '14px' }}>
+                              {`${formatDate(selectedTenderData.preBiddingDate)} - `}
                             </div>
                           </div>
                           <div className="col-12 mb-4">
-                            <p className="text-muted d-block text-uppercase fw-bold mb-1" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Site Inspection Date</p>
-                            <div className="border-bottom pb-2">
-                              {formatDate(selectedTenderData.siteInvestigationDate)}
+                            <p className="text-start text-muted mb-1" style={{ fontSize: '0.75rem' }}>Site Inspection Date</p>
+                            <div className="text-start border-bottom fw-bold pb-2" style={{ fontSize: '14px' }}>
+                              {`${formatDate(selectedTenderData.siteInvestigationDate)} - `}
                             </div>
                           </div>
                         </div>
@@ -497,9 +497,9 @@ function TenderDetails() {
                                         <div>
                                             <h6 className="mb-1 fw-bold text-dark text-start">{cont.entityName}</h6>
                                             <div className="d-flex align-items-center text-muted small">
-                                                <span className="me-2">{cont.contactName || cont.entityCode}</span>
+                                                <span className="me-2">{cont.entityCode}</span>
                                                 <span className="me-2">•</span>
-                                                <span>{cont.email || 'No email provided'}</span>
+                                                <span>{cont?.contractorContacts[0]?.email || 'No email provided'}</span>
                                             </div>
                                         </div>
                                     </div>
