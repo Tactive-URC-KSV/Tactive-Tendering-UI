@@ -1,14 +1,17 @@
-import { useState, useEffect, useRef, useMemo } from "react";
-import { ArrowLeft, ArrowRight, BoxesIcon, ChevronDown, ChevronRight, Folder, Info, Paperclip, Plus, User2, X, Download, Edit, Send, File, Building, Dot, Eye } from 'lucide-react';
+import { useState, useEffect, useRef } from "react";
+import { ArrowLeft, ArrowRight, BoxesIcon, ChevronDown, ChevronRight, Folder, Info, Paperclip, Plus, User2, X, Download, Edit, Send, File as FileIcon, Building, Dot, Eye } from 'lucide-react';
 import axios from "axios";
 import Flatpickr from "react-flatpickr";
 import { FaCalendarAlt, FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
 import Select from "react-select";
 import { useScope } from "../Context/ScopeContext";
 import { toast } from 'react-toastify';
-import { useNavigate } from "react-router-dom";
-function TFProcess({ projectId }) {
+import { useNavigate, useParams } from "react-router-dom";
+
+function TFProcess({ projectId: propProjectId }) {
     const navigate = useNavigate();
+    const { projectId: paramProjectId, tenderId } = useParams();
+    const projectId = propProjectId || paramProjectId;
     const datePickerRef = useRef();
     const [project, setProject] = useState('');
     const [currentTab, setCurrentTab] = useState('boq');
@@ -23,25 +26,30 @@ function TFProcess({ projectId }) {
     const [contractorGradeOptions, setContractorGradeOptions] = useState([]);
     const [offerSubmissionOptions, setOfferSubmissionOptions] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+
     const generateTenderNumber = () => {
         const year = new Date().getFullYear();
         const randomNum = Math.floor(Math.random() * 999999) + 1;
         const padded = String(randomNum).padStart(6, '0');
         return `TF-${year}-${padded}`;
     };
+
     const CustomMultiValueContainer = () => null;
     const CustomDropdownIndicator = () => null;
     const CustomIndicatorSeparator = () => null;
     const CustomClearIndicator = () => null;
+
     const handleRemoveScope = (idToRemove) => {
         setSelectedScopes(prevScopes => prevScopes.filter(id => id !== idToRemove));
     };
+
     const getCurrentDate = () => {
         const today = new Date();
         const offset = today.getTimezoneOffset();
         const localDate = new Date(today.getTime() - (offset * 60 * 1000));
         return localDate.toISOString().split("T")[0];
     }
+
     const [tenderDetail, setTenderDetail] = useState({
         tenderFloatingNo: generateTenderNumber(),
         tenderFloatingDate: getCurrentDate(),
@@ -61,12 +69,14 @@ function TFProcess({ projectId }) {
         boqIds: Array.from(selectedBoq),
         contractorIds: []
     });
+
     const [attachments, setAttachments] = useState({
         technical: { files: [], notes: '' },
         drawings: { files: [], notes: '' },
         commercial: { files: [], notes: '' },
         others: { files: [], notes: '' },
     });
+
     const scopes = useScope() || [];
     const scopeOptions = scopes.map(s => ({ value: s.id, label: s.scope }));
     const [selectedScopes, setSelectedScopes] = useState([]);
@@ -75,13 +85,16 @@ function TFProcess({ projectId }) {
     const [selectedType, setSelectedType] = useState(null);
     const [selectedGrade, setSelectedGrade] = useState(null);
     const [selectedContractor, setSelectedContractor] = useState([]);
+
     const booleanOptions = [
         { value: true, label: 'Yes' },
         { value: false, label: 'No' }
     ];
+
     const handleUnauthorized = () => {
         console.error("Unauthorized access, attempting to redirect to login...");
     }
+
     useEffect(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${projectId}`, {
             headers: {
@@ -92,16 +105,155 @@ function TFProcess({ projectId }) {
             if (res.status === 200) {
                 setProject(res.data);
                 fetchParentBoqData();
-                getLoggedInUser();
+                if (!tenderId) {
+                    getLoggedInUser();
+                }
                 fetchContractorDetails();
                 fetchFilterOptions();
             }
         }).catch(err => {
-            if (err.response.status === 401) {
+            if (err.response && err.response.status === 401) {
                 handleUnauthorized();
             }
         });
     }, [projectId]);
+
+    const getFileNameFromUrl = (url) => {
+        if (!url) return "file";
+        try {
+            return url.substring(url.lastIndexOf('/') + 1);
+        } catch (e) {
+            return "file";
+        }
+    };
+
+    const convertUrlToFile = async (url) => {
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const fileName = getFileNameFromUrl(url);
+            return new File([blob], fileName, { type: blob.type });
+        } catch (error) {
+            console.error("Error converting file:", error);
+            return null;
+        }
+    };
+
+    useEffect(() => {
+        if (tenderId) {
+            fetchTenderDetailsForEdit();
+        }
+    }, [tenderId]);
+
+    const fetchTenderDetailsForEdit = async () => {
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/tenderDetails/${tenderId}`, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+            });
+
+            if (res.status === 200) {
+                const data = res.data;
+
+                setTenderDetail(prev => ({
+                    ...prev,
+                    tenderFloatingNo: data.tenderNumber,
+                    tenderFloatingDate: data.floatedOn ? data.floatedOn.split('T')[0] : '',
+                    tenderName: data.tenderName,
+                    offerSubmissionMode: data.submissionMode || data.offerSubmissionMode,
+                    submissionLastDate: data.lastDate,
+                    bidOpeningDate: data.bidOpeningdate,
+                    contactPerson: data.contactName,
+                    contactEmail: data.contactEmail,
+                    contactMobile: data.contactNumber,
+                    preBidMeeting: data.preBidding,
+                    preBidMeetingDate: data.preBiddingDate,
+                    siteInvestigation: data.siteInvestigation,
+                    siteInvestigationDate: data.siteInvestigationDate,
+                }));
+
+                if (data.boq) {
+                    const boqIds = new Set(data.boq.map(b => b.id));
+                    setSelectedBoq(boqIds);
+                    const parentsToExpand = new Set();
+                    
+                    const collectParents = (boqItem) => {
+                        const parent = boqItem.parentBOQ || boqItem.parentBoq || boqItem.parentId;
+                        if (parent) {
+                            if (typeof parent === 'object' && parent.id) {
+                                parentsToExpand.add(parent.id);
+                                collectParents(parent);
+                            } else if (typeof parent !== 'object') {
+                                parentsToExpand.add(parent);
+                            }
+                        }
+                    };
+
+                    data.boq.forEach(b => {
+                        collectParents(b);
+                    });
+
+                    if (parentsToExpand.size > 0) {
+                        setExpandedParentIds(prev => {
+                            const newSet = new Set([...prev, ...parentsToExpand]);
+                            return newSet;
+                        });
+                        parentsToExpand.forEach(id => fetchChildrenBoq(id));
+                    }
+                }
+
+                if (data.scopeOfPackages) {
+                    const scopeIds = data.scopeOfPackages.map(s => s.id);
+                    setSelectedScopes(scopeIds);
+                }
+
+                if (data.contractor) {
+                    const contractorIds = data.contractor.map(c => c.id);
+                    setSelectedContractor(contractorIds);
+                }
+
+                fetchAttachmentDetailsForEdit();
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const fetchAttachmentDetailsForEdit = async () => {
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/tenderAttachments/${tenderId}`, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+            });
+
+            if (res.status === 200) {
+                const data = res.data;
+                const newAttachments = { ...attachments };
+
+                const mapFiles = async (urls, key, notes) => {
+                    if (urls && urls.length > 0) {
+                        const files = await Promise.all(urls.map(url => convertUrlToFile(url)));
+                        newAttachments[key] = {
+                            files: files.filter(f => f !== null),
+                            notes: notes || ''
+                        };
+                    } else {
+                        newAttachments[key] = { files: [], notes: notes || '' };
+                    }
+                };
+
+                await Promise.all([
+                    mapFiles(data.technicalTermsUrl, 'technical', data.technicalTerms),
+                    mapFiles(data.drawingUrl, 'drawings', data.drawings),
+                    mapFiles(data.commercialTermsUrl, 'commercial', data.commercialTerms),
+                    mapFiles(data.otherUrl, 'others', data.others)
+                ]);
+
+                setAttachments(newAttachments);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const getLoggedInUser = () => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/loggedin-user`, {
             headers: {
@@ -119,11 +271,12 @@ function TFProcess({ projectId }) {
                 }));
             }
         }).catch(err => {
-            if (err.response.status === 401) {
+            if (err.response && err.response.status === 401) {
                 handleUnauthorized();
             }
         })
     }
+
     const fetchFilterOptions = () => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/contractorType`, {
             headers: {
@@ -177,6 +330,7 @@ function TFProcess({ projectId }) {
             }
         });
     }
+
     const fetchParentBoqData = async () => {
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getParentBoq/${projectId}`, {
@@ -199,6 +353,7 @@ function TFProcess({ projectId }) {
             setParentBoq([]);
         }
     };
+
     const handleToggle = (parentId) => {
         setExpandedParentIds(prevSet => {
             const newSet = new Set(prevSet);
@@ -212,6 +367,7 @@ function TFProcess({ projectId }) {
             return newSet;
         });
     };
+
     const fetchChildrenBoq = async (parentId) => {
         const findNode = (tree) => {
             for (const node of tree) {
@@ -257,6 +413,7 @@ function TFProcess({ projectId }) {
             setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: [] }));
         }
     };
+
     const updateNodeInTree = (tree, nodeId, newProps) => {
         return tree.map(node => {
             if (node.id === nodeId) {
@@ -268,6 +425,7 @@ function TFProcess({ projectId }) {
             return node;
         });
     };
+
     const handleParentBoqTree = (data = parentBoq) => {
         if (Array.isArray(data) && data.length > 0) {
             const parentTree = new Map();
@@ -283,6 +441,7 @@ function TFProcess({ projectId }) {
             setParentTree(Array.from(parentTree.values()))
         }
     }
+
     const toggleSelection = (boqId) => {
         setSelectedBoq(prevSet => {
             const newSet = new Set(prevSet);
@@ -294,6 +453,7 @@ function TFProcess({ projectId }) {
             return newSet;
         });
     };
+
     const toggleAllChildrenSelection = (children, selectAll) => {
         if (!Array.isArray(children)) return;
 
@@ -311,6 +471,7 @@ function TFProcess({ projectId }) {
             return newSet;
         });
     };
+
     const getSelectedLeafBoqs = (tree) => {
         let result = [];
         if (!selectedBoq || selectedBoq.size === 0) return [];
@@ -327,6 +488,7 @@ function TFProcess({ projectId }) {
         traverse(tree);
         return result;
     };
+
     const toggleRemovalSelection = (boqId) => {
         setBoqForRemoval(prevSet => {
             const newSet = new Set(prevSet);
@@ -334,6 +496,7 @@ function TFProcess({ projectId }) {
             return newSet;
         });
     };
+
     const handleRemoveSelectedBoqs = () => {
         setSelectedBoq(prevSet => {
             const newSet = new Set(prevSet);
@@ -342,15 +505,11 @@ function TFProcess({ projectId }) {
         });
         setBoqForRemoval(new Set());
     };
+
     useEffect(() => {
         setTenderDetail(prev => ({ ...prev, scopeOfPackage: Array.isArray(selectedScopes) ? selectedScopes : [] }));
     }, [selectedScopes]);
 
-    useEffect(() => {
-        if (Array.isArray(tenderDetail?.scopeOfPackage) && tenderDetail.scopeOfPackage.length > 0) {
-            setSelectedScopes(tenderDetail.scopeOfPackage);
-        }
-    }, [tenderDetail?.scopeOfPackage]);
     const handleFloatTender = async () => {
         setIsLoading(true);
         const formData = new FormData();
@@ -362,6 +521,7 @@ function TFProcess({ projectId }) {
             return localDate.toISOString().split("T")[0];
         };
         const tenderInputDto = {
+            id: tenderId || null,
             tenderFloatingNo: tenderDetail.tenderFloatingNo,
             tenderFloatingDate: tenderDetail.tenderFloatingDate,
             tenderName: tenderDetail.tenderName,
@@ -411,7 +571,7 @@ function TFProcess({ projectId }) {
             });
 
             if (response.status === 200 || response.status === 201) {
-                toast.success("Tender Floated Successfully!");
+                toast.success(tenderId ? "Tender Updated Successfully!" : "Tender Floated Successfully!");
                 navigate(`/tendertracking/${projectId}`);
             }
         } catch (error) {
@@ -419,12 +579,13 @@ function TFProcess({ projectId }) {
             if (error.response?.status === 401) {
                 handleUnauthorized();
             } else {
-                toast.error("Failed to float tender. Please try again.");
+                toast.error(tenderId ? "Failed to update tender." : "Failed to float tender.");
             }
-        }finally{
+        } finally {
             setIsLoading(false);
         }
     };
+
     const fetchContractorDetails = () => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/contractor`, {
             headers: {
@@ -436,11 +597,12 @@ function TFProcess({ projectId }) {
                 setContractorInfo(res.data);
             }
         }).catch(err => {
-            if (err.response.status === 401) {
+            if (err.response && err.response.status === 401) {
                 handleUnauthorized();
             }
         })
     }
+
     const BOQNode = ({ boq, level = 0 }) => {
         const canExpand = boq.level === 1 || boq.level === 2;
         const isExpanded = expandedParentIds.has(boq.id);
@@ -567,6 +729,7 @@ function TFProcess({ projectId }) {
             </div>
         );
     }
+
     const boqSelection = () => {
         return (
             <>
@@ -613,6 +776,7 @@ function TFProcess({ projectId }) {
             </>
         );
     }
+
     const generalDetails = () => {
         const openCalendar = (id) => {
             const input = document.querySelector(`#${id}`);
@@ -658,7 +822,7 @@ function TFProcess({ projectId }) {
                             onChange={(selected) =>
                                 setTenderDetail({
                                     ...tenderDetail,
-                                    offerSubmissionMode: selected.value
+                                    offerSubmissionMode: selected?.value
                                 })
                             }
                             isClearable
@@ -815,6 +979,7 @@ function TFProcess({ projectId }) {
             </div>
         );
     }
+
     const packageDetails = (selectedBoqArray) => {
         const toggleNode = (id) => {
             setOpenNodes((prev) => {
@@ -1001,6 +1166,7 @@ function TFProcess({ projectId }) {
             </div>
         );
     };
+
     const contractorDetails = () => {
         const filteredContractors = contractorInfo.filter((con) => {
             const matchesSearch = searchTerm === '' ||
@@ -1100,6 +1266,7 @@ function TFProcess({ projectId }) {
             </div>
         );
     }
+
     const handleFileUpload = (e, key) => {
         const uploadedFiles = Array.from(e.target.files);
 
@@ -1111,6 +1278,7 @@ function TFProcess({ projectId }) {
             }
         }));
     };
+
     const handleNoteChange = (key, value) => {
         setAttachments(prev => ({
             ...prev,
@@ -1120,6 +1288,7 @@ function TFProcess({ projectId }) {
             }
         }));
     };
+
     const attachmentDetails = () => {
         const attachmentTypes = [
             { key: "technical", title: "Technical Specification", noteLabel: "Additional notes for technical specification" },
@@ -1234,6 +1403,7 @@ function TFProcess({ projectId }) {
             </div>
         );
     };
+
     const tenderDetails = () => {
         const selectedBoqArray = getSelectedLeafBoqs(parentTree);
         const renderTab = () => {
@@ -1253,7 +1423,7 @@ function TFProcess({ projectId }) {
 
         const handleNext = () => {
             if (tab === 'general') {
-                if(!tenderDetail.tenderName || !tenderDetail.bidOpeningDate || !tenderDetail.submissionLastDate){
+                if (!tenderDetail.tenderName || !tenderDetail.bidOpeningDate || !tenderDetail.submissionLastDate) {
                     toast.error("Enter all mandatory feilds")
                     return
                 }
@@ -1263,7 +1433,7 @@ function TFProcess({ projectId }) {
                 setTab('contractor');
             }
             else if (tab === 'contractor') {
-                if(selectedContractor.length === 0){
+                if (selectedContractor.length === 0) {
                     toast.error("Select atleast one contractor")
                     return
                 }
@@ -1316,17 +1486,7 @@ function TFProcess({ projectId }) {
             </>
         );
     }
-    // const AttachmentRow = ({ title, files, notes }) => (
-    //     <div className="d-flex justify-content-between py-2" style={{ borderBottom: '1px solid #eee' }}>
-    //         <div className="text-start">
-    //             <span className="fw-medium" style={{ color: '#333' }}>{title}</span>
-    //             <p className="text-muted mb-0" style={{ fontSize: '13px' }}>
-    //                 {files.length > 0 ? `${files.length} file(s) attached.` : 'No files attached.'}
-    //                 {notes && ` (Notes: ${notes})`}
-    //             </p>
-    //         </div>
-    //     </div>
-    // );
+
     const formatFileSize = (bytes) => {
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
@@ -1334,6 +1494,7 @@ function TFProcess({ projectId }) {
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     };
+
     const getFriendlyFileType = (mimeType) => {
         if (!mimeType) return 'File';
 
@@ -1354,6 +1515,7 @@ function TFProcess({ projectId }) {
         }
 
     }
+
     const reviewTender = () => {
         const boqArray = getSelectedLeafBoqs(parentTree);
         const contractorsList = contractorInfo.filter(con => selectedContractor.includes(con.contractor.id));
@@ -1393,7 +1555,7 @@ function TFProcess({ projectId }) {
             <div className="p-4">
                 <div className="p-4 bg-white rounded-3" style={{ border: '1px solid #e0e0e0', boxShadow: '0 2px 4px rgba(0,0,0,.05)' }}>
                     <div className="text-start ms-1 mt-2 mb-4">
-                        <h5 className="fw-bold mb-1" style={{ color: '#333' }}>Review & Float Tender</h5>
+                        <h5 className="fw-bold mb-1" style={{ color: '#333' }}>{tenderId ? 'Review & Update Tender' : 'Review & Float Tender'}</h5>
                         <p className="text-muted" style={{ fontSize: '14px' }}>Review tender details and float to selected contractors</p>
                     </div>
                     <div className="d-flex justify-content-between">
@@ -1679,7 +1841,7 @@ function TFProcess({ projectId }) {
                         <Edit size={18} color="#005197" /> <span className="ms-2">Edit Details</span>
                     </button>
                     <button className="btn btn-lg action-button" onClick={handleFloatTender} disabled={isLoading}>
-                        <Send size={20} color="#FFFFFF" /><span className="ms-2">Float Tender</span>
+                        <Send size={20} color="#FFFFFF" /><span className="ms-2">{tenderId ? 'Update Tender' : 'Float Tender'}</span>
                     </button>
                 </div>
             </div>

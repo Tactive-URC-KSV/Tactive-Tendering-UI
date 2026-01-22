@@ -19,10 +19,10 @@ function Login() {
     setLoading(true);
     e.preventDefault();
     try {
-      const param = new URLSearchParams();
-      param.append('username', username);
-      param.append('password', password);
-      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/login?${param.toString()}`);
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/login`, {
+        username: username,
+        password: password
+      });
       if (response.status === 200) {
         toast.success("Logged in successfully!", { duration: 3000 });
         sessionStorage.setItem('token', response.data.token);

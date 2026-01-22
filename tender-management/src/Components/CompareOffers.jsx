@@ -1,43 +1,106 @@
-import React, { useState } from "react";
-import { ArrowLeft, Info, Scale, Square, CheckSquare , X} from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom"; 
+import React, { useState, useEffect } from "react";
+import { ArrowLeft, Info, Scale, Square, CheckSquare, X, CreditCard } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
 
 function CompareOffers() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { projectId, tenderId, offerId } = useParams();
 
-  const passedId = location.state?.defaultSelectedId;
+  const [tenderData, setTenderData] = useState(null);
+  const [offersList, setOffersList] = useState([]);
+  const [selectedSuppliers, setSelectedSuppliers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const tenderOffers = [
-    {id: 1, supplierName: "Build Tech Solutions", amount: 1250000, status: "SUBMITTED", date: "December 25, 2025",},
-    {id: 2, supplierName: "Electro Tech Inc", amount: 1400000,status: "APPROVED", date: "December 29, 2025",},
-    {id: 3,supplierName: "Apex Constructions", amount: null, status: "PENDING",date: "December 30, 2025",},
-  ];
+  const COL_WIDTHS = {
+    col1: "250px", 
+    col2: "100px", 
+    col3: "150px", 
+  };
 
-  const nonPendingOffers = tenderOffers.filter(
-    (offer) => offer.status !== "PENDING"
-  );
-
-  const [selectedSuppliers, setSelectedSuppliers] = useState(() => {
-    if (passedId) {
-      const isValid = nonPendingOffers.some((o) => o.id === passedId);
-      if (isValid) return [passedId];
+  useEffect(() => {
+    if (offerId) {
+      setSelectedSuppliers([offerId]);
     }
-    return nonPendingOffers.length > 0 ? [nonPendingOffers[0].id] : [];
-  });
+  }, [offerId]);
 
- const toggleSupplier = (id) => {
-  if (id === passedId) return;
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = sessionStorage.getItem("token");
+        const headers = {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        };
 
-  setSelectedSuppliers((prev) =>
-    prev.includes(id)
-      ? prev.filter((item) => item !== id)
-      : [...prev, id]
-  );
-};
+        const tenderRes = await axios.get(
+          `${import.meta.env.VITE_API_BASE_URL}/tenderDetails/${tenderId}`,
+          { headers }
+        );
+
+        if (tenderRes.status === 200) {
+          setTenderData(tenderRes.data);
+        }
+
+        const offersRes = await axios.get(
+          `${import.meta.env.VITE_API_BASE_URL}/tender-offers/${tenderId}`,
+          { headers }
+        );
+
+        if (offersRes.status === 200) {
+          setOffersList(offersRes.data);
+        }
+      } catch (err) {
+        console.error("Error fetching comparison data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (tenderId) {
+      fetchData();
+    }
+  }, [tenderId]);
+
+  const toggleSupplier = (id) => {
+    if (id === offerId) return;
+
+    setSelectedSuppliers((prev) =>
+      prev.includes(id)
+        ? prev.filter((item) => item !== id)
+        : [...prev, id]
+    );
+  };
+
+  const calculateOfferTotal = (offer) => {
+    if (!offer?.offerQuotations) return 0;
+    return offer.offerQuotations.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    return new Date(dateString).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="d-flex align-items-center justify-content-center vh-100">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const selectedOffersData = offersList.filter(offer => selectedSuppliers.includes(offer.id));
+  const boqItems = tenderData?.boq || [];
 
   return (
-    <div className="container-fluid p-4">
+    <div className="container-fluid p-4" style={{ maxWidth: "100vw", overflowX: "hidden" }}>
       <div className="col-12 mx-auto">
         <div className="d-flex align-items-start gap-3 p-4 mt-3 flex-shrink-0">
           <ArrowLeft
@@ -54,47 +117,56 @@ function CompareOffers() {
           </div>
         </div>
 
-       <div className="card mx-4 mt-3 rounded-3" style={{ border: "1px solid #0051973D" }}>
-        <div className="card-body">
-        <div className="d-flex align-items-center mb-4 text-start">
-         <Info size={20} className="text-primary me-2" />
-         <h6 className="fw-bold mb-0">Offer Details</h6>
-        </div>
+        <div className="card mx-4 mt-3 rounded-3" style={{ border: "1px solid #0051973D" }}>
+          <div className="card-body">
+            <div className="d-flex align-items-center mb-4 text-start">
+              <Info size={20} className="text-primary me-2" />
+              <h6 className="fw-bold mb-0">Offer Details</h6>
+            </div>
 
-       <div className="row mb-4 ps-5 text-start">
-         <div className="col-md-3">
-           <div className="text-muted">Tender Number</div>
-           <div className="fw-semibold">-</div>
-         </div>
-         <div className="col-md-3">
-           <div className="text-muted">Tender Name</div>
-           <div className="fw-semibold">-</div>
-         </div>
-         <div className="col-md-3">
-           <div className="text-muted">Comparative Number</div>
-           <div className="fw-semibold">-</div>
-         </div>
-         <div className="col-md-3">
-           <div className="text-muted">Comparative Date</div>
-           <div className="fw-semibold">-</div>
-         </div>
-       </div>
+            <div className="row mb-4 ps-5 text-start">
+              <div className="col-md-3">
+                <div className="text-muted">Tender Number</div>
+                <div className="fw-semibold">{tenderData?.tenderNumber || "-"}</div>
+              </div>
+              <div className="col-md-3">
+                <div className="text-muted">Tender Name</div>
+                <div className="fw-semibold">{tenderData?.tenderName || "-"}</div>
+              </div>
+              <div className="col-md-3">
+                <div className="text-muted">Submission Last Date</div>
+                <div className="fw-semibold">{formatDate(tenderData?.lastDate)}</div>
+              </div>
+              <div className="col-md-3">
+                <div className="text-muted">Floated Date</div>
+                <div className="fw-semibold">{formatDate(tenderData?.floatedOn)}</div>
+              </div>
+            </div>
 
-       <div className="ps-5 text-start">
-         <div className="text-muted mb-3" style={{ fontSize: "16px" }}>Committee Members</div>
-         <div className="d-flex flex-wrap gap-3">
-           {["Jane Doe", "Henderson", "Robert Brown", "Darlene Robertson"].map((member, index) => (
-             <div
-              key={index}
-              className="px-4 py-2 rounded-pill"
-              style={{backgroundColor: "#EBF3FF", color: "#2563EB",    fontWeight: "500", fontSize: "14px", border: "none" }}>
-              {member}
-             </div>
-           ))}
-         </div>
+            <div className="ps-5 text-start">
+              <div className="text-muted mb-3" style={{ fontSize: "16px" }}>Scope of Packages</div>
+              <div className="d-flex flex-wrap gap-2">
+                {tenderData?.scopeOfPackages && tenderData.scopeOfPackages.length > 0 ? (
+                  tenderData.scopeOfPackages.map((pkg, index) => (
+                    <span
+                      key={index}
+                      className="px-3 py-2 rounded-pill fw-semibold"
+                      style={{
+                        backgroundColor: "#EAF2FE",
+                        color: "#005197",
+                        fontSize: "14px"
+                      }}
+                    >
+                      {pkg.scope}
+                    </span>
+                  ))
+                ) : (
+                  <span className="fw-semibold">-</span>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-        </div>
-       </div>
 
         <div className="card mx-4 mt-4 rounded-3" style={{ border: "1px solid #0051973D" }}>
           <div className="card-body p-4">
@@ -104,12 +176,12 @@ function CompareOffers() {
             </div>
 
             <div className="row ps-5 g-3">
-              {nonPendingOffers.map((offer) => (
+              {offersList.map((offer) => (
                 <div key={offer.id} className="col-md-5">
                   <div
                     className="p-3 rounded-3 d-flex align-items-center"
                     style={{
-                      cursor: offer.id === passedId ? "default" : "pointer",
+                      cursor: offer.id === offerId ? "default" : "pointer",
                       border: selectedSuppliers.includes(offer.id)
                         ? "1.5px solid #005197"
                         : "1.5px solid #2563EB66",
@@ -126,11 +198,11 @@ function CompareOffers() {
                     </div>
                     <div className="flex-grow-1 text-start">
                       <div className="d-flex justify-content-between">
-                        <span className="fw-bold">{offer.supplierName}</span>
-                        <span>₹ {offer.amount?.toLocaleString()}</span>
+                        <span className="fw-bold">{offer.contractor?.entityName}</span>
+                        <span>₹ {calculateOfferTotal(offer).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                       </div>
                       <div className="text-muted" style={{ fontSize: "12px" }}>
-                        Offer Received : {offer.date}
+                        Offer Received : {formatDate(offer.submittedOn)}
                       </div>
                     </div>
                   </div>
@@ -140,111 +212,219 @@ function CompareOffers() {
           </div>
         </div>
 
-         {selectedSuppliers.length > 0 && (
-          <div className="card mx-4 mt-4 rounded-3 overflow-hidden shadow-sm" style={{ border: "1px solid #0051973D" }}>
-            <div className="card-body p-0">
-              <div className="p-4 text-start">
-                <div className="d-flex align-items-center gap-2 mb-1">
-                  <Scale size={20} className="text-primary" />
-                  <h6 className="fw-bold mb-0 text-dark">Offer Comparison</h6>
+        {selectedSuppliers.length > 0 && (
+          <>
+            <div className="card mx-4 mt-4 rounded-3 overflow-hidden shadow-sm" style={{ border: "1px solid #0051973D" }}>
+              <div className="card-body p-0">
+                <div className="p-4 text-start">
+                  <div className="d-flex align-items-center gap-2 mb-1">
+                    <Scale size={20} className="text-primary" />
+                    <h6 className="fw-bold mb-0 text-dark">Offer Comparison</h6>
+                  </div>
+                  <div className="text-muted small ms-4">Comparing offers from selected contractors for each BOQ item...</div>
                 </div>
-                <div className="text-muted small ms-4">Comparing offers from selected contractors for each BOQ item...</div>
-              </div>
 
-              <div className="table-responsive" 
-                style={{  overflowX: "auto", scrollbarWidth: "none",  msOverflowStyle: "none" }}>
-                <style>
-                  {`
-                  .table-responsive::-webkit-scrollbar {
-                  display: none;
-                  }
-                  `}
-                </style>
+                <div className="table-responsive"
+                  style={{ overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}>
+                  <style>
+                    {`
+                    .table-responsive::-webkit-scrollbar {
+                      display: none;
+                    }
+                    .sticky-col {
+                      position: sticky !important;
+                      z-index: 10;
+                    }
+                    `}
+                  </style>
 
-                <table className="table table-borderless align-middle mb-0" style={{ minWidth: "max-content" }}>
-                  <thead>
-                    <tr className="text-center">
-                      <th className="ps-4 py-4 text-start border-end" style={{ width: "200px", backgroundColor: "#EFF6FF" }}>BOQ Details</th>
-                      <th className="py-4" style={{ backgroundColor: "#EFF6FF" }}>Quantity</th>
-                      <th className="py-4 border-end" style={{ backgroundColor: "#EFF6FF" }}>Internal Estimate Rate</th>
-              
-                      {tenderOffers
-                        .filter((o) => selectedSuppliers.includes(o.id))
-                        .map((supplier) => (
-                        <th key={supplier.id} className="p-0 border-end" style={{ minWidth: "500px", backgroundColor: "#EFF6FF" }}>
-                          <div className="d-flex justify-content-between align-items-center px-3 py-2 text-primary text-start" style={{ backgroundColor: "#EFF6FF" }}>
-                            <span className="fw-bold small">{supplier.supplierName}</span>
-                            {supplier.id !== passedId && (
-                            <button   className="btn btn-sm p-0 d-flex align-items-center justify-content-center" 
-                              onClick={() => toggleSupplier(supplier.id)}
-                              style={{ border: 'none', background: 'none' }} >
-                              <X size={16} className="text-danger" />
-                            </button>
-                            )}
-                          </div>
-                          <div className="d-flex text-muted fw-semibold" style={{ fontSize: "14px", backgroundColor: "#EFF6FF" }}>
-                            <div className="flex-fill py-2 text-center" style={{ width: "25%" }}>Offer Qty</div>
-                            <div className="flex-fill py-2 text-center" style={{ width: "25%" }}>Rate</div>
-                            <div className="flex-fill py-2 text-center" style={{ width: "25%" }}>Amount</div>
-                            <div className="flex-fill py-2 text-center" style={{ width: "25%" }}>Payment Terms</div>
-                          </div>
+                  <table className="table table-borderless align-middle mb-0" style={{ minWidth: "max-content" }}>
+                    <thead>
+                      <tr className="text-center">
+                        <th className="ps-4 py-4 text-start border-end sticky-col"
+                          style={{
+                            left: 0,
+                            width: COL_WIDTHS.col1,
+                            minWidth: COL_WIDTHS.col1,
+                            backgroundColor: "#EFF6FF"
+                          }}>
+                          BOQ Details
                         </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                   {[
-                    { id: 'a', desc: 'Upto 1.5m depth', qty: '3922.49364', est: '6451.63', r1: '5,500.00', r2: '83.60', amt1: '825,000.00' },
-                    { id: 'b', desc: 'Upto 1.5m depth', qty: '2941.87023', est: '3800.00', r1: '4,800.00', r2: '5,500.00', amt1: '384,000.00' },
-                    { id: 'c', desc: 'Upto 1.5m depth', qty: '588.443895', est: '83.60', r1: '83.60', r2: '4,800.00', amt1: '41,800.00' },
-                    { id: 'd', desc: 'Upto 1.5m depth', qty: '1200', est: '1200', r1: '1200', r2: '1200', amt1: '1200' },
-                    ].map((row, idx) => (
-                    <tr key={idx} className="text-center">
-                      <td className="ps-4 text-start border-end">
-                        <div className="fw-bold text-dark">{row.id}</div>
-                        <div className="text-muted small">{row.desc}</div>
-                      </td>
-                      <td className="text-dark">{row.qty}</td>
-                      <td className="border-end text-dark">{row.est}</td>
+                        <th className="py-4 sticky-col border-end"
+                          style={{
+                            left: COL_WIDTHS.col1,
+                            width: COL_WIDTHS.col2,
+                            minWidth: COL_WIDTHS.col2,
+                            backgroundColor: "#EFF6FF"
+                          }}>
+                          Quantity
+                        </th>
+                        <th className="py-4 border-end sticky-col"
+                          style={{
+                            left: `calc(${COL_WIDTHS.col1} + ${COL_WIDTHS.col2})`,
+                            width: COL_WIDTHS.col3,
+                            minWidth: COL_WIDTHS.col3,
+                            backgroundColor: "#EFF6FF"
+                          }}>
+                          Internal Estimate Rate
+                        </th>
 
-                      {selectedSuppliers.map((sId) => (
-                      <td key={sId} className="p-0 border-end" style={{ backgroundColor: "#EFF6FF" }}>
-                        <div className="d-flex py-3 text-dark">
-                          <div className="flex-fill text-center" style={{ width: "25%" }}>{row.qty}</div>
-                          <div className="flex-fill  text-center" style={{  width: "25%", 
-                             color: (sId === 1 && idx === 0) ? '#10B981' : 
-                              (sId === 1 && idx === 1) ? '#EA580C' : 
-                              (sId === 2 && idx === 2) ? '#10B981' : 'inherit'
-                              }}>
-                           {sId === 1 ? row.r1 : row.r2}
-                          </div>
-                          <div className="flex-fill text-center" style={{ width: "25%" }}>{row.amt1}</div>
-                          <div className="flex-fill text-muted text-center" style={{ width: "25%" }}>Net 45</div>
-                        </div>
-                      </td>
+                        {selectedOffersData.map((supplier) => (
+                          <th key={supplier.id} className="p-0 border-end" style={{ minWidth: "400px", backgroundColor: "#EFF6FF" }}>
+                            <div className="d-flex justify-content-between align-items-center px-3 py-2 text-primary text-start" style={{ backgroundColor: "#EFF6FF" }}>
+                              <span className="fw-bold small">{supplier.contractor?.entityName}</span>
+                              {supplier.id !== offerId && (
+                                <button className="btn btn-sm p-0 d-flex align-items-center justify-content-center"
+                                  onClick={() => toggleSupplier(supplier.id)}
+                                  style={{ border: 'none', background: 'none' }} >
+                                  <X size={16} className="text-danger" />
+                                </button>
+                              )}
+                            </div>
+                            <div className="d-flex text-muted fw-semibold" style={{ fontSize: "14px", backgroundColor: "#EFF6FF" }}>
+                              <div className="flex-fill py-2 text-center" style={{ width: "33.33%" }}>Offer Qty</div>
+                              <div className="flex-fill py-2 text-center" style={{ width: "33.33%" }}>Rate</div>
+                              <div className="flex-fill py-2 text-center" style={{ width: "33.33%" }}>Amount</div>
+                            </div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {boqItems.map((boq, idx) => (
+                        <tr key={boq.id || idx} className="text-center">
+                          <td className="ps-4 text-start border-end sticky-col"
+                            style={{
+                              left: 0,
+                              backgroundColor: "#FFFFFF"
+                            }}>
+                            <div className="fw-bold text-dark">{boq.boqCode}</div>
+                            <div className="text-muted small" title={boq.boqName}>
+                              {boq.boqName?.length > 30 ? boq.boqName.substring(0, 30) + "..." : boq.boqName}
+                            </div>
+                          </td>
+                          <td className="text-dark sticky-col border-end"
+                            style={{
+                              left: COL_WIDTHS.col1,
+                              backgroundColor: "#FFFFFF"
+                            }}>
+                            {boq.quantity}
+                          </td>
+                          <td className="border-end text-dark sticky-col"
+                            style={{
+                              left: `calc(${COL_WIDTHS.col1} + ${COL_WIDTHS.col2})`,
+                              backgroundColor: "#FFFFFF"
+                            }}>
+                            {(boq.totalRate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </td>
+
+                          {selectedOffersData.map((supplier) => {
+                            const quotation = supplier.offerQuotations.find(q => q.boq?.id === boq.id);
+                            const isLowest = selectedOffersData.every(s => {
+                              const otherQuote = s.offerQuotations.find(q => q.boq?.id === boq.id);
+                              return !otherQuote || (quotation && quotation.rate <= otherQuote.rate);
+                            });
+
+                            return (
+                              <td key={supplier.id} className="p-0 border-end" style={{ backgroundColor: "#EFF6FF" }}>
+                                <div className="d-flex py-3 text-dark">
+                                  <div className="flex-fill text-center" style={{ width: "33.33%" }}>{quotation?.quantity || "-"}</div>
+                                  <div className="flex-fill text-center" style={{
+                                    width: "33.33%",
+                                    color: isLowest && quotation ? '#10B981' : 'inherit',
+                                    fontWeight: isLowest && quotation ? 'bold' : 'normal'
+                                  }}>
+                                    {quotation ? quotation.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : "-"}
+                                  </div>
+                                  <div className="flex-fill text-center" style={{ width: "33.33%" }}>
+                                    {quotation ? quotation.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : "-"}
+                                  </div>
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
                       ))}
-                    </tr>
-                    ))}
-            
-                    <tr>
-                      <td colSpan={2} className="ps-4 py-3 fw-bold text-start text-dark" style={{ backgroundColor: "#EFF6FF" }}>Total Amount</td>
-                      <td className="text-center fw-bold text-primary border-end" style={{ fontSize: "15px", backgroundColor: "#EFF6FF" }}>67,500.00</td>
-                        {selectedSuppliers.map((sId) => (
-                        <td key={sId} className="p-0 border-end" style={{ backgroundColor: "#EFF6FF" }}>
-                        <div className="d-flex py-3 fw-bold justify-content-center">
-                          <div style={{ color: sId === 1 ? "#10B981" : "#EA580C", fontSize: "18px"}}>
-                            {sId === 1 ? "1,250,800.00" : "1,400,000.00"}
-                          </div>
-                        </div>
-                      </td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
+
+                      <tr>
+                        <td className="ps-4 py-3 fw-bold text-start text-dark sticky-col border-end"
+                          style={{
+                            left: 0,
+                            position: 'sticky',
+                            zIndex: 10,
+                            backgroundColor: "#EFF6FF",
+                            width: `calc(${COL_WIDTHS.col1} + ${COL_WIDTHS.col2})`,
+                            maxWidth: `calc(${COL_WIDTHS.col1} + ${COL_WIDTHS.col2})`
+                          }}
+                          colSpan={2}>
+                          Total Amount
+                        </td>
+                        <td className="text-center fw-bold text-primary border-end sticky-col"
+                          style={{
+                            left: `calc(${COL_WIDTHS.col1} + ${COL_WIDTHS.col2})`,
+                            backgroundColor: "#EFF6FF",
+                            fontSize: "15px"
+                          }}>
+                          {(tenderData?.boq?.reduce((sum, b) => sum + (b.totalAmount || 0), 0) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </td>
+                        {selectedOffersData.map((supplier) => {
+                          const total = calculateOfferTotal(supplier);
+                          const isLowestTotal = selectedOffersData.every(s => calculateOfferTotal(s) >= total);
+
+                          return (
+                            <td key={supplier.id} className="p-0 border-end" style={{ backgroundColor: "#EFF6FF" }}>
+                              <div className="d-flex py-3 fw-bold justify-content-center">
+                                <div style={{ color: isLowestTotal ? "#10B981" : "#EA580C", fontSize: "18px" }}>
+                                  {total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </div>
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
-          </div>
-          )}
+
+            <div className="card mx-4 mt-4 mb-5 rounded-3" style={{ border: "1px solid #0051973D" }}>
+              <div className="card-body p-4">
+                <div className="d-flex align-items-center mb-4 text-start">
+                  <CreditCard size={20} className="text-primary me-2" />
+                  <h6 className="fw-bold mb-0">Payment Terms Comparison</h6>
+                </div>
+
+                <div className="table-responsive" style={{ overflowX: "auto" }}>
+                  <div className="d-flex" style={{ width: "max-content" }}>
+                    {selectedOffersData.map((supplier, index) => (
+                      <div key={supplier.id} className={`p-3 ${index !== selectedOffersData.length - 1 ? 'border-end' : ''}`}
+                        style={{ width: "400px", minWidth: "400px" }}>
+                        <div className="fw-bold text-primary mb-3 text-center p-2 rounded" style={{ backgroundColor: '#EFF6FF' }}>
+                          {supplier.contractor?.entityName}
+                        </div>
+                        <div className="text-start">
+                          {supplier.paymentTerms && supplier.paymentTerms.length > 0 ? (
+                            <ul className="list-unstyled">
+                              {supplier.paymentTerms.map((term, i) => (
+                                <li key={i} className="mb-3 d-flex align-items-start gap-2 small text-dark">
+                                  <span className="text-primary fw-bold mt-1">•</span>
+                                  <span>{term}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-muted small text-center fst-italic py-4">No payment terms listed.</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

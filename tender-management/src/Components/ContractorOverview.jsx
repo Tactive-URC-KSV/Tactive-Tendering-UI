@@ -301,7 +301,7 @@ const ManualEntryForm = ({
                 </div>
                 <div className="row">
                     <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Phone No </label>
+                        <label className="projectform text-start d-block">Phone No <span className="text-danger">*</span> </label>
                         <input type="text" name="contactPhoneNo" className="form-input w-100" placeholder="Enter phone no" value={formData.contactPhoneNo}
                             onChange={(e) => {
                                 setFormData({ ...formData, contactPhoneNo: e.target.value });
@@ -1152,7 +1152,7 @@ function ContractorOverview() {
         const requiredFields = [
             'entityCode', 'entityName', 'effectiveDate', 'entityType',
             'addressType', 'country', 'addresscity', 'zipCode',
-            'contactName', 'contactPosition', 'contactEmailID',
+            'contactName', 'contactPosition', 'contactEmailID', 'contactPhoneNo',
             'taxType', 'territoryType', 'territory', 'taxRegNo',
             'taxRegDate', 'taxCity',
             'accountHolderName', 'accountNo', 'bankName', 'branchName',
@@ -1252,7 +1252,7 @@ function ContractorOverview() {
             console.error("Error submitting form", error);
             toast.error("Failed to submit contractor details.");
         }
-        finally{
+        finally {
             setIsLoadnig(false);
         }
     };
@@ -1382,7 +1382,7 @@ function ContractorOverview() {
                                                 formData={formData}
                                                 setFormData={setFormData}
                                                 handleSendInvitation={handleSendInvitation}
-                                                isLoading = {isLoading}
+                                                isLoading={isLoading}
                                             />
                                         </div>
                                     </>
@@ -1427,7 +1427,7 @@ function ContractorOverview() {
                             taxTypeOptions={taxTypeOptions}
                             taxCityOptions={taxCityOptions}
                             additionalInfoTypeOptions={additionalInfoTypeOptions}
-                            isLoading = {isLoading}
+                            isLoading={isLoading}
                         />
                     )}
                 </div>

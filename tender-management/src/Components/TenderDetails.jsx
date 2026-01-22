@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { 
   ArrowLeft, Plus, Paperclip, Users, Edit3, Package, Folder, FolderOpen, 
@@ -14,9 +14,11 @@ function TenderDetails() {
   const tabs = ["General Details", "Package Details", "Contractor Details", "Attachments"];
   const [projectCode, setProjectCode] = useState("");
   const { projectId } = useParams();
+  const navigate = useNavigate();
   const [projectName, setProjectName] = useState("");
   const [expandedNodes, setExpandedNodes] = useState({});
   const [attachmentData, setAttachmentData] = useState(null);
+  const [editHistory, setEditHistory] = useState([]);
 
   useEffect(() => {
     const fetchProjectName = async () => {
@@ -87,9 +89,29 @@ function TenderDetails() {
     }
   }
 
+  const fetchEditHistory = async (tenderId) => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/editHistory/tender/${tenderId}`, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (res.status === 200) {
+        setEditHistory(res.data);
+      } else {
+        setEditHistory([]);
+      }
+    } catch (err) {
+      console.error("Error fetching edit history:", err);
+      setEditHistory([]);
+    }
+  }
+
   useEffect(() => {
     if (selectedTenderId) {
       fetchAttachments(selectedTenderId);
+      fetchEditHistory(selectedTenderId);
     }
   }, [selectedTenderId]);
 
@@ -301,7 +323,11 @@ function TenderDetails() {
             Tender Details – {projectName} ({projectCode})
           </h5>
         </div>
-        <button className="btn text-white fw-semibold d-flex align-items-center gap-2" style={{ backgroundColor: "#16a34a" }}>
+        <button 
+          className="btn text-white fw-semibold d-flex align-items-center gap-2" 
+          style={{ backgroundColor: "#16a34a" }}
+          onClick={() => navigate(`/tenderfloating/${projectId}`)}
+        >
           <Plus size={16} /> Float New Tender
         </button>
       </div>
@@ -358,10 +384,18 @@ function TenderDetails() {
               </div>
             </div>
             <div className="d-flex gap-2">
-              <button className="btn text-white d-flex align-items-center gap-2" style={{ backgroundColor: "#005197" }}>
+              <button 
+                className="btn text-white d-flex align-items-center gap-2" 
+                style={{ backgroundColor: "#005197" }}
+                onClick={() => navigate(`/receivingoffers/${projectId}/${selectedTenderId}`)}
+              >
                 <Eye size={16} /> View Offers
               </button>
-              <button className="btn text-white d-flex align-items-center gap-2" style={{ backgroundColor: "#005197" }} >
+              <button 
+                className="btn text-white d-flex align-items-center gap-2" 
+                style={{ backgroundColor: "#005197" }}
+                onClick={() => navigate(`/tenderfloating/${projectId}/${selectedTenderId}`)}
+              >
                 <Edit3 size={16} /> Edit Tender
               </button>
             </div>
@@ -582,6 +616,20 @@ function TenderDetails() {
             <div className="col-md-3 py-3 pe-0 ps-1 h-100 overflow-hidden">
               <div className="bg-white border rounded-3 h-100 p-3 overflow-auto">
                 <h6 className="fw-bold mb-3 p">Edit History</h6>
+                {editHistory.length > 0 ? (
+                  <div className="d-flex flex-column gap-3">
+                    {editHistory.map((item, index) => (
+                      <div key={index} className="mb-3 border-bottom pb-2 text-start">
+                        <p className="mb-0 text-dark" style={{fontSize: '13px'}}>
+                          <span className="fw-bold">{item.updatedBy}</span> updated the <span className="fw-bold">{item.field}</span> as <span className="text-success">{item.newValue || "blank"}</span> from <span className="text-danger">{item.oldValue || "blank"}</span>
+                        </p>
+                        <small className="text-muted" style={{fontSize: '11px'}}>{item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}</small>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-muted small mt-5">No edit history available</div>
+                )}
               </div>
             </div>
           </div>

@@ -12,21 +12,21 @@ function AddResource() {
     const { boqId, projectId, tenderEstimationId } = useParams();
     const darkBlue = '#005197';
     const vibrantBlue = '#007BFF';
-    
+
     const [boq, setBoq] = useState(null);
     const [resourceTypes, setResourceTypes] = useState([]);
     const [resources, setResources] = useState([]);
     const [resourceNature, setResourceNature] = useState([]);
     const [quantityType, setQuantityType] = useState([]);
     const [currency, setCurrency] = useState([]);
-    
+
     const [selectedResourceType, setSelectedResourceType] = useState(null);
     const [selectedResource, setSelectedResource] = useState(null);
     const [selectedUom, setSelectedUom] = useState(null);
     const [selectedNature, setSelectedNature] = useState(null);
     const [selectedQuantityType, setSelectedQuantityType] = useState(null);
     const [selectedCurrency, setSelectedCurrency] = useState(null);
-    
+
     const [expandedSections, setExpandedSections] = useState({
         'Wastage & Net Quantity': false,
         'Pricing & Currency': false,
@@ -84,7 +84,7 @@ function AddResource() {
     // **FIXED: Fetch TenderEstimation with BOQ-specific cost details**
     const fetchTenderEstimationResource = useCallback(() => {
         if (!tenderEstimationId || !boqId) return;
-        
+
         axios.get(
             `${import.meta.env.VITE_API_BASE_URL}/tender/estimatedResource/${tenderEstimationId}?boqId=${boqId}`,
             {
@@ -97,7 +97,7 @@ function AddResource() {
             if (res.status === 200) {
                 const tender = res.data.tenderEstimation;
                 const cost = res.data.costDetails; // **FIX: Now BOQ-specific**
-                
+
                 const resource = tender.resource;
 
                 setResourceData(prev => ({
@@ -176,7 +176,7 @@ function AddResource() {
             const shippingPrice = parseFloat(data.shippingPrice) || 0;
             const exchangeRate = parseFloat(data.exchangeRate) || 1;
             const boqQuantity = parseFloat(boq?.quantity) || 0;
-            
+
             const calculatedQuantity = boqQuantity * coEfficient;
             const wasteQuantity = calculatedQuantity * (wastePercentage / 100);
             const netQuantity = calculatedQuantity + wasteQuantity;
@@ -202,7 +202,7 @@ function AddResource() {
 
     const handleChange = useCallback((e) => {
         const { name, value, type, checked } = e.target;
-        const newValue = type === 'number' || name === 'coEfficient' || 
+        const newValue = type === 'number' || name === 'coEfficient' ||
             name.includes('Rate') || name.includes('Price') || name.includes('Percentage')
             ? parseFloat(value) || 0
             : type === 'checkbox'
@@ -274,11 +274,11 @@ function AddResource() {
     }, [handleUnauthorized]);
 
     // **FIXED: Proper useEffect dependencies**
-    useEffect(() => { 
-        fetchResourceTypes(); 
-        fetchResourceNature(); 
-        fetchQuantityType(); 
-        fetchCurrency(); 
+    useEffect(() => {
+        fetchResourceTypes();
+        fetchResourceNature();
+        fetchQuantityType();
+        fetchCurrency();
     }, [fetchResourceTypes, fetchResourceNature, fetchQuantityType, fetchCurrency]);
 
     useEffect(() => {
@@ -288,24 +288,24 @@ function AddResource() {
     }, [boq, handleCalculations]);
 
     // Memoized options
-    const resourceTypeOptions = useMemo(() => 
-        resourceTypes.map(item => ({ value: item.id, label: item.resourceTypeName })), 
+    const resourceTypeOptions = useMemo(() =>
+        resourceTypes.map(item => ({ value: item.id, label: item.resourceTypeName })),
         [resourceTypes]
     );
-    const resourceOption = useMemo(() => 
-        resources.map(item => ({ value: item.id, label: `${item.resourceCode}-${item.resourceName}` })), 
+    const resourceOption = useMemo(() =>
+        resources.map(item => ({ value: item.id, label: `${item.resourceCode}-${item.resourceName}` })),
         [resources]
     );
-    const resourceNatureOption = useMemo(() => 
-        resourceNature.map(item => ({ value: item.id, label: item.nature })), 
+    const resourceNatureOption = useMemo(() =>
+        resourceNature.map(item => ({ value: item.id, label: item.nature })),
         [resourceNature]
     );
-    const quantityTypeOption = useMemo(() => 
-        quantityType.map(item => ({ value: item.code, label: item.label })), 
+    const quantityTypeOption = useMemo(() =>
+        quantityType.map(item => ({ value: item.code, label: item.label })),
         [quantityType]
     );
-    const currencyOptions = useMemo(() => 
-        currency.map(item => ({ value: item.id, label: item.currencyName })), 
+    const currencyOptions = useMemo(() =>
+        currency.map(item => ({ value: item.id, label: item.currencyName })),
         [currency]
     );
 
@@ -313,6 +313,21 @@ function AddResource() {
 
     // **FIXED: Updated API endpoint and payload**
     const handleAddResource = useCallback(() => {
+        const requiredFields = [];
+        if (!selectedResourceType?.value) requiredFields.push("Resource Type");
+        if (!selectedNature?.value) requiredFields.push("Nature");
+        if (!selectedResource?.value) requiredFields.push("Resource Name");
+        if (!resourceData.rate || resourceData.rate === 0) requiredFields.push("Rate");
+        if (!selectedUom?.value) requiredFields.push("UOM");
+        if (!selectedQuantityType?.value) requiredFields.push("Quantity Type");
+        if (!resourceData.coEfficient) requiredFields.push("Coefficient");
+        if (!resourceData.calculatedQuantity) requiredFields.push("Calculated Quantity");
+
+        if (requiredFields.length > 0) {
+            toast.error(`Please fill in: ${requiredFields.join(", ")}`);
+            return;
+        }
+
         const payload = {
             ...resourceData,
             resourceTypeId: selectedResourceType?.value || resourceData.resourceTypeId,
@@ -323,12 +338,12 @@ function AddResource() {
             currencyId: selectedCurrency?.value || resourceData.currencyId
         };
 
-        const endpoint = tenderEstimationId 
-            ? `${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/addResources` 
+        const endpoint = tenderEstimationId
+            ? `${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/addResources`
             : `${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/addResources`;
 
         axios.post(endpoint, payload, {
-            headers: { 
+            headers: {
                 Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                 'Content-Type': 'application/json'
             }
@@ -358,7 +373,7 @@ function AddResource() {
         setSelectedResourceType(selected);
         setSelectedResource(null); // Reset resource
         setResources([]); // Clear resources
-        handleCalculations({ 
+        handleCalculations({
             resourceTypeId: selected?.value || "",
             resourceId: ""
         });
@@ -382,10 +397,10 @@ function AddResource() {
             });
         } else {
             setSelectedUom(null);
-            handleCalculations({ 
-                resourceId: "", 
-                rate: 0, 
-                uomId: "" 
+            handleCalculations({
+                resourceId: "",
+                rate: 0,
+                uomId: ""
             });
         }
     }, [resources, uomOptions, handleCalculations]);
@@ -398,7 +413,7 @@ function AddResource() {
             currency: { setter: setSelectedCurrency, idField: 'currencyId' },
             uom: { setter: setSelectedUom, idField: 'uomId' }
         };
-        
+
         const config = fieldMap[field];
         if (config) {
             config.setter(selected);
@@ -574,9 +589,9 @@ function AddResource() {
 
             {/* Wastage Section - unchanged */}
             <div className="ms-3 me-3 rounded-3 mt-3 mb-3 bg-white pb-3">
-                <div className="d-flex justify-content-between p-3 rounded-3" 
-                     onClick={() => toggleSelection('Wastage & Net Quantity')} 
-                     style={{ backgroundColor: '#EFF6FF', color: '#005197', cursor: 'pointer' }}>
+                <div className="d-flex justify-content-between p-3 rounded-3"
+                    onClick={() => toggleSelection('Wastage & Net Quantity')}
+                    style={{ backgroundColor: '#EFF6FF', color: '#005197', cursor: 'pointer' }}>
                     <div className="text-start fw-bold">
                         <Area size={20} className="me-1" />
                         Wastage & Net Quantity
@@ -627,9 +642,9 @@ function AddResource() {
 
             {/* Pricing Section - unchanged */}
             <div className="ms-3 me-3 rounded-3 mt-3 mb-3 bg-white pb-3">
-                <div className="d-flex justify-content-between p-3 rounded-3" 
-                     onClick={() => toggleSelection('Pricing & Currency')} 
-                     style={{ backgroundColor: '#EFF6FF', color: '#005197', cursor: 'pointer' }}>
+                <div className="d-flex justify-content-between p-3 rounded-3"
+                    onClick={() => toggleSelection('Pricing & Currency')}
+                    style={{ backgroundColor: '#EFF6FF', color: '#005197', cursor: 'pointer' }}>
                     <div className="text-start fw-bold">
                         <Area size={20} className="me-1" />
                         Pricing & Currency
