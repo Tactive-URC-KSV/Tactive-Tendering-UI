@@ -759,7 +759,7 @@ export function NatureOfBusiness() {
             <div className="d-flex justify-content-between">
                 <div className="fw-bold">
                     <ArrowLeft size={16} />
-                    <span className="ms-2">Nature of Business</span>
+                    <span className="ms-2">Nature of Business(Contractor)</span>
                 </div>
                 <button className="btn action-button" onClick={handleAdd}>
                     <Plus size={16} />

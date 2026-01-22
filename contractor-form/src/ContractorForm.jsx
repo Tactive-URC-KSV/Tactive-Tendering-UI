@@ -207,6 +207,43 @@ function ContractorForm() {
   };
 
   const handleSubmitFinal = async () => {
+    // Validation
+    const requiredErrors = [];
+    if (!basicInfo.entityCode) requiredErrors.push("Entity Code");
+    if (!basicInfo.entityName) requiredErrors.push("Entity Name");
+    if (!basicInfo.effectiveDate && !effectiveDate) requiredErrors.push("Effective Date");
+    if (!basicInfo.entityType) requiredErrors.push("Entity Type");
+
+    if (!addressDetails.addressType) requiredErrors.push("Address Type");
+    if (!addressDetails.country) requiredErrors.push("Address Country");
+    if (!addressDetails.city) requiredErrors.push("Address City");
+    if (!addressDetails.zipCode) requiredErrors.push("Address Zip/Postal Code");
+
+    if (!contactDetails.name) requiredErrors.push("Contact Name");
+    if (!contactDetails.position) requiredErrors.push("Contact Position");
+    if (!contactDetails.phoneNo) requiredErrors.push("Contact Phone No");
+    if (!contactDetails.emailId) requiredErrors.push("Contact Email ID");
+
+    if (!taxDetails.taxType) requiredErrors.push("Tax Type");
+    if (!taxDetails.territoryType) requiredErrors.push("Tax Territory Type");
+    if (!taxDetails.territory) requiredErrors.push("Tax Territory");
+    if (!taxDetails.taxRegNo) requiredErrors.push("Tax Reg No");
+    if (!taxDetails.taxRegDate) requiredErrors.push("Tax Reg Date");
+    if (!taxDetails.city) requiredErrors.push("Tax City");
+
+    if (!bankDetails.accountHolderName) requiredErrors.push("Account Holder Name");
+    if (!bankDetails.accountNo) requiredErrors.push("Account No");
+    if (!bankDetails.bankName) requiredErrors.push("Bank Name");
+    if (!bankDetails.branchName) requiredErrors.push("Branch Name");
+
+    if (!additionalInfo.type) requiredErrors.push("Additional Info Type");
+    if (!additionalInfo.registrationNo) requiredErrors.push("Additional Info Registration No");
+
+    if (requiredErrors.length > 0) {
+      alert(`Please fill in the following mandatory fields:\n${requiredErrors.join(", ")}`);
+      return;
+    }
+
     const data = new FormData();
 
     const inputDto = {
@@ -766,7 +803,7 @@ function ContractorForm() {
                   />
                 </Col>
                 <Col md={6} className="outline-group">
-                  <label className="outline-label">Zip/Postal Code</label>
+                  <label className="outline-label">Zip/Postal Code <span className="text-danger">*</span></label>
                   <Form.Control name="zipCode" value={addressDetails.zipCode} onChange={handleAddressChange} className="outline-input" placeholder="Enter Zip/Postal Code" />
                 </Col>
               </Row>
@@ -787,11 +824,11 @@ function ContractorForm() {
               </Row>
               <Row>
                 <Col md={6} className="outline-group">
-                  <label className="outline-label">Phone No</label>
+                  <label className="outline-label">Phone No <span className="text-danger">*</span></label>
                   <Form.Control name="phoneNo" value={contactDetails.phoneNo} onChange={handleContactChange} className="outline-input" placeholder="Enter phone no" />
                 </Col>
                 <Col md={6} className="outline-group">
-                  <label className="outline-label">Email ID</label>
+                  <label className="outline-label">Email ID <span className="text-danger">*</span></label>
                   <Form.Control type="email" name="emailId" value={contactDetails.emailId} onChange={handleContactChange} className="outline-input" placeholder="Enter email id" disabled={true} />
                 </Col>
               </Row>
