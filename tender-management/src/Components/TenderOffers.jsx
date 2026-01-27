@@ -18,6 +18,7 @@ function TenderOffers() {
     const [showNegotiateModal, setShowNegotiateModal] = useState(false);
     const [negotiateComments, setNegotiateComments] = useState("");
     const [negotiateLoading, setNegotiateLoading] = useState(false);
+    const [awardLoading, setAwardLoading] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -42,7 +43,7 @@ function TenderOffers() {
                 );
 
                 if (tendersRes.status === 200) {
-                    const fetchedTenders = tendersRes.data;
+                    const fetchedTenders = Array.isArray(tendersRes.data) ? tendersRes.data : [];
                     setTenders(fetchedTenders);
 
                     const offersData = {};
@@ -71,10 +72,6 @@ function TenderOffers() {
                     );
 
                     setOffersMap(offersData);
-
-                    // Priority Logic: 
-                    // 1. If tenderId is in URL and has offers, select its first offer.
-                    // 2. Otherwise, select the first offer found in the entire list.
                     if (tenderId && offersData[tenderId] && offersData[tenderId].length > 0) {
                         setSelectedOffer(offersData[tenderId][0]);
                     } else if (firstOfferFound) {
@@ -140,7 +137,7 @@ function TenderOffers() {
                 offerId: selectedOffer.id,
                 contractorId: selectedOffer.contractor?.id,
                 tenderId: selectedOffer.tender?.id,
-                offerVersion: selectedOffer.offerVersion,
+                offerVersion: selectedOffer.offerQuotations?.[0]?.offerVersion || 0,
                 comments: negotiateComments
             };
 
@@ -154,15 +151,56 @@ function TenderOffers() {
                 toast.success("Negotiation submitted successfully!");
                 setShowNegotiateModal(false);
                 setNegotiateComments("");
-                // Ideally, refresh data here. For now, we'll just close the modal.
-                // You might want to reload the page or re-fetch offers
-                // window.location.reload(); 
+                // Reload or refresh data
+                window.location.reload();
             }
         } catch (error) {
             console.error("Error submitting negotiation:", error);
             toast.error("Failed to submit negotiation. Please try again.");
         } finally {
             setNegotiateLoading(false);
+        }
+    };
+
+    const handleAward = async () => {
+        if (!selectedOffer) return;
+        const tenderId = selectedOffer.tender?.id;
+        const tenderOfferId = selectedOffer.id;
+        const offerQuotationId = selectedOffer.offerQuotations?.[0]?.id;
+
+        if (!tenderId || !tenderOfferId || !offerQuotationId) {
+            toast.error("Missing necessary information to award tender (Quotations or IDs missing).");
+            return;
+        }
+        setAwardLoading(true);
+        try {
+            const token = sessionStorage.getItem("token");
+            const headers = {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            };
+            const response = await axios.put(
+                `${import.meta.env.VITE_API_BASE_URL}/tender/award`,
+                null,
+                {
+                    headers,
+                    params: {
+                        tenderId,
+                        tenderOfferId,
+                        offerQuotationId
+                    }
+                }
+            );
+
+            if (response.status === 200) {
+                toast.success("Tender awarded successfully!");
+                window.location.reload();
+            }
+        } catch (error) {
+            console.error("Error awarding tender:", error);
+            toast.error("Failed to award tender. Please try again.");
+        } finally {
+            setAwardLoading(false);
         }
     };
 
@@ -283,7 +321,7 @@ function TenderOffers() {
                                 <div className="text-center text-muted mt-5">No Tenders Found</div>
                             ) : (
                                 tenders.map((tender) => {
-                                    const tenderOffers = offersMap[tender.id] || [];
+                                    const tenderOffers = Array.isArray(offersMap[tender.id]) ? offersMap[tender.id] : [];
                                     const offerCount = tenderOffers.length;
 
                                     return (
@@ -314,51 +352,71 @@ function TenderOffers() {
                                                     </p>
                                                 </div>
                                                 {tenderOffers.length > 0 ? (
-                                                    tenderOffers.map((offer) => {
-                                                        const isSelected = selectedOffer?.id === offer.id;
-                                                        const amount = calculateTotalAmount(offer.offerQuotations);
-                                                        const badgeStyle = getStatusBadgeStyle(offer.offerStatus);
-
-                                                        return (
-                                                            <div key={offer.id}
-                                                                className="bg-white rounded-2 p-3 d-flex justify-content-between align-items-center mb-3"
-                                                                onClick={() => setSelectedOffer(offer)}
-                                                                style={{
-                                                                    cursor: "pointer",
-                                                                    border: isSelected ? "none" : "1px solid #2563EB3D",
-                                                                    borderLeft: isSelected ? "5px solid #005197" : "1px solid #E5E7EB"
-                                                                }} >
-                                                                <div className="text-start">
-                                                                    <div className="fw-bold text-dark mb-1" style={{ fontSize: "15px" }}>
-                                                                        {offer.contractor?.entityName || "Unknown Contractor"}
-                                                                    </div>
-                                                                    <div className="text-muted" style={{ fontSize: "11px" }}>
-                                                                        Received: {formatDate(offer.submittedOn)}
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="d-flex align-items-center gap-1">
-                                                                    {offer.offerStatus === "PENDING" ? (
-                                                                        <span className="badge rounded-pill px-3 py-1"
-                                                                            style={{ ...badgeStyle, fontWeight: "600", fontSize: "11px" }}>
-                                                                            Pending
-                                                                        </span>
-                                                                    ) : (
-                                                                        <>
-                                                                            <div className="fw-bold" style={{ fontSize: "15px", color: isSelected ? "#2563EB" : "#6c757d" }}>
-                                                                                ₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                                                            </div>
-                                                                            {isSelected && (
-                                                                                <span className="fw-bold" style={{ color: "#2563EB", fontSize: "14px", marginLeft: "4px" }}>
-                                                                                    ›
-                                                                                </span>
-                                                                            )}
-                                                                        </>
-                                                                    )}
-                                                                </div>
+                                                    Object.values(
+                                                        tenderOffers.reduce((acc, offer) => {
+                                                            const contractorId = offer.contractor?.id || "unknown";
+                                                            if (!acc[contractorId]) {
+                                                                acc[contractorId] = {
+                                                                    contractor: offer.contractor,
+                                                                    offers: []
+                                                                };
+                                                            }
+                                                            acc[contractorId].offers.push(offer);
+                                                            return acc;
+                                                        }, {})
+                                                    ).map((group, groupIndex) => (
+                                                        <div key={groupIndex} className="mb-3 border p-2 rounded bg-light">
+                                                            <div className="fw-bold text-dark mb-2" style={{ fontSize: "14px" }}>
+                                                                {group.contractor?.entityName || "Unknown Contractor"}
                                                             </div>
-                                                        );
-                                                    })
+                                                            {group.offers.map((offer) => {
+                                                                const isSelected = selectedOffer?.id === offer.id;
+                                                                const amount = calculateTotalAmount(offer.offerQuotations);
+                                                                const badgeStyle = getStatusBadgeStyle(offer.offerStatus);
+                                                                const version = offer.offerQuotations?.[0]?.offerVersion;
+
+                                                                return (
+                                                                    <div key={offer.id}
+                                                                        className="bg-white rounded-2 p-2 d-flex justify-content-between align-items-center mb-2"
+                                                                        onClick={() => setSelectedOffer(offer)}
+                                                                        style={{
+                                                                            cursor: "pointer",
+                                                                            border: isSelected ? "none" : "1px solid #2563EB3D",
+                                                                            borderLeft: isSelected ? "5px solid #005197" : "1px solid #E5E7EB"
+                                                                        }} >
+                                                                        <div className="text-start">
+                                                                            <div className="fw-bold text-dark mb-1" style={{ fontSize: "13px" }}>
+                                                                                Version {version || "-"}
+                                                                            </div>
+                                                                            <div className="text-muted" style={{ fontSize: "11px" }}>
+                                                                                {formatDate(offer.submittedOn)}
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div className="d-flex align-items-center gap-1">
+                                                                            {offer.offerStatus === "PENDING" ? (
+                                                                                <span className="badge rounded-pill px-3 py-1"
+                                                                                    style={{ ...badgeStyle, fontWeight: "600", fontSize: "11px" }}>
+                                                                                    Pending
+                                                                                </span>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <div className="fw-bold" style={{ fontSize: "13px", color: isSelected ? "#2563EB" : "#6c757d" }}>
+                                                                                        ₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                                                    </div>
+                                                                                    {isSelected && (
+                                                                                        <span className="fw-bold" style={{ color: "#2563EB", fontSize: "14px", marginLeft: "4px" }}>
+                                                                                            ›
+                                                                                        </span>
+                                                                                    )}
+                                                                                </>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ))
                                                 ) : (
                                                     <div className="text-muted small fst-italic p-2">No offers received yet.</div>
                                                 )}
@@ -403,9 +461,19 @@ function TenderOffers() {
                                                 <Handshake size={18} /> Negotiate
                                             </button>
 
-                                            <button className="btn text-white d-flex align-items-center gap-2 fw-bold px-4 py-2 border-0 text-nowrap"
-                                                style={{ backgroundColor: "#10B981", borderRadius: "8px", fontSize: "14px", cursor: "default" }}>
-                                                <Gavel size={18} /> Award
+                                            <button
+                                                className="btn text-white d-flex align-items-center gap-2 fw-bold px-4 py-2 border-0 text-nowrap"
+                                                style={{
+                                                    backgroundColor: selectedOffer.tender?.tenderStatus === "AWARD" ? "#9CA3AF" : "#10B981",
+                                                    borderRadius: "8px",
+                                                    fontSize: "14px",
+                                                    cursor: (awardLoading || selectedOffer.tender?.tenderStatus === "AWARD") ? "not-allowed" : "pointer"
+                                                }}
+                                                onClick={handleAward}
+                                                disabled={awardLoading || selectedOffer.tender?.tenderStatus === "AWARD"}
+                                            >
+                                                <Gavel size={18} />
+                                                {selectedOffer.tender?.tenderStatus === "AWARD" ? "Awarded" : (awardLoading ? "Awarding..." : "Award")}
                                             </button>
                                         </div>
                                     </div>
@@ -467,7 +535,7 @@ function TenderOffers() {
                                                     </div>
                                                     <div className="mb-4">
                                                         <div className="text-muted small mb-1">Offer Version</div>
-                                                        <div className="fw-bold text-dark text-break">{selectedOffer.offerVersion || "—"}</div>
+                                                        <div className="fw-bold text-dark text-break">{selectedOffer.offerQuotations?.[0]?.offerVersion || "—"}</div>
                                                     </div>
                                                     <div>
                                                         <div className="text-muted small mb-1">Contact Email ID</div>
