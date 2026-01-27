@@ -13,9 +13,9 @@ function CompareOffers() {
   const [loading, setLoading] = useState(true);
 
   const COL_WIDTHS = {
-    col1: "250px", 
-    col2: "100px", 
-    col3: "150px", 
+    col1: "250px",
+    col2: "100px",
+    col3: "150px",
   };
 
   useEffect(() => {
@@ -175,36 +175,64 @@ function CompareOffers() {
               <h6 className="fw-bold mb-0">Select Suppliers to Compare</h6>
             </div>
 
-            <div className="row ps-5 g-3">
-              {offersList.map((offer) => (
-                <div key={offer.id} className="col-md-5">
-                  <div
-                    className="p-3 rounded-3 d-flex align-items-center"
-                    style={{
-                      cursor: offer.id === offerId ? "default" : "pointer",
-                      border: selectedSuppliers.includes(offer.id)
-                        ? "1.5px solid #005197"
-                        : "1.5px solid #2563EB66",
-                      backgroundColor: selectedSuppliers.includes(offer.id) ? "#F8FBFF" : "#FFFFFF",
-                    }}
-                    onClick={() => toggleSupplier(offer.id)}
-                  >
-                    <div className="me-3 d-flex align-items-center">
-                      {selectedSuppliers.includes(offer.id) ? (
-                        <CheckSquare size={18} strokeWidth={2} color="#FFFFFF" fill="#005197" />
-                      ) : (
-                        <Square size={18} strokeWidth={2} color="#005197B2" />
-                      )}
+            <div className="ps-5">
+              {Object.entries(
+                offersList.reduce((acc, offer) => {
+                  const name = offer.contractor?.entityName || "Unknown Contractor";
+                  if (!acc[name]) acc[name] = [];
+                  acc[name].push(offer);
+                  return acc;
+                }, {})
+              ).map(([contractorName, offers]) => (
+                <div key={contractorName} className="mb-4">
+                  <div className="d-flex align-items-center gap-2 mb-3">
+                    <div className="rounded-circle d-flex align-items-center justify-content-center text-white"
+                      style={{ width: "32px", height: "32px", backgroundColor: "#005197", fontSize: "0.9rem", fontWeight: "600" }}>
+                      {contractorName.charAt(0)}
                     </div>
-                    <div className="flex-grow-1 text-start">
-                      <div className="d-flex justify-content-between">
-                        <span className="fw-bold">{offer.contractor?.entityName}</span>
-                        <span>₹ {calculateOfferTotal(offer).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <h6 className="fw-bold mb-0 text-dark">{contractorName}</h6>
+                    <span className="badge bg-light text-primary border rounded-pill ms-2">
+                      {offers.length} Offer{offers.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="row g-3">
+                    {offers.map((offer) => (
+                      <div key={offer.id} className="col-md-5">
+                        <div
+                          className="p-3 rounded-3 d-flex align-items-center bg-white"
+                          style={{
+                            cursor: offer.id === offerId ? "default" : "pointer",
+                            border: selectedSuppliers.includes(offer.id)
+                              ? "1.5px solid #005197"
+                              : "1px solid #E5E7EB",
+                            backgroundColor: selectedSuppliers.includes(offer.id) ? "#F8FBFF" : "#FFFFFF",
+                            transition: "all 0.2s ease"
+                          }}
+                          onClick={() => toggleSupplier(offer.id)}
+                        >
+                          <div className="me-3 d-flex align-items-center">
+                            {selectedSuppliers.includes(offer.id) ? (
+                              <CheckSquare size={18} strokeWidth={2} color="#FFFFFF" fill="#005197" />
+                            ) : (
+                              <Square size={18} strokeWidth={2} color="#9CA3AF" />
+                            )}
+                          </div>
+                          <div className="flex-grow-1 text-start">
+                            <div className="d-flex justify-content-between align-items-center mb-1">
+                              <span className="fw-semibold text-dark" style={{ fontSize: '0.95rem' }}>
+                                Offer v{offer.offerVersion || 1}
+                              </span>
+                              <span className="fw-bold text-primary">
+                                ₹ {calculateOfferTotal(offer).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                            <div className="text-muted d-flex align-items-center gap-1" style={{ fontSize: "12px" }}>
+                              <span>Received: {formatDate(offer.submittedOn)}</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-muted" style={{ fontSize: "12px" }}>
-                        Offer Received : {formatDate(offer.submittedOn)}
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -429,5 +457,4 @@ function CompareOffers() {
     </div>
   );
 }
-
 export default CompareOffers;
