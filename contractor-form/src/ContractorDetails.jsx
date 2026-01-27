@@ -29,6 +29,7 @@ function ContractorDetails() {
   const [params] = useSearchParams();
   const id = params.get("id");
   const tenderId = params.get("tenderId");
+  const negotiationId = params.get("negotiationId");
 
   const [authToken, setAuthToken] = useState(sessionStorage.getItem("token"));
   const [tender, setTender] = useState(null);
@@ -36,8 +37,9 @@ function ContractorDetails() {
   const [attachmentData, setAttachmentData] = useState(null);
   const [boqItems, setBoqItems] = useState([]);
   const [paymentTerms, setPaymentTerms] = useState("");
-  const [pageStatus, setPageStatus] = useState("LOADING"); 
-  const [isLoading, setIsLoading] = useState(false);       
+  const [version, setVersion] = useState(null);
+  const [pageStatus, setPageStatus] = useState("LOADING");
+  const [isLoading, setIsLoading] = useState(false);
   const [errorDetails, setErrorDetails] = useState({ title: "", message: "" });
   const [headerStatus, setHeaderStatus] = useState({ text: "Loading...", bg: "#F3F4F6", color: "#6B7280" });
 
@@ -66,8 +68,13 @@ function ContractorDetails() {
         Promise.all([
           fetchTenderDetails(token),
           fetchAttachments(token),
-          fetchContractorDetails(token)
-        ]).catch((error) => {
+          fetchContractorDetails(token),
+          negotiationId ? fetchNegotiationDetails(token) : Promise.resolve()
+        ]).then(([initialBoq, , , versionVal]) => {
+          if (versionVal) {
+            fetchOfferDetails(token, versionVal);
+          }
+        }).catch((error) => {
           console.error("Error loading initial data:", error);
           setPageStatus("INVALID");
           setErrorDetails({ title: "Error Loading Data", message: "Unable to fetch tender details." });
@@ -96,7 +103,7 @@ function ContractorDetails() {
         setPageStatus(status);
         setErrorDetails({ title, message: msg });
       });
-  }, [id, tenderId, baseUrl]);
+  }, [id, tenderId, baseUrl, negotiationId]);
 
   const fetchTenderDetails = async (token) => {
     return await axios.get(`${baseUrl}/tender/${tenderId}`, {
@@ -111,8 +118,11 @@ function ContractorDetails() {
             amount: item.totalAmount || 0
           }));
           setBoqItems(initialBoq);
+          setPageStatus("CONTENT");
+          return initialBoq;
         }
         setPageStatus("CONTENT");
+        return [];
       }
     });
   };
@@ -145,6 +155,45 @@ function ContractorDetails() {
     } catch (err) {
       console.log(err);
       setAttachmentData(null);
+    }
+  };
+
+  const fetchNegotiationDetails = async (token) => {
+    if (!negotiationId) return;
+    try {
+      const res = await axios.get(`${baseUrl}/tender-offer?negotiationId=${negotiationId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.status === 200) {
+        setVersion(res.data);
+        return res.data;
+      }
+    } catch (error) {
+      console.error("Error fetching negotiation details:", error);
+    }
+  };
+
+  const fetchOfferDetails = async (token, offerVersion) => {
+    try {
+      const res = await axios.get(`${baseUrl}/offer-details?tenderId=${tenderId}&contractorId=${id}&offerVersion=${offerVersion}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.status === 200) {
+        const data = res.data;
+        if (data.paymentTerms) {
+          setPaymentTerms(Array.isArray(data.paymentTerms) ? data.paymentTerms.join('\n') : data.paymentTerms);
+        }
+        if (data.boq) {
+          const mappedBoq = data.boq.map((item) => ({
+            ...item,
+            rate: item.totalRate || item.rate || 0,
+            amount: item.totalAmount || item.amount || 0
+          }));
+          setBoqItems(mappedBoq);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching offer details:", error);
     }
   };
 
@@ -237,7 +286,7 @@ function ContractorDetails() {
     const file = event.target.files[0];
     if (!file) return;
 
-    setIsLoading(true); 
+    setIsLoading(true);
 
     const formData = new FormData();
     formData.append("file", file);
@@ -274,7 +323,7 @@ function ContractorDetails() {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-      setIsLoading(false); 
+      setIsLoading(false);
     }
   };
 
@@ -633,13 +682,13 @@ function ContractorDetails() {
                             onChange={(e) => handleRateChange(idx, e.target.value)}
                             readOnly
                             className="text-start ps-3 pe-4 shadow-none"
-                            style={{ 
-                              fontSize: '0.95rem', 
-                              borderColor: '#3B82F6', 
-                              borderRadius: '6px', 
-                              color: '#3B82F6', 
-                              height: '38px', 
-                              backgroundColor: isBidOpeningPending() ? '#F3F4F6' : '#FFF' 
+                            style={{
+                              fontSize: '0.95rem',
+                              borderColor: '#3B82F6',
+                              borderRadius: '6px',
+                              color: '#3B82F6',
+                              height: '38px',
+                              backgroundColor: isBidOpeningPending() ? '#F3F4F6' : '#FFF'
                             }}
                             onBlur={(e) => { e.target.readOnly = true; }}
                           />
