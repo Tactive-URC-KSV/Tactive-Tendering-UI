@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, BoxesIcon, ChevronDown, ChevronRight, Folder, In
 import axios from "axios";
 import Flatpickr from "react-flatpickr";
 import { FaCalendarAlt, FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
-import Select from "react-select";
+import Select, { components } from "react-select";
 import { useScope } from "../Context/ScopeContext";
 import { toast } from 'react-toastify';
 import { useNavigate, useParams } from "react-router-dom";
@@ -32,6 +32,20 @@ function TFProcess({ projectId: propProjectId }) {
         const randomNum = Math.floor(Math.random() * 999999) + 1;
         const padded = String(randomNum).padStart(6, '0');
         return `TF-${year}-${padded}`;
+    };
+
+    const CustomOption = (props) => {
+        return (
+            <components.Option {...props}>
+                <input
+                    type="checkbox"
+                    checked={props.isSelected}
+                    onChange={() => null}
+                    style={{ marginRight: 10, accentColor: '#005197' }}
+                />
+                {props.label}
+            </components.Option>
+        );
     };
 
     const CustomMultiValueContainer = () => null;
@@ -64,8 +78,12 @@ function TFProcess({ projectId: propProjectId }) {
         scopeOfPackage: [],
         preBidMeeting: false,
         preBidMeetingDate: '',
+        preBidMeetingTime: '',
         siteInvestigation: false,
-        siteInvestigationDate: '',
+        siteInvestigationFromDate: '',
+        siteInvestigationToDate: '',
+        siteInvestigationFromTime: '',
+        siteInvestigationToTime: '',
         boqIds: Array.from(selectedBoq),
         contractorIds: []
     });
@@ -175,7 +193,7 @@ function TFProcess({ projectId: propProjectId }) {
                     const boqIds = new Set(data.boq.map(b => b.id));
                     setSelectedBoq(boqIds);
                     const parentsToExpand = new Set();
-                    
+
                     const collectParents = (boqItem) => {
                         const parent = boqItem.parentBOQ || boqItem.parentBoq || boqItem.parentId;
                         if (parent) {
@@ -382,9 +400,12 @@ function TFProcess({ projectId: propProjectId }) {
             return null;
         };
         const parentNode = findNode(parentTree);
-        if (parentNode && parentNode.children !== null) {
-            return;
+
+        // Return existing children if available
+        if (parentNode && Array.isArray(parentNode.children)) {
+            return parentNode.children;
         }
+
         setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: 'pending' }));
         try {
             const response = await axios.get(
@@ -401,17 +422,49 @@ function TFProcess({ projectId: propProjectId }) {
                     ...child,
                     children: (child.lastLevel === false) ? null : []
                 }));
+                // We wrap this in a promise to ensure state update has a chance to propagate if strictly needed,
+                // simplified here to just update and return.
                 setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: childrenData }));
+                return childrenData;
             } else {
                 console.error('Failed to fetch children BOQ data:', response.status);
                 setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: [] }));
+                return [];
             }
         } catch (err) {
             if (err?.response?.status === 401) {
+                // Handle unauthorized if needed
             }
             console.error('Error fetching children BOQ data:', err);
             setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: [] }));
+            return [];
         }
+    };
+
+    const fetchAndSelectAllDescendants = async (boq) => {
+        let allLeafIds = [];
+        let children = boq.children;
+
+        // If children not loaded (null or 'pending' string), fetch them
+        if (!Array.isArray(children)) {
+            children = await fetchChildrenBoq(boq.id);
+        }
+
+        if (Array.isArray(children)) {
+            // Expand the parent to show the newly fetched/selected children
+            setExpandedParentIds(prev => new Set(prev).add(boq.id));
+
+            for (const child of children) {
+                if (child.lastLevel === true) {
+                    allLeafIds.push(child.id);
+                } else {
+                    // Recursive call
+                    const descendants = await fetchAndSelectAllDescendants(child);
+                    allLeafIds.push(...descendants);
+                }
+            }
+        }
+        return allLeafIds;
     };
 
     const updateNodeInTree = (tree, nodeId, newProps) => {
@@ -457,15 +510,28 @@ function TFProcess({ projectId: propProjectId }) {
     const toggleAllChildrenSelection = (children, selectAll) => {
         if (!Array.isArray(children)) return;
 
+        // Recursive helper to get all descendant leaf IDs
+        const getAllDescendantIds = (nodes) => {
+            let ids = [];
+            nodes.forEach(node => {
+                if (node.lastLevel === true) {
+                    ids.push(node.id);
+                } else if (Array.isArray(node.children)) {
+                    ids.push(...getAllDescendantIds(node.children));
+                }
+            });
+            return ids;
+        };
+
+        const idsToToggle = getAllDescendantIds(children);
+
         setSelectedBoq(prevSet => {
             const newSet = new Set(prevSet);
-            children.forEach(child => {
-                if (child.lastLevel === true) {
-                    if (selectAll) {
-                        newSet.add(child.id);
-                    } else {
-                        newSet.delete(child.id);
-                    }
+            idsToToggle.forEach(id => {
+                if (selectAll) {
+                    newSet.add(id);
+                } else {
+                    newSet.delete(id);
                 }
             });
             return newSet;
@@ -621,7 +687,22 @@ function TFProcess({ projectId: propProjectId }) {
 
         const hasLeafChildren = leafChildren.length > 0;
         const hasNonLeafChildren = nonLeafChildren.length > 0;
-        const allLeafChildrenIds = hasLeafChildren ? leafChildren.map(child => child.id) : [];
+
+        const getAllLeafIds = (nodes) => {
+            let ids = [];
+            if (!Array.isArray(nodes)) return ids;
+            nodes.forEach(node => {
+                if (node.lastLevel === true) {
+                    ids.push(node.id);
+                } else if (Array.isArray(node.children)) {
+                    ids.push(...getAllLeafIds(node.children));
+                }
+            });
+            return ids;
+        };
+
+        const allLeafChildrenIds = getAllLeafIds(childrenStatus);
+        // Only consider it "all selected" if there are actually children to select
         const isAllLeafChildrenSelected = allLeafChildrenIds.length > 0 && allLeafChildrenIds.every(id => selectedBoq.has(id));
         const BoqIcon = isExpanded ? ChevronDown : ChevronRight;
         const boqNameDisplay = boq.boqName && boq.boqName.length > 80
@@ -635,7 +716,7 @@ function TFProcess({ projectId: propProjectId }) {
                         <input
                             type="checkbox"
                             className="form-check-input"
-                            style={{ borderColor: '#005197' }}
+                            style={{ borderColor: '#005197', accentColor: '#005197' }}
                             checked={selectedBoq.has(boq.id)}
                             onChange={() => toggleSelection(boq.id)}
                         />
@@ -658,15 +739,57 @@ function TFProcess({ projectId: propProjectId }) {
                     className="parent-boq text-start p-3 rounded-2 d-flex flex-column mb-4"
                     style={{ cursor: canExpand ? 'pointer' : 'default', backgroundColor: `${boq.level === 2 && 'white'}`, borderLeft: `${isExpanded ? '0.5px solid #0051973D' : 'none'}` }}
                 >
-                    <div className="d-flex"
-                        onClick={(e) => {
-                            if (boq.level > 0) e.stopPropagation();
-                            if (canExpand) handleToggle(boq.id);
-                        }}
-                    >
-                        {canExpand ? <BoqIcon size={18} /> : <span style={{ width: 20, marginRight: 4 }}></span>}
-                        <span className="ms-2 fw-bold">{boq.boqCode}</span>
-                        <span className="ms-3 text-dark" title={boq.boqName}>{boqNameDisplay}</span>
+                    <div className="d-flex align-items-center">
+                        <div
+                            onClick={(e) => {
+                                if (boq.level > 0) e.stopPropagation();
+                                if (canExpand) handleToggle(boq.id);
+                            }}
+                            className="d-flex align-items-center me-2"
+                        >
+                            {canExpand ? <BoqIcon size={18} /> : <span style={{ width: 20, marginRight: 4 }}></span>}
+                        </div>
+
+                        {/* Parent Selecion Checkbox */}
+                        <div className="me-3" onClick={(e) => e.stopPropagation()}>
+                            <input
+                                type="checkbox"
+                                className="form-check-input"
+                                style={{ borderColor: '#005197', accentColor: '#005197', cursor: 'pointer' }}
+                                checked={isAllLeafChildrenSelected} // Note: This only reflects currently loaded children.
+                                onChange={async (e) => {
+                                    const checked = e.target.checked;
+                                    if (checked) {
+                                        // Auto-fetch and select logic
+                                        const leafIds = await fetchAndSelectAllDescendants(boq);
+                                        setSelectedBoq(prev => {
+                                            const newSet = new Set(prev);
+                                            leafIds.forEach(id => newSet.add(id));
+                                            return newSet;
+                                        });
+                                    } else {
+                                        // Standard deselect
+                                        toggleAllChildrenSelection(childrenStatus, false);
+                                    }
+                                }}
+                            />
+                        </div>
+
+                        <span
+                            className="ms-2 fw-bold"
+                            onClick={(e) => {
+                                if (boq.level > 0) e.stopPropagation();
+                                if (canExpand) handleToggle(boq.id);
+                            }}
+                        >{boq.boqCode}</span>
+                        <span
+                            className="ms-3 text-dark"
+                            title={boq.boqName}
+                            onClick={(e) => {
+                                if (boq.level > 0) e.stopPropagation();
+                                if (canExpand) handleToggle(boq.id);
+                            }}
+                        >{boqNameDisplay}</span>
                     </div>
 
                     {isExpanded && canExpand && (
@@ -788,12 +911,19 @@ function TFProcess({ projectId: propProjectId }) {
         return (
             <div className="p-2">
                 <div className="text-start ms-1 mt-4">
-                    <Info size={20} color="#2BA95A" />
-                    <span className="ms-2 text-muted"><span className="fw-bold text-dark">General Details - </span>{tenderDetail.tenderFloatingNo || ''}</span>
+                    <Info size={19} color="#2BA95A" />
+                    <span className="ms-2 text-muted fw-bold">General Details</span>
                 </div>
                 <div className="row align-items-center justify-content-between ms-1 mt-5">
                     <div className="col-md-4 col-lg-4 ">
-                        <label className="projectform text-start d-block">Tender Name <span className="text-danger">*</span></ label>
+                        <label className="projectform text-start d-block">Tender Floating No  </label>
+                        <input type="text" className="form-input w-100"
+                            value={tenderDetail.tenderFloatingNo || ''}
+                            readOnly
+                        />
+                    </div>
+                    <div className="col-md-4 col-lg-4 ">
+                        <label className="projectform text-start d-block">Tender Name <span className="text-danger">*</span></label>
                         <input
                             type="text"
                             className="form-input w-100"
@@ -811,6 +941,8 @@ function TFProcess({ projectId: propProjectId }) {
                             readOnly
                         />
                     </div>
+                </div>
+                <div className="row align-items-center justify-content-between ms-1 mt-5">
                     <div className="col-md-4 col-lg-4">
                         <label className="projectform-select text-start d-block">Offer Submission Mode</label>
                         <Select
@@ -828,8 +960,6 @@ function TFProcess({ projectId: propProjectId }) {
                             isClearable
                         />
                     </div>
-                </div>
-                <div className="row align-items-center justify-content-between ms-1 mt-5">
                     <div className="col-md-4 col-lg-4">
                         <label className="projectform text-start d-block">Bid Opening Date <span className="text-danger">*</span></label>
                         <Flatpickr
@@ -862,6 +992,8 @@ function TFProcess({ projectId: propProjectId }) {
                             <FaCalendarAlt size={18} color='#005197' />
                         </span>
                     </div>
+                </div>
+                <div className="row align-items-center justify-content-between ms-1 mt-5">
                     <div className="col-md-4 col-lg-4">
                         <label className="projectform text-start d-block">Contact Person</label>
                         <input type="text" className="form-input w-100"
@@ -869,8 +1001,6 @@ function TFProcess({ projectId: propProjectId }) {
                             readOnly
                         />
                     </div>
-                </div>
-                <div className="row align-items-center justify-content-between ms-1 mt-5">
                     <div className="col-md-4 col-lg-4 ">
                         <label className="projectform text-start d-block">Contact Email</label>
                         <input type="text" className="form-input w-100"
@@ -885,75 +1015,51 @@ function TFProcess({ projectId: propProjectId }) {
                             readOnly
                         />
                     </div>
-                    <div className="col-md-4 col-lg-4">
-                        <label className="projectform-select text-start d-block">Pre Bid Meeting</label>
-                        <Select
-                            classNamePrefix="select"
-                            options={booleanOptions}
-                            className="w-100"
-                            placeholder="Select..."
-                            value={booleanOptions.find(option => option.value === tenderDetail.preBidMeeting)}
-                            onChange={(selectedOption) => setTenderDetail({ ...tenderDetail, preBidMeeting: selectedOption?.value })}
-                        />
-                    </div>
-                </div>
-                <div className="row align-items-center justify-content-between ms-1 mt-5">
-                    <div className="col-md-4 col-lg-4 ">
-                        <label className="projectform text-start d-block">Pre Bid Meeting Date</label>
-                        <Flatpickr
-                            id="preBidMeetingDate"
-                            className="form-input w-100"
-                            placeholder="dd - mm - yyyy"
-                            options={{ dateFormat: "d-m-Y" }}
-                            value={tenderDetail.preBidMeetingDate}
-                            onChange={([date]) => setTenderDetail({ ...tenderDetail, preBidMeetingDate: date })}
-                            ref={datePickerRef}
-                        />
-                        <span className='calender-icon'
-                            onClick={() => openCalendar('preBidMeetingDate')}>
-                            <FaCalendarAlt size={18} color='#005197' />
-                        </span>
-                    </div>
-                    <div className="col-md-4 col-lg-4">
-                        <label className="projectform-select text-start d-block">Site Investigation</label>
-                        <Select
-                            classNamePrefix="select"
-                            className="w-100"
-                            options={booleanOptions}
-                            placeholder="Select..."
-                            value={booleanOptions.find(option => option.value === tenderDetail.siteInvestigation)}
-                            onChange={(option) => setTenderDetail({ ...tenderDetail, siteInvestigation: option?.value })}
-                        />
-                    </div>
-                    <div className="col-md-4 col-lg-4">
-                        <label className="projectform text-start d-block">Site Investigation Date</label>
-                        <Flatpickr
-                            id="siteInvestigationDate"
-                            className="form-input w-100"
-                            placeholder="dd - mm - yyyy"
-                            options={{ dateFormat: "d-m-Y" }}
-                            value={tenderDetail.siteInvestigationDate}
-                            onChange={([date]) => setTenderDetail({ ...tenderDetail, siteInvestigationDate: date })}
-                            ref={datePickerRef}
-                        />
-                        <span className='calender-icon'
-                            onClick={() => openCalendar('siteInvestigationDate')}>
-                            <FaCalendarAlt size={18} color='#005197' />
-                        </span>
-                    </div>
                 </div>
                 <div className="row align-items-center ms-1 mt-5">
                     <div className="col-md-12 col-lg-12 ">
                         <label className="projectform-select text-start d-block">Scope of Package</label>
-                        <Select options={scopeOptions} isMulti placeholder="Select Scope of Package" className="w-100" classNamePrefix="select"
+                        <Select
+                            options={scopeOptions}
+                            isMulti
+                            placeholder="Select Scope of Package"
+                            className="w-100"
+                            classNamePrefix="select"
                             value={scopeOptions.filter(opt => selectedScopes.includes(opt.value))}
                             onChange={(selected) => setSelectedScopes(selected ? selected.map(s => s.value) : [])}
+                            hideSelectedOptions={false}
+                            closeMenuOnSelect={false}
                             components={{
+                                Option: CustomOption,
                                 MultiValueContainer: CustomMultiValueContainer,
                                 IndicatorSeparator: CustomIndicatorSeparator,
                                 DropdownIndicator: CustomDropdownIndicator,
                                 ClearIndicator: CustomClearIndicator,
                             }}
+                            styles={{
+                                option: (base, state) => {
+                                    let backgroundColor = 'white';
+                                    if (state.isSelected) {
+                                        backgroundColor = '#DBEAFE';
+                                    } else if (state.isFocused) {
+                                        backgroundColor = '#EFF6FF';
+                                    }
+
+                                    return {
+                                        ...base,
+                                        backgroundColor: backgroundColor,
+                                        color: state.isSelected ? '#005197' : 'black',
+                                        cursor: 'pointer',
+                                        '&:active': {
+                                            backgroundColor: '#DBEAFE'
+                                        },
+                                        '&:hover': {
+                                            backgroundColor: state.isSelected ? '#DBEAFE' : '#EFF6FF'
+                                        }
+                                    };
+                                }
+                            }}
+
                         />
                         <div className="mt-2 d-flex flex-wrap gap-2">
                             {scopeOptions.filter(opt => selectedScopes.includes(opt.value))
@@ -973,6 +1079,153 @@ function TFProcess({ projectId: propProjectId }) {
                                         </span>
                                     </span>
                                 ))}
+                        </div>
+                    </div>
+                </div>
+                <div className="row justify-content-between ms-1 mt-5">
+                    <div className="col-md-6 mb-4">
+                        <div className="bg-white border-0 rounded-3 h-100">
+                            <div className={`d-flex justify-content-between align-items-center p-3 ${tenderDetail.preBidMeeting ? 'rounded-top-3' : 'rounded-3'}`} style={{ backgroundColor: '#EFF6FF', color: '#005197' }}>
+                                <label className="fw-bold mb-0">Pre Bid Meeting</label>
+                                <div className="form-check form-switch">
+                                    <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        role="switch"
+                                        checked={tenderDetail.preBidMeeting === true}
+                                        onChange={(e) => setTenderDetail({ ...tenderDetail, preBidMeeting: e.target.checked })}
+                                    />
+                                </div>
+                            </div>
+                            {tenderDetail.preBidMeeting && (
+                                <div className="px-3 pt-3 pb-3">
+                                    <div className="row">
+                                        <div className="col-md-6">
+                                            <label className="projectform text-start d-block">Date <span className="text-danger">*</span></label>
+
+                                            <Flatpickr
+                                                id="preBidMeetingDate"
+                                                className="form-input w-100"
+                                                placeholder="dd - mm - yyyy"
+                                                options={{ dateFormat: "d-m-Y" }}
+                                                value={tenderDetail.preBidMeetingDate}
+                                                onChange={([date]) => setTenderDetail({ ...tenderDetail, preBidMeetingDate: date })}
+                                                ref={datePickerRef}
+                                            />
+                                            <span className='calender-icon'
+                                                onClick={() => openCalendar('preBidMeetingDate')}>
+                                                <FaCalendarAlt size={18} color='#005197' />
+                                            </span>
+
+                                        </div>
+                                        <div className="col-md-6">
+                                            <label className="projectform text-start d-block">Time <span className="text-danger">*</span></label>
+                                            <Flatpickr
+                                                className="form-input w-100"
+                                                placeholder="00:00"
+                                                options={{
+                                                    enableTime: true,
+                                                    noCalendar: true,
+                                                    dateFormat: "H:i",
+                                                    time_24hr: true
+                                                }}
+                                                value={tenderDetail.preBidMeetingTime}
+                                                onChange={([time]) => setTenderDetail({ ...tenderDetail, preBidMeetingTime: time })}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="col-md-6 mb-4">
+                        <div className="bg-white border-0 rounded-3 h-100">
+                            <div className={`d-flex justify-content-between align-items-center p-3 ${tenderDetail.siteInvestigation ? 'rounded-top-3' : 'rounded-3'}`} style={{ backgroundColor: '#EFF6FF', color: '#005197' }}>
+                                <label className="fw-bold mb-0">Site Investigation</label>
+                                <div className="form-check form-switch">
+                                    <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        role="switch"
+                                        checked={tenderDetail.siteInvestigation === true}
+                                        onChange={(e) => setTenderDetail({ ...tenderDetail, siteInvestigation: e.target.checked })}
+                                    />
+                                </div>
+                            </div>
+                            {tenderDetail.siteInvestigation && (
+                                <div className="px-3 pt-3 pb-3">
+                                    <div className="row mb-3">
+                                        <div className="col-md-6">
+                                            <label className="projectform text-start d-block">From Date <span className="text-danger">*</span></label>
+
+                                            <Flatpickr
+                                                id="siteInvestigationFromDate"
+                                                className="form-input w-100"
+                                                placeholder="dd - mm - yyyy"
+                                                options={{ dateFormat: "d-m-Y" }}
+                                                value={tenderDetail.siteInvestigationFromDate}
+                                                onChange={([date]) => setTenderDetail({ ...tenderDetail, siteInvestigationFromDate: date })}
+                                                ref={datePickerRef}
+                                            />
+                                            <span className='calender-icon'
+                                                onClick={() => openCalendar('siteInvestigationFromDate')}>
+                                                <FaCalendarAlt size={18} color='#005197' />
+                                            </span>
+
+                                        </div>
+                                        <div className="col-md-6">
+                                            <label className="projectform text-start d-block">To Date <span className="text-danger">*</span></label>
+
+                                            <Flatpickr
+                                                id="siteInvestigationToDate"
+                                                className="form-input w-100"
+                                                placeholder="dd - mm - yyyy"
+                                                options={{ dateFormat: "d-m-Y" }}
+                                                value={tenderDetail.siteInvestigationToDate}
+                                                onChange={([date]) => setTenderDetail({ ...tenderDetail, siteInvestigationToDate: date })}
+                                                ref={datePickerRef}
+                                            />
+                                            <span className='calender-icon'
+                                                onClick={() => openCalendar('siteInvestigationToDate')}>
+                                                <FaCalendarAlt size={18} color='#005197' />
+                                            </span>
+
+                                        </div>
+                                    </div>
+                                    <div className="row">
+                                        <div className="col-md-6">
+                                            <label className="projectform text-start d-block">From Time <span className="text-danger">*</span></label>
+                                            <Flatpickr
+                                                className="form-input w-100"
+                                                placeholder="00:00"
+                                                options={{
+                                                    enableTime: true,
+                                                    noCalendar: true,
+                                                    dateFormat: "H:i",
+                                                    time_24hr: true
+                                                }}
+                                                value={tenderDetail.siteInvestigationFromTime}
+                                                onChange={([time]) => setTenderDetail({ ...tenderDetail, siteInvestigationFromTime: time })}
+                                            />
+                                        </div>
+                                        <div className="col-md-6">
+                                            <label className="projectform text-start d-block">To Time <span className="text-danger">*</span></label>
+                                            <Flatpickr
+                                                className="form-input w-100"
+                                                placeholder="00:00"
+                                                options={{
+                                                    enableTime: true,
+                                                    noCalendar: true,
+                                                    dateFormat: "H:i",
+                                                    time_24hr: true
+                                                }}
+                                                value={tenderDetail.siteInvestigationToTime}
+                                                onChange={([time]) => setTenderDetail({ ...tenderDetail, siteInvestigationToTime: time })}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -1425,6 +1678,14 @@ function TFProcess({ projectId: propProjectId }) {
             if (tab === 'general') {
                 if (!tenderDetail.tenderName || !tenderDetail.bidOpeningDate || !tenderDetail.submissionLastDate) {
                     toast.error("Enter all mandatory feilds")
+                    return
+                }
+                if (tenderDetail.preBidMeeting && !tenderDetail.preBidMeetingDate) {
+                    toast.error("Pre Bid Meeting Date is mandatory")
+                    return
+                }
+                if (tenderDetail.siteInvestigation && !tenderDetail.siteInvestigationDate) {
+                    toast.error("Site Investigation Date is mandatory")
                     return
                 }
                 setTab('package');
