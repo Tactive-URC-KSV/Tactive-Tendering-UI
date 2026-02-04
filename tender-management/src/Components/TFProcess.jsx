@@ -26,6 +26,7 @@ function TFProcess({ projectId: propProjectId }) {
     const [contractorGradeOptions, setContractorGradeOptions] = useState([]);
     const [offerSubmissionOptions, setOfferSubmissionOptions] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [isPageLoading, setIsPageLoading] = useState(true);
 
     const generateTenderNumber = () => {
         const year = new Date().getFullYear();
@@ -114,27 +115,50 @@ function TFProcess({ projectId: propProjectId }) {
     }
 
     useEffect(() => {
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${projectId}`, {
-            headers: {
-                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                'Content-Type': 'application/json',
-            }
-        }).then(res => {
-            if (res.status === 200) {
-                setProject(res.data);
-                fetchParentBoqData();
-                if (!tenderId) {
-                    getLoggedInUser();
+        const fetchInitialData = async () => {
+            setIsPageLoading(true);
+            try {
+                // 1. Fetch Project Info
+                const projectRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${projectId}`, {
+                    headers: {
+                        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (projectRes.status === 200) {
+                    setProject(projectRes.data);
+
+                    // 2. Fetch Dependent/Parallel Data
+                    const promises = [
+                        fetchParentBoqData(),
+                        fetchContractorDetails(),
+                        fetchFilterOptions()
+                    ];
+
+                    if (!tenderId) {
+                        promises.push(getLoggedInUser());
+                    } else {
+                        // If tenderId exists, we also strictly need tender details
+                        promises.push(fetchTenderDetailsForEdit());
+                    }
+
+                    await Promise.all(promises);
                 }
-                fetchContractorDetails();
-                fetchFilterOptions();
+            } catch (err) {
+                console.error("Initial data fetch error:", err);
+                if (err.response && err.response.status === 401) {
+                    handleUnauthorized();
+                }
+            } finally {
+                setIsPageLoading(false);
             }
-        }).catch(err => {
-            if (err.response && err.response.status === 401) {
-                handleUnauthorized();
-            }
-        });
-    }, [projectId]);
+        };
+
+        if (projectId) {
+            fetchInitialData();
+        }
+    }, [projectId, tenderId]);
 
     const getFileNameFromUrl = (url) => {
         if (!url) return "file";
@@ -157,11 +181,13 @@ function TFProcess({ projectId: propProjectId }) {
         }
     };
 
-    useEffect(() => {
-        if (tenderId) {
-            fetchTenderDetailsForEdit();
-        }
-    }, [tenderId]);
+    // tenderId fetch is now handled in the main useEffect to synchronize loading state
+    // keeping this empty or removing it if no other side effects needed
+    // useEffect(() => {
+    //     if (tenderId) {
+    //         fetchTenderDetailsForEdit();
+    //     }
+    // }, [tenderId]);
 
     const fetchTenderDetailsForEdit = async () => {
         try {
@@ -185,15 +211,17 @@ function TFProcess({ projectId: propProjectId }) {
                     contactMobile: data.contactNumber,
                     preBidMeeting: data.preBidding,
                     preBidMeetingDate: data.preBiddingDate,
+                    preBidMeetingTime: data.preBiddingTime,
                     siteInvestigation: data.siteInvestigation,
-                    siteInvestigationDate: data.siteInvestigationDate,
+                    siteInvestigationFromDate: data.siteInvestigationFromDate,
+                    siteInvestigationToDate: data.siteInvestigationToDate,
+                    siteInvestigationFromTime: data.siteInvestigationFromTime,
+                    siteInvestigationToTime: data.siteInvestigationToTime,
                 }));
-
                 if (data.boq) {
                     const boqIds = new Set(data.boq.map(b => b.id));
                     setSelectedBoq(boqIds);
                     const parentsToExpand = new Set();
-
                     const collectParents = (boqItem) => {
                         const parent = boqItem.parentBOQ || boqItem.parentBoq || boqItem.parentId;
                         if (parent) {
@@ -257,7 +285,6 @@ function TFProcess({ projectId: propProjectId }) {
                         newAttachments[key] = { files: [], notes: notes || '' };
                     }
                 };
-
                 await Promise.all([
                     mapFiles(data.technicalTermsUrl, 'technical', data.technicalTerms),
                     mapFiles(data.drawingUrl, 'drawings', data.drawings),
@@ -271,14 +298,14 @@ function TFProcess({ projectId: propProjectId }) {
             console.error(err);
         }
     };
-
-    const getLoggedInUser = () => {
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/loggedin-user`, {
-            headers: {
-                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            }
-        }).then(res => {
+    const getLoggedInUser = async () => {
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/loggedin-user`, {
+                headers: {
+                    Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                    'Content-Type': 'application/json'
+                }
+            });
             if (res.status === 200) {
                 const user = res.data;
                 setTenderDetail(prev => ({
@@ -288,65 +315,49 @@ function TFProcess({ projectId: propProjectId }) {
                     contactMobile: user?.phoneNumber ?? ""
                 }));
             }
-        }).catch(err => {
+        } catch (err) {
             if (err.response && err.response.status === 401) {
                 handleUnauthorized();
             }
-        })
+        }
     }
 
-    const fetchFilterOptions = () => {
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/contractorType`, {
-            headers: {
-                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            }
-        }).then(res => {
-            if (res.status === 200) {
-                setContractorTypeOptions(res?.data?.map(item => ({
+    const fetchFilterOptions = async () => {
+        const headers = {
+            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+        };
+
+        const fetchType = axios.get(`${import.meta.env.VITE_API_BASE_URL}/contractorType`, { headers });
+        const fetchGrade = axios.get(`${import.meta.env.VITE_API_BASE_URL}/contractorGrade`, { headers });
+        const fetchMode = axios.get(`${import.meta.env.VITE_API_BASE_URL}/offerSubmissionMode`, { headers });
+
+        try {
+            const [typeRes, gradeRes, modeRes] = await Promise.all([fetchType, fetchGrade, fetchMode]);
+
+            if (typeRes.status === 200) {
+                setContractorTypeOptions(typeRes?.data?.map(item => ({
                     value: item.id,
                     label: item.type
                 })));
             }
-        }).catch(err => {
-            if (err.response && err.response.status === 401) {
-                handleUnauthorized();
-            }
-        });
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/contractorGrade`, {
-            headers: {
-                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            }
-        }).then(res => {
-            if (res.status === 200) {
-                setContractorGradeOptions(res?.data?.map(item => ({
+            if (gradeRes.status === 200) {
+                setContractorGradeOptions(gradeRes?.data?.map(item => ({
                     value: item.id,
                     label: item.gradeName
                 })));
             }
-        }).catch(err => {
-            if (err.response && err.response.status === 401) {
-                handleUnauthorized();
-            }
-        });
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/offerSubmissionMode`, {
-            headers: {
-                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            }
-        }).then(res => {
-            if (res.status === 200) {
-                setOfferSubmissionOptions(res?.data?.map(item => ({
+            if (modeRes.status === 200) {
+                setOfferSubmissionOptions(modeRes?.data?.map(item => ({
                     value: item.code,
                     label: item.label
                 })));
             }
-        }).catch(err => {
+        } catch (err) {
             if (err.response && err.response.status === 401) {
                 handleUnauthorized();
             }
-        });
+        }
     }
 
     const fetchParentBoqData = async () => {
@@ -586,6 +597,22 @@ function TFProcess({ projectId: propProjectId }) {
             const localDate = new Date(d.getTime() - (offset * 60 * 1000));
             return localDate.toISOString().split("T")[0];
         };
+
+        const formatTime = (time) => {
+            if (!time) return null;
+            // specific check if it's already a string in HH:mm:ss format or similar
+            if (typeof time === 'string') return time;
+            // If it's a Date object from Flatpickr
+            if (time instanceof Date) {
+                return time.toTimeString().split(' ')[0];
+            }
+            // Should handle array from flatpickr if passed as array
+            if (Array.isArray(time) && time.length > 0 && time[0] instanceof Date) {
+                return time[0].toTimeString().split(' ')[0];
+            }
+            return null;
+        };
+
         const tenderInputDto = {
             id: tenderId || null,
             tenderFloatingNo: tenderDetail.tenderFloatingNo,
@@ -599,8 +626,12 @@ function TFProcess({ projectId: propProjectId }) {
             lastDate: formatDate(tenderDetail.submissionLastDate),
             siteInvestigation: tenderDetail.siteInvestigation === true,
             preBidMeeting: tenderDetail.preBidMeeting === true,
-            siteInvestigationDate: formatDate(tenderDetail.siteInvestigationDate),
+            siteInvestigationFromDate: formatDate(tenderDetail.siteInvestigationFromDate),
+            siteInvestigationToDate: formatDate(tenderDetail.siteInvestigationToDate),
             preBidMeetingDate: formatDate(tenderDetail.preBidMeetingDate),
+            preBidMeetingTime: formatTime(tenderDetail.preBidMeetingTime),
+            siteInvestigationFromTime: formatTime(tenderDetail.siteInvestigationFromTime),
+            siteInvestigationToTime: formatTime(tenderDetail.siteInvestigationToTime),
             scopeId: Array.isArray(selectedScopes) && Array.from(selectedScopes),
             contractorId: selectedContractor,
             boqId: Array.from(selectedBoq),
@@ -652,21 +683,22 @@ function TFProcess({ projectId: propProjectId }) {
         }
     };
 
-    const fetchContractorDetails = () => {
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/contractor`, {
-            headers: {
-                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            }
-        }).then(res => {
+    const fetchContractorDetails = async () => {
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/contractor`, {
+                headers: {
+                    Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                    'Content-Type': 'application/json'
+                }
+            });
             if (res.status === 200) {
                 setContractorInfo(res.data);
             }
-        }).catch(err => {
+        } catch (err) {
             if (err.response && err.response.status === 401) {
                 handleUnauthorized();
             }
-        })
+        }
     }
 
     const BOQNode = ({ boq, level = 0 }) => {
@@ -1684,8 +1716,8 @@ function TFProcess({ projectId: propProjectId }) {
                     toast.error("Pre Bid Meeting Date is mandatory")
                     return
                 }
-                if (tenderDetail.siteInvestigation && !tenderDetail.siteInvestigationDate) {
-                    toast.error("Site Investigation Date is mandatory")
+                if (tenderDetail.siteInvestigation && (!tenderDetail.siteInvestigationFromDate || !tenderDetail.siteInvestigationToDate)) {
+                    toast.error("Site Investigation Dates are mandatory")
                     return
                 }
                 setTab('package');
@@ -1884,8 +1916,12 @@ function TFProcess({ projectId: propProjectId }) {
                         <div className="col-md-4 text-start">
                             <span className="text-muted d-block">Site Investigation date</span>
                             <span className="fw-medium">
-                                {tenderDetail.siteInvestigationDate
-                                    ? new Date(tenderDetail.siteInvestigationDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                                {tenderDetail.siteInvestigationFromDate
+                                    ? new Date(tenderDetail.siteInvestigationFromDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                                    : 'N/A'}
+                                -
+                                {tenderDetail.siteInvestigationToDate
+                                    ? new Date(tenderDetail.siteInvestigationToDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
                                     : 'N/A'}
                             </span>
                         </div>
@@ -2102,7 +2138,12 @@ function TFProcess({ projectId: propProjectId }) {
                         <Edit size={18} color="#005197" /> <span className="ms-2">Edit Details</span>
                     </button>
                     <button className="btn btn-lg action-button" onClick={handleFloatTender} disabled={isLoading}>
-                        <Send size={20} color="#FFFFFF" /><span className="ms-2">{tenderId ? 'Update Tender' : 'Float Tender'}</span>
+                        {isLoading ? (
+                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        ) : (
+                            <Send size={20} color="#FFFFFF" />
+                        )}
+                        <span className="ms-2">{tenderId ? 'Update Tender' : 'Float Tender'}</span>
                     </button>
                 </div>
             </div>
@@ -2121,44 +2162,56 @@ function TFProcess({ projectId: propProjectId }) {
                 return null;
         }
     }
-    const handleNextTabChange = () => {
-        if (currentTab === 'boq') {
-            setCurrentTab('tender');
-        } else if (currentTab === 'tender') {
-            setCurrentTab('review');
-        }
+
+const handleNextTabChange = () => {
+    if (currentTab === 'boq') {
+        setCurrentTab('tender');
+    } else if (currentTab === 'tender') {
+        setCurrentTab('review');
     }
+}
+
+if (isPageLoading) {
     return (
-        <div className='container-fluid p-3 min-vh-100 overflow-y-hidden'>
-            <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-3 mt-2 mb-3">
-                <div>
-                    <ArrowLeft size={20} onClick={() => window.history.back()} style={{ cursor: 'pointer' }} />
-                    <span className='ms-2'>Tender Floating</span>
-                    <span className='ms-2'>-</span>
-                    <span className="fw-bold text-start ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</span>
-                </div>
+        <div className="d-flex justify-content-center align-items-center min-vh-100">
+            <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}>
+                <span className="visually-hidden">Loading...</span>
             </div>
-            <div className="bg-white rounded-3 ms-3 me-3 p-3 mt-4 mb-3" style={{ border: '1px solid #0051973D' }}>
-                <div className="text-start fw-bold ms-2 mb-2">Tender Floating Process</div>
-                <div className="d-flex align-items-center justify-content-between mt-3 p-3">
-                    <div className="text-white">
-                        <span className="py-2 px-3" style={{ background: '#005197', borderRadius: '30px' }}>1</span>
-                        <span className="ms-2 fw-bold" style={{ color: '#005197' }}>Select BOQ's</span>
-                    </div>
-                    <div className="rounded" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}`, height: '5px', width: '15%' }}></div>
-                    <div className="text-white">
-                        <span className="py-2 px-3" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}`, borderRadius: '30px' }}>2</span>
-                        <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}` }}>Tender details</span>
-                    </div>
-                    <div className="rounded" style={{ background: `${currentTab === 'review' ? '#005197' : '#00000052'}`, height: '5px', width: '15%' }}></div>
-                    <div className="text-white">
-                        <span className="py-2 px-3" style={{ background: `${currentTab === 'review' ? '#005197' : '#00000052'}`, borderRadius: '30px' }}>3</span>
-                        <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'review' ? '#005197' : '#00000052'}` }}>Review & Float</span>
-                    </div>
-                </div>
-            </div>
-            {renderContent()}
         </div>
     );
+}
+
+return (
+    <div className='container-fluid p-3 min-vh-100 overflow-y-hidden'>
+        <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-3 mt-2 mb-3">
+            <div>
+                <ArrowLeft size={20} onClick={() => window.history.back()} style={{ cursor: 'pointer' }} />
+                <span className='ms-2'>Tender Floating</span>
+                <span className='ms-2'>-</span>
+                <span className="fw-bold text-start ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</span>
+            </div>
+        </div>
+        <div className="bg-white rounded-3 ms-3 me-3 p-3 mt-4 mb-3" style={{ border: '1px solid #0051973D' }}>
+            <div className="text-start fw-bold ms-2 mb-2">Tender Floating Process</div>
+            <div className="d-flex align-items-center justify-content-between mt-3 p-3">
+                <div className="text-white">
+                    <span className="py-2 px-3" style={{ background: '#005197', borderRadius: '30px' }}>1</span>
+                    <span className="ms-2 fw-bold" style={{ color: '#005197' }}>Select BOQ's</span>
+                </div>
+                <div className="rounded" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}`, height: '5px', width: '15%' }}></div>
+                <div className="text-white">
+                    <span className="py-2 px-3" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}`, borderRadius: '30px' }}>2</span>
+                    <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}` }}>Tender details</span>
+                </div>
+                <div className="rounded" style={{ background: `${currentTab === 'review' ? '#005197' : '#00000052'}`, height: '5px', width: '15%' }}></div>
+                <div className="text-white">
+                    <span className="py-2 px-3" style={{ background: `${currentTab === 'review' ? '#005197' : '#00000052'}`, borderRadius: '30px' }}>3</span>
+                    <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'review' ? '#005197' : '#00000052'}` }}>Review & Float</span>
+                </div>
+            </div>
+        </div>
+        {renderContent()}
+    </div>
+);
 }
 export default TFProcess;
