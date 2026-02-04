@@ -241,19 +241,29 @@ function CompanyDetails() {
                     const baseUrl = import.meta.env.VITE_API_BASE_URL;
                     const response = await axios.get(`${baseUrl}/company`, { headers });
 
-                    const options = response.data.map(item => {
-                        // Assuming the response is a list of maps/objects, we need to extract the ID and Name.
-                        // The user said: "list of coapny Id and Comapny name is there as map with id as key and company name as value"
-                        // But usually a list of maps implies `[{id: "1", name: "CompA"}, ...]` OR `[{"1": "CompA"}, ...]`
-                        // If it's `[{"1": "CompA"}, {"2": "CompB"}]` (List of single-entry maps):
-                        const key = Object.keys(item)[0];
-                        return {
+                    let data = response.data;
+                    // Handle potential wrapped data or non-array response
+                    if (data && !Array.isArray(data) && data.data && Array.isArray(data.data)) {
+                        data = data.data;
+                    }
+
+                    let options = [];
+                    if (Array.isArray(data)) {
+                        options = data.map(item => {
+                            // If item is { "v243": "Name" }, key="v243", value="Name"
+                            const key = Object.keys(item)[0];
+                            return {
+                                value: key,
+                                label: item[key]
+                            };
+                        });
+                    } else if (data && typeof data === 'object') {
+                        // Fallback: if it returns a single map { "1": "NameA", "2": "NameB" }
+                        options = Object.keys(data).map(key => ({
                             value: key,
-                            label: item[key]
-                        };
-                        // If it's already objects like {companyId: 1, companyName: "A"}, we'd need to know the keys. 
-                        // But the user specificed: "list of coapny Id and Comapny name is there as map with id as key and company name as value."
-                    });
+                            label: data[key]
+                        }));
+                    }
 
                     setParentCompanyOptions(options);
                 } catch (error) {
