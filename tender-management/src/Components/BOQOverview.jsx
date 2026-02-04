@@ -1,6 +1,6 @@
 import axios from "axios";
 import { ArrowLeft, ChevronDown, ChevronRight, IndianRupee } from 'lucide-react';
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useMemo } from "react";
 import CollapseIcon from '../assest/Collapse.svg?react';
 import DeleteIcon from '../assest/DeleteIcon.svg?react';
 import ExpandIcon from '../assest/Expand.svg?react';
@@ -10,6 +10,8 @@ import BOQUpload from "./BOQUpload";
 import { toast } from 'react-toastify';
 import { useNavigate } from "react-router-dom";
 import { useUom } from "../Context/UomContext";
+import useDebounce from "../Utills/useDebounce";
+import { searchBoq } from "../Utills/projectApi";
 
 
 function ConfirmationDialog({ isOpen, onClose, onConfirm, message }) {
@@ -51,8 +53,184 @@ function BOQOverview({ projectId }) {
     const [selectedNodes, setSelectedNodes] = useState(new Set());
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [totalBOQ, setTotalBOQ] = useState(0);
-    const [lastLevelBOQ, setLastLevelBOQ] = useState(0);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [highlightedNodes, setHighlightedNodes] = useState(new Set());
+    const [isExpanding, setIsExpanding] = useState(false);
+    const debouncedSearchQuery = useDebounce(searchQuery, 3000);
     const uoms = useUom();
+
+    const handleExpandCollapseAll = async () => {
+        if (isAllExpanded) {
+            // Collapse All
+            setExpandedParentIds(new Set());
+            setIsAllExpanded(false);
+        } else {
+            // Expand All
+            setIsExpanding(true);
+            const newExpandedIds = new Set();
+            let tempTree = JSON.parse(JSON.stringify(parentTree)); // Deep copy to manage state locally
+
+            const fetchChildren = async (parentId) => {
+                try {
+                    const response = await axios.get(
+                        `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${projectId}/${parentId}`,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                                'Content-Type': 'application/json'
+                            }
+                        }
+                    );
+                    if (response.status === 200) {
+                        return (response.data || []).map(child => ({
+                            ...child,
+                            children: (child.lastLevel === false) ? null : []
+                        }));
+                    }
+                } catch (e) {
+                    console.error("Error fetching child boq during expand all", e);
+                }
+                return [];
+            };
+
+            const processNode = async (node) => {
+                if (node.lastLevel === true) return;
+
+                newExpandedIds.add(node.id);
+
+                // Check if children need fetching (null, 'pending', or empty but not lastLevel)
+                if (!Array.isArray(node.children) || node.children === 'pending' || (node.children.length === 0 && node.lastLevel === false)) {
+                    const children = await fetchChildren(node.id);
+                    node.children = children;
+                }
+
+                if (Array.isArray(node.children)) {
+                    for (const child of node.children) {
+                        await processNode(child);
+                    }
+                }
+            };
+
+            for (const node of tempTree) {
+                await processNode(node);
+            }
+
+            setParentTree(tempTree);
+            setExpandedParentIds(newExpandedIds);
+            setIsAllExpanded(true);
+            setIsExpanding(false);
+        }
+    };
+
+    const expandParents = async (searchResults) => {
+        const parentsToExpand = new Set();
+        const parentsByLevel = new Map();
+
+        const collectParents = (boq) => {
+            if (boq.parentBOQ) {
+                const p = boq.parentBOQ;
+                parentsToExpand.add(p.id);
+                if (!parentsByLevel.has(p.level)) {
+                    parentsByLevel.set(p.level, new Set());
+                }
+                parentsByLevel.get(p.level).add(p.id);
+                collectParents(p);
+            }
+        };
+        searchResults.forEach(item => collectParents(item));
+
+        let currentTree = [...parentTree];
+
+        const sortedLevels = Array.from(parentsByLevel.keys()).sort((a, b) => a - b);
+
+        const updateTreeStruct = (tree, nodeId, children) => {
+            return tree.map(node => {
+                if (node.id === nodeId) {
+                    return { ...node, children: children };
+                }
+                if (Array.isArray(node.children)) {
+                    return { ...node, children: updateTreeStruct(node.children, nodeId, children) };
+                }
+                return node;
+            });
+        };
+
+        const findNodeInTree = (tree, nodeId) => {
+            for (const node of tree) {
+                if (node.id === nodeId) return node;
+                if (Array.isArray(node.children)) {
+                    const found = findNodeInTree(node.children, nodeId);
+                    if (found) return found;
+                }
+            }
+            return null;
+        };
+
+        for (const level of sortedLevels) {
+            const levelIds = parentsByLevel.get(level);
+            const promises = Array.from(levelIds).map(async (parentId) => {
+                const node = findNodeInTree(currentTree, parentId);
+                if (!node) return null;
+                if (Array.isArray(node.children) && node.children.length > 0) return null;
+
+                try {
+                    const response = await axios.get(
+                        `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${projectId}/${parentId}`,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                                'Content-Type': 'application/json'
+                            }
+                        }
+                    );
+                    if (response.status === 200) {
+                        const childrenData = (response.data || []).map(child => ({
+                            ...child,
+                            children: (child.lastLevel === false) ? null : []
+                        }));
+                        return { parentId, childrenData };
+                    }
+                } catch (e) {
+                    console.error("Error fetching child boq during search expansion", e);
+                }
+                return null;
+            });
+
+            const results = await Promise.all(promises);
+            for (const res of results) {
+                if (res) {
+                    currentTree = updateTreeStruct(currentTree, res.parentId, res.childrenData);
+                }
+            }
+        }
+
+        setParentTree(currentTree);
+        setExpandedParentIds(prev => {
+            const next = new Set(prev);
+            parentsToExpand.forEach(id => next.add(id));
+            return next;
+        });
+    };
+
+    useEffect(() => {
+        const fetchSearchResults = async () => {
+            if (debouncedSearchQuery.trim()) {
+                try {
+                    const data = await searchBoq(projectId, debouncedSearchQuery);
+                    const matchingIds = new Set(data.map(item => item.id));
+                    setHighlightedNodes(matchingIds);
+                    await expandParents(data);
+                } catch (error) {
+                    console.error("Error searching BOQs:", error);
+                    toast.error("Failed to search BOQs");
+                }
+            } else {
+                setHighlightedNodes(new Set());
+            }
+        };
+
+        fetchSearchResults();
+    }, [debouncedSearchQuery, projectId]);
     const findUom = (uomId) => {
         const uom = uoms.find((uom) => uom.id === uomId);
         return uom?.uomCode;
@@ -235,7 +413,6 @@ function BOQOverview({ projectId }) {
     const BOQStats = [
         { label: 'Total BOQ', value: totalBOQ, bgColor: '#F0FDF4', color: '#2BA95A' },
         { label: 'Level 1 BOQ', value: parentBoq.length, bgColor: '#EFF6FF', color: '#2563EB' },
-        { label: 'Last Level BOQ', value: lastLevelBOQ, bgColor: '#FFF7ED', color: '#EA580C' },
     ];
     useEffect(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${projectId}`, {
@@ -268,7 +445,6 @@ function BOQOverview({ projectId }) {
         }).then(res => {
             if (res.status === 200) {
                 setTotalBOQ(res.data.totalBOQCount);
-                setLastLevelBOQ(res.data.lastLevelBOQCount);
             } else {
                 console.error('Failed to fetch total BOQ:', res.status);
             }
@@ -396,8 +572,8 @@ function BOQOverview({ projectId }) {
         const indentation = level * 10;
         if (boq.lastLevel === true) {
             return (
-                <tr className="boq-leaf-row bg-white" style={{ borderBottom: '1px solid #eee' }}>
-                    <td className="px-2" style={{ paddingLeft: `${indentation + 8}px` }}>
+                <tr className="boq-leaf-row bg-white" style={{ borderBottom: '1px solid #eee', backgroundColor: highlightedNodes.has(boq.id) ? '#EFF6FF' : 'white' }}>
+                    <td className="px-2" style={{ paddingLeft: `${indentation + 8}px`, backgroundColor: highlightedNodes.has(boq.id) ? '#EFF6FF' : 'inherit' }}>
                         <input
                             type="checkbox"
                             className="form-check-input"
@@ -422,7 +598,7 @@ function BOQOverview({ projectId }) {
             >
                 <div
                     className="parent-boq text-start p-3 rounded-2 d-flex flex-column mb-4"
-                    style={{ cursor: canExpand ? 'pointer' : 'default', backgroundColor: `${boq.level === 2 && 'white'}`, borderLeft: `${isExpanded ? '0.5px solid #0051973D' : 'none'}` }}
+                    style={{ cursor: canExpand ? 'pointer' : 'default', backgroundColor: highlightedNodes.has(boq.id) ? '#EFF6FF' : (boq.level === 2 && 'white'), borderLeft: `${isExpanded ? '0.5px solid #0051973D' : 'none'}` }}
                 >
                     <div className="d-flex"
                         onClick={(e) => {
@@ -498,6 +674,52 @@ function BOQOverview({ projectId }) {
             </div>
         );
     }
+    const visibleTree = useMemo(() => {
+        if (!debouncedSearchQuery.trim()) return parentTree;
+
+        const filterTree = (nodes) => {
+            return nodes.reduce((acc, node) => {
+                let filteredChildren = [];
+                if (Array.isArray(node.children)) {
+                    filteredChildren = filterTree(node.children);
+                }
+
+                if (highlightedNodes.has(node.id) || filteredChildren.length > 0) {
+                    acc.push({
+                        ...node,
+                        children: filteredChildren.length > 0 ? filteredChildren : (Array.isArray(node.children) ? [] : node.children)
+                    });
+                }
+                return acc;
+            }, []);
+        };
+
+        return filterTree(parentTree);
+
+    }, [parentTree, debouncedSearchQuery, highlightedNodes]);
+
+    // Ensure all visible parents with children are expanded when searching
+    useEffect(() => {
+        if (debouncedSearchQuery.trim() && visibleTree.length > 0) {
+            const getAllIds = (nodes) => {
+                let ids = [];
+                nodes.forEach(node => {
+                    ids.push(node.id);
+                    if (Array.isArray(node.children)) {
+                        ids.push(...getAllIds(node.children));
+                    }
+                });
+                return ids;
+            };
+            setExpandedParentIds(prev => {
+                const newSet = new Set(prev);
+                getAllIds(visibleTree).forEach(id => newSet.add(id));
+                return newSet;
+            });
+        }
+    }, [visibleTree, debouncedSearchQuery]);
+
+
     return (
         uploadScreen ? (
             <BOQUpload projectId={projectId} projectName={project?.projectName + '(' + project?.projectCode + ')'} setUploadScreen={setUploadScreen} />
@@ -541,21 +763,39 @@ function BOQOverview({ projectId }) {
 
                 <div className="bg-white rounded-3 ms-3 me-3 mt-4 p-2" style={{ border: '0.5px solid #0051973D' }}>
                     <div className="d-flex justify-content-between mb-3">
-                        <div className="fw-bold text-start mt-2 ms-1">
+                        <div className="fw-bold text-start mt-2 ms-1 d-flex align-items-center gap-3">
                             <span>BOQ Structure</span>
                         </div>
-                        <div className="me-3 d-flex align-items-center">
-                            {/* <button className="btn" style={{ cursor: 'pointer', color: '#005197' }} onClick={toggleAll}>
-                                {isAllExpanded ? (
-                                    <>
-                                        <CollapseIcon /><span>Collapse All</span>
-                                    </>
+                        <div className="me-3 d-flex align-items-center gap-3">
+                            <div className="position-relative" style={{ width: '300px' }}>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Search BOQ..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    style={{ paddingRight: '30px' }}
+                                />
+                            </div>
+                            <button
+                                className="btn p-0 me-2"
+                                style={{
+                                    cursor: isExpanding ? 'wait' : 'pointer',
+                                    color: '#005197',
+                                    opacity: isExpanding ? 0.6 : 1
+                                }}
+                                onClick={handleExpandCollapseAll}
+                                disabled={isExpanding}
+                                title={isAllExpanded ? "Collapse All" : "Expand All"}
+                            >
+                                {isExpanding ? (
+                                    <div className="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span className="visually-hidden">Loading...</span>
+                                    </div>
                                 ) : (
-                                    <>
-                                        <ExpandIcon /><span>Expand All</span>
-                                    </>
+                                    isAllExpanded ? <CollapseIcon /> : <ExpandIcon />
                                 )}
-                            </button> */}
+                            </button>
                             <DeleteIcon
                                 style={{ cursor: 'pointer' }}
                                 onClick={handleDeleteClick}
@@ -565,7 +805,7 @@ function BOQOverview({ projectId }) {
                     </div>
 
                     <div className="boq-structure-list mt-3">
-                        {parentTree.length > 0 && parentTree.every(boq => boq.lastLevel === true) ? (
+                        {visibleTree.length > 0 && visibleTree.every(boq => boq.lastLevel === true) ? (
                             <div className="table-responsive">
                                 <table className="table table-borderless">
                                     <thead>
@@ -578,14 +818,14 @@ function BOQOverview({ projectId }) {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {parentTree.map((boq) => (
+                                        {visibleTree.map((boq) => (
                                             <BOQNode key={boq.id} boq={boq} level={0} />
                                         ))}
                                     </tbody>
                                 </table>
                             </div>
                         ) : (
-                            parentTree.map((boq) => (
+                            visibleTree.map((boq) => (
                                 <BOQNode key={boq.id} boq={boq} level={0} />
                             ))
                         )}

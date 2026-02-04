@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { ArrowLeft, ArrowRight, BoxesIcon, ChevronDown, ChevronRight, Folder, Info, Paperclip, Plus, User2, X, Download, Edit, Send, File as FileIcon, Building, Dot, Eye } from 'lucide-react';
 import axios from "axios";
 import Flatpickr from "react-flatpickr";
 import { FaCalendarAlt, FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
 import Select, { components } from "react-select";
 import { useScope } from "../Context/ScopeContext";
+import useDebounce from "../Utills/useDebounce";
+import { searchBoq } from "../Utills/projectApi";
 import { toast } from 'react-toastify';
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -100,7 +102,164 @@ function TFProcess({ projectId: propProjectId }) {
     const scopeOptions = scopes.map(s => ({ value: s.id, label: s.scope }));
     const [selectedScopes, setSelectedScopes] = useState([]);
     const [openNodes, setOpenNodes] = useState(new Set());
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [highlightedNodes, setHighlightedNodes] = useState(new Set());
+    const debouncedSearchQuery = useDebounce(searchQuery, 3000);
+
+    const expandParents = async (searchResults) => {
+        const parentsToExpand = new Set();
+        const parentsByLevel = new Map();
+
+        const collectParents = (boq) => {
+            if (boq.parentBOQ) {
+                const p = boq.parentBOQ;
+                parentsToExpand.add(p.id);
+                if (!parentsByLevel.has(p.level)) {
+                    parentsByLevel.set(p.level, new Set());
+                }
+                parentsByLevel.get(p.level).add(p.id);
+                collectParents(p);
+            }
+        };
+        searchResults.forEach(item => collectParents(item));
+
+        let currentTree = [...parentTree];
+
+        const sortedLevels = Array.from(parentsByLevel.keys()).sort((a, b) => a - b);
+
+        const updateTreeStruct = (tree, nodeId, children) => {
+            return tree.map(node => {
+                if (node.id === nodeId) {
+                    return { ...node, children: children };
+                }
+                if (Array.isArray(node.children)) {
+                    return { ...node, children: updateTreeStruct(node.children, nodeId, children) };
+                }
+                return node;
+            });
+        };
+
+        const findNodeInTree = (tree, nodeId) => {
+            for (const node of tree) {
+                if (node.id === nodeId) return node;
+                if (Array.isArray(node.children)) {
+                    const found = findNodeInTree(node.children, nodeId);
+                    if (found) return found;
+                }
+            }
+            return null;
+        };
+
+        for (const level of sortedLevels) {
+            const levelIds = parentsByLevel.get(level);
+            const promises = Array.from(levelIds).map(async (parentId) => {
+                const node = findNodeInTree(currentTree, parentId);
+                if (!node) return null;
+                if (Array.isArray(node.children) && node.children.length > 0) return null;
+
+                try {
+                    const response = await axios.get(
+                        `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${projectId}/${parentId}`,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                                'Content-Type': 'application/json'
+                            }
+                        }
+                    );
+                    if (response.status === 200) {
+                        const childrenData = (response.data || []).map(child => ({
+                            ...child,
+                            children: (child.lastLevel === false) ? null : []
+                        }));
+                        return { parentId, childrenData };
+                    }
+                } catch (e) {
+                    console.error("Error fetching child boq during search expansion", e);
+                }
+                return null;
+            });
+
+            const results = await Promise.all(promises);
+            for (const res of results) {
+                if (res) {
+                    currentTree = updateTreeStruct(currentTree, res.parentId, res.childrenData);
+                }
+            }
+        }
+
+        setParentTree(currentTree);
+        setExpandedParentIds(prev => {
+            const next = new Set(prev);
+            parentsToExpand.forEach(id => next.add(id));
+            return next;
+        });
+    };
+
+    useEffect(() => {
+        const fetchSearchResults = async () => {
+            if (debouncedSearchQuery.trim()) {
+                try {
+                    const data = await searchBoq(projectId, debouncedSearchQuery);
+                    const matchingIds = new Set(data.map(item => item.id));
+                    setHighlightedNodes(matchingIds);
+                    await expandParents(data);
+                } catch (error) {
+                    console.error("Error searching BOQs:", error);
+                    toast.error("Failed to search BOQs");
+                }
+            } else {
+                setHighlightedNodes(new Set());
+            }
+        };
+
+        fetchSearchResults();
+    }, [debouncedSearchQuery, projectId]);
+
+    const visibleTree = useMemo(() => {
+        if (!debouncedSearchQuery.trim()) return parentTree;
+
+        const filterTree = (nodes) => {
+            return nodes.reduce((acc, node) => {
+                let filteredChildren = [];
+                if (Array.isArray(node.children)) {
+                    filteredChildren = filterTree(node.children);
+                }
+
+                if (highlightedNodes.has(node.id) || filteredChildren.length > 0) {
+                    acc.push({
+                        ...node,
+                        children: filteredChildren.length > 0 ? filteredChildren : (Array.isArray(node.children) ? [] : node.children)
+                    });
+                }
+                return acc;
+            }, []);
+        };
+
+        return filterTree(parentTree);
+
+    }, [parentTree, debouncedSearchQuery, highlightedNodes]);
+
+    // Ensure all visible parents with children are expanded when searching
+    useEffect(() => {
+        if (debouncedSearchQuery.trim() && visibleTree.length > 0) {
+            const getAllIds = (nodes) => {
+                let ids = [];
+                nodes.forEach(node => {
+                    ids.push(node.id);
+                    if (Array.isArray(node.children)) {
+                        ids.push(...getAllIds(node.children));
+                    }
+                });
+                return ids;
+            };
+            setExpandedParentIds(prev => {
+                const newSet = new Set(prev);
+                getAllIds(visibleTree).forEach(id => newSet.add(id));
+                return newSet;
+            });
+        }
+    }, [visibleTree, debouncedSearchQuery]);
     const [selectedType, setSelectedType] = useState(null);
     const [selectedGrade, setSelectedGrade] = useState(null);
     const [selectedContractor, setSelectedContractor] = useState([]);
@@ -743,7 +902,7 @@ function TFProcess({ projectId: propProjectId }) {
         const indentation = level * 10;
         if (boq.lastLevel === true) {
             return (
-                <tr className="boq-leaf-row bg-white" style={{ borderBottom: '1px solid #eee' }}>
+                <tr className="boq-leaf-row bg-white" style={{ borderBottom: '1px solid #eee', backgroundColor: highlightedNodes.has(boq.id) ? '#EFF6FF' : 'white' }}>
                     <td className="px-2" style={{ paddingLeft: `${indentation + 8}px` }}>
                         <input
                             type="checkbox"
@@ -769,7 +928,7 @@ function TFProcess({ projectId: propProjectId }) {
             >
                 <div
                     className="parent-boq text-start p-3 rounded-2 d-flex flex-column mb-4"
-                    style={{ cursor: canExpand ? 'pointer' : 'default', backgroundColor: `${boq.level === 2 && 'white'}`, borderLeft: `${isExpanded ? '0.5px solid #0051973D' : 'none'}` }}
+                    style={{ cursor: canExpand ? 'pointer' : 'default', backgroundColor: highlightedNodes.has(boq.id) ? '#EFF6FF' : (boq.level === 2 && 'white'), borderLeft: `${isExpanded ? '0.5px solid #0051973D' : 'none'}` }}
                 >
                     <div className="d-flex align-items-center">
                         <div
@@ -894,12 +1053,24 @@ function TFProcess({ projectId: propProjectId }) {
                             <span className="fw-bold mb-2">Select BOQ's for tender floating</span>
                             <span className="text-muted" style={{ fontSize: '14px' }}>Choose one or more BOQ’s to include in your tender package</span>
                         </div>
-                        <div className="me-3 px-3 py-1 rounded-5 fw-medium" style={{ backgroundColor: '#DBEAFE', color: '#005197', fontSize: '14px' }}>
-                            {parentTree.length} BOQ
+                        <div className="d-flex align-items-center gap-3">
+                            <div className="position-relative" style={{ width: '300px' }}>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Search BOQ..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    style={{ paddingRight: '30px' }}
+                                />
+                            </div>
+                            <div className="me-3 px-3 py-1 rounded-5 fw-medium" style={{ backgroundColor: '#DBEAFE', color: '#005197', fontSize: '14px' }}>
+                                {parentTree.length} BOQ
+                            </div>
                         </div>
                     </div>
                     <div className="boq-structure-list mt-3">
-                        {parentTree.length > 0 && parentTree.every(boq => boq.lastLevel === true) ? (
+                        {visibleTree.length > 0 && visibleTree.every(boq => boq.lastLevel === true) ? (
                             <div className="table-responsive">
                                 <table className="table table-borderless">
                                     <thead>
@@ -912,14 +1083,14 @@ function TFProcess({ projectId: propProjectId }) {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {parentTree.map((boq) => (
+                                        {visibleTree.map((boq) => (
                                             <BOQNode key={boq.id} boq={boq} level={0} />
                                         ))}
                                     </tbody>
                                 </table>
                             </div>
                         ) : (
-                            parentTree.map((boq) => (
+                            visibleTree.map((boq) => (
                                 <BOQNode key={boq.id} boq={boq} level={0} />
                             ))
                         )}
@@ -2163,55 +2334,55 @@ function TFProcess({ projectId: propProjectId }) {
         }
     }
 
-const handleNextTabChange = () => {
-    if (currentTab === 'boq') {
-        setCurrentTab('tender');
-    } else if (currentTab === 'tender') {
-        setCurrentTab('review');
+    const handleNextTabChange = () => {
+        if (currentTab === 'boq') {
+            setCurrentTab('tender');
+        } else if (currentTab === 'tender') {
+            setCurrentTab('review');
+        }
     }
-}
 
-if (isPageLoading) {
-    return (
-        <div className="d-flex justify-content-center align-items-center min-vh-100">
-            <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}>
-                <span className="visually-hidden">Loading...</span>
+    if (isPageLoading) {
+        return (
+            <div className="d-flex justify-content-center align-items-center min-vh-100">
+                <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}>
+                    <span className="visually-hidden">Loading...</span>
+                </div>
             </div>
+        );
+    }
+
+    return (
+        <div className='container-fluid p-3 min-vh-100 overflow-y-hidden'>
+            <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-3 mt-2 mb-3">
+                <div>
+                    <ArrowLeft size={20} onClick={() => window.history.back()} style={{ cursor: 'pointer' }} />
+                    <span className='ms-2'>Tender Floating</span>
+                    <span className='ms-2'>-</span>
+                    <span className="fw-bold text-start ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</span>
+                </div>
+            </div>
+            <div className="bg-white rounded-3 ms-3 me-3 p-3 mt-4 mb-3" style={{ border: '1px solid #0051973D' }}>
+                <div className="text-start fw-bold ms-2 mb-2">Tender Floating Process</div>
+                <div className="d-flex align-items-center justify-content-between mt-3 p-3">
+                    <div className="text-white">
+                        <span className="py-2 px-3" style={{ background: '#005197', borderRadius: '30px' }}>1</span>
+                        <span className="ms-2 fw-bold" style={{ color: '#005197' }}>Select BOQ's</span>
+                    </div>
+                    <div className="rounded" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}`, height: '5px', width: '15%' }}></div>
+                    <div className="text-white">
+                        <span className="py-2 px-3" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}`, borderRadius: '30px' }}>2</span>
+                        <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}` }}>Tender details</span>
+                    </div>
+                    <div className="rounded" style={{ background: `${currentTab === 'review' ? '#005197' : '#00000052'}`, height: '5px', width: '15%' }}></div>
+                    <div className="text-white">
+                        <span className="py-2 px-3" style={{ background: `${currentTab === 'review' ? '#005197' : '#00000052'}`, borderRadius: '30px' }}>3</span>
+                        <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'review' ? '#005197' : '#00000052'}` }}>Review & Float</span>
+                    </div>
+                </div>
+            </div>
+            {renderContent()}
         </div>
     );
-}
-
-return (
-    <div className='container-fluid p-3 min-vh-100 overflow-y-hidden'>
-        <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-3 mt-2 mb-3">
-            <div>
-                <ArrowLeft size={20} onClick={() => window.history.back()} style={{ cursor: 'pointer' }} />
-                <span className='ms-2'>Tender Floating</span>
-                <span className='ms-2'>-</span>
-                <span className="fw-bold text-start ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</span>
-            </div>
-        </div>
-        <div className="bg-white rounded-3 ms-3 me-3 p-3 mt-4 mb-3" style={{ border: '1px solid #0051973D' }}>
-            <div className="text-start fw-bold ms-2 mb-2">Tender Floating Process</div>
-            <div className="d-flex align-items-center justify-content-between mt-3 p-3">
-                <div className="text-white">
-                    <span className="py-2 px-3" style={{ background: '#005197', borderRadius: '30px' }}>1</span>
-                    <span className="ms-2 fw-bold" style={{ color: '#005197' }}>Select BOQ's</span>
-                </div>
-                <div className="rounded" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}`, height: '5px', width: '15%' }}></div>
-                <div className="text-white">
-                    <span className="py-2 px-3" style={{ background: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}`, borderRadius: '30px' }}>2</span>
-                    <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'tender' || currentTab === 'review' ? '#005197' : '#00000052'}` }}>Tender details</span>
-                </div>
-                <div className="rounded" style={{ background: `${currentTab === 'review' ? '#005197' : '#00000052'}`, height: '5px', width: '15%' }}></div>
-                <div className="text-white">
-                    <span className="py-2 px-3" style={{ background: `${currentTab === 'review' ? '#005197' : '#00000052'}`, borderRadius: '30px' }}>3</span>
-                    <span className="ms-2 fw-bold" style={{ color: `${currentTab === 'review' ? '#005197' : '#00000052'}` }}>Review & Float</span>
-                </div>
-            </div>
-        </div>
-        {renderContent()}
-    </div>
-);
 }
 export default TFProcess;

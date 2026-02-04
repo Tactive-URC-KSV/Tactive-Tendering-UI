@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { ArrowLeft, ArrowRight, IndianRupee, Plus } from 'lucide-react';
 import '../CSS/Styles.css';
@@ -10,7 +10,11 @@ import CollapseIcon from '../assest/Collapse.svg?react';
 import ExpandIcon from '../assest/Expand.svg?react';
 import { FolderTree, Eye, ChevronRight, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useRef } from "react";
 import { useUom } from "../Context/UomContext";
+import useDebounce from "../Utills/useDebounce";
+import { searchBoq } from "../Utills/projectApi";
+import { toast } from "react-toastify";
 
 
 const handleUnauthorized = () => {
@@ -242,11 +246,124 @@ function BOQStructureView({ projectId }) {
   const [parentTree, setParentTree] = useState([]);
   const [expandedParentIds, setExpandedParentIds] = useState(new Set());
   const [isAllExpanded, setIsAllExpanded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [highlightedNodes, setHighlightedNodes] = useState(new Set());
+  const debouncedSearchQuery = useDebounce(searchQuery, 3000);
   const uoms = useUom();
-      const findUom = (uomId) => {
-          const uom = uoms.find((uom) => uom.id === uomId);
-          return uom?.uomCode;
+
+  const expandParents = async (searchResults) => {
+    const parentsToExpand = new Set();
+    const parentsByLevel = new Map();
+
+    const collectParents = (boq) => {
+      if (boq.parentBOQ) {
+        const p = boq.parentBOQ;
+        parentsToExpand.add(p.id);
+        if (!parentsByLevel.has(p.level)) {
+          parentsByLevel.set(p.level, new Set());
+        }
+        parentsByLevel.get(p.level).add(p.id);
+        collectParents(p);
       }
+    };
+    searchResults.forEach(item => collectParents(item));
+
+    let currentTree = [...parentTree];
+
+    const sortedLevels = Array.from(parentsByLevel.keys()).sort((a, b) => a - b);
+
+    const updateTreeStruct = (tree, nodeId, children) => {
+      return tree.map(node => {
+        if (node.id === nodeId) {
+          return { ...node, children: children };
+        }
+        if (Array.isArray(node.children)) {
+          return { ...node, children: updateTreeStruct(node.children, nodeId, children) };
+        }
+        return node;
+      });
+    };
+
+    const findNodeInTree = (tree, nodeId) => {
+      for (const node of tree) {
+        if (node.id === nodeId) return node;
+        if (Array.isArray(node.children)) {
+          const found = findNodeInTree(node.children, nodeId);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    for (const level of sortedLevels) {
+      const levelIds = parentsByLevel.get(level);
+      const promises = Array.from(levelIds).map(async (parentId) => {
+        const node = findNodeInTree(currentTree, parentId);
+        if (!node) return null;
+        if (Array.isArray(node.children) && node.children.length > 0) return null;
+
+        try {
+          const response = await axios.get(
+            `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${projectId}/${parentId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          if (response.status === 200) {
+            const childrenData = (response.data || []).map(child => ({
+              ...child,
+              children: (child.lastLevel === false) ? null : []
+            }));
+            return { parentId, childrenData };
+          }
+        } catch (e) {
+          console.error("Error fetching child boq during search expansion", e);
+        }
+        return null;
+      });
+
+      const results = await Promise.all(promises);
+      for (const res of results) {
+        if (res) {
+          currentTree = updateTreeStruct(currentTree, res.parentId, res.childrenData);
+        }
+      }
+    }
+
+    setParentTree(currentTree);
+    setExpandedParentIds(prev => {
+      const next = new Set(prev);
+      parentsToExpand.forEach(id => next.add(id));
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const fetchSearchResults = async () => {
+      if (debouncedSearchQuery.trim()) {
+        try {
+          const data = await searchBoq(projectId, debouncedSearchQuery);
+          const matchingIds = new Set(data.map(item => item.id));
+          setHighlightedNodes(matchingIds);
+          await expandParents(data);
+        } catch (error) {
+          console.error("Error searching BOQs:", error);
+          toast.error("Failed to search BOQs");
+        }
+      } else {
+        setHighlightedNodes(new Set());
+      }
+    };
+
+    fetchSearchResults();
+  }, [debouncedSearchQuery, projectId]);
+  const findUom = (uomId) => {
+    const uom = uoms.find((uom) => uom.id === uomId);
+    return uom?.uomCode;
+  }
   const handleResource = (boqId) => {
     navigate(`/tenderestimation/${projectId}/resourceadding/${boqId}`);
   }
@@ -385,7 +502,7 @@ function BOQStructureView({ projectId }) {
     const indentation = level * 10;
     if (boq.lastLevel === true) {
       return (
-        <tr className="boq-leaf-row bg-white" style={{ borderBottom: '1px solid #eee' }}>
+        <tr className="boq-leaf-row bg-white" style={{ borderBottom: '1px solid #eee', backgroundColor: highlightedNodes.has(boq.id) ? '#EFF6FF' : 'white' }}>
           <td className="px-2">{boq.boqCode}</td>
           <td className="px-2" title={boq.boqName}>{boqNameDisplay}</td>
           <td className="px-2">{boq?.uom?.uomCode || '-'}</td>
@@ -405,7 +522,7 @@ function BOQStructureView({ projectId }) {
       >
         <div
           className="parent-boq text-start p-3 rounded-2 d-flex flex-column mb-4"
-          style={{ cursor: canExpand ? 'pointer' : 'default', backgroundColor: `${boq.level === 2 && 'white'}`, borderLeft: `${isExpanded ? '0.5px solid #0051973D' : 'none'}` }}
+          style={{ cursor: canExpand ? 'pointer' : 'default', backgroundColor: highlightedNodes.has(boq.id) ? '#EFF6FF' : (boq.level === 2 && 'white'), borderLeft: `${isExpanded ? '0.5px solid #0051973D' : 'none'}` }}
         >
           <div className="d-flex"
             onClick={(e) => {
@@ -472,15 +589,70 @@ function BOQStructureView({ projectId }) {
     );
   }
 
+  const visibleTree = useMemo(() => {
+    if (!debouncedSearchQuery.trim()) return parentTree;
+
+    const filterTree = (nodes) => {
+      return nodes.reduce((acc, node) => {
+        let filteredChildren = [];
+        if (Array.isArray(node.children)) {
+          filteredChildren = filterTree(node.children);
+        }
+
+        if (highlightedNodes.has(node.id) || filteredChildren.length > 0) {
+          acc.push({
+            ...node,
+            children: filteredChildren.length > 0 ? filteredChildren : (Array.isArray(node.children) ? [] : node.children)
+          });
+        }
+        return acc;
+      }, []);
+    };
+
+    return filterTree(parentTree);
+
+  }, [parentTree, debouncedSearchQuery, highlightedNodes]);
+
+  // Ensure all visible parents with children are expanded when searching
+  useEffect(() => {
+    if (debouncedSearchQuery.trim() && visibleTree.length > 0) {
+      const getAllIds = (nodes) => {
+        let ids = [];
+        nodes.forEach(node => {
+          ids.push(node.id);
+          if (Array.isArray(node.children)) {
+            ids.push(...getAllIds(node.children));
+          }
+        });
+        return ids;
+      };
+      setExpandedParentIds(prev => {
+        const newSet = new Set(prev);
+        getAllIds(visibleTree).forEach(id => newSet.add(id));
+        return newSet;
+      });
+    }
+  }, [visibleTree, debouncedSearchQuery]);
+
   return (
 
     <>
       <div className="bg-white rounded-3 ms-3 me-3 mt-5 p-2" style={{ border: '0.5px solid #0051973D' }}>
         <div className="d-flex justify-content-between mb-3">
-          <div className="fw-bold text-start mt-2 ms-1">
+          <div className="fw-bold text-start mt-2 ms-1 d-flex align-items-center gap-3">
             <span>BOQ Structure</span>
           </div>
-          <div className="me-1 d-flex align-items-center">
+          <div className="me-1 d-flex align-items-center gap-3">
+            <div className="position-relative" style={{ width: '300px' }}>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Search BOQ..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ paddingRight: '30px' }}
+              />
+            </div>
             {/* <button className="btn" style={{ cursor: 'pointer', color: '#005197' }} onClick={toggleAll}>
               {isAllExpanded ? (
               //   <>
@@ -496,12 +668,12 @@ function BOQStructureView({ projectId }) {
         </div>
 
         <div className="boq-structure-list mt-3">
-          {parentTree.length > 0 ? (
-            parentTree.map((boq) => (
+          {visibleTree.length > 0 ? (
+            visibleTree.map((boq) => (
               <BOQNode key={boq.id} boq={boq} level={0} />
             ))
           ) : (
-            <div className="text-center p-5 text-muted">No Parent BOQ data available.</div>
+            <div className="text-center p-5 text-muted">No Parent or Matching BOQ data available.</div>
           )}
         </div>
       </div>
