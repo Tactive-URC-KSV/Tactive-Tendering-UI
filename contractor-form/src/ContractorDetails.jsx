@@ -70,10 +70,11 @@ function ContractorDetails() {
           fetchAttachments(token),
           fetchContractorDetails(token),
           negotiationId ? fetchNegotiationDetails(token) : Promise.resolve()
-        ]).then(([initialBoq, , , versionVal]) => {
+        ]).then(async ([initialBoq, , , versionVal]) => {
           if (versionVal) {
-            fetchOfferDetails(token, versionVal);
+            await fetchOfferDetails(token, versionVal);
           }
+          setPageStatus("CONTENT");
         }).catch((error) => {
           console.error("Error loading initial data:", error);
           setPageStatus("INVALID");
@@ -118,10 +119,8 @@ function ContractorDetails() {
             amount: item.totalAmount || 0
           }));
           setBoqItems(initialBoq);
-          setPageStatus("CONTENT");
           return initialBoq;
         }
-        setPageStatus("CONTENT");
         return [];
       }
     });
@@ -133,7 +132,7 @@ function ContractorDetails() {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (res.data) {
-      setContractor(res.data);
+      setContractor(res.data.data || res.data);
     }
   };
 
@@ -492,10 +491,15 @@ function ContractorDetails() {
                       </div>
                     </div>
                   </div>
-                  <div className="mb-4">
+                  <div className="mb-4 d-flex gap-2">
                     <Badge bg="none" className="rounded-pill px-3 py-2 fw-normal" style={{ backgroundColor: '#F3F8FF', color: '#2563EB', fontSize: '0.9rem' }}>
                       Tender Name : {tender?.tenderName}
                     </Badge>
+                    {version && (
+                      <Badge bg="none" className="rounded-pill px-3 py-2 fw-normal" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', fontSize: '0.9rem' }}>
+                        Offer Version : {version}
+                      </Badge>
+                    )}
                   </div>
                   <Row className="g-3">
                     <Col md={4}>

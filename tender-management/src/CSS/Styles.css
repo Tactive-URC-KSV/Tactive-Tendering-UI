@@ -91,7 +91,7 @@
 .content-container.expanded {
   margin-top: 50px;
   background-color: #F9FAFB;
-  
+
 }
 
 .project-counts {
@@ -270,9 +270,8 @@ label {
 }
 
 .select__option--is-selected {
-  background-color: #005197 !important;
-  color: white !important;
-  
+  background-color: #DBEAFE !important;
+  color: #005197 !important;
 }
 
 .select__multi-value {
@@ -296,10 +295,10 @@ label {
 }
 
 .select__multi-value__remove {
-    cursor: pointer;
-    margin-left: 8px; 
-    font-weight: bold;
-    font-size: 12px;
+  cursor: pointer;
+  margin-left: 8px;
+  font-weight: bold;
+  font-size: 12px;
 }
 
 .form-check-input {
@@ -745,10 +744,12 @@ label {
   outline: none;
   border: none;
 }
+
 .btn.pagination-bottom:hover,
 .btn.pagination:hover {
   background-color: #EFF6FF;
 }
+
 .btn.pagination-bottom {
   border: none;
   outline: none;
@@ -849,18 +850,21 @@ label {
   cursor: pointer;
 
 }
-.btn.parent{
+
+.btn.parent {
   background-color: #005197;
   font-weight: medium;
   opacity: 80%;
   color: white;
 }
-.btn.parent:hover{
+
+.btn.parent:hover {
   background-color: #005197;
   opacity: 100%;
-   font-weight: medium;
+  font-weight: medium;
   color: #FFFFFF;
 }
+
 .structure-preview {
   max-height: fit-content;
   overflow-y: auto;
@@ -869,6 +873,7 @@ label {
 .structure-preview div {
   line-height: 1.4rem;
 }
+
 .tree-node {
   position: relative;
   padding-left: 20px;
@@ -895,22 +900,26 @@ label {
   border-left: 1px dashed #ccc;
   padding-left: 20px;
 }
-.btn.clear{
+
+.btn.clear {
   background-color: #EFF6FF;
   color: #005197;
   font-size: 14px;
 }
-.btn.clear:hover{
+
+.btn.clear:hover {
   background-color: #EFF6FF;
   opacity: 60%;
   color: #005197;
 }
+
 /* Admin SideBar */
-.admin-layout{
+.admin-layout {
   display: flex;
   flex-direction: row;
 }
-.admin-sidebar{
+
+.admin-sidebar {
   background-color: #E3F2FF;
   width: 250px !important;
   top: 0;
@@ -918,7 +927,8 @@ label {
   position: sticky;
   overflow-y: auto;
 }
-.admin-content{
+
+.admin-content {
   flex: 1;
   top: 0;
   height: 100vh;
@@ -926,13 +936,16 @@ label {
   overflow-y: auto;
 
 }
+
 .cursor-pointer {
   cursor: pointer;
 }
+
 .admin-nav-btn {
   font-size: 14px;
   padding: 6px 12px;
 }
+
 .btn.admin-nav-btn.active:focus,
 .btn.admin-nav-btn.active {
   background-color: white;
@@ -941,16 +954,19 @@ label {
   outline: transparent;
   border: #FFFFFF !important;
 }
+
 .modal-close-btn {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
 }
+
 .modal-close-btn svg {
-    pointer-events: none;
+  pointer-events: none;
 }
-.contractor-card{
+
+.contractor-card {
   border: 1px solid #00519726;
   border-radius: 10px
 }
