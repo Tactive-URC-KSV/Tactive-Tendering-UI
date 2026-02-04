@@ -224,13 +224,61 @@ function CompanyDetails() {
         value: new Date(0, i).toLocaleString('default', { month: 'long' }),
         label: new Date(0, i).toLocaleString('default', { month: 'long' })
     }));
+    const [parentCompanyOptions, setParentCompanyOptions] = useState([]);
+    const [isGroup, setIsGroup] = useState(false);
     const selectedCompanyType = companyTypeOptions.find(opt => opt.value === basicInfo.companyTypeId);
     const isCompany = selectedCompanyType?.value === 'COMPANY';
+
+    useEffect(() => {
+        const selectedType = companyTypeOptions.find(opt => opt.value === basicInfo.companyTypeId);
+        const isGroupType = selectedType?.label?.toLowerCase() === 'group' || selectedType?.value === 'GROUP';
+        setIsGroup(isGroupType);
+
+        if (isGroupType) {
+            const fetchParentCompanies = async () => {
+                try {
+                    const headers = { Authorization: `Bearer ${token}` };
+                    const baseUrl = import.meta.env.VITE_API_BASE_URL;
+                    const response = await axios.get(`${baseUrl}/company`, { headers });
+
+                    const options = response.data.map(item => {
+                        // Assuming the response is a list of maps/objects, we need to extract the ID and Name.
+                        // The user said: "list of coapny Id and Comapny name is there as map with id as key and company name as value"
+                        // But usually a list of maps implies `[{id: "1", name: "CompA"}, ...]` OR `[{"1": "CompA"}, ...]`
+                        // If it's `[{"1": "CompA"}, {"2": "CompB"}]` (List of single-entry maps):
+                        const key = Object.keys(item)[0];
+                        return {
+                            value: key,
+                            label: item[key]
+                        };
+                        // If it's already objects like {companyId: 1, companyName: "A"}, we'd need to know the keys. 
+                        // But the user specificed: "list of coapny Id and Comapny name is there as map with id as key and company name as value."
+                    });
+
+                    setParentCompanyOptions(options);
+                } catch (error) {
+                    console.error("Error fetching parent companies:", error);
+                    toast.error("Failed to load parent companies");
+                }
+            };
+            fetchParentCompanies();
+        } else {
+            setParentCompanyOptions([]);
+            setBasicInfo(prev => ({ ...prev, parentCompanyId: null }));
+        }
+    }, [basicInfo.companyTypeId, companyTypeOptions]);
+
     const handleSave = async () => {
         if (!basicInfo.companyName || !basicInfo.shortName || !basicInfo.companyTypeId) {
             toast.warn("Please fill all required fields in Basic Information");
             return;
         }
+
+        if (isGroup && !basicInfo.parentCompanyId) { // Validation for Parent Company
+            toast.warn("Please select a Parent Company");
+            return;
+        }
+
         if (isCompany && (!addressDetails.countryId || !addressDetails.cityId)) {
             toast.warn("Please select Country and City");
             return;
@@ -371,17 +419,19 @@ function CompanyDetails() {
                                     />
                                 </div>
 
-                                <div className="col-md-6 mb-4 position-relative">
-                                    <label className="projectform-select d-block">Parent Company</label>
-                                    <Select
-                                        classNamePrefix="select"
-                                        placeholder="Select Parent Company"
-                                        value={getSelectedOption(basicInfo.parentCompanyId, [])}
-                                        onChange={handleSelectChange(setBasicInfo, 'parentCompanyId')}
-                                        options={[]}
-                                        isClearable
-                                    />
-                                </div>
+                                {isGroup && (
+                                    <div className="col-md-6 mb-4 position-relative">
+                                        <label className="projectform-select d-block">Parent Company <span style={{ color: "red" }}>*</span></label>
+                                        <Select
+                                            classNamePrefix="select"
+                                            placeholder="Select Parent Company"
+                                            value={getSelectedOption(basicInfo.parentCompanyId, parentCompanyOptions)}
+                                            onChange={handleSelectChange(setBasicInfo, 'parentCompanyId')}
+                                            options={parentCompanyOptions}
+                                            isClearable
+                                        />
+                                    </div>
+                                )}
 
                                 <div className="col-md-6 mb-4 position-relative">
                                     <label className="projectform d-block">Company Name <span style={{ color: "red" }}>*</span></label>
