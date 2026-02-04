@@ -13,6 +13,8 @@ import MediumFolder from '../assest/MediumFolder.svg?react';
 import SaveMappingIcon from '../assest/SaveMapping.svg?react';
 import Search from '../assest/Search.svg?react';
 import SmallFolder from '../assest/SmallFolder.svg?react';
+import useDebounce from "../Utills/useDebounce";
+import { searchBoq } from "../Utills/projectApi";
 import '../CSS/Styles.css';
 
 
@@ -30,6 +32,8 @@ const CCMOverview = () => {
     const [selectedMappingType, setSelectedMappingType] = useState("1 : M");
 
     const [searchQuery, setSearchQuery] = useState("");
+    const [highlightedNodes, setHighlightedNodes] = useState(new Set());
+    const debouncedSearchQuery = useDebounce(searchQuery, 3000);
     const [activitySearchQuery, setActivitySearchQuery] = useState("");
 
     const [pendingCounter, setPendingCounter] = useState(1);
@@ -100,6 +104,116 @@ const CCMOverview = () => {
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
     }, [showAddActivityForm]);
+
+    const expandParents = async (searchResults) => {
+        const parentsToExpand = new Set();
+        const parentsByLevel = new Map();
+
+        const collectParents = (boq) => {
+            if (boq.parentBOQ) {
+                const p = boq.parentBOQ;
+                parentsToExpand.add(p.id);
+                if (!parentsByLevel.has(p.level)) {
+                    parentsByLevel.set(p.level, new Set());
+                }
+                parentsByLevel.get(p.level).add(p.id);
+                collectParents(p);
+            }
+        };
+        searchResults.forEach(item => collectParents(item));
+
+        let currentTree = [...parentTree];
+
+        const sortedLevels = Array.from(parentsByLevel.keys()).sort((a, b) => a - b);
+
+        const updateTreeStruct = (tree, nodeId, children) => {
+            return tree.map(node => {
+                if (node.id === nodeId) {
+                    return { ...node, children: children };
+                }
+                if (Array.isArray(node.children)) {
+                    return { ...node, children: updateTreeStruct(node.children, nodeId, children) };
+                }
+                return node;
+            });
+        };
+
+        const findNodeInTree = (tree, nodeId) => {
+            for (const node of tree) {
+                if (node.id === nodeId) return node;
+                if (Array.isArray(node.children)) {
+                    const found = findNodeInTree(node.children, nodeId);
+                    if (found) return found;
+                }
+            }
+            return null;
+        };
+
+        for (const level of sortedLevels) {
+            const levelIds = parentsByLevel.get(level);
+            const promises = Array.from(levelIds).map(async (parentId) => {
+                const node = findNodeInTree(currentTree, parentId);
+                if (!node) return null;
+                if (Array.isArray(node.children) && node.children.length > 0) return null;
+
+                try {
+                    const response = await axios.get(
+                        `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${projectId}/${parentId}`,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                                'Content-Type': 'application/json'
+                            }
+                        }
+                    );
+                    if (response.status === 200) {
+                        const childrenData = (response.data || []).map(child => ({
+                            ...child,
+                            children: (child.lastLevel === false) ? null : []
+                        }));
+                        return { parentId, childrenData };
+                    }
+                } catch (e) {
+                    console.error("Error fetching child boq during search expansion", e);
+                }
+                return null;
+            });
+
+            const results = await Promise.all(promises);
+            for (const res of results) {
+                if (res) {
+                    currentTree = updateTreeStruct(currentTree, res.parentId, res.childrenData);
+                }
+            }
+        }
+
+        setParentTree(currentTree);
+        setExpandedParentIds(prev => {
+            const next = new Set(prev);
+            parentsToExpand.forEach(id => next.add(id));
+            return next;
+        });
+    };
+
+    useEffect(() => {
+        const fetchSearchResults = async () => {
+            if (debouncedSearchQuery.trim()) {
+                try {
+                    const data = await searchBoq(projectId, debouncedSearchQuery);
+                    const matchingIds = new Set(data.map(item => item.id));
+                    setHighlightedNodes(matchingIds);
+                    await expandParents(data);
+                } catch (error) {
+                    console.error("Error searching BOQs:", error);
+                    toast.error("Failed to search BOQs");
+                }
+            } else {
+                setHighlightedNodes(new Set());
+            }
+        };
+
+        fetchSearchResults();
+    }, [debouncedSearchQuery, projectId]);
 
     useEffect(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${projectId}`, {
@@ -227,23 +341,49 @@ const CCMOverview = () => {
     };
 
     const filteredBOQTree = useMemo(() => {
-        if (!searchQuery.trim()) return parentTree;
-        const q = searchQuery.toLowerCase().trim();
-        const filter = (nodes) => nodes
-            .map(n => ({ ...n }))
-            .filter(n => {
-                const match = n.boqCode.toLowerCase().includes(q) ||
-                    (n.boqName && n.boqName.toLowerCase().includes(q));
-                if (match) return true;
-                if (Array.isArray(n.children)) {
-                    const fc = filter(n.children);
-                    n.children = fc;
-                    return fc.length > 0;
+        if (!debouncedSearchQuery.trim()) return parentTree;
+
+        const filterTree = (nodes) => {
+            return nodes.reduce((acc, node) => {
+                let filteredChildren = [];
+                if (Array.isArray(node.children)) {
+                    filteredChildren = filterTree(node.children);
                 }
-                return false;
+
+                if (highlightedNodes.has(node.id) || filteredChildren.length > 0) {
+                    acc.push({
+                        ...node,
+                        children: filteredChildren.length > 0 ? filteredChildren : (Array.isArray(node.children) ? [] : node.children)
+                    });
+                }
+                return acc;
+            }, []);
+        };
+
+        return filterTree(parentTree);
+
+    }, [parentTree, debouncedSearchQuery, highlightedNodes]);
+
+    // Ensure all visible parents with children are expanded when searching
+    useEffect(() => {
+        if (debouncedSearchQuery.trim() && filteredBOQTree.length > 0) {
+            const getAllIds = (nodes) => {
+                let ids = [];
+                nodes.forEach(node => {
+                    ids.push(node.id);
+                    if (Array.isArray(node.children)) {
+                        ids.push(...getAllIds(node.children));
+                    }
+                });
+                return ids;
+            };
+            setExpandedParentIds(prev => {
+                const newSet = new Set(prev);
+                getAllIds(filteredBOQTree).forEach(id => newSet.add(id));
+                return newSet;
             });
-        return filter(parentTree);
-    }, [parentTree, searchQuery]);
+        }
+    }, [filteredBOQTree, debouncedSearchQuery]);
     const BOQNode = ({ boq, level = 0 }) => {
         const canExpand = boq.lastLevel === false;
         const isExpanded = expandedParentIds.has(boq.id);
@@ -266,7 +406,7 @@ const CCMOverview = () => {
         if (boq.lastLevel) {
             return (
                 <div className="d-flex align-items-center py-2">
-                    <div className="d-flex align-items-center p-2 rounded-2" onClick={() => toggleBOQSelection(boq.id)} style={{ backgroundColor: `${selectedBOQs.has(boq.id) ? '#EFF6FFCC' : 'transparent'}`, border: `${selectedBOQs.has(boq.id) ? '1px solid #2563EB' : 'none'}` }}>
+                    <div className="d-flex align-items-center p-2 rounded-2" onClick={() => toggleBOQSelection(boq.id)} style={{ backgroundColor: highlightedNodes.has(boq.id) ? '#EFF6FF' : (selectedBOQs.has(boq.id) ? '#EFF6FFCC' : 'transparent'), border: `${selectedBOQs.has(boq.id) ? '1px solid #2563EB' : 'none'}` }}>
                         <SmallFolder />
                         <div className="d-flex flex-grow-1 ms-2" >
                             <div className="d-flex justify-content-between">
@@ -283,7 +423,7 @@ const CCMOverview = () => {
         return (
             <div
                 className={`mb-1 ${level === 0 ? "" : "border-start"} border-1 ps-3 py-2 pe-3 w-100`}
-                style={{ borderColor: '#0051973D' }}
+                style={{ borderColor: '#0051973D', backgroundColor: highlightedNodes.has(boq.id) ? '#EFF6FF' : 'transparent' }}
             >
                 <div
                     className="d-flex justify-content-between align-items-center cursor-pointer"
@@ -631,7 +771,7 @@ const CCMOverview = () => {
 
         const newPendingMappings = costCodeDtos.map(dto => {
             const serialId = `pending-${pendingCounter}`;
-            setPendingCounter(c => c + 1);           
+            setPendingCounter(c => c + 1);
             return {
                 ...dto,
                 id: serialId
@@ -642,7 +782,7 @@ const CCMOverview = () => {
 
         const newMappings = costCodeDtos.map(dto => {
             const serialId = `pending-${pendingCounter}`;
-            setPendingCounter(c => c + 1);           
+            setPendingCounter(c => c + 1);
             return {
                 id: serialId,
                 ...dto,
@@ -968,22 +1108,21 @@ const CCMOverview = () => {
                 return;
             }
 
+            // Calculate total for the specific field type being edited
             let currentTotal = updatedActivities.reduce((sum, act, i) => {
                 if (i === index) {
                     return sum + newPercentage;
                 }
-                return sum +
-                    (parseFloat(act.qtypercentage) || 0) +
-                    (parseFloat(act.ratepercentage) || 0) +
-                    (parseFloat(act.amountpercentage) || 0);
+                return sum + (parseFloat(act[field]) || 0); // Only sum the specific field
             }, 0);
 
             if (currentTotal > 100) {
-                showAlert("Total percentage cannot exceed 100%", "error");
+                showAlert(`Total ${field.replace('percentage', '')} percentage cannot exceed 100%`, "error");
                 return;
             }
 
-            setTotalPercentageUsed(currentTotal);
+            // Update state for the specific type (optional, if we want to track them separately in state)
+            // For now, we calculate them on the fly in the render to ensure they are always up to date.
 
             let calculatedValue = 0;
             if (field === 'qtypercentage') {
@@ -1024,6 +1163,12 @@ const CCMOverview = () => {
 
         setMappingActivities(updatedActivities);
     };
+
+    // Calculate totals for display
+    const totalQtyPct = mappingActivities.reduce((sum, act) => sum + (parseFloat(act.qtypercentage) || 0), 0);
+    const totalRatePct = mappingActivities.reduce((sum, act) => sum + (parseFloat(act.ratepercentage) || 0), 0);
+    const totalAmountPct = mappingActivities.reduce((sum, act) => sum + (parseFloat(act.amountpercentage) || 0), 0);
+
     const toggleActivityFolder = (id) => {
         setExpandedActivityFolders(prev => {
             const n = new Set(prev);
@@ -1150,10 +1295,10 @@ const CCMOverview = () => {
                                             <div className="alert alert-info mb-3">
                                                 <small>
                                                     <strong>BOQ Total Amount: ${boqTotalAmount.toFixed(2)}</strong><br />
-                                                    Total Percentage Used: {totalPercentageUsed.toFixed(2)}% / 100%<br />
-                                                    Remaining Percentage: {(100 - totalPercentageUsed).toFixed(2)}%<br />
-                                                    Allocated Amount: ${(boqTotalAmount * totalPercentageUsed / 100).toFixed(2)}<br />
-                                                    Remaining Amount: ${(boqTotalAmount * (100 - totalPercentageUsed) / 100).toFixed(2)}
+                                                    Total Percentage Used: {totalAmountPct.toFixed(2)}% / 100%<br />
+                                                    Remaining Percentage: {(100 - totalAmountPct).toFixed(2)}%<br />
+                                                    Allocated Amount: ${(boqTotalAmount * totalAmountPct / 100).toFixed(2)}<br />
+                                                    Remaining Amount: ${(boqTotalAmount * (100 - totalAmountPct) / 100).toFixed(2)}
                                                 </small>
                                             </div>
                                         )}
@@ -1161,10 +1306,10 @@ const CCMOverview = () => {
                                             <div className="alert alert-info mb-3">
                                                 <small>
                                                     <strong>BOQ Total Rate: ${boqTotalRate.toFixed(2)}</strong><br />
-                                                    Total Percentage Used: {totalPercentageUsed.toFixed(2)}% / 100%<br />
-                                                    Remaining Percentage: {(100 - totalPercentageUsed).toFixed(2)}%<br />
-                                                    Allocated Rate: ${(boqTotalRate * totalPercentageUsed / 100).toFixed(2)}<br />
-                                                    Remaining Rate: ${(boqTotalRate * (100 - totalPercentageUsed) / 100).toFixed(2)}
+                                                    Total Percentage Used: {totalRatePct.toFixed(2)}% / 100%<br />
+                                                    Remaining Percentage: {(100 - totalRatePct).toFixed(2)}%<br />
+                                                    Allocated Rate: ${(boqTotalRate * totalRatePct / 100).toFixed(2)}<br />
+                                                    Remaining Rate: ${(boqTotalRate * (100 - totalRatePct) / 100).toFixed(2)}
                                                 </small>
                                             </div>
                                         )}
@@ -1172,10 +1317,29 @@ const CCMOverview = () => {
                                             <div className="alert alert-info mb-3">
                                                 <small>
                                                     <strong>BOQ Total Quantity: {boqTotalQuantity.toFixed(2)}</strong><br />
-                                                    Total Percentage Used: {totalPercentageUsed.toFixed(2)}% / 100%<br />
-                                                    Remaining Percentage: {(100 - totalPercentageUsed).toFixed(2)}%<br />
-                                                    Allocated Quantity: {(boqTotalQuantity * totalPercentageUsed / 100).toFixed(2)}<br />
-                                                    Remaining Quantity: {(boqTotalQuantity * (100 - totalPercentageUsed) / 100).toFixed(2)}
+                                                    Total Percentage Used: {totalQtyPct.toFixed(2)}% / 100%<br />
+                                                    Remaining Percentage: {(100 - totalQtyPct).toFixed(2)}%<br />
+                                                    Allocated Quantity: {(boqTotalQuantity * totalQtyPct / 100).toFixed(2)}<br />
+                                                    Remaining Quantity: {(boqTotalQuantity * (100 - totalQtyPct) / 100).toFixed(2)}
+                                                </small>
+                                            </div>
+                                        )}
+                                        {splitType === 'qty_rate' && (
+                                            <div className="alert alert-info mb-3 d-flex justify-content-between">
+                                                <small>
+                                                    <strong>Quantity: {boqTotalQuantity.toFixed(2)}</strong><br />
+                                                    Used: {totalQtyPct.toFixed(2)}% / 100%<br />
+                                                    Left: {(100 - totalQtyPct).toFixed(2)}%<br />
+                                                    Allocated: {(boqTotalQuantity * totalQtyPct / 100).toFixed(2)}<br />
+                                                    Remaining: {(boqTotalQuantity * (100 - totalQtyPct) / 100).toFixed(2)}
+                                                </small>
+                                                <div className="border-end mx-2"></div>
+                                                <small>
+                                                    <strong>Rate: ${boqTotalRate.toFixed(2)}</strong><br />
+                                                    Used: {totalRatePct.toFixed(2)}% / 100%<br />
+                                                    Left: {(100 - totalRatePct).toFixed(2)}%<br />
+                                                    Allocated: ${(boqTotalRate * totalRatePct / 100).toFixed(2)}<br />
+                                                    Remaining: ${(boqTotalRate * (100 - totalRatePct) / 100).toFixed(2)}
                                                 </small>
                                             </div>
                                         )}
