@@ -278,6 +278,84 @@ function CompanyDetails() {
         }
     }, [basicInfo.companyTypeId, companyTypeOptions]);
 
+    const handleReset = () => {
+        setBasicInfo({
+            companyTypeId: null,
+            companyLevelId: null,
+            parentCompanyId: null,
+            companyName: "",
+            shortName: "",
+            companyNatureId: null,
+            natureOfBusinessId: null,
+            constitutionId: null,
+            companyStatusId: null,
+            finStartMonth: null,
+            defaultLanguageId: null,
+            defaultCurrency: null,
+            bank: ""
+        });
+        setAddressDetails({
+            addressTypeId: null,
+            address1: '',
+            address2: '',
+            countryId: null,
+            cityId: null,
+            zipCode: '',
+            phoneNo: '',
+            faxNo: '',
+            email: '',
+            website: ''
+        });
+        setContactDetails({
+            position: '',
+            name: '',
+            phoneNo: '',
+            email: ''
+        });
+        setTaxDetails({
+            effectiveFrom: '',
+            effectiveTo: '',
+            taxTypeId: null,
+            territoryTypeId: null,
+            territory: '',
+            taxRegNo: '',
+            taxRegDate: '',
+            address1: '',
+            address2: '',
+            city: '',
+            pinCode: '',
+            email: '',
+            isPrimary: false
+        });
+        setDirectorDetails({
+            directorTypeId: null,
+            directorName: '',
+            sharePercentage: '',
+            noOfShares: ''
+        });
+        setJointVenture({
+            partnerId: '',
+            sharePercentage: ''
+        });
+        setCompanyProfile({
+            orderNo: '',
+            description: '',
+            remarks: ''
+        });
+        setAdditionalInfo({
+            idTypeId: null,
+            registrationNo: ''
+        });
+        setLocalName({
+            languageId: null,
+            name: ''
+        });
+        setAttachments([]);
+        setCitiesOption([]);
+        setTerritoryOptions([]);
+        setParentCompanyOptions([]);
+    };
+
     const handleSave = async () => {
         if (!basicInfo.companyName || !basicInfo.shortName || !basicInfo.companyTypeId) {
             toast.warn("Please fill all required fields in Basic Information");
@@ -385,6 +463,7 @@ function CompanyDetails() {
             );
             if (response.status === 200) {
                 toast.success("Company saved Successfully");
+                handleReset();
             }
         } catch (error) {
             console.error("Error saving company:", error);
@@ -1142,7 +1221,7 @@ function CompanyDetails() {
                 </div>
             </div>
             <div className="d-flex justify-content-end gap-3 mt-4 pb-5">
-                <button className="btn px-4 fw-bold" style={{ color: bluePrimary, border: `1px solid ${bluePrimary}`, borderRadius: '8px' }}>
+                <button className="btn px-4 fw-bold" style={{ color: bluePrimary, border: `1px solid ${bluePrimary}`, borderRadius: '8px' }} onClick={handleReset}>
                     Reset
                 </button>
                 <button className="btn px-4 fw-bold text-white" style={{ backgroundColor: bluePrimary, borderRadius: '8px' }} onClick={handleSave}>
