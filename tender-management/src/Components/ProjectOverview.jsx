@@ -124,7 +124,7 @@ function ProjectOverview() {
         const regionName = region.find((region) => region.id === regionId);
         return regionName?.regionName;
     }
-    const findUom = (uomId) =>{
+    const findUom = (uomId) => {
         const uomCode = uom.find((uom) => uom.id === uomId);
         return uomCode?.uomCode;
     }
@@ -144,7 +144,7 @@ function ProjectOverview() {
         { label: "Agreement Number", value: project.agreementNumber },
         { label: "Start Date", value: project.startDate },
         { label: "End Date", value: project.endDate },
-        { label: "Sector", value: findSector(project.sectorId)|| "N/A" },
+        { label: "Sector", value: findSector(project.sectorId) || "N/A" },
         { label: "Address", value: project.address },
         { label: "City", value: project.city },
         { label: "Region", value: findRegion(project.regionId) || "N/A" },
@@ -154,7 +154,7 @@ function ProjectOverview() {
                 project.scopeOfPackages?.map((pkg) => findScope(pkg)).join(", ") || "N/A",
         },
     ];
-    
+
 
     const technicalInfo = [
         { label: "Number of Floors", value: project.numberOfFloors || "N/A" },
@@ -265,13 +265,13 @@ function ProjectOverview() {
             alert(error.message || "Failed to download document");
         }
     };
-    
+
     return (
         <div className="container-fluid mt-3 p-4" style={{ fontSize: '14px' }}>
             <div className="row align-items-center mb-4 ">
                 <div className="col-auto fw-bold" style={{ fontSize: '18px' }}>
                     <span onClick={() => navigate(-1)} className="text-decoration-none small cursor-pointer me-2">
-                        <ArrowLeft size={24} />
+                        <ArrowLeft size={20} />
                     </span>
                     Project Details
                 </div>
@@ -371,8 +371,8 @@ function ProjectOverview() {
                                         {doc.approved ? <DocSuc /> : <DocFail />}
                                         <span className="ms-2" onClick={() => fetchDocument(doc)}>{doc.documentName}</span>
                                     </p>
-                                    
-                                   
+
+
                                 </div>
 
                             ))}

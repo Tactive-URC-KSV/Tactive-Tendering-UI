@@ -104,7 +104,7 @@ function CompareOffers() {
       <div className="col-12 mx-auto">
         <div className="d-flex align-items-start gap-3 p-4 mt-3 flex-shrink-0">
           <ArrowLeft
-            size={22}
+            size={20}
             className="mt-1"
             style={{ cursor: "pointer" }}
             onClick={() => navigate(-1)}

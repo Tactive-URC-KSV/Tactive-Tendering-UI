@@ -54,15 +54,23 @@ const ManualEntryForm = ({
     gradeOptions,
     addressTypeOptions,
     countryOptions,
-    addresscityOptions,
     territoryTypeOptions,
     territoryOptions,
     taxTypeOptions,
     taxCityOptions,
     additionalInfoTypeOptions,
     fetchNatureOfBusiness,
-    fetchCity,
-    fetchTerritory
+    fetchAddressState,
+    fetchAddressCity,
+    fetchTerritory,
+    taxCountryOptions,
+    taxStateOptions,
+    taxFilterCountry,
+    taxFilterState,
+    handleTaxCountryFilterChange,
+    handleTaxStateFilterChange,
+    addressStateOptions,
+    addresscityOptions
 }) => {
     const fileInputRef = useRef(null);
 
@@ -249,8 +257,8 @@ const ManualEntryForm = ({
                         <Select name="country"
                             options={countryOptions}
                             onChange={(option) => {
-                                setFormData({ ...formData, country: option.value });
-                                fetchCity(option.value);
+                                setFormData({ ...formData, country: option.value, addressState: null, addresscity: null });
+                                fetchAddressState(option.value);
                             }}
                             classNamePrefix="select"
                             value={countryOptions?.find(opt => opt.value === formData.country)}
@@ -259,6 +267,19 @@ const ManualEntryForm = ({
                 </div>
                 <div className="row">
                     <div className="col-md-6 mt-3 mb-4">
+                        <label className="projectform-select text-start d-block">State <span className="text-danger">*</span></label>
+                        <Select name="addressState"
+                            options={addressStateOptions}
+                            onChange={(option) => {
+                                setFormData({ ...formData, addressState: option.value, addresscity: null });
+                                fetchAddressCity(option.value);
+                            }}
+                            classNamePrefix="select"
+                            isDisabled={!formData.country}
+                            value={addressStateOptions?.find(opt => opt.value === formData.addressState)}
+                            placeholder="Select state" />
+                    </div>
+                    <div className="col-md-6 mt-3 mb-4">
                         <label className="projectform-select text-start d-block">City <span className="text-danger">*</span></label>
                         <Select name="addresscity"
                             options={addresscityOptions}
@@ -266,6 +287,7 @@ const ManualEntryForm = ({
                                 setFormData({ ...formData, addresscity: option.value });
                             }}
                             classNamePrefix="select"
+                            isDisabled={!formData.addressState}
                             value={addresscityOptions?.find(opt => opt.value === formData.addresscity)}
                             placeholder="Select city" />
                     </div>
@@ -347,18 +369,66 @@ const ManualEntryForm = ({
                             placeholder="Select territory type" />
                     </div>
                 </div>
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform-select text-start d-block">Territory <span style={{ color: "red" }}>*</span></label>
-                        <Select name="territory"
-                            options={territoryOptions}
-                            onChange={(option) => {
-                                setFormData({ ...formData, territory: option.value });
-                            }}
-                            classNamePrefix="select"
-                            value={territoryOptions?.find(opt => opt.value === formData.territory)}
-                            placeholder="Select territory" />
+                {['STATE', 'CITY'].includes(formData.territoryType) && (
+                    <div className="row">
+                        <div className={`${formData.territoryType === 'CITY' ? 'col-md-4' : 'col-md-6'} mt-3 mb-4`}>
+                            <label className="projectform-select text-start d-block">Filter Country <span style={{ color: "red" }}>*</span></label>
+                            <Select
+                                options={taxCountryOptions}
+                                placeholder="Select Country"
+                                value={taxFilterCountry}
+                                onChange={handleTaxCountryFilterChange}
+                                classNamePrefix="select"
+                            />
+                        </div>
+                        {formData.territoryType === 'CITY' && (
+                            <div className="col-md-4 mt-3 mb-4">
+                                <label className="projectform-select text-start d-block">Filter State <span style={{ color: "red" }}>*</span></label>
+                                <Select
+                                    options={taxStateOptions}
+                                    placeholder="Select State"
+                                    value={taxFilterState}
+                                    onChange={handleTaxStateFilterChange}
+                                    isDisabled={!taxFilterCountry}
+                                    classNamePrefix="select"
+                                />
+                            </div>
+                        )}
+                        <div className={`${formData.territoryType === 'CITY' ? 'col-md-4' : 'col-md-6'} mt-3 mb-4`}>
+                            <label className="projectform-select text-start d-block">Territory <span style={{ color: "red" }}>*</span></label>
+                            <Select name="territory"
+                                options={territoryOptions}
+                                onChange={(option) => {
+                                    setFormData({ ...formData, territory: option.value });
+                                }}
+                                classNamePrefix="select"
+                                value={territoryOptions?.find(opt => opt.value === formData.territory)}
+                                placeholder="Select territory"
+                                isDisabled={
+                                    (formData.territoryType === 'STATE' && !taxFilterCountry) ||
+                                    (formData.territoryType === 'CITY' && !taxFilterState)
+                                }
+                            />
+                        </div>
                     </div>
+                )}
+                {!['STATE', 'CITY'].includes(formData.territoryType) && (
+                    <div className="row">
+                        <div className="col-md-6 mt-3 mb-4">
+                            <label className="projectform-select text-start d-block">Territory <span style={{ color: "red" }}>*</span></label>
+                            <Select name="territory"
+                                options={territoryOptions}
+                                onChange={(option) => {
+                                    setFormData({ ...formData, territory: option.value });
+                                }}
+                                classNamePrefix="select"
+                                value={territoryOptions?.find(opt => opt.value === formData.territory)}
+                                placeholder="Select territory"
+                            />
+                        </div>
+                    </div>
+                )}
+                <div className="row">
                     <div className="col-md-6 mt-3 mb-4">
                         <label className="projectform text-start d-block">Tax Reg No <span style={{ color: 'red' }}>*</span></label>
                         <input type="text" name="taxRegNo" className="form-input w-100" placeholder="Enter tax registration no" value={formData.taxRegNo}
@@ -407,19 +477,8 @@ const ManualEntryForm = ({
                                 setFormData({ ...formData, taxAddress2: e.target.value });
                             }} />
                     </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform-select text-start d-block">City <span style={{ color: "red" }}>*</span></label>
-                        <Select
-                            name="taxCity"
-                            options={taxCityOptions}
-                            onChange={(option) => {
-                                setFormData({ ...formData, taxCity: option.value });
-                            }}
-                            classNamePrefix="select"
-                            value={taxCityOptions?.find(opt => opt.value === formData.taxCity)}
-                            placeholder="Select city" />
-                    </div>
                 </div>
+
                 <div className="row">
                     <div className="col-md-6 mt-3 mb-4">
                         <label className="projectform text-start d-block">Zip/Postal Code</label>
@@ -437,7 +496,6 @@ const ManualEntryForm = ({
                     </div>
                 </div>
             </div>
-
             <div className="card text-start border-0 shadow-sm mt-4 px-4 pb-4" style={{ borderRadius: "8px" }}>
                 <div className="p-3 mb-4 d-flex align-items-center justify-content-center" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
                     <CreditCard size={20} className="me-2 text-white" />
@@ -630,18 +688,18 @@ const ReviewSummaryContent = ({
     gradeOptions,
     addressTypeOptions,
     countryOptions,
+    addressStateOptions,
     addresscityOptions,
     territoryTypeOptions,
     territoryOptions,
     taxTypeOptions,
-    taxCityOptions,
     additionalInfoTypeOptions,
     isLoading,
 }) => {
     const { entityCode, entityName, effectiveDate, entityType, natureOfBusiness, grade, attachmentMetadata = [] } = formData;
-    const { phoneNo, emailID, addressType, address1, address2, country, addresscity, zipCode, } = formData;
+    const { phoneNo, emailID, addressType, address1, address2, country, addressState, addresscity, zipCode, } = formData;
     const { contactName, contactPosition, contactPhoneNo, contactEmailID, } = formData;
-    const { taxType, territoryType, territory, taxRegNo, taxRegDate, taxAddress1, taxAddress2, taxCity, taxZipCode, taxEmailID, } = formData;
+    const { taxType, territoryType, territory, taxRegNo, taxRegDate, taxAddress1, taxAddress2, taxZipCode, taxEmailID, } = formData;
     const { accountHolderName, accountNo, bankName, branchName, bankAddress, } = formData;
     const { additionalInfoType, registrationNo, } = formData;
 
@@ -770,6 +828,7 @@ const ReviewSummaryContent = ({
                             </div>
                             <div className="row mb-3">
                                 <DetailItem label="Country" value={getLabel(country, countryOptions)} />
+                                <DetailItem label="State" value={getLabel(addressState, addressStateOptions)} />
                                 <DetailItem label="City" value={getLabel(addresscity, addresscityOptions)} />
                                 <DetailItem label="Zip/Postal Code" value={zipCode} />
                             </div>
@@ -822,10 +881,9 @@ const ReviewSummaryContent = ({
                             <div className="row mb-3">
                                 <DetailItem label="Address 1" value={taxAddress1} />
                                 <DetailItem label="Address 2" value={taxAddress2} />
-                                <DetailItem label="City" value={getLabel(taxCity, taxCityOptions)} />
+                                <DetailItem label="Zip/Postal Code" value={taxZipCode} />
                             </div>
                             <div className="row mb-3">
-                                <DetailItem label="Zip/Postal Code" value={taxZipCode} />
                                 <DetailItem label="" value="" />
                                 <DetailItem label="" value="" />
                             </div>
@@ -926,15 +984,61 @@ function ContractorOverview() {
     const [gradeOptions, setGradeOptions] = useState([]);
     const [addressTypeOptions, setAddressTypeOptions] = useState([]);
     const [countryOptions, setCountryOptions] = useState([]);
+    const [addressStateOptions, setAddressStateOptions] = useState([]);
     const [addresscityOptions, setAddresscityOptions] = useState([]);
     const [territoryTypeOptions, setTerritoryTypeOptions] = useState([]);
     const [territoryOptions, setTerritoryOptions] = useState([]);
     const [taxTypeOptions, setTaxTypeOptions] = useState([]);
-    const [taxCityOptions, setTaxCityOptions] = useState([]);
     const [additionalInfoTypeOptions, setAdditionalInfoTypeOptions] = useState([]);
+    const [taxCountryOptions, setTaxCountryOptions] = useState([]);
+    const [taxStateOptions, setTaxStateOptions] = useState([]);
+    const [taxFilterCountry, setTaxFilterCountry] = useState(null);
+    const [taxFilterState, setTaxFilterState] = useState(null);
     const token = sessionStorage.getItem("token");
     const headers = { Authorization: `Bearer ${token}` };
     const baseUrl = import.meta.env.VITE_API_BASE_URL;
+
+    const fetchAddressState = (countryId) => {
+        if (!countryId) {
+            setAddressStateOptions([]);
+            setAddresscityOptions([]);
+            return;
+        }
+        axios.get(`${baseUrl}/states/byCountry/${countryId}`, { headers })
+            .then(r => {
+                const list = r.data?.data ?? r.data ?? [];
+                setAddressStateOptions(
+                    list.map(item => ({
+                        value: item.id,
+                        label: item.state
+                    }))
+                );
+            })
+            .catch(() => {
+                setAddressStateOptions([]);
+                setAddresscityOptions([]);
+            });
+    }
+
+    const fetchAddressCity = (stateId) => {
+        if (!stateId) {
+            setAddresscityOptions([]);
+            return;
+        }
+        axios.get(`${baseUrl}/cities/byState/${stateId}`, { headers })
+            .then(r => {
+                const list = r.data?.data ?? r.data ?? [];
+                setAddresscityOptions(
+                    list.map(item => ({
+                        value: item.id,
+                        label: item.city
+                    }))
+                );
+            })
+            .catch(() => {
+                setAddresscityOptions([]);
+            });
+    }
 
     const handleSendInvitation = async () => {
         if (!formData.contractorEmailId) {
@@ -1036,29 +1140,9 @@ function ContractorOverview() {
                     }))
                 );
             });
-        axios.get(`${baseUrl}/cities`, { headers })
-            .then(r => {
-                const list = r.data?.data ?? r.data ?? [];
-                setTaxCityOptions(
-                    list.map(item => ({
-                        value: item.id,
-                        label: item.city
-                    }))
-                );
-            });
+
     }, [token]);
-    const fetchCity = (countryId) => {
-        axios.get(`${baseUrl}/cities/byCountry/${countryId}`, { headers })
-            .then(r => {
-                const list = r.data?.data ?? r.data ?? [];
-                setAddresscityOptions(
-                    list.map(item => ({
-                        value: item.id,
-                        label: item.city
-                    }))
-                );
-            });
-    }
+
     const fetchNatureOfBusiness = (entityTypeId) => {
         axios.get(`${baseUrl}/contractorNature/${entityTypeId}`, { headers })
             .then(r => {
@@ -1084,26 +1168,36 @@ function ContractorOverview() {
             setFormData({ ...formData, territoryTypeId: null, territory: null });
             return;
         }
+
         try {
             const token = sessionStorage.getItem("token");
             const headers = { Authorization: `Bearer ${token}` };
             let url = '';
             let response = [];
+
+            // Reset filters
+            setTaxFilterCountry(null);
+            setTaxFilterState(null);
+            setTaxCountryOptions([]);
+            setTaxStateOptions([]);
+
             switch (territoryTypeId) {
                 case 'COUNTRY':
                     url = `${import.meta.env.VITE_API_BASE_URL}/countries`;
                     response = await axios.get(url, { headers });
-                    setTerritoryOptions(toOptions(response.data, "country"));
+                    setTerritoryOptions(response.data.map(item => ({ value: item.id, label: item.country })));
                     break;
                 case 'STATE':
-                    url = `${import.meta.env.VITE_API_BASE_URL}/states`;
-                    response = await axios.get(url, { headers });
-                    setTerritoryOptions(toOptions(response.data, "state"));
+                    // Load Countries for Filter
+                    response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/countries`, { headers });
+                    setTaxCountryOptions(response.data.map(item => ({ value: item.id, label: item.country })));
+                    setTerritoryOptions([]); // Wait for filter selection
                     break;
                 case 'CITY':
-                    url = `${import.meta.env.VITE_API_BASE_URL}/cities`;
-                    response = await axios.get(url, { headers });
-                    setTerritoryOptions(toOptions(response.data, "city"));
+                    // Load Countries for Filter (State filter depends on Country)
+                    response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/countries`, { headers });
+                    setTaxCountryOptions(response.data.map(item => ({ value: item.id, label: item.country })));
+                    setTerritoryOptions([]); // Wait for filter selection
                     break;
                 default:
                     setTerritoryOptions([]);
@@ -1114,14 +1208,58 @@ function ContractorOverview() {
             setTerritoryOptions([]);
         }
     };
+
+    const handleTaxCountryFilterChange = async (selectedOption) => {
+        setTaxFilterCountry(selectedOption);
+        setTaxFilterState(null);
+        setTerritoryOptions([]);
+
+        if (!selectedOption) return;
+
+        try {
+            const token = sessionStorage.getItem("token");
+            const headers = { Authorization: `Bearer ${token}` };
+
+            if (formData.territoryType === 'STATE') {
+                // Fetch States by Country for Territory Options
+                const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/states/byCountry/${selectedOption.value}`, { headers });
+                setTerritoryOptions(response.data.map(item => ({ value: item.id, label: item.state })));
+            } else if (formData.territoryType === 'CITY') {
+                // Fetch States by Country for State Filter
+                const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/states/byCountry/${selectedOption.value}`, { headers });
+                setTaxStateOptions(response.data.map(item => ({ value: item.id, label: item.state })));
+            }
+        } catch (error) {
+            console.error("Error fetching territory options:", error);
+        }
+    };
+
+    const handleTaxStateFilterChange = async (selectedOption) => {
+        setTaxFilterState(selectedOption);
+        setTerritoryOptions([]);
+
+        if (!selectedOption) return;
+
+        if (formData.territoryType === 'CITY') {
+            try {
+                const token = sessionStorage.getItem("token");
+                const headers = { Authorization: `Bearer ${token}` };
+                // Fetch Cities by State for Territory Options
+                const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/cities/byState/${selectedOption.value}`, { headers });
+                setTerritoryOptions(response.data.map(item => ({ value: item.id, label: item.city })));
+            } catch (error) {
+                console.error("Error fetching cities:", error);
+            }
+        }
+    };
     const defaultFormData = {
         entityCode: '', entityName: '', effectiveDate: '', entityType: '',
         natureOfBusiness: '', grade: '', attachments: [], attachmentMetadata: [],
         phoneNo: '', emailID: '', addressType: '', address1: '', address2: '',
-        country: '', addresscity: '', zipCode: '',
+        country: '', addressState: '', addresscity: '', zipCode: '',
         contactName: '', contactPosition: '', contactPhoneNo: '', contactEmailID: '',
         taxType: '', territoryType: '', territory: '', taxRegNo: '',
-        taxRegDate: '', taxAddress1: '', taxAddress2: '', taxCity: '',
+        taxRegDate: '', taxAddress1: '', taxAddress2: '',
         taxZipCode: '', taxEmailID: '',
         accountHolderName: '', accountNo: '', bankName: '', branchName: '', bankAddress: '',
         additionalInfoType: '', registrationNo: '',
@@ -1151,10 +1289,10 @@ function ContractorOverview() {
 
         const requiredFields = [
             'entityCode', 'entityName', 'effectiveDate', 'entityType',
-            'addressType', 'country', 'addresscity', 'zipCode',
+            'addressType', 'country', 'addressState', 'addresscity', 'zipCode',
             'contactName', 'contactPosition', 'contactEmailID', 'contactPhoneNo',
             'taxType', 'territoryType', 'territory', 'taxRegNo',
-            'taxRegDate', 'taxCity',
+            'taxRegDate',
             'accountHolderName', 'accountNo', 'bankName', 'branchName',
             'additionalInfoType', 'registrationNo'
         ];
@@ -1189,6 +1327,7 @@ function ContractorOverview() {
             address1: formData.address1,
             address2: formData.address2,
             country: formData.country,
+            state: formData.addressState,
             city: formData.addresscity,
             zipCode: formData.zipCode,
             phoneNumber: formData.phoneNo,
@@ -1212,7 +1351,7 @@ function ContractorOverview() {
             taxRegDate: formatDateForBackend(formData.taxRegDate),
             address1: formData.taxAddress1,
             address2: formData.taxAddress2,
-            city: formData.taxCity,
+
             pinCode: formData.taxZipCode,
             email: formData.taxEmailID
         };
@@ -1292,7 +1431,7 @@ function ContractorOverview() {
         <div className="container-fluid mt-3 min-vh-100 p-4">
             <div className="w-100 bg-transparent" >
                 <div className={`d-flex align-items-center py-3 ${isReviewMode ? "px-4" : "px-0"}`}>
-                    <ArrowLeft size={24}
+                    <ArrowLeft size={20}
                         className="me-3"
                         onClick={handleGoBack}
                         style={{ cursor: "pointer", color: bluePrimary }} />
@@ -1354,15 +1493,23 @@ function ContractorOverview() {
                                         gradeOptions={gradeOptions}
                                         addressTypeOptions={addressTypeOptions}
                                         countryOptions={countryOptions}
+                                        addressStateOptions={addressStateOptions}
                                         addresscityOptions={addresscityOptions}
                                         territoryTypeOptions={territoryTypeOptions}
                                         territoryOptions={territoryOptions}
                                         taxTypeOptions={taxTypeOptions}
-                                        taxCityOptions={taxCityOptions}
+                                        taxCityOptions={[]}
                                         additionalInfoTypeOptions={additionalInfoTypeOptions}
                                         fetchNatureOfBusiness={fetchNatureOfBusiness}
-                                        fetchCity={fetchCity}
+                                        fetchAddressState={fetchAddressState}
+                                        fetchAddressCity={fetchAddressCity}
                                         fetchTerritory={fetchTerritory}
+                                        taxCountryOptions={taxCountryOptions}
+                                        taxStateOptions={taxStateOptions}
+                                        taxFilterCountry={taxFilterCountry}
+                                        taxFilterState={taxFilterState}
+                                        handleTaxCountryFilterChange={handleTaxCountryFilterChange}
+                                        handleTaxStateFilterChange={handleTaxStateFilterChange}
                                     />
                                 )}
 
@@ -1422,10 +1569,10 @@ function ContractorOverview() {
                             addressTypeOptions={addressTypeOptions}
                             countryOptions={countryOptions}
                             addresscityOptions={addresscityOptions}
+                            addressStateOptions={addressStateOptions}
                             territoryTypeOptions={territoryTypeOptions}
                             territoryOptions={territoryOptions}
                             taxTypeOptions={taxTypeOptions}
-                            taxCityOptions={taxCityOptions}
                             additionalInfoTypeOptions={additionalInfoTypeOptions}
                             isLoading={isLoading}
                         />
