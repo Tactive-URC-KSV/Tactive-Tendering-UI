@@ -5,9 +5,9 @@ import axios from 'axios';
 
 const ReviewSection = ({ icon: Icon, title, id, isOpen, toggleSection, children }) => {
   return (
-    <div 
+    <div
       className={`accordion-item mb-4 border rounded-3 ${isOpen ? 'shadow-sm' : ''}`}
-      style={{ 
+      style={{
         backgroundColor: isOpen ? '#fff' : '#F9FAFB',
         transition: 'all 0.2s ease-in-out',
         border: '1px solid #eee'
@@ -85,7 +85,7 @@ function ContractorReviewMinimal() {
       setContractorDetails(null);
       try {
         const response = await axios.get(`${baseUrl}/contractor/${selectedContractorId}`, { headers });
-        setContractorDetails(response.data); 
+        setContractorDetails(response.data);
       } catch (error) {
         console.error("Error fetching contractor details:", error);
       } finally {
@@ -108,29 +108,29 @@ function ContractorReviewMinimal() {
     if (!selectedContractorId) return;
 
     try {
-        await axios.put(
-            `${baseUrl}/contractor/verify/${selectedContractorId}`,
-            null,
-            {
-                params: { contractorStatus: status },
-                headers: headers
-            }
-        );
-        
-        await fetchContractors();
-        
-        if (contractorDetails && contractorDetails.contractor) {
-            setContractorDetails(prev => ({
-                ...prev,
-                contractor: {
-                    ...prev.contractor,
-                    status: status
-                }
-            }));
+      await axios.put(
+        `${baseUrl}/contractor/verify/${selectedContractorId}`,
+        null,
+        {
+          params: { contractorStatus: status },
+          headers: headers
         }
+      );
+
+      await fetchContractors();
+
+      if (contractorDetails && contractorDetails.contractor) {
+        setContractorDetails(prev => ({
+          ...prev,
+          contractor: {
+            ...prev.contractor,
+            status: status
+          }
+        }));
+      }
 
     } catch (error) {
-        console.error("Error verifying contractor:", error);
+      console.error("Error verifying contractor:", error);
     }
   };
 
@@ -160,7 +160,7 @@ function ContractorReviewMinimal() {
     <div className="container-fluid min-vh-100 p-2 py-4 mt-4 bg-light">
       <div className="mb-4">
         <div className="d-flex align-items-center ps-4">
-          <ArrowLeft size={22} onClick={() => navigate(-1)}
+          <ArrowLeft size={20} onClick={() => navigate(-1)}
             className="me-3"
             style={{ cursor: "pointer" }}
           />
@@ -192,8 +192,8 @@ function ContractorReviewMinimal() {
                   contractors.map((c) => (
                     <div key={c.id}
                       className={`border rounded-3 p-3 mb-3 ${selectedContractorId === c.id
-                          ? "bg-white border-primary shadow-sm"
-                          : "bg-white border-light"
+                        ? "bg-white border-primary shadow-sm"
+                        : "bg-white border-light"
                         }`}
                       style={{ cursor: "pointer", borderLeft: selectedContractorId === c.id ? '4px solid #0d6efd' : '1px solid #dee2e6' }}
                       onClick={() => setSelectedContractorId(c.id)}
@@ -221,105 +221,105 @@ function ContractorReviewMinimal() {
               style={{ minHeight: '80vh', maxHeight: 'calc(100vh - 120px)', overflowY: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none', }}
             >
               {detailsLoading ? (
-                 <div className="d-flex justify-content-center align-items-center h-100">
-                    <div className="spinner-border text-primary" role="status">
-                      <span className="visually-hidden">Loading...</span>
-                    </div>
-                 </div>
+                <div className="d-flex justify-content-center align-items-center h-100">
+                  <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
               ) : contractorDetails && contractorDetails.contractor ? (
                 <>
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <h3 className="fw-bold text-dark mb-0">{contractorDetails.contractor.entityName || "Unknown Entity"}</h3>
                     <span className={`badge ${getStatusBadgeClass(contractorDetails.contractor.status)} fs-6`}>
-                        {contractorDetails.contractor.status}
+                      {contractorDetails.contractor.status}
                     </span>
                   </div>
-                  
+
                   <p className="text-muted mb-4 border-bottom pb-4">
                     Submitted for verification. Please review the details below...
                   </p>
-                  
+
                   <ReviewSection icon={Info} title="Basic Information" id="basic-info" isOpen={openSections['basic-info']} toggleSection={toggleSection}>
                     <div className="row g-4">
-                        <DetailGridItem label="Entity Code" value={contractorDetails.contractor.entityCode} />
-                        <DetailGridItem label="Entity Name" value={contractorDetails.contractor.entityName} />
-                        <DetailGridItem label="Effective Date" value={formatDate(contractorDetails.contractor.effectiveDate)} />
-                        
-                        <DetailGridItem label="Entity Type" value={contractorDetails.contractor.contractorType?.type} />
-                        <DetailGridItem label="Nature of Business" value={getNatureStr(contractorDetails.contractor.contractorNature)} />
-                        <DetailGridItem label="Grade" value={contractorDetails.contractor.contractorGrade?.gradeName} />
+                      <DetailGridItem label="Entity Code" value={contractorDetails.contractor.entityCode} />
+                      <DetailGridItem label="Entity Name" value={contractorDetails.contractor.entityName} />
+                      <DetailGridItem label="Effective Date" value={formatDate(contractorDetails.contractor.effectiveDate)} />
+
+                      <DetailGridItem label="Entity Type" value={contractorDetails.contractor.contractorType?.type} />
+                      <DetailGridItem label="Nature of Business" value={getNatureStr(contractorDetails.contractor.contractorNature)} />
+                      <DetailGridItem label="Grade" value={contractorDetails.contractor.contractorGrade?.gradeName} />
                     </div>
-                    
+
                     {contractorDetails.contractor.attachmentUrls && contractorDetails.contractor.attachmentUrls.length > 0 && (
-                        <div className="mt-4 pt-3 border-top">
-                            <small className="text-muted d-block mb-3">Attachments (Certificates/Licenses)</small>
-                            <div className="d-flex flex-wrap gap-3">
-                                {contractorDetails.contractor.attachmentUrls.map((url, index) => (
-                                    <div key={index} className="d-flex align-items-center bg-light px-3 py-3 rounded border w-100">
-                                        <File size={16} className="text-danger me-2" />
-                                        <span className="text-dark small fw-medium">{getFileName(url)}</span>
-                                    </div>
-                                ))}
+                      <div className="mt-4 pt-3 border-top">
+                        <small className="text-muted d-block mb-3">Attachments (Certificates/Licenses)</small>
+                        <div className="d-flex flex-wrap gap-3">
+                          {contractorDetails.contractor.attachmentUrls.map((url, index) => (
+                            <div key={index} className="d-flex align-items-center bg-light px-3 py-3 rounded border w-100">
+                              <File size={16} className="text-danger me-2" />
+                              <span className="text-dark small fw-medium">{getFileName(url)}</span>
                             </div>
+                          ))}
                         </div>
+                      </div>
                     )}
                   </ReviewSection>
                   <ReviewSection icon={Home} title="Address Details" id="address-details" isOpen={openSections['address-details']} toggleSection={toggleSection}>
-                     <div className="row g-4">
-                        <DetailGridItem label="Address Type" value={contractorDetails.contractorAddress?.addressType?.addressType} />
-                        <DetailGridItem label="Address Line 1" value={contractorDetails.contractorAddress?.address1} />
-                        <DetailGridItem label="City" value={contractorDetails.contractorAddress?.city} />
-                        <DetailGridItem label="Zip Code" value={contractorDetails.contractorAddress?.zipCode} />
-                        <DetailGridItem label="Country" value={contractorDetails.contractorAddress?.country} />
+                    <div className="row g-4">
+                      <DetailGridItem label="Address Type" value={contractorDetails.contractorAddress?.addressType?.addressType} />
+                      <DetailGridItem label="Address Line 1" value={contractorDetails.contractorAddress?.address1} />
+                      <DetailGridItem label="City" value={contractorDetails.contractorAddress?.city} />
+                      <DetailGridItem label="Zip Code" value={contractorDetails.contractorAddress?.zipCode} />
+                      <DetailGridItem label="Country" value={contractorDetails.contractorAddress?.country} />
                     </div>
                   </ReviewSection>
                   <ReviewSection icon={User} title="Contact Person" id="contact-details" isOpen={openSections['contact-details']} toggleSection={toggleSection}>
                     <div className="row g-4">
-                        <DetailGridItem label="Contact Name" value={contractorDetails.contractorContacts?.name} />
-                        <DetailGridItem label="Designation" value={contractorDetails.contractorContacts?.designation} />
-                        <DetailGridItem label="Email Address" value={contractorDetails.contractorContacts?.email} />
-                        <DetailGridItem label="Phone Number" value={contractorDetails.contractorContacts?.phoneNumber} />
+                      <DetailGridItem label="Contact Name" value={contractorDetails.contractorContacts?.name} />
+                      <DetailGridItem label="Designation" value={contractorDetails.contractorContacts?.designation} />
+                      <DetailGridItem label="Email Address" value={contractorDetails.contractorContacts?.email} />
+                      <DetailGridItem label="Phone Number" value={contractorDetails.contractorContacts?.phoneNumber} />
                     </div>
                   </ReviewSection>
                   <ReviewSection icon={FileText} title="Tax Details" id="tax-details" isOpen={openSections['tax-details']} toggleSection={toggleSection}>
-                     <div className="row g-4">
-                        <DetailGridItem label="Tax Type" value={contractorDetails.contractorTaxDetails?.taxType?.taxType} />
-                        <DetailGridItem label="Registration No" value={contractorDetails.contractorTaxDetails?.taxRegNumber} />
-                        <DetailGridItem label="Registration Date" value={formatDate(contractorDetails.contractorTaxDetails?.taxRegDate)} />
-                        <DetailGridItem label="Territory" value={contractorDetails.contractorTaxDetails?.territory} />
+                    <div className="row g-4">
+                      <DetailGridItem label="Tax Type" value={contractorDetails.contractorTaxDetails?.taxType?.taxType} />
+                      <DetailGridItem label="Registration No" value={contractorDetails.contractorTaxDetails?.taxRegNumber} />
+                      <DetailGridItem label="Registration Date" value={formatDate(contractorDetails.contractorTaxDetails?.taxRegDate)} />
+                      <DetailGridItem label="Territory" value={contractorDetails.contractorTaxDetails?.territory} />
                     </div>
                   </ReviewSection>
                   <ReviewSection icon={CreditCard} title="Bank Accounts" id="bank-accounts" isOpen={openSections['bank-accounts']} toggleSection={toggleSection}>
-                     <div className="row g-4">
-                        <DetailGridItem label="Bank Name" value={contractorDetails.contractorBankDetails?.bankName} />
-                        <DetailGridItem label="Account Holder" value={contractorDetails.contractorBankDetails?.accHolderName} />
-                        <DetailGridItem label="Account Number" value={contractorDetails.contractorBankDetails?.accNumber} />
-                        <DetailGridItem label="Branch" value={contractorDetails.contractorBankDetails?.branch} />
-                        <DetailGridItem label="Bank Address" value={contractorDetails.contractorBankDetails?.bankAddress} />
+                    <div className="row g-4">
+                      <DetailGridItem label="Bank Name" value={contractorDetails.contractorBankDetails?.bankName} />
+                      <DetailGridItem label="Account Holder" value={contractorDetails.contractorBankDetails?.accHolderName} />
+                      <DetailGridItem label="Account Number" value={contractorDetails.contractorBankDetails?.accNumber} />
+                      <DetailGridItem label="Branch" value={contractorDetails.contractorBankDetails?.branch} />
+                      <DetailGridItem label="Bank Address" value={contractorDetails.contractorBankDetails?.bankAddress} />
                     </div>
                   </ReviewSection>
                   <ReviewSection icon={AlertCircle} title="Additional Info" id="additional-info" isOpen={openSections['additional-info']} toggleSection={toggleSection}>
-                     <div className="row g-4">
-                        <DetailGridItem label="Identity Type" value={contractorDetails.contractorAddInfo?.identityType?.idType} />
-                        <DetailGridItem label="Identity Reg No" value={contractorDetails.contractorAddInfo?.regNo} />
+                    <div className="row g-4">
+                      <DetailGridItem label="Identity Type" value={contractorDetails.contractorAddInfo?.identityType?.idType} />
+                      <DetailGridItem label="Identity Reg No" value={contractorDetails.contractorAddInfo?.regNo} />
                     </div>
                   </ReviewSection>
-                 {(contractorDetails.contractor.status === 'PENDING' || contractorDetails.contractor.status === 'REJECTED') && (
+                  {(contractorDetails.contractor.status === 'PENDING' || contractorDetails.contractor.status === 'REJECTED') && (
                     <div className="d-flex justify-content-end mt-3 pt-3 border-top">
-                        <button 
-                            className="btn btn-outline-danger px-4 me-3 fw-medium"
-                            onClick={() => handleVerification('REJECTED')}
-                        >
+                      <button
+                        className="btn btn-outline-danger px-4 me-3 fw-medium"
+                        onClick={() => handleVerification('REJECTED')}
+                      >
                         Reject
-                        </button>
-                        <button 
-                            className="btn d-flex align-items-center px-4 fw-medium text-white" 
-                            style={{background: '#0DB27B' }}
-                            onClick={() => handleVerification('VERIFIED')}
-                        > 
+                      </button>
+                      <button
+                        className="btn d-flex align-items-center px-4 fw-medium text-white"
+                        style={{ background: '#0DB27B' }}
+                        onClick={() => handleVerification('VERIFIED')}
+                      >
                         <Briefcase size={18} className="me-2" />
                         Verify & Add Contractor
-                        </button>
+                      </button>
                     </div>
                   )}
                 </>

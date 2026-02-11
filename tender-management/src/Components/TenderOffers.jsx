@@ -288,7 +288,7 @@ function TenderOffers() {
                 <div className="d-flex justify-content-between align-items-center mb-4 flex-shrink-0">
                     <div className="d-flex align-items-start gap-3">
                         <ArrowLeft
-                            size={22}
+                            size={20}
                             className="mt-1"
                             style={{ cursor: "pointer" }}
                             onClick={() => navigate(-1)}
