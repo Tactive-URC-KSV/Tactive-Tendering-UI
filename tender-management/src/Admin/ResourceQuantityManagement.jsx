@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
-import { ArrowLeft, Plus, X, Edit, Trash2, RotateCcw } from "lucide-react";
+import { ArrowLeft, Plus, X, Edit, Trash2, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import Select from 'react-select';
@@ -502,7 +502,6 @@ export function ResourceType() {
         </div>
     );
 }
-
 export function QuantityType() {
     const navigate = useNavigate();
 
@@ -765,7 +764,6 @@ export function QuantityType() {
         </div>
     );
 }
-
 export function Resources() {
     const navigate = useNavigate();
 
@@ -853,7 +851,7 @@ export function Resources() {
             unitRate: "",
             resourceTypeId: null,
             uomId: null,
-            active:true,
+            active: true,
         });
         setOpenModal(true);
     };
@@ -868,7 +866,7 @@ export function Resources() {
             unitRate: r.unitRate,
             resourceTypeId: r.resourceType?.id || null,
             uomId: r.uom?.id || null,
-            active:r.active,
+            active: r.active,
         });
 
         setOpenModal(true);
@@ -1127,6 +1125,513 @@ export function Resources() {
                     </div>
                 </div>
             )}
+        </div>
+    );
+}
+export function Attributes() {
+    const [attributeGroups, setAttributeGroups] = useState([]);
+    const [attributes, setAttributes] = useState([]);
+    const [expandedGroups, setExpandedGroups] = useState({});
+    const [search, setSearch] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    // View State
+    const [viewMode, setViewMode] = useState("group"); // 'group' | 'attribute'
+
+    // Modal & Form State
+    const [openModal, setOpenModal] = useState(false);
+    const [modalTab, setModalTab] = useState("attribute"); // 'attribute' | 'group'
+    const [isEdit, setIsEdit] = useState(false);
+
+    // Forms
+    const [attributeForm, setAttributeForm] = useState({
+        id: null,
+        attributeName: "",
+        active: true
+    });
+
+    const [groupForm, setGroupForm] = useState({
+        id: null,
+        groupName: "",
+        active: true,
+        selectedAttributes: []
+    });
+    const token = sessionStorage.getItem("token");
+    const handleUnauthorized = () => {
+        sessionStorage.clear();
+        window.location.href = "/login";
+    };
+    const fetchData = useCallback(() => {
+        setLoading(true);
+        axios
+            .all([
+                axios.get(`${import.meta.env.VITE_API_BASE_URL}/attributeGroup`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }),
+                axios.get(`${import.meta.env.VITE_API_BASE_URL}/attribute`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+            ])
+            .then(
+                axios.spread((groupsRes, attrsRes) => {
+                    if (groupsRes.status === 200) setAttributeGroups(groupsRes.data || []);
+                    if (attrsRes.status === 200) setAttributes(attrsRes.data || []);
+                })
+            )
+            .catch((err) => {
+                if (err?.response?.status === 401) handleUnauthorized();
+                else toast.error("Failed to fetch attributes data");
+            })
+            .finally(() => setLoading(false));
+    }, [token]);
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+    const toggleGroup = (groupId) => {
+        setExpandedGroups(prev => ({
+            ...prev,
+            [groupId]: !prev[groupId]
+        }));
+    };
+    const filteredGroups = attributeGroups.filter(g =>
+        g.groupName?.toLowerCase().includes(search.toLowerCase())
+    );
+    const getAttributesForGroup = (groupId) => {
+        return attributes.filter(attr =>
+            attr.attributeGroup?.some(g => g.id === groupId)
+        );
+    };
+    const handleAdd = () => {
+        setIsEdit(false);
+        setModalTab(viewMode === 'group' ? 'group' : 'attribute');
+        setAttributeForm({ id: null, attributeName: "", active: true });
+        setGroupForm({ id: null, groupName: "", active: true, selectedAttributes: [] });
+        setOpenModal(true);
+    };
+
+    const handleEditGroup = (e, group) => {
+        e.stopPropagation();
+        setIsEdit(true);
+        setModalTab("group");
+        const currentGroupAttrs = getAttributesForGroup(group.id);
+        const selectedOptions = currentGroupAttrs.map(attr => ({
+            value: attr.id,
+            label: attr.attributeName
+        }));
+
+        setGroupForm({
+            id: group.id,
+            groupName: group.groupName,
+            active: group.active,
+            selectedAttributes: selectedOptions
+        });
+        setOpenModal(true);
+    };
+
+    const handleEditAttribute = (attr) => {
+        setIsEdit(true);
+        setModalTab("attribute");
+        setAttributeForm({
+            id: attr.id,
+            attributeName: attr.attributeName,
+            active: attr.active
+        });
+        setOpenModal(true);
+    };
+
+    const handleAttributeStatus = (attr) => {
+        const payload = { ...attr, active: !attr.active };
+        axios.put(`${import.meta.env.VITE_API_BASE_URL}/attribute/edit`, payload, {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+            .then(() => {
+                toast.success(`Attribute ${attr.active ? "Deactivated" : "Reactivated"}`);
+                fetchData();
+            })
+            .catch(err => toast.error("Failed to update status"));
+    };
+
+    const handleGroupStatus = (group) => {
+        const currentAttributes = getAttributesForGroup(group.id);
+        const attributeIds = currentAttributes.map(a => a.id);
+
+        const payload = {
+            id: group.id,
+            groupName: group.groupName,
+            active: !group.active,
+            attributeIds: attributeIds
+        };
+
+        axios.put(`${import.meta.env.VITE_API_BASE_URL}/attributeGroup/edit`, payload, {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+            .then(() => {
+                toast.success(`Group ${group.active ? "Deactivated" : "Reactivated"}`);
+                fetchData();
+            })
+            .catch(err => toast.error("Failed to update group status"));
+    };
+
+    const handleSave = () => {
+        if (modalTab === "attribute") {
+            // Validate
+            if (!attributeForm.attributeName.trim()) {
+                toast.warning("Attribute Name is required");
+                return;
+            }
+
+            const payload = {
+                attributeName: attributeForm.attributeName,
+                active: attributeForm.active
+            };
+            if (isEdit) payload.id = attributeForm.id;
+
+            const method = isEdit ? 'put' : 'post';
+            const endpoint = isEdit
+                ? `${import.meta.env.VITE_API_BASE_URL}/attribute/edit`
+                : `${import.meta.env.VITE_API_BASE_URL}/attribute`;
+
+            axios[method](endpoint, payload, { headers: { Authorization: `Bearer ${token}` } })
+                .then(res => {
+                    toast.success(`Attribute ${isEdit ? "Updated" : "Added"} Successfully`);
+                    fetchData();
+                    setOpenModal(false);
+                })
+                .catch(err => toast.error(err?.response?.data || "Failed to save attribute"));
+
+        } else {
+            // Group Save
+            if (!groupForm.groupName.trim()) {
+                toast.warning("Group Name is required");
+                return;
+            }
+
+            const attributeIds = groupForm.selectedAttributes.map(o => o.value);
+
+            const groupPayload = {
+                groupName: groupForm.groupName,
+                active: groupForm.active
+            };
+            if (isEdit) groupPayload.id = groupForm.id;
+
+            const combinedPayload = {
+                ...groupPayload,
+                attributeIds: attributeIds
+            };
+
+            const apiCall = isEdit
+                ? axios.post(
+                    `${import.meta.env.VITE_API_BASE_URL}/attributeGroup`,
+                    groupPayload,
+                    {
+                        headers: { Authorization: `Bearer ${token}` },
+                        params: { attributeIds: attributeIds.join(',') }
+                    }
+                )
+                : axios.post(
+                    `${import.meta.env.VITE_API_BASE_URL}/attributeGroup`,
+                    groupPayload,
+                    {
+                        headers: { Authorization: `Bearer ${token}` },
+                        params: { attributeIds: attributeIds.join(',') }
+                    }
+                );
+
+            apiCall
+                .then(res => {
+                    toast.success(res.data);
+                    fetchData();
+                    setOpenModal(false);
+                })
+                .catch(err => toast.error(err?.response?.data || "Failed to save group"));
+        }
+    };
+
+    // Modal UI
+    const renderModal = () => (
+        <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+            <div className="modal-dialog modal-md modal-dialog-centered">
+                <div className="modal-content rounded-3">
+                    <div className="modal-header d-flex justify-content-between">
+                        <p className="fw-bold mb-0">
+                            {isEdit ? "Edit" : "Add"} {modalTab === "attribute" ? "Attribute" : "Attribute Group"}
+                        </p>
+                        <button className="modal-close-btn" onClick={() => setOpenModal(false)}>
+                            <X />
+                        </button>
+                    </div>
+
+                    <div className="modal-body">
+                        <ul className="nav nav-tabs mb-3">
+                            <li className="nav-item">
+                                <button
+                                    className={`nav-link ${modalTab === 'attribute' ? 'active' : ''}`}
+                                    style={{ color: modalTab === 'attribute' ? '#005197' : 'black' }}
+                                    onClick={() => setModalTab('attribute')}
+                                    disabled={isEdit && modalTab !== 'attribute'}
+                                >
+                                    Attribute
+                                </button>
+                            </li>
+                            <li className="nav-item">
+                                <button
+                                    className={`nav-link ${modalTab === 'group' ? 'active' : ''}`}
+                                    style={{ color: modalTab === 'group' ? '#005197' : 'black' }}
+                                    onClick={() => setModalTab('group')}
+                                    disabled={isEdit && modalTab !== 'group'}
+                                >
+                                    Attribute Group
+                                </button>
+                            </li>
+                        </ul>
+
+                        {modalTab === 'attribute' ? (
+                            <div className="form-group">
+                                <label className="projectform d-block">
+                                    Attribute Name <span className="text-danger">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    className="form-input w-100"
+                                    value={attributeForm.attributeName}
+                                    onChange={(e) => setAttributeForm(p => ({ ...p, attributeName: e.target.value }))}
+                                    placeholder="Enter attribute name"
+                                />
+                            </div>
+                        ) : (
+                            <div className="form-group d-flex flex-column">
+                                <div>
+                                    <label className="projectform d-block">
+                                        Group Name <span className="text-danger">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className="form-input w-100"
+                                        value={groupForm.groupName}
+                                        onChange={(e) => setGroupForm(p => ({ ...p, groupName: e.target.value }))}
+                                        placeholder="Enter group name"
+                                    />
+                                </div>
+                                <div className="mt-3">
+                                    <label className="projectform-select d-block">
+                                        Attributes
+                                    </label>
+                                    <Select
+                                        isMulti
+                                        options={attributes.map(a => ({ value: a.id, label: a.attributeName }))}
+                                        value={groupForm.selectedAttributes}
+                                        onChange={(selected) => setGroupForm(p => ({ ...p, selectedAttributes: selected || [] }))}
+                                        classNamePrefix="select"
+                                        placeholder="Select attributes..."
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="modal-footer">
+                        <button className="btn btn-secondary" onClick={() => setOpenModal(false)}>
+                            Cancel
+                        </button>
+                        <button className="btn btn-primary" onClick={handleSave}>
+                            {isEdit ? "Update" : "Save"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="container-fluid p-4 mt-3">
+            <div className="d-flex justify-content-between">
+                <div className="fw-bold">
+                    <ArrowLeft size={16} />
+                    <span className="ms-2">Attributes</span>
+                </div>
+                <button className="btn action-button" onClick={handleAdd}>
+                    <Plus size={16} />
+                    <span className="ms-2">{viewMode === 'group' ? "Add Attribute Group" : "Add Attribute"}</span>
+                </button>
+            </div>
+
+            <div className="bg-white rounded-3 mt-5" style={{ border: "1px solid #0051973D" }}>
+                <div className="tab-info text-white p-3 rounded-top" style={{ backgroundColor: "#005197" }}>
+                    <span className="ms-2 fw-bold">Attributes Management</span>
+                </div>
+                <div className="d-flex gap-4 border-bottom p-2 bg-light">
+                    <span
+                        className={`ms-2 py-2 cursor-pointer ${viewMode === 'group' ? 'text-primary fw-bold border-bottom border-primary border-2' : ''}`}
+                        onClick={() => setViewMode('group')}
+                    >
+                        Attribute Groups
+                    </span>
+                    <span
+                        className={`py-2 cursor-pointer ${viewMode === 'attribute' ? 'text-primary fw-bold border-bottom border-primary border-2' : ''}`}
+                        onClick={() => setViewMode('attribute')}
+                    >
+                        Attributes
+                    </span>
+                </div>
+
+                {viewMode === 'attribute' ? (
+                    <div className="row p-4">
+                        {loading ? (
+                            <div className="text-center w-100">Loading...</div>
+                        ) : (
+                            <div className="row">
+                                {attributes.filter(attr => !attr.attributeGroup || attr.attributeGroup.length === 0).length > 0 ? (
+                                    attributes
+                                        .filter(attr => !attr.attributeGroup || attr.attributeGroup.length === 0)
+                                        .map(attr => (
+                                            <div className="col-md-4 mb-3" key={attr.id}>
+                                                <div className="card shadow-sm">
+                                                    <div className="card-body d-flex justify-content-between align-items-center">
+                                                        <span className="fw-bold">{attr.attributeName}</span>
+                                                        <div className="d-flex align-items-center gap-2">
+                                                            <span className={`badge ${attr.active ? 'bg-success' : 'bg-secondary'} rounded-pill`} style={{ fontSize: '0.7rem' }}>
+                                                                {attr.active ? 'Active' : 'Inactive'}
+                                                            </span>
+                                                            <Edit
+                                                                size={16}
+                                                                className="cursor-pointer text-muted"
+                                                                onClick={() => handleEditAttribute(attr)}
+                                                            />
+                                                            {attr.active ? (
+                                                                <Trash2
+                                                                    size={16}
+                                                                    className="cursor-pointer text-dark"
+                                                                    onClick={() => handleAttributeStatus(attr)}
+                                                                />
+                                                            ) : (
+                                                                <RotateCcw
+                                                                    size={16}
+                                                                    className="cursor-pointer text-primary"
+                                                                    onClick={() => handleAttributeStatus(attr)}
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                ) : (
+                                    <div className="col-12 text-center text-muted">No independent attributes found.</div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <>
+                        {/* Search */}
+                        <div className="row mt-3 p-4">
+                            <div className="col-md-8">
+                                <label>Search</label>
+                                <input
+                                    className="form-input w-100"
+                                    placeholder="Search attribute group"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                />
+                            </div>
+                            <div className="col-md-4 d-flex align-items-center justify-content-center">
+                                {filteredGroups.length} of {attributeGroups.length} Groups
+                            </div>
+                        </div>
+
+                        {/* Groups List */}
+                        <div className="row p-4">
+                            {loading ? (
+                                <div className="text-center w-100">Loading...</div>
+                            ) : (
+                                filteredGroups.map((group) => (
+                                    <div className="col-12 mb-3" key={group.id}>
+                                        <div className="card shadow-sm">
+                                            <div className="card-body">
+                                                <div className="d-flex justify-content-between align-items-center cursor-pointer"
+                                                    onClick={() => toggleGroup(group.id)}>
+                                                    <div className="d-flex align-items-center gap-3">
+                                                        {expandedGroups[group.id] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                                        <h6 className="mb-0 fw-bold">{group.groupName}</h6>
+                                                        <span className={`badge ${group.active ? 'bg-success' : 'bg-secondary'}`}>
+                                                            {group.active ? 'Active' : 'Inactive'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="d-flex gap-2">
+                                                        <Edit
+                                                            size={18}
+                                                            className="text-muted cursor-pointer"
+                                                            onClick={(e) => handleEditGroup(e, group)}
+                                                        />
+                                                        {group.active ? (
+                                                            <Trash2
+                                                                size={18}
+                                                                className="cursor-pointer text-dark"
+                                                                onClick={(e) => { e.stopPropagation(); handleGroupStatus(group); }}
+                                                            />
+                                                        ) : (
+                                                            <RotateCcw
+                                                                size={18}
+                                                                className="cursor-pointer text-primary"
+                                                                onClick={(e) => { e.stopPropagation(); handleGroupStatus(group); }}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Expanded Attributes List */}
+                                                {expandedGroups[group.id] && (
+                                                    <div className="mt-4 ps-4 border-start border-3 border-primary">
+                                                        <h6 className="text-muted mb-3">Attributes in this group:</h6>
+                                                        <div className="row">
+                                                            {getAttributesForGroup(group.id).length > 0 ? (
+                                                                getAttributesForGroup(group.id).map(attr => (
+                                                                    <div className="col-md-4 mb-2" key={attr.id}>
+                                                                        <div className="p-2 border rounded d-flex justify-content-between align-items-center bg-light">
+                                                                            <span>{attr.attributeName}</span>
+                                                                            <div className="d-flex align-items-center gap-2">
+                                                                                <span className={`badge ${attr.active ? 'bg-success' : 'bg-secondary'} rounded-pill`} style={{ fontSize: '0.7rem' }}>
+                                                                                    {attr.active ? 'Active' : 'Inactive'}
+                                                                                </span>
+                                                                                <Edit
+                                                                                    size={14}
+                                                                                    className="cursor-pointer text-muted"
+                                                                                    onClick={() => handleEditAttribute(attr)}
+                                                                                />
+                                                                                {attr.active ? (
+                                                                                    <Trash2
+                                                                                        size={14}
+                                                                                        className="cursor-pointer text-dark"
+                                                                                        onClick={() => handleAttributeStatus(attr)}
+                                                                                    />
+                                                                                ) : (
+                                                                                    <RotateCcw
+                                                                                        size={14}
+                                                                                        className="cursor-pointer text-primary"
+                                                                                        onClick={() => handleAttributeStatus(attr)}
+                                                                                    />
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                ))
+                                                            ) : (
+                                                                <div className="col-12 text-muted fst-italic">No attributes found for this group.</div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </>
+                )}
+            </div>
+
+            {openModal && renderModal()}
         </div>
     );
 }

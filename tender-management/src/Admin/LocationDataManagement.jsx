@@ -461,6 +461,7 @@ export function States() {
     const [states, setStates] = useState([]);
     const [countries, setCountries] = useState([]);
     const [search, setSearch] = useState("");
+    const [selectedCountry, setSelectedCountry] = useState(null);
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
     const [state, setState] = useState({
@@ -470,9 +471,34 @@ export function States() {
         active: true,
     });
     const token = sessionStorage.getItem("token");
-    const fetchStates = () => {
+
+    const fetchCountries = () => {
         axios
-            .get(`${import.meta.env.VITE_API_BASE_URL}/states`, {
+            .get(`${import.meta.env.VITE_API_BASE_URL}/countries`, {
+                headers: { Authorization: `Bearer ${token}` },
+            })
+            .then(r => {
+                if (r.status === 200) {
+                    const data = r.data || [];
+                    setCountries(data);
+                    if (data.length > 0 && !selectedCountry) {
+                        setSelectedCountry({
+                            value: data[0].id,
+                            label: `${data[0].country} (${data[0].countryCode})`,
+                        });
+                    }
+                }
+            })
+            .catch(() => toast.error("Failed to load countries"));
+    };
+
+    const fetchStates = (countryId) => {
+        if (!countryId) {
+            setStates([]);
+            return;
+        }
+        axios
+            .get(`${import.meta.env.VITE_API_BASE_URL}/states/${countryId}`, {
                 headers: { Authorization: `Bearer ${token}` },
             })
             .then(r => {
@@ -480,20 +506,19 @@ export function States() {
             })
             .catch(() => toast.error("Failed to load states"));
     };
-    const fetchCountries = () => {
-        axios
-            .get(`${import.meta.env.VITE_API_BASE_URL}/countries`, {
-                headers: { Authorization: `Bearer ${token}` },
-            })
-            .then(r => {
-                if (r.status === 200) setCountries(r.data || []);
-            })
-            .catch(() => toast.error("Failed to load countries"));
-    };
+
     useEffect(() => {
-        fetchStates();
         fetchCountries();
     }, []);
+
+    useEffect(() => {
+        if (selectedCountry) {
+            fetchStates(selectedCountry.value);
+        } else {
+            setStates([]);
+        }
+    }, [selectedCountry]);
+
     const filteredStates = states.filter(s =>
         s.state?.toLowerCase().includes(search.toLowerCase())
     );
@@ -506,7 +531,7 @@ export function States() {
         setState({
             id: null,
             state: "",
-            countryId: "",
+            countryId: selectedCountry ? selectedCountry.value : "",
             active: true,
         });
         setOpenModal(true);
@@ -534,7 +559,7 @@ export function States() {
         )
             .then(r => {
                 toast.success(r.data);
-                fetchStates();
+                if (selectedCountry) fetchStates(selectedCountry.value);
             })
             .catch(e =>
                 toast.error(e?.response?.data || "Failed to deactivate state")
@@ -554,7 +579,7 @@ export function States() {
         )
             .then(r => {
                 toast.success(r.data);
-                fetchStates();
+                if (selectedCountry) fetchStates(selectedCountry.value);
             })
             .catch(e =>
                 toast.error(e?.response?.data || "Failed to reactivate state")
@@ -578,7 +603,7 @@ export function States() {
                 )
                 .then(r => {
                     toast.success(r.data);
-                    fetchStates();
+                    if (selectedCountry) fetchStates(selectedCountry.value);
                     setOpenModal(false);
                 })
                 .catch(e =>
@@ -593,7 +618,7 @@ export function States() {
                 )
                 .then(r => {
                     toast.success(r.data);
-                    fetchStates();
+                    if (selectedCountry) fetchStates(selectedCountry.value);
                     setOpenModal(false);
                 })
                 .catch(e =>
@@ -686,10 +711,12 @@ export function States() {
                     <ArrowLeft size={16} />
                     <span className="ms-2">States</span>
                 </div>
-                <button className="btn action-button" onClick={handleAdd}>
-                    <Plus size={16} />
-                    <span className="ms-2">Add State</span>
-                </button>
+                {selectedCountry && (
+                    <button className="btn action-button" onClick={handleAdd}>
+                        <Plus size={16} />
+                        <span className="ms-2">Add State</span>
+                    </button>
+                )}
             </div>
             <div
                 className="bg-white rounded-3 mt-5"
@@ -699,20 +726,30 @@ export function States() {
                     <span className="ms-2">States</span>
                 </div>
                 <div className="row ms-1 me-1 mt-3 bg-white p-4 rounded-3">
-                    <div className="col-lg-8">
-                        <label>Search</label>
+                    <div className="col-lg-6">
+                        <label>Select Country</label>
+                        <Select
+                            options={countryOptions}
+                            placeholder="Select Country"
+                            classNamePrefix="select"
+                            value={selectedCountry}
+                            onChange={setSelectedCountry}
+                            isClearable
+                        />
+                    </div>
+                    <div className="col-lg-6">
+                        <label>Search State</label>
                         <input
                             className="form-input w-100"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search in loaded states..."
+                            disabled={!selectedCountry}
                         />
-                    </div>
-                    <div className="col-lg-4 d-flex align-items-center justify-content-center">
-                        {filteredStates.length} of {states.length} States
                     </div>
                 </div>
                 <div className="row ms-1 me-1 mt-3">
-                    {filteredStates.map((s, i) => (
+                    {filteredStates.length > 0 ? filteredStates.map((s, i) => (
                         <div className="col-lg-4 mb-3" key={i}>
                             <div className="card shadow-sm h-100">
                                 <div className="card-body">
@@ -754,7 +791,11 @@ export function States() {
                                 </div>
                             </div>
                         </div>
-                    ))}
+                    )) : (
+                        <div className="d-flex justify-content-center text-muted p-4">
+                            {selectedCountry ? "No states found." : "Please select a country to view states."}
+                        </div>
+                    )}
                 </div>
                 {openModal && modal()}
             </div>
@@ -764,9 +805,11 @@ export function States() {
 export function Cities() {
     const [cities, setCities] = useState([]);
     const [countries, setCountries] = useState([]);
-    const [states, setStates] = useState([]);
+    const [states, setStates] = useState([]); // For modal
+    const [filterStates, setFilterStates] = useState([]); // For filter
     const [search, setSearch] = useState("");
     const [selectedCountryFilter, setSelectedCountryFilter] = useState(null);
+    const [selectedStateFilter, setSelectedStateFilter] = useState(null);
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
     const [city, setCity] = useState({
@@ -777,29 +820,31 @@ export function Cities() {
         active: true,
     });
     const token = sessionStorage.getItem("token");
-    const fetchCities = () => {
-        axios
-            .get(`${import.meta.env.VITE_API_BASE_URL}/cities`, {
-                headers: { Authorization: `Bearer ${token}` },
-            })
-            .then(r => {
-                if (r.status === 200) setCities(r.data || []);
-            })
-            .catch(() => toast.error("Failed to load cities"));
-    };
+
     const fetchCountries = () => {
         axios
             .get(`${import.meta.env.VITE_API_BASE_URL}/countries`, {
                 headers: { Authorization: `Bearer ${token}` },
             })
             .then(r => {
-                if (r.status === 200) setCountries(r.data || []);
+                if (r.status === 200) {
+                    const data = r.data || [];
+                    setCountries(data);
+                    if (data.length > 0 && !selectedCountryFilter) {
+                        setSelectedCountryFilter({
+                            value: data[0].id,
+                            label: `${data[0].country} (${data[0].countryCode})`,
+                        });
+                    }
+                }
             })
             .catch(() => toast.error("Failed to load countries"));
     };
-    const fetchStatesByCountry = (countryId) => {
+
+    const fetchStatesByCountry = (countryId, isFilter = false) => {
         if (!countryId) {
-            setStates([]);
+            if (isFilter) setFilterStates([]);
+            else setStates([]);
             return;
         }
         axios
@@ -807,43 +852,101 @@ export function Cities() {
                 headers: { Authorization: `Bearer ${token}` },
             })
             .then(r => {
-                if (r.status === 200) setStates(r.data || []);
+                const data = r.data || [];
+                if (isFilter) {
+                    setFilterStates(data);
+                    if (data.length > 0) {
+                        setSelectedStateFilter({
+                            value: data[0].id,
+                            label: data[0].state,
+                        });
+                    } else {
+                        setSelectedStateFilter(null);
+                    }
+                }
+                else setStates(data);
             })
             .catch(() => toast.error("Failed to load states"));
     };
 
+    const fetchCities = (stateId) => {
+        if (!stateId) {
+            setCities([]);
+            return;
+        }
+        axios
+            .get(`${import.meta.env.VITE_API_BASE_URL}/cities/byState/${stateId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            })
+            .then(r => {
+                if (r.status === 200) setCities(r.data || []);
+            })
+            .catch(() => toast.error("Failed to load cities"));
+    };
+
     useEffect(() => {
-        fetchCities();
         fetchCountries();
     }, []);
-    const filteredCities = cities.filter(c => {
-        const matchesText =
-            c.city?.toLowerCase().includes(search.toLowerCase());
-        const matchesCountry =
-            !selectedCountryFilter ||
-            c.country?.id === selectedCountryFilter;
-        return matchesText && matchesCountry;
-    });
+
+    useEffect(() => {
+        if (selectedCountryFilter) {
+            fetchStatesByCountry(selectedCountryFilter.value, true);
+            setSelectedStateFilter(null);
+            setCities([]);
+        } else {
+            setFilterStates([]);
+            setSelectedStateFilter(null);
+            setCities([]);
+        }
+    }, [selectedCountryFilter]);
+
+    useEffect(() => {
+        if (selectedStateFilter) {
+            fetchCities(selectedStateFilter.value);
+        } else {
+            setCities([]);
+        }
+    }, [selectedStateFilter]);
+
+    const filteredCities = cities.filter(c =>
+        c.city?.toLowerCase().includes(search.toLowerCase())
+    );
+
     const countryOptions = countries.map(c => ({
         value: c.id,
         label: `${c.country} (${c.countryCode})`,
     }));
+
+    // States for modal
     const stateOptions = states.map(s => ({
         value: s.id,
         label: s.state,
     }));
+
+    // States for filter
+    const filterStateOptions = filterStates.map(s => ({
+        value: s.id,
+        label: s.state,
+    }));
+
     const handleAdd = () => {
         setIsEdit(false);
         setCity({
             id: null,
             city: "",
-            countryId: "",
-            stateId: "",
+            countryId: selectedCountryFilter ? selectedCountryFilter.value : "",
+            stateId: selectedStateFilter ? selectedStateFilter.value : "",
             active: true,
         });
-        setStates([]);
+        // If reusing filter selection for modal initialization:
+        if (selectedCountryFilter) {
+            setStates(filterStates);
+        } else {
+            setStates([]);
+        }
         setOpenModal(true);
     };
+
     const handleEdit = (c) => {
         setIsEdit(true);
         setCity({
@@ -853,7 +956,7 @@ export function Cities() {
             stateId: c.states ? c.states.id : "",
             active: c.active,
         });
-        fetchStatesByCountry(c.country.id);
+        fetchStatesByCountry(c.country.id, false);
         setOpenModal(true);
     };
 
@@ -871,7 +974,7 @@ export function Cities() {
         )
             .then(r => {
                 toast.success(r.data);
-                fetchCities();
+                if (selectedStateFilter) fetchCities(selectedStateFilter.value);
             })
             .catch(e =>
                 toast.error(e?.response?.data || "Failed to deactivate city")
@@ -891,7 +994,7 @@ export function Cities() {
         )
             .then(r => {
                 toast.success(r.data);
-                fetchCities();
+                if (selectedStateFilter) fetchCities(selectedStateFilter.value);
             })
             .catch(e =>
                 toast.error(e?.response?.data || "Failed to reactivate city")
@@ -917,7 +1020,7 @@ export function Cities() {
             )
                 .then(r => {
                     toast.success(r.data);
-                    fetchCities();
+                    if (selectedStateFilter) fetchCities(selectedStateFilter.value);
                     setOpenModal(false);
                 })
                 .catch(e =>
@@ -931,7 +1034,7 @@ export function Cities() {
             )
                 .then(r => {
                     toast.success(r.data);
-                    fetchCities();
+                    if (selectedStateFilter) fetchCities(selectedStateFilter.value);
                     setOpenModal(false);
                 })
                 .catch(e =>
@@ -979,9 +1082,10 @@ export function Cities() {
                                     countryId: opt ? opt.value : "",
                                     stateId: "",
                                 }));
-                                fetchStatesByCountry(opt?.value);
+                                fetchStatesByCountry(opt?.value, false);
                             }}
                             isClearable
+                            isDisabled={isEdit}
                         />
                         <label className="projectform-select d-block">
                             State (Optional)
@@ -1044,10 +1148,12 @@ export function Cities() {
                     <ArrowLeft size={16} />
                     <span className="ms-2">Cities</span>
                 </div>
-                <button className="btn action-button" onClick={handleAdd}>
-                    <Plus size={16} />
-                    <span className="ms-2">Add City</span>
-                </button>
+                {selectedStateFilter && (
+                    <button className="btn action-button" onClick={handleAdd}>
+                        <Plus size={16} />
+                        <span className="ms-2">Add City</span>
+                    </button>
+                )}
             </div>
             <div
                 className="bg-white rounded-3 mt-5"
@@ -1057,32 +1163,42 @@ export function Cities() {
                     <span className="ms-2">Cities</span>
                 </div>
                 <div className="row ms-1 me-1 mt-3 bg-white p-4 rounded-3">
-                    <div className="col-lg-6">
-                        <label>Search</label>
+                    <div className="col-lg-4">
+                        <label>Select Country</label>
+                        <Select
+                            options={countryOptions}
+                            placeholder="Select Country"
+                            classNamePrefix="select"
+                            value={selectedCountryFilter}
+                            onChange={setSelectedCountryFilter}
+                            isClearable
+                        />
+                    </div>
+                    <div className="col-lg-4">
+                        <label>Select State</label>
+                        <Select
+                            options={filterStateOptions}
+                            placeholder="Select State"
+                            classNamePrefix="select"
+                            value={selectedStateFilter}
+                            onChange={setSelectedStateFilter}
+                            isClearable
+                            isDisabled={!selectedCountryFilter}
+                        />
+                    </div>
+                    <div className="col-lg-4">
+                        <label>Search City</label>
                         <input
                             className="form-input w-100"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                        />
-                    </div>
-                    <div className="col-lg-6">
-                        <label>Filter by Country</label>
-                        <Select
-                            options={countryOptions}
-                            placeholder="All Countries"
-                            classNamePrefix="select"
-                            value={countryOptions.find(
-                                o => o.value === selectedCountryFilter
-                            )}
-                            onChange={(opt) =>
-                                setSelectedCountryFilter(opt ? opt.value : null)
-                            }
-                            isClearable
+                            placeholder="Search in loaded cities..."
+                            disabled={!selectedStateFilter}
                         />
                     </div>
                 </div>
                 <div className="row ms-1 me-1 mt-3">
-                    {filteredCities.map((c, i) => (
+                    {filteredCities.length > 0 ? filteredCities.map((c, i) => (
                         <div className="col-lg-4 mb-3" key={i}>
                             <div className="card shadow-sm h-100">
                                 <div className="card-body">
@@ -1120,7 +1236,11 @@ export function Cities() {
                                 </div>
                             </div>
                         </div>
-                    ))}
+                    )) : (
+                        <div className="d-flex justify-content-center text-muted p-4">
+                            {selectedStateFilter ? "No cities found." : "Please select Country and State to view cities."}
+                        </div>
+                    )}
                 </div>
                 {openModal && modal()}
             </div>

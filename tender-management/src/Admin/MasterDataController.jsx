@@ -56,6 +56,7 @@ function MasterDataController({ children }) {
     { label: "State", path: "state" },
     { label: "City", path: "city" },
     { label: "Resources", path: "resources" },
+    { label: "Attributes", path: "attributes"},
     { label: "Currency", path: "currency"},
   ];
   const renderSection = (key, title, data) => (
