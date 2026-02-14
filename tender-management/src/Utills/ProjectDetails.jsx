@@ -25,21 +25,21 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
     const CustomMultiValueContainer = () => null;
     const CustomDropdownIndicator = () => null;
     const CustomIndicatorSeparator = () => null;
-    const CustomClearIndicator = () => null; 
+    const CustomClearIndicator = () => null;
 
-    const regionOptions = useRegions().map(region => ({
+    const regionOptions = (useRegions() || []).map(region => ({
         value: region.id,
         label: region.regionName
     }));
-    const uomOptions = useUom().map(uom => ({
+    const uomOptions = (useUom() || []).map(uom => ({
         value: uom.id,
         label: uom.uomName
     }));
-    const sectorOptions = useSectors().map(sector => ({
+    const sectorOptions = (useSectors() || []).map(sector => ({
         value: sector.id,
         label: sector.sectorName,
     }));
-    const scopeOptions = useScope().map(scopes => ({
+    const scopeOptions = (useScope() || []).map(scopes => ({
         value: scopes.id,
         label: scopes.scope,
     }));
@@ -61,7 +61,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
         }
         setProject({ ...project, endDate: date });
     };
-    
+
     // Function to handle removal of an external scope tag
     const handleScopeRemove = (idToRemove) => {
         setScopePack(scopePack.filter(id => id !== idToRemove));
@@ -139,7 +139,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                             id="endDate"
                             className="form-input w-100"
                             placeholder="Select End date"
-                            options={{ dateFormat: "d-m-Y",minDate: project.startDate, }}
+                            options={{ dateFormat: "d-m-Y", minDate: project.startDate, }}
                             value={project.endDate}
                             onChange={([date]) => handleEndDateChange(date)}
                             ref={datePickerRef}
@@ -223,7 +223,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                                 MultiValueContainer: CustomMultiValueContainer,
                                 IndicatorSeparator: CustomIndicatorSeparator,
                                 DropdownIndicator: CustomDropdownIndicator,
-                                ClearIndicator: CustomClearIndicator, 
+                                ClearIndicator: CustomClearIndicator,
                             }}
                             value={scopeOptions.filter(opt => scopePack.includes(opt.value))}
                             onChange={(option) =>
