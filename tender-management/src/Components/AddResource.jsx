@@ -311,6 +311,118 @@ function AddResource() {
 
     const handleBack = () => navigate(-1);
 
+    // State for dynamic attributes
+    const [resourceAttributes, setResourceAttributes] = useState([]);
+    const [selectedAttributes, setSelectedAttributes] = useState({});
+
+    // Fetch assigned attribute groups and their options
+    const fetchResourceAttributes = useCallback((resourceId) => {
+        if (!resourceId) {
+            setResourceAttributes([]);
+            setSelectedAttributes({});
+            return;
+        }
+
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/get-by-resource/${resourceId}`, {
+            headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+        })
+            .then(res => {
+                const assignments = res.data || [];
+                if (assignments.length === 0) {
+                    setResourceAttributes([]);
+                    return;
+                }
+
+                // Fetch options for each group
+                const groupPromises = assignments.map(assignment => {
+                    const groupId = assignment.attributeGroup?.id;
+                    if (!groupId) return Promise.resolve(null);
+
+                    return axios.get(`${import.meta.env.VITE_API_BASE_URL}/get-by-group/${groupId}`, {
+                        headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+                    })
+                        .then(optRes => ({
+                            groupId: groupId,
+                            groupName: assignment.attributeGroup.groupName,
+                            isMandatory: assignment.mandatory,
+                            options: (optRes.data || []).map(attr => ({
+                                value: attr.id,
+                                label: attr.attributeName
+                            }))
+                        }))
+                        .catch(err => {
+                            console.error(`Failed to fetch options for group ${groupId}`, err);
+                            return null;
+                        });
+                });
+
+                Promise.all(groupPromises)
+                    .then(results => {
+                        const validGroups = results.filter(g => g !== null);
+                        setResourceAttributes(validGroups);
+                    });
+            })
+            .catch(err => {
+                console.error("Failed to fetch resource attributes", err);
+                toast.error("Failed to load resource attributes");
+            });
+    }, []);
+
+
+    const handleResourceTypeChange = useCallback((selected) => {
+        setSelectedResourceType(selected);
+        setSelectedResource(null); // Reset resource
+        setResources([]); // Clear resources
+        setResourceAttributes([]); // Clear attributes
+        setSelectedAttributes({});
+        handleCalculations({
+            resourceTypeId: selected?.value || "",
+            resourceId: ""
+        });
+        if (selected?.value) {
+            fetchResources(selected.value);
+        }
+    }, [handleCalculations, fetchResources]);
+
+    // **FIX: Resource change handler**
+    const handleResourceChange = useCallback((selectedOption) => {
+        setSelectedResource(selectedOption);
+        const selectedResObj = resources.find((r) => r.id === selectedOption?.value);
+
+        // Fetch attributes for the selected resource
+        if (selectedOption?.value) {
+            fetchResourceAttributes(selectedOption.value);
+        } else {
+            setResourceAttributes([]);
+            setSelectedAttributes({});
+        }
+
+        if (selectedResObj) {
+            const matchingUomOption = uomOptions.find((u) => u.value === selectedResObj.uom?.id);
+            if (matchingUomOption) setSelectedUom(matchingUomOption);
+
+            handleCalculations({
+                resourceId: selectedResObj.id,
+                rate: selectedResObj.unitRate || 0,
+                uomId: selectedResObj.uom?.id || ""
+            });
+        } else {
+            setSelectedUom(null);
+            handleCalculations({
+                resourceId: "",
+                rate: 0,
+                uomId: ""
+            });
+        }
+    }, [resources, uomOptions, handleCalculations, fetchResourceAttributes]);
+
+    const handleAttributeChange = (groupId, selectedOption) => {
+        setSelectedAttributes(prev => ({
+            ...prev,
+            [groupId]: selectedOption
+        }));
+    };
+
     // **FIXED: Updated API endpoint and payload**
     const handleAddResource = useCallback(() => {
         const requiredFields = [];
@@ -322,6 +434,12 @@ function AddResource() {
         if (!selectedQuantityType?.value) requiredFields.push("Quantity Type");
         if (!resourceData.coEfficient) requiredFields.push("Coefficient");
         if (!resourceData.calculatedQuantity) requiredFields.push("Calculated Quantity");
+
+        resourceAttributes.forEach(attr => {
+            if (attr.isMandatory && !selectedAttributes[attr.groupId]) {
+                requiredFields.push(`${attr.groupName} (Attribute)`);
+            }
+        });
 
         if (requiredFields.length > 0) {
             toast.error(`Please fill in: ${requiredFields.join(", ")}`);
@@ -335,7 +453,13 @@ function AddResource() {
             uomId: selectedUom?.value || resourceData.uomId,
             resourceNatureId: selectedNature?.value || resourceData.resourceNatureId,
             quantityTypeId: selectedQuantityType?.value || resourceData.quantityTypeId,
-            currencyId: selectedCurrency?.value || resourceData.currencyId
+            currencyId: selectedCurrency?.value || resourceData.currencyId,
+            attributes: Object.entries(selectedAttributes)
+                .filter(([_, opt]) => opt?.value)
+                .map(([groupId, opt]) => ({
+                    attributeGroupId: groupId,
+                    attributeId: opt.value
+                }))
         };
 
         const endpoint = tenderEstimationId
@@ -359,7 +483,7 @@ function AddResource() {
                 toast.error(tenderEstimationId ? "Failed to update resource" : "Failed to add resource");
             }
         });
-    }, [resourceData, selectedResourceType, selectedResource, selectedUom, selectedNature, selectedQuantityType, selectedCurrency, tenderEstimationId, navigate, handleUnauthorized]);
+    }, [resourceData, selectedResourceType, selectedResource, selectedUom, selectedNature, selectedQuantityType, selectedCurrency, tenderEstimationId, navigate, handleUnauthorized, resourceAttributes, selectedAttributes]);
 
     const toggleSelection = useCallback((sectionName) => {
         setExpandedSections(prev => ({
@@ -368,42 +492,6 @@ function AddResource() {
         }));
     }, []);
 
-    // **FIX: Resource Type change handler**
-    const handleResourceTypeChange = useCallback((selected) => {
-        setSelectedResourceType(selected);
-        setSelectedResource(null); // Reset resource
-        setResources([]); // Clear resources
-        handleCalculations({
-            resourceTypeId: selected?.value || "",
-            resourceId: ""
-        });
-        if (selected?.value) {
-            fetchResources(selected.value);
-        }
-    }, [handleCalculations]);
-
-    // **FIX: Resource change handler**
-    const handleResourceChange = useCallback((selectedOption) => {
-        setSelectedResource(selectedOption);
-        const selectedResObj = resources.find((r) => r.id === selectedOption?.value);
-        if (selectedResObj) {
-            const matchingUomOption = uomOptions.find((u) => u.value === selectedResObj.uom?.id);
-            if (matchingUomOption) setSelectedUom(matchingUomOption);
-
-            handleCalculations({
-                resourceId: selectedResObj.id,
-                rate: selectedResObj.unitRate || 0,
-                uomId: selectedResObj.uom?.id || ""
-            });
-        } else {
-            setSelectedUom(null);
-            handleCalculations({
-                resourceId: "",
-                rate: 0,
-                uomId: ""
-            });
-        }
-    }, [resources, uomOptions, handleCalculations]);
 
     // **FIX: Other select change handlers**
     const handleSelectChange = useCallback((field, selected) => {
@@ -516,6 +604,29 @@ function AddResource() {
                             step="0.01"
                         />
                     </div>
+
+                    {/* Dynamic Attributes Section */}
+                    {resourceAttributes.length > 0 && (
+                        <div className="col-12">
+                            <div className="row g-3">
+                                {resourceAttributes.map((attr) => (
+                                    <div className="col-md-6" key={attr.groupId}>
+                                        <label className="form-label text-start w-100">
+                                            {attr.groupName} {attr.isMandatory && <span style={{ color: "red" }}>*</span>}
+                                        </label>
+                                        <Select
+                                            options={attr.options}
+                                            placeholder={`Select ${attr.groupName}`}
+                                            className="w-100"
+                                            classNamePrefix="select"
+                                            value={selectedAttributes[attr.groupId] || null}
+                                            onChange={(selected) => handleAttributeChange(attr.groupId, selected)}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

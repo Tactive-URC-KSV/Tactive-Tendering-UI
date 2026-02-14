@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
-import { ArrowLeft, Plus, X, Edit, Trash2, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Plus, X, Edit, Trash2, RotateCcw, ChevronDown, ChevronUp, Eye } from "lucide-react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import Select from 'react-select';
+import Select, { components } from 'react-select';
 
 export function ResourceNature() {
     const [resourceNature, setResourceNature] = useState([]);
@@ -768,6 +768,8 @@ export function Resources() {
     const navigate = useNavigate();
 
     const [resourceTypes, setResourceTypes] = useState([]);
+    const [attributeGroups, setAttributeGroups] = useState([]);
+    const [allAttributes, setAllAttributes] = useState([]);
     const [uoms, setUoms] = useState([]);
     const [allResources, setAllResources] = useState([]);
     const [selectedResType, setSelectedResType] = useState(null);
@@ -775,6 +777,10 @@ export function Resources() {
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [activeTab, setActiveTab] = useState('general');
+    const [viewAttributeModal, setViewAttributeModal] = useState(false);
+    const [selectedResource, setSelectedResource] = useState(null);
+    const [groupAttributes, setGroupAttributes] = useState([]);
     const [resourceForm, setResourceForm] = useState({
         resourceCode: "",
         resourceName: "",
@@ -782,6 +788,7 @@ export function Resources() {
         resourceTypeId: null,
         uomId: null,
         active: true,
+        attributes: []
     });
 
     const handleUnauthorized = () => {
@@ -828,31 +835,62 @@ export function Resources() {
                 }),
                 axios.get(`${import.meta.env.VITE_API_BASE_URL}/resourceType`, {
                     headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+                }),
+                axios.get(`${import.meta.env.VITE_API_BASE_URL}/attributeGroup`, {
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+                }),
+                axios.get(`${import.meta.env.VITE_API_BASE_URL}/attribute`, {
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
                 })
             ])
             .then(
-                axios.spread((uomRes, typeRes) => {
+                axios.spread((uomRes, typeRes, groupRes, attrRes) => {
                     setUoms(uomRes.data.map(u => ({
                         value: u.id,
                         label: u.uomName || u.uomCode
                     })));
                     setResourceTypes(typeRes.data.map(t => ({ value: t.id, label: t.resourceTypeName })));
+                    setAttributeGroups(groupRes.data.map(g => ({ value: g.id, label: g.groupName })));
+                    setAllAttributes(attrRes.data || []);
                 })
             )
             .catch(() => toast.error("Failed to load dropdowns"));
     };
+
+    const generateRandomResourceCode = (existingResources) => {
+        let code;
+        let isUnique = false;
+        const maxAttempts = 100;
+        let attempts = 0;
+
+        while (!isUnique && attempts < maxAttempts) {
+            // Generate random 6 digit number
+            code = Math.floor(100000 + Math.random() * 900000).toString();
+            // Check if exists
+            const exists = existingResources.some(r => r.resourceCode === code);
+            if (!exists) {
+                isUnique = true;
+            }
+            attempts++;
+        }
+        return isUnique ? code : "";
+    };
+
     const handleAdd = () => {
         fetchDropdownMasters();
         setIsEdit(false);
         setEditingId(null);
+        const newCode = generateRandomResourceCode(allResources);
         setResourceForm({
-            resourceCode: "",
+            resourceCode: newCode,
             resourceName: "",
             unitRate: "",
             resourceTypeId: null,
             uomId: null,
             active: true,
+            attributes: [{ id: null, attributeGroupId: null, isMandatory: false }]
         });
+        setActiveTab('general');
         setOpenModal(true);
     };
 
@@ -860,16 +898,141 @@ export function Resources() {
         fetchDropdownMasters();
         setIsEdit(true);
         setEditingId(r.id);
-        setResourceForm({
-            resourceCode: r.resourceCode,
-            resourceName: r.resourceName,
-            unitRate: r.unitRate,
-            resourceTypeId: r.resourceType?.id || null,
-            uomId: r.uom?.id || null,
-            active: r.active,
-        });
 
-        setOpenModal(true);
+        // Fetch Resource Attribute Details
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/get-by-resource/${r.id}`, {
+            headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+        })
+            .then(res => {
+                const attrData = res.data || [];
+                const attributes = attrData.map(a => ({
+                    id: a.id,
+                    attributeGroupId: a.attributeGroup?.id || null,
+                    isMandatory: a.mandatory
+                }));
+
+                setResourceForm({
+                    resourceCode: r.resourceCode,
+                    resourceName: r.resourceName,
+                    unitRate: r.unitRate,
+                    resourceTypeId: r.resourceType?.id || null,
+                    uomId: r.uom?.id || null,
+                    active: r.active,
+                    attributes: attributes.length > 0 ? attributes : [{ id: null, attributeGroupId: null, isMandatory: false }]
+                });
+                setActiveTab('general');
+                setOpenModal(true);
+            })
+            .catch(err => {
+                console.error(err);
+                setResourceForm({
+                    resourceCode: r.resourceCode,
+                    resourceName: r.resourceName,
+                    unitRate: r.unitRate,
+                    resourceTypeId: r.resourceType?.id || null,
+                    uomId: r.uom?.id || null,
+                    active: r.active,
+                    attributes: [{ id: null, attributeGroupId: null, isMandatory: false }]
+                });
+                setActiveTab('general');
+                setOpenModal(true);
+            });
+    };
+
+    const handleAddAttribute = (r) => {
+        fetchDropdownMasters();
+        setIsEdit(true);
+        setEditingId(r.id);
+
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/get-by-resource/${r.id}`, {
+            headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+        })
+            .then(res => {
+                const attrData = res.data || [];
+                const attributes = attrData.map(a => ({
+                    id: a.id,
+                    attributeGroupId: a.attributeGroup?.id || null,
+                    isMandatory: a.mandatory
+                }));
+
+                setResourceForm({
+                    resourceCode: r.resourceCode,
+                    resourceName: r.resourceName,
+                    unitRate: r.unitRate,
+                    resourceTypeId: r.resourceType?.id || null,
+                    uomId: r.uom?.id || null,
+                    active: r.active,
+                    attributes: attributes.length > 0 ? attributes : [{ id: null, attributeGroupId: null, isMandatory: false }]
+                });
+                setActiveTab('attributes');
+                setOpenModal(true);
+            })
+            .catch(err => {
+                setResourceForm({
+                    resourceCode: r.resourceCode,
+                    resourceName: r.resourceName,
+                    unitRate: r.unitRate,
+                    resourceTypeId: r.resourceType?.id || null,
+                    uomId: r.uom?.id || null,
+                    active: r.active,
+                    attributes: [{ id: null, attributeGroupId: null, isMandatory: false }]
+                });
+                setActiveTab('attributes');
+                setOpenModal(true);
+            });
+    };
+
+    const handleViewAttributes = (r) => {
+        // Fetch all assigned attribute groups for this resource
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/get-by-resource/${r.id}`, {
+            headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+        })
+            .then(res => {
+                const assignments = res.data || [];
+
+                if (assignments.length === 0) {
+                    setSelectedResource(r);
+                    setGroupAttributes([]);
+                    setViewAttributeModal(true);
+                    return;
+                }
+
+                // Fetch attributes for each assigned group
+                const groupFetches = assignments.map(assignment => {
+                    if (!assignment.attributeGroup?.id) return Promise.resolve([]);
+
+                    return axios.get(`${import.meta.env.VITE_API_BASE_URL}/get-by-group/${assignment.attributeGroup.id}`, {
+                        headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+                    })
+                        .then(gRes => {
+                            const attrs = gRes.data || [];
+                            // Attach group metadata to each attribute
+                            return attrs.map(attr => ({
+                                ...attr,
+                                groupName: assignment.attributeGroup.groupName,
+                                isMandatory: assignment.mandatory,
+                                assignmentId: assignment.id // Keep track of the assignment ID if needed
+                            }));
+                        })
+                        .catch(() => []); // If one group fails, just return empty for that one
+                });
+
+                Promise.all(groupFetches)
+                    .then(results => {
+                        // Flatten the array of arrays
+                        const allAttrs = results.flat();
+                        setGroupAttributes(allAttrs);
+                        setSelectedResource(r);
+                        setViewAttributeModal(true);
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        toast.error("Failed to fetch group attributes");
+                    });
+            })
+            .catch(err => {
+                toast.error("Failed to fetch attribute details");
+            });
     };
 
     const toggleStatus = (r) => {
@@ -895,11 +1058,55 @@ export function Resources() {
             })
             .catch(e => toast.error(e?.response?.data || "Update failed"));
     };
+
+    // Helper functions for attribute rows
+    const addNewAttributeRow = () => {
+        setResourceForm(prev => ({
+            ...prev,
+            attributes: [...prev.attributes, { id: null, attributeGroupId: null, isMandatory: false }]
+        }));
+    };
+
+    const removeAttributeRow = (index) => {
+        setResourceForm(prev => {
+            const newAttributes = [...prev.attributes];
+            const removedAttr = newAttributes[index];
+            newAttributes.splice(index, 1);
+
+            // If deleting an existing attribute assignment, attempt DELETE API call
+            // NOTE: Assuming backend has a DELETE endpoint for resource attributes or handles it.
+            // If specific endpoint is not confirmed, this is UI-only removal until confirmed.
+            // Based on typical patterns, if an ID exists, we might need to delete it.
+            if (removedAttr.id) {
+                // DELETE logic placeholder - uncomment if endpoint confirmed
+                // axios.delete(`${import.meta.env.VITE_API_BASE_URL}/resourceAttribute/delete/${removedAttr.id}`, {
+                //    headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+                // }).catch(err => console.log("Failed to delete attribute assignment", err));
+            }
+
+            return { ...prev, attributes: newAttributes };
+        });
+    };
+
+    const updateAttributeRow = (index, field, value) => {
+        setResourceForm(prev => {
+            const newAttributes = [...prev.attributes];
+            newAttributes[index] = { ...newAttributes[index], [field]: value };
+            return { ...prev, attributes: newAttributes };
+        });
+    };
     const handleSaveResource = () => {
-        const { resourceCode, resourceName, unitRate, resourceTypeId, uomId, active } = resourceForm;
+        const { resourceCode, resourceName, unitRate, resourceTypeId, uomId, active, attributes } = resourceForm;
 
         if (!resourceCode || !resourceName || !unitRate || !resourceTypeId || !uomId) {
             toast.warning("All fields are required");
+            return;
+        }
+
+        // Duplicate Check
+        const isDuplicate = allResources.some(r => r.resourceCode === resourceCode && r.id !== editingId);
+        if (isDuplicate) {
+            toast.warning("Resource Code already exists. Please generate a new one.");
             return;
         }
 
@@ -907,9 +1114,10 @@ export function Resources() {
             resourceCode,
             resourceName,
             unitRate,
+
             resourceTypeId,
             uomId,
-            active,
+            active
         };
 
         const api = isEdit
@@ -925,12 +1133,43 @@ export function Resources() {
             );
 
         api
-            .then(() => {
-                toast.success(isEdit ? "Resource updated" : "Resource added");
-                setOpenModal(false);
-                setIsEdit(false);
-                setEditingId(null);
-                fetchInitialData();
+            .then((res) => {
+                const savedResourceId = isEdit ? editingId : (res.data && res.data.id ? res.data.id : null);
+                if (savedResourceId) {
+                    // Process attributes
+                    const attributePromises = attributes
+                        .filter(attr => attr.attributeGroupId) // Filter out empty rows
+                        .map(attr => {
+                            const attrPayload = {
+                                id: attr.id, // Include ID if editing/existing
+                                resourceId: savedResourceId,
+                                attributeGroupId: attr.attributeGroupId,
+                                mandatory: attr.isMandatory
+                            };
+                            return axios.post(`${import.meta.env.VITE_API_BASE_URL}/addResourceAttribute`, attrPayload, {
+                                headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+                            });
+                        });
+
+                    Promise.all(attributePromises)
+                        .then(() => {
+                            toast.success(isEdit ? "Resource updated" : "Resource added");
+                            setOpenModal(false);
+                            setIsEdit(false);
+                            setEditingId(null);
+                            fetchInitialData();
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            toast.warning("Resource saved but failed to update attributes");
+                            setOpenModal(false);
+                            fetchInitialData();
+                        });
+                } else {
+                    toast.success(isEdit ? "Resource updated" : "Resource added");
+                    setOpenModal(false);
+                    fetchInitialData();
+                }
             })
             .catch(e => toast.error(e?.response?.data || "Save failed"));
     };
@@ -992,6 +1231,7 @@ export function Resources() {
                                 <th>UOM</th>
                                 <th>Rate</th>
                                 <th>Status</th>
+                                <th>Attribute</th>
                                 <th className="text-end">Action</th>
                             </tr>
                         </thead>
@@ -1009,6 +1249,16 @@ export function Resources() {
                                         <span className={r.active ? "text-success" : ""}>
                                             {r.active ? "Active" : "Inactive"}
                                         </span>
+                                    </td>
+
+                                    <td>
+                                        <button
+                                            className="btn btn-sm btn-outline-info"
+                                            onClick={() => handleViewAttributes(r)}
+                                            title="View Attributes"
+                                        >
+                                            <Eye size={14} /> View
+                                        </button>
                                     </td>
 
                                     <td className="text-end">
@@ -1039,13 +1289,85 @@ export function Resources() {
                 </div>
             </div>
 
+            {viewAttributeModal && selectedResource && (
+                <div className="modal fade show d-block" style={{ background: "rgba(0,0,0,.5)" }}>
+                    <div className="modal-dialog modal-xl modal-dialog-centered">
+                        <div className="modal-content">
+                            <div className="modal-header d-flex justify-content-between">
+                                <p className="fw-bold mb-0">Attributes - {selectedResource.resourceName}</p>
+                                <button className="modal-close-btn" onClick={() => setViewAttributeModal(false)}>
+                                    <X />
+                                </button>
+                            </div>
+                            <div className="modal-body">
+                                <p className="mb-3"><strong>Total Attributes:</strong> {groupAttributes.length}</p>
+                                <div className="table-responsive">
+                                    <table className="table table-bordered table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th style={{ width: '50px' }}>S.No</th>
+                                                <th>Attribute Group</th>
+                                                <th>Attribute Name</th>
+                                                <th>Mandatory</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {groupAttributes.map((attr, idx) => (
+                                                <tr key={attr.id || idx}>
+                                                    <td>{idx + 1}</td>
+                                                    <td>{attr.groupName || "-"}</td>
+                                                    <td>{attr.attributeName}</td>
+                                                    <td>{attr.isMandatory ? "Yes" : "No"}</td>
+                                                    <td>
+                                                        <span className={attr.active ? "text-success" : "text-danger"}>
+                                                            {attr.active ? "Active" : "Inactive"}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {groupAttributes.length === 0 && (
+                                                <tr>
+                                                    <td colSpan="5" className="text-center text-muted">No attributes found.</td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={() => {
+                                        setViewAttributeModal(false);
+                                        handleAddAttribute(selectedResource);
+                                    }}
+                                >
+                                    Add
+                                </button>
+                                <button
+                                    className="btn btn-success"
+                                    onClick={() => {
+                                        setViewAttributeModal(false);
+                                        handleAddAttribute(selectedResource);
+                                    }}
+                                >
+                                    Update
+                                </button>
+                                <button className="btn btn-secondary" onClick={() => setViewAttributeModal(false)}>Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {openModal && (
                 <div className="modal fade show d-block" style={{ background: "rgba(0,0,0,.5)" }}>
                     <div className="modal-dialog modal-lg modal-dialog-centered">
                         <div className="modal-content">
                             <div className="modal-header d-flex justify-content-between">
                                 <p className="fw-bold mb-0">
-                                    {isEdit ? "Edit Identity Type" : "Add Identity Type"}
+                                    {isEdit ? "Edit Resource" : "Add Resource"} - {activeTab === 'general' ? 'General' : 'Attributes'}
                                 </p>
                                 <button
                                     className="modal-close-btn"
@@ -1055,56 +1377,136 @@ export function Resources() {
                                 </button>
                             </div>
 
-                            <div className="modal-body row g-3">
-                                {/* 1. Code */}
-                                <div className="col-md-6">
-                                    <label className="projectform d-block">Code<span className="text-danger">*</span></label>
-                                    <input className="form-input w-100" placeholder="Code"
-                                        value={resourceForm.resourceCode}
-                                        onChange={e => setResourceForm(p => ({ ...p, resourceCode: e.target.value }))} />
-                                </div>
+                            <div className="modal-body">
+                                <ul className="nav nav-tabs mb-3">
+                                    <li className="nav-item">
+                                        <button
+                                            className={`nav-link ${activeTab === 'general' ? 'active' : ''}`}
+                                            style={{ color: activeTab === 'general' ? '#005197' : 'black' }}
+                                            onClick={() => setActiveTab('general')}
+                                        >
+                                            General
+                                        </button>
+                                    </li>
+                                    <li className="nav-item">
+                                        <button
+                                            className={`nav-link ${activeTab === 'attributes' ? 'active' : ''}`}
+                                            style={{ color: activeTab === 'attributes' ? '#005197' : 'black' }}
+                                            onClick={() => setActiveTab('attributes')}
+                                        >
+                                            Attributes
+                                        </button>
+                                    </li>
+                                </ul>
 
-                                {/* 2. Name */}
-                                <div className="col-md-6">
-                                    <label className="projectform d-block">Name<span className="text-danger">*</span></label>
-                                    <input className="form-input w-100" placeholder="Name"
-                                        value={resourceForm.resourceName}
-                                        onChange={e => setResourceForm(p => ({ ...p, resourceName: e.target.value }))} />
-                                </div>
+                                {activeTab === 'general' ? (
+                                    <div className="row g-3">
+                                        {/* 1. Code */}
+                                        <div className="col-md-6">
+                                            <label className="projectform d-block">Code<span className="text-danger">*</span></label>
+                                            <input className="form-input w-100" placeholder="Code"
+                                                value={resourceForm.resourceCode}
+                                                onChange={e => setResourceForm(p => ({ ...p, resourceCode: e.target.value }))} />
+                                        </div>
 
-                                {/* 3. Rate */}
-                                <div className="col-md-6">
-                                    <label className="projectform d-block">Rate<span className="text-danger">*</span></label>
-                                    <input type="number" className="form-input w-100" placeholder="Rate"
-                                        value={resourceForm.unitRate}
-                                        onChange={e => setResourceForm(p => ({ ...p, unitRate: e.target.value }))} />
-                                </div>
+                                        {/* 2. Name */}
+                                        <div className="col-md-6">
+                                            <label className="projectform d-block">Name<span className="text-danger">*</span></label>
+                                            <input className="form-input w-100" placeholder="Name"
+                                                value={resourceForm.resourceName}
+                                                onChange={e => setResourceForm(p => ({ ...p, resourceName: e.target.value }))} />
+                                        </div>
 
-                                <div className="col-md-6">
-                                    <label className="projectform-select d-block">UOM<span className="text-danger">*</span></label>
-                                    <Select
-                                        options={uoms}
-                                        classNamePrefix="select"
-                                        placeholder="Select UOM"
-                                        value={uoms.find(u => u.value === resourceForm.uomId) || null}
-                                        onChange={opt =>
-                                            setResourceForm(p => ({ ...p, uomId: opt?.value || null }))
-                                        }
-                                    />
-                                </div>
+                                        {/* 3. Rate */}
+                                        <div className="col-md-6">
+                                            <label className="projectform d-block">Rate<span className="text-danger">*</span></label>
+                                            <input type="number" className="form-input w-100" placeholder="Rate"
+                                                value={resourceForm.unitRate}
+                                                onChange={e => setResourceForm(p => ({ ...p, unitRate: e.target.value }))} />
+                                        </div>
 
-                                <div className="col-md-12">
-                                    <label className="projectform-select d-block">Resource Type<span className="text-danger">*</span></label>
-                                    <Select
-                                        options={resourceTypes}
-                                        classNamePrefix="select"
-                                        placeholder="Select Type"
-                                        value={resourceTypes.find(t => t.value === resourceForm.resourceTypeId) || null}
-                                        onChange={opt =>
-                                            setResourceForm(p => ({ ...p, resourceTypeId: opt?.value || null }))
-                                        }
-                                    />
-                                </div>
+                                        <div className="col-md-6">
+                                            <label className="projectform-select d-block">UOM<span className="text-danger">*</span></label>
+                                            <Select
+                                                options={uoms}
+                                                classNamePrefix="select"
+                                                placeholder="Select UOM"
+                                                value={uoms.find(u => u.value === resourceForm.uomId) || null}
+                                                onChange={opt =>
+                                                    setResourceForm(p => ({ ...p, uomId: opt?.value || null }))
+                                                }
+                                            />
+                                        </div>
+
+                                        <div className="col-md-12">
+                                            <label className="projectform-select d-block">Resource Type<span className="text-danger">*</span></label>
+                                            <Select
+                                                options={resourceTypes}
+                                                classNamePrefix="select"
+                                                placeholder="Select Type"
+                                                value={resourceTypes.find(t => t.value === resourceForm.resourceTypeId) || null}
+                                                onChange={opt =>
+                                                    setResourceForm(p => ({ ...p, resourceTypeId: opt?.value || null }))
+                                                }
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="row g-3">
+                                        <div className="table-responsive">
+                                            <table className="table table-bordered">
+                                                <thead className="table-light">
+                                                    <tr>
+                                                        <th>Attribute Group</th>
+                                                        <th style={{ width: '150px' }}>Mandatory</th>
+                                                        <th style={{ width: '80px' }}>Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {resourceForm.attributes.map((attr, idx) => (
+                                                        <tr key={idx}>
+                                                            <td>
+                                                                <Select
+                                                                    options={attributeGroups}
+                                                                    classNamePrefix="select"
+                                                                    placeholder="Select Attribute Group"
+                                                                    value={attributeGroups.find(g => g.value === attr.attributeGroupId) || null}
+                                                                    onChange={opt => updateAttributeRow(idx, 'attributeGroupId', opt?.value || null)}
+                                                                />
+                                                            </td>
+                                                            <td className="text-center align-middle">
+                                                                <div className="form-check d-flex justify-content-center">
+                                                                    <input
+                                                                        className="form-check-input"
+                                                                        type="checkbox"
+                                                                        checked={attr.isMandatory}
+                                                                        onChange={e => updateAttributeRow(idx, 'isMandatory', e.target.checked)}
+                                                                    />
+                                                                </div>
+                                                            </td>
+                                                            <td className="text-center align-middle">
+                                                                <button
+                                                                    className="btn btn-sm btn-outline-danger"
+                                                                    onClick={() => removeAttributeRow(idx)}
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div className="col-md-12">
+                                            <button
+                                                className="btn btn-sm btn-outline-primary"
+                                                onClick={addNewAttributeRow}
+                                            >
+                                                <Plus size={14} className="me-1" /> Add Attribute Group
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="modal-footer">
@@ -1128,6 +1530,23 @@ export function Resources() {
         </div>
     );
 }
+
+const CustomOption = (props) => {
+    return (
+        <components.Option {...props}>
+            <input
+                type="checkbox"
+                checked={props.isSelected}
+                onChange={() => null}
+                style={{ marginRight: 10, accentColor: '#005197' }}
+            />
+            {props.label}
+        </components.Option>
+    );
+};
+
+const CustomMultiValueContainer = () => null;
+
 export function Attributes() {
     const [attributeGroups, setAttributeGroups] = useState([]);
     const [attributes, setAttributes] = useState([]);
@@ -1241,7 +1660,7 @@ export function Attributes() {
 
     const handleAttributeStatus = (attr) => {
         const payload = { ...attr, active: !attr.active };
-        axios.put(`${import.meta.env.VITE_API_BASE_URL}/attribute/edit`, payload, {
+        axios.post(`${import.meta.env.VITE_API_BASE_URL}/attribute`, payload, {
             headers: { Authorization: `Bearer ${token}` }
         })
             .then(() => {
@@ -1258,12 +1677,12 @@ export function Attributes() {
         const payload = {
             id: group.id,
             groupName: group.groupName,
-            active: !group.active,
-            attributeIds: attributeIds
+            active: !group.active
         };
 
-        axios.put(`${import.meta.env.VITE_API_BASE_URL}/attributeGroup/edit`, payload, {
-            headers: { Authorization: `Bearer ${token}` }
+        axios.post(`${import.meta.env.VITE_API_BASE_URL}/attributeGroup`, payload, {
+            headers: { Authorization: `Bearer ${token}` },
+            params: { attributeIds: attributeIds.join(',') }
         })
             .then(() => {
                 toast.success(`Group ${group.active ? "Deactivated" : "Reactivated"}`);
@@ -1286,10 +1705,8 @@ export function Attributes() {
             };
             if (isEdit) payload.id = attributeForm.id;
 
-            const method = isEdit ? 'put' : 'post';
-            const endpoint = isEdit
-                ? `${import.meta.env.VITE_API_BASE_URL}/attribute/edit`
-                : `${import.meta.env.VITE_API_BASE_URL}/attribute`;
+            const method = 'post';
+            const endpoint = `${import.meta.env.VITE_API_BASE_URL}/attribute`;
 
             axios[method](endpoint, payload, { headers: { Authorization: `Bearer ${token}` } })
                 .then(res => {
@@ -1300,7 +1717,6 @@ export function Attributes() {
                 .catch(err => toast.error(err?.response?.data || "Failed to save attribute"));
 
         } else {
-            // Group Save
             if (!groupForm.groupName.trim()) {
                 toast.warning("Group Name is required");
                 return;
@@ -1423,7 +1839,59 @@ export function Attributes() {
                                         onChange={(selected) => setGroupForm(p => ({ ...p, selectedAttributes: selected || [] }))}
                                         classNamePrefix="select"
                                         placeholder="Select attributes..."
+                                        closeMenuOnSelect={false}
+                                        hideSelectedOptions={false}
+                                        components={{
+                                            Option: CustomOption,
+                                            MultiValueContainer: CustomMultiValueContainer
+                                        }}
+                                        styles={{
+                                            option: (base, state) => {
+                                                let backgroundColor = 'white';
+                                                if (state.isSelected) {
+                                                    backgroundColor = '#DBEAFE';
+                                                } else if (state.isFocused) {
+                                                    backgroundColor = '#EFF6FF';
+                                                }
+
+                                                return {
+                                                    ...base,
+                                                    backgroundColor: backgroundColor,
+                                                    color: state.isSelected ? '#005197' : 'black',
+                                                    cursor: 'pointer',
+                                                    '&:active': {
+                                                        backgroundColor: '#DBEAFE'
+                                                    },
+                                                    '&:hover': {
+                                                        backgroundColor: state.isSelected ? '#DBEAFE' : '#EFF6FF'
+                                                    }
+                                                };
+                                            },
+                                            multiValue: () => ({ display: 'none' })
+                                        }}
                                     />
+                                    <div className="mt-2 d-flex flex-wrap gap-2">
+                                        {groupForm.selectedAttributes.map((selectedOpt) => (
+                                            <span key={selectedOpt.value} className="select__multi-value" style={{ backgroundColor: '#DBEAFE', borderRadius: '4px', padding: '2px 8px', display: 'flex', alignItems: 'center', color: '#005197' }}>
+                                                <span className="select__multi-value__label" style={{ marginRight: '5px' }}>
+                                                    {selectedOpt.label}
+                                                </span>
+                                                <span
+                                                    className="select__multi-value__remove"
+                                                    style={{ cursor: 'pointer', fontWeight: 'bold' }}
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        setGroupForm(p => ({
+                                                            ...p,
+                                                            selectedAttributes: p.selectedAttributes.filter(attr => attr.value !== selectedOpt.value)
+                                                        }));
+                                                    }}
+                                                >
+                                                    &times;
+                                                </span>
+                                            </span>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -1523,7 +1991,6 @@ export function Attributes() {
                     </div>
                 ) : (
                     <>
-                        {/* Search */}
                         <div className="row mt-3 p-4">
                             <div className="col-md-8">
                                 <label>Search</label>
