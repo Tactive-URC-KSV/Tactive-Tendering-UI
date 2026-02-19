@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import logo from '../assest/logo.svg';
 import login from '../assest/login.svg';
 import axios from 'axios';
@@ -15,11 +15,18 @@ function Login() {
   const [visible, setVisible] = useState(false);
   const navigate = useNavigate();
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && username && password) {
-      handleLogin(e);
-    }
-  };
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (e.key === 'Enter' && username && password && !loading) {
+        handleLogin(e);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [username, password, loading]);
 
   const handleLogin = async (e) => {
     setLoading(true);
@@ -59,11 +66,11 @@ function Login() {
             </div>
             <div className='fw-bold mb-5 mt-2 text-start'>
               <div htmlFor="username" className='login-username'>Username <span style={{ color: "red" }}>*</span></div>
-              <input type="text" className='login-form-control' id='username' value={username} onChange={(e) => setUsername(e.target.value)} onKeyDown={handleKeyDown} placeholder='Enter your Username' required />
+              <input type="text" className='login-form-control' id='username' value={username} onChange={(e) => setUsername(e.target.value)} placeholder='Enter your Username' required />
             </div>
             <div className='fw-bold mb-3 text-start'>
               <div className='login-password'>Password <span style={{ color: "red" }}>*</span></div>
-              <input type={visible ? "text" : "password"} className='login-form-control' id='password' value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={handleKeyDown} placeholder='**********' required />
+              <input type={visible ? "text" : "password"} className='login-form-control' id='password' value={password} onChange={(e) => setPassword(e.target.value)} placeholder='**********' required />
               <span className="eye-icon" onClick={() => setVisible(!visible)}>
                 {visible ? <Eye size={25} /> : <EyeOff size={25} />}
               </span>

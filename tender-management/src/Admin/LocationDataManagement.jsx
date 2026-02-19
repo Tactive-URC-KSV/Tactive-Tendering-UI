@@ -207,6 +207,7 @@ export function Addresstype() {
                         <label>Search</label>
                         <input
                             className="form-input w-100"
+                            placeholder="Search Address Type"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -421,7 +422,7 @@ export function Countries() {
                 <div className="row ms-1 me-1 mt-3 bg-white p-4 rounded-3">
                     <div className="col-lg-8">
                         <label>Search</label>
-                        <input className="form-input w-100" value={search} onChange={e => setSearch(e.target.value)} />
+                        <input className="form-input w-100" placeholder="Search Country or Code" value={search} onChange={e => setSearch(e.target.value)} />
                     </div>
                     <div className="col-lg-4 d-flex align-items-center justify-content-center">
                         {filteredCountries.length} of {countries.length} Countries
