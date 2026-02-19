@@ -57,7 +57,7 @@ function Login() {
       <div className="row justify-content-center align-items-center g-20" style={{ height: '100vh' }}>
         <div className="login-container col-lg-8 col-md-8 col-sm-12 h-100 d-flex flex-column justify-content-center align-items-md-center">
           <div className="w-50 sm:w-100">
-            <div className='mb-5 d-flex flex-row '>
+            <div className='mb-5 d-flex flex-row justify-content-center'>
               <img src={logo} alt="logo" className='logo w-35 sm:w-30' />
               <div className='logo-text me-3 text-nowrap'><span style={{ color: '#005197' }}>Tender</span> Management<br />Module</div>
             </div>
