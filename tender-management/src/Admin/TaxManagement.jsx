@@ -209,6 +209,7 @@ export function TaxType() {
                         <label>Search</label>
                         <input
                             className="form-input w-100"
+                            placeholder="Search Tax Type"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -487,6 +488,7 @@ export function TerritoryType() {
                         <label>Search</label>
                         <input
                             className="form-input w-100"
+                            placeholder="Search Territory Type"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -766,6 +768,7 @@ export function IdentityType() {
                         <label>Search</label>
                         <input
                             className="form-input w-100"
+                            placeholder="Search Identity Type"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -870,7 +873,7 @@ export function Currency() {
         setCurrency({
             id: null,
             currencyName: "",
-            currencyCode:"",
+            currencyCode: "",
             symbol: "",
             active: true,
         });
@@ -999,7 +1002,7 @@ export function Currency() {
                             }
                         />
                         <label className="projectform d-block">
-                            Currency Code 
+                            Currency Code
                         </label>
                         <input
                             className="form-input w-100 mb-3"
@@ -1080,6 +1083,7 @@ export function Currency() {
                         <label>Search</label>
                         <input
                             className="form-input w-100"
+                            placeholder="Search Currency"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />

@@ -27,10 +27,10 @@ export function Region() {
         }).then((res) => {
             setRegions(Array.isArray(res.data) ? res.data : res.data.data || []);
         });
-    },[]);
-    useEffect(()=>{
+    }, []);
+    useEffect(() => {
         fetchRegion();
-    },[fetchRegion])
+    }, [fetchRegion])
     const filteredRegions = regions.filter((r) =>
         r.regionName?.toLowerCase().includes(search.toLowerCase())
     );
@@ -178,6 +178,7 @@ export function Region() {
                         <label>Search</label>
                         <input
                             className="form-input w-100"
+                            placeholder="Search Region"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -252,10 +253,10 @@ export function Sectors() {
         }).then((res) => {
             setSectors(Array.isArray(res.data) ? res.data : res.data.data || []);
         });
-    },[]);
-    useEffect(()=>{
+    }, []);
+    useEffect(() => {
         fetchSector();
-    },[fetchSector])
+    }, [fetchSector])
     const filteredSectors = sectors.filter((sec) =>
         sec.sectorName?.toLowerCase().includes(search.toLowerCase())
     );
@@ -424,6 +425,7 @@ export function Sectors() {
                         <label>Search</label>
                         <input
                             className="form-input w-100"
+                            placeholder="Search Sector"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -502,10 +504,10 @@ export function Scopes() {
         }).then((res) => {
             setScopes(Array.isArray(res.data) ? res.data : res.data.data || []);
         });
-    },[]);
-    useEffect(()=>{
+    }, []);
+    useEffect(() => {
         fetchScope();
-    },[fetchScope])
+    }, [fetchScope])
     const filteredScopes = scopes.filter((s) =>
         s.scope?.toLowerCase().includes(search.toLowerCase())
     );
@@ -669,6 +671,7 @@ export function Scopes() {
                         <label>Search</label>
                         <input
                             className="form-input w-100"
+                            placeholder="Search Scope"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -745,10 +748,10 @@ export function UOM() {
         }).then((res) => {
             setUoms(Array.isArray(res.data) ? res.data : res.data.data || []);
         });
-    },[]);
-    useEffect(()=>{
+    }, []);
+    useEffect(() => {
         fetchUom();
-    },[fetchUom])
+    }, [fetchUom])
     const filteredUnits = uoms.filter(
         (uom) =>
             uom.uomName?.toLowerCase().includes(search.toLowerCase()) ||
@@ -1195,6 +1198,7 @@ export function ListOfApprovals() {
                         <label>Search</label>
                         <input
                             className="form-input w-100"
+                            placeholder="Search Approval Document"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />

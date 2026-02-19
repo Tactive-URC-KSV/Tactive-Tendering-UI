@@ -594,7 +594,7 @@ export function NatureOfBusiness() {
     };
     const handleDelete = (n) => {
         const active = !n.active;
-         const payload = {
+        const payload = {
             id: n.id,
             nature: n.nature,
             active: active,
@@ -618,7 +618,7 @@ export function NatureOfBusiness() {
     };
     const handleReactivate = (n) => {
         const active = !n.active;
-         const payload = {
+        const payload = {
             id: n.id,
             nature: n.nature,
             active: active,
