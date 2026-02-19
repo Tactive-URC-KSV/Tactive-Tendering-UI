@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
 import Logo from "../assest/logo.svg?react";
 import LogoutIcon from "../assest/Logout.svg?react";
@@ -16,7 +17,7 @@ import {
   FaInbox,
   FaChartBar,
   FaUserPlus,
-  
+
 } from "react-icons/fa";
 import "../CSS/Styles.css";
 import { UserCog, Building2 } from "lucide-react";
@@ -31,9 +32,9 @@ function Sidebar({ children }) {
   const role = getUserRole();
   const userName = getUserName();
   const sections = [
-   
+
     { label: "Dashboard", path: "dashboard", icon: <FaClipboardList />, key: "DASHBOARD" },
-    { label: "Admin Portal", path:"adminportal", icon: <UserCog  size={20}/>, key: "ADMIN_PORTAL" },
+    { label: "Admin Portal", path: "adminportal", icon: <UserCog size={20} />, key: "ADMIN_PORTAL" },
     { label: "Company Details", path: "companydetails", icon: <Building2 size={20} />, key: "COMPANY_DETAILS" },
     { label: "Project Management", path: "projectmanagement", icon: <FaPlus />, key: "PROJECT_MANAGEMENT" },
     { label: "BOQ Definition", path: "boqdefinition", icon: <FaListAlt />, key: "BOQ_DEFINITION" },
@@ -43,11 +44,24 @@ function Sidebar({ children }) {
     { label: "Receiving Offers", path: "receivingoffers", icon: <FaInbox />, key: "RECEIVING_OFFERS" },
     { label: "Tender Tracking", path: "tendertracking", icon: <FaSearch />, key: "TENDER_TRACKING" },
     { label: "Contractor Onboarding", path: "contractoronboarding", icon: <FaUserPlus />, key: "CONTRACTOR_ONBOARDING" },
-    
+
   ];
-  const handleLogout = () => {
-    sessionStorage.removeItem("token");
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      const token = sessionStorage.getItem("token");
+      if (token) {
+        await axios.post(`${import.meta.env.VITE_API_BASE_URL}/logout`, {}, {
+          headers: {
+            'Authorization': token
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+      sessionStorage.removeItem("token");
+      navigate("/");
+    }
   };
 
   return (

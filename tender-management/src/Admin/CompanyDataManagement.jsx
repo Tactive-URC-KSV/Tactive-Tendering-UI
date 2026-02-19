@@ -74,7 +74,7 @@ export function CompanyType() {
                 {
                     id: c.id,
                     type: c.type,
-                    active: true  
+                    active: true
                 },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
@@ -91,7 +91,7 @@ export function CompanyType() {
         const payload = {
             id: companyType.id,
             type: companyType.type,
-            active: companyType.active   
+            active: companyType.active
         };
         if (isEdit) {
             axios
@@ -111,7 +111,7 @@ export function CompanyType() {
         } else {
             axios
                 .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/companyType/add`, 
+                    `${import.meta.env.VITE_API_BASE_URL}/companyType/add`,
                     payload,
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
@@ -206,6 +206,7 @@ export function CompanyType() {
                         <label>Search</label>
                         <input
                             className="form-input w-100"
+                            placeholder="Search Company Type"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -475,6 +476,7 @@ export function CompanyStatus() {
                         <label>Search</label>
                         <input
                             className="form-input w-100"
+                            placeholder="Search Company Status"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -723,6 +725,7 @@ export function CompanyLevel() {
                         <label>Search</label>
                         <input
                             className="form-input w-100"
+                            placeholder="Search Company Level"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -1007,6 +1010,7 @@ export function CompanyConstitution() {
                         <label>Search</label>
                         <input
                             className="form-input w-100"
+                            placeholder="Search Company Constitution"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -1275,6 +1279,7 @@ export function CompanyNature() {
                         <label>Search</label>
                         <input
                             className="form-input w-100"
+                            placeholder="Search Company Nature"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -1539,6 +1544,7 @@ export function CompanyNatureOfBusiness() {
                         <label>Search</label>
                         <input
                             className="form-input w-100"
+                            placeholder="Search Nature of Business"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -1816,8 +1822,6 @@ export function CompanyLanguage() {
                 <div className="tab-info">
                     <span className="ms-2">Company Languages</span>
                 </div>
-
-                {/* Search */}
                 <div className="row ms-1 me-1 mt-3 bg-white p-4 rounded-3">
                     <div className="col-lg-8">
                         <label>Search</label>
@@ -1825,15 +1829,13 @@ export function CompanyLanguage() {
                             className="form-input w-100"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search the languages"
                         />
                     </div>
-
                     <div className="col-lg-4 d-flex align-items-center justify-content-center">
                         {filteredLanguages.length} of {languages.length} Languages
                     </div>
                 </div>
-
-                {/* Cards */}
                 <div className="row ms-1 me-1 mt-3">
                     {filteredLanguages.map((l, i) => (
                         <div className="col-lg-4 mb-3" key={i}>

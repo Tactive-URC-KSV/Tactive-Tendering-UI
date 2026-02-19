@@ -1214,6 +1214,7 @@ export function Resources() {
                         <label className="small fw-bold text-muted">Search</label>
                         <input
                             className="form-input w-100"
+                            placeholder="Search Resources"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                         />
