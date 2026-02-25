@@ -108,7 +108,10 @@ function ProjectWorklist() {
     }
 
     const projectCounts = projects.reduce((acc, project) => {
-        acc[project.status] = (acc[projectStatus.find((state) => state.id === project.status)] || 0) + 1;
+        const state = projectStatus.find((state) => state.status === project.status);
+        if (state) {
+            acc[state.id] = (acc[state.id] || 0) + 1;
+        }
         return acc;
     }, {});
 
@@ -191,7 +194,7 @@ function ProjectWorklist() {
                                     {
                                         projects.filter(
                                             (project) =>
-                                                project.projectStatus !== "Cancelled"
+                                                project.status !== "Cancelled"
                                         ).length
                                     }
                                 </p>
@@ -327,7 +330,7 @@ function ProjectWorklist() {
                                             )}</td>
                                         <td>{project.sectorName}</td>
                                         <td>{projectStatus.map((state) => (
-                                            state.id === project.status && (
+                                            state.status === project.status && (
                                                 <span key={state.status} className="badge rounded-pill"
                                                     style={{ backgroundColor: state.bgColor, color: state.textColor, fontSize: '12px' }}
                                                 >
@@ -358,7 +361,7 @@ function ProjectWorklist() {
                                             {project.projectCode}
                                         </span>
                                         {projectStatus.map((state) => (
-                                            state.id === project.status && (
+                                            state.status === project.status && (
                                                 <span key={state.status} className="badge rounded-pill"
                                                     style={{ backgroundColor: state.bgColor, color: state.textColor, fontSize: '12px' }}
                                                 >

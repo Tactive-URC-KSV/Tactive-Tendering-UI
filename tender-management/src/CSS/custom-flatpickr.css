@@ -5,8 +5,12 @@
   border: 1px solid #005197 !important;
   border-radius: 12px !important;
   z-index: 9999 !important;
-  font-family: 'Poppins', sans-serif !important;
+  font-family: 'Poppins',
+    sans-serif !important;
   font-size: 14px !important;
+  top: auto !important;
+  left: auto !important;
+  margin-top: 5px !important;
 }
 
 

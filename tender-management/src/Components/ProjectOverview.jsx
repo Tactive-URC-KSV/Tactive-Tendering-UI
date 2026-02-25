@@ -116,22 +116,7 @@ function ProjectOverview() {
 
         })
     }, [project])
-    const findSector = (sectorId) => {
-        const sectorName = sector.find((sector) => sector.id === sectorId);
-        return sectorName?.sectorName;
-    }
-    const findRegion = (regionId) => {
-        const regionName = region.find((region) => region.id === regionId);
-        return regionName?.regionName;
-    }
-    const findUom = (uomId) => {
-        const uomCode = uom.find((uom) => uom.id === uomId);
-        return uomCode?.uomCode;
-    }
-    const findScope = (scopeId) => {
-        const scope = scopeOfPackages.find((scope) => scope.id === scopeId);
-        return scope?.scope
-    }
+
     if (loading) return <div>Loading...</div>;
     if (error) return <div>{error}</div>;
     if (!project) return <div>No project data available</div>;
@@ -144,14 +129,14 @@ function ProjectOverview() {
         { label: "Agreement Number", value: project.agreementNumber },
         { label: "Start Date", value: project.startDate },
         { label: "End Date", value: project.endDate },
-        { label: "Sector", value: findSector(project.sectorId) || "N/A" },
+        { label: "Sector", value: project.sector?.sectorName || "N/A" },
         { label: "Address", value: project.address },
         { label: "City", value: project.city },
-        { label: "Region", value: findRegion(project.regionId) || "N/A" },
+        { label: "Region", value: project.region?.regionName || "N/A" },
         {
             label: "Scope of Packages",
             value:
-                project.scopeOfPackages?.map((pkg) => findScope(pkg)).join(", ") || "N/A",
+                project.scopeOfPackage?.map((pkg) => pkg.scope).join(", ") || "N/A",
         },
     ];
 
@@ -161,7 +146,7 @@ function ProjectOverview() {
         { label: "Car Parking Floors", value: project.carParkingFloors || "N/A" },
         { label: "Above Ground", value: project.numberOfAboveGround || "N/A" },
         { label: "Below Ground", value: project.numberOfBelowGround || "N/A" },
-        { label: "Unit of Measurement", value: findUom(project.uomId) || "N/A" },
+        { label: "Unit of Measurement", value: project.uom?.uomCode || "N/A" },
         { label: "Building Area", value: project.buildingArea || "N/A" },
         { label: "Other Amenities", value: project.otherAmenities?.join(", ") || "N/A" },
         { label: "Rate Per Unit", value: project.ratePerUnit || "N/A" },
@@ -289,7 +274,7 @@ function ProjectOverview() {
                     </div>
                     <div className="text-end me-2">
                         {projectStatus
-                            .filter((state) => (state.id === project.projectStatusId))
+                            .filter((state) => (state.status === project.projectStatus?.status))
                             .map((state, index) => (
                                 <span key={index} className="badge rounded-pill mb-1"
                                     style={{ backgroundColor: state.bgColor, color: state.textColor, fontSize: '14px' }}
@@ -433,7 +418,7 @@ function ProjectOverview() {
                             </button>
                         </div>)}
             </div>
-        </div>
+        </div >
 
     );
 }
