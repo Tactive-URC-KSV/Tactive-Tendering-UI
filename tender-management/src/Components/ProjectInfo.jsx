@@ -18,8 +18,8 @@ function BOQProjectInfo({ projects, continueRoute }) {
         }
     }
     const companyOptions = Array.from(
-        new Set(projects.map(prj => prj.companyName))
-    ).map(name => ({ label: name, value: name }));
+        new Set(projects.map(prj => prj.companyName || ''))
+    ).filter(Boolean).map(name => ({ label: name, value: name }));
 
     const filteredProjects = projects.filter(prj => {
         const matchesSearch = prj.projectName.toLowerCase().includes(search.toLowerCase());
@@ -61,59 +61,59 @@ function BOQProjectInfo({ projects, continueRoute }) {
                 </div>
                 {filteredProjects.length > 0 ? (
                     <div className='row ms-2 me-2 mb-3'>
-                    {filteredProjects.map((prj, index) => (
-                        <div className='col-lg-4 col-md-6 col-sm-12 p-2 mt-1' key={index}>
-                            <div className={`${projectId === prj.projectId ? 'selected-card ' : ''}card project-card h-100 shadow-sm`}
-                                style={{ border: '0.5px solid #0051973D',cursor: 'pointer' }}
-                                onClick={() => { setProjectId(prj.projectId) }}
-                                onDoubleClick={() => { setProjectId(prj.projectId); handleContinue() }}>
-                                <div className='card-body'>
-                                    <div className="d-flex justify-content-between align-items-start text-start">
-                                        <span
-                                            className="mb-3 fw-bold text-wrap flex-grow-1"
-                                            style={{ color: "#005197", wordBreak: "break-word" }}
-                                        >
-                                            {prj.projectName}
-                                        </span>
+                        {filteredProjects.map((prj, index) => (
+                            <div className='col-lg-4 col-md-6 col-sm-12 p-2 mt-1' key={index}>
+                                <div className={`${projectId === prj.id ? 'selected-card ' : ''}card project-card h-100 shadow-sm`}
+                                    style={{ border: '0.5px solid #0051973D', cursor: 'pointer' }}
+                                    onClick={() => { setProjectId(prj.id) }}
+                                    onDoubleClick={() => { setProjectId(prj.id); handleContinue() }}>
+                                    <div className='card-body'>
+                                        <div className="d-flex justify-content-between align-items-start text-start">
+                                            <span
+                                                className="mb-3 fw-bold text-wrap flex-grow-1"
+                                                style={{ color: "#005197", wordBreak: "break-word" }}
+                                            >
+                                                {prj.projectName}
+                                            </span>
 
-                                        {projectStatus.map(
-                                            (state) =>
-                                                state.status === prj.status && (
-                                                    <span
-                                                        key={state.status}
-                                                        className="badge rounded-pill mb-3 ms-2 flex-shrink-0"
-                                                        style={{
-                                                            backgroundColor: state.bgColor,
-                                                            color: state.textColor,
-                                                            fontSize: "12px",
-                                                            whiteSpace: "nowrap"
-                                                        }}
-                                                    >
-                                                        {state.status}
-                                                    </span>
-                                                )
-                                        )}
-                                    </div>
-                                    <div className='d-flex justify-content-start'>
-                                        <div className='fw-bold text-start'>
-                                            <p>Project Code</p>
-                                            <span>Created At</span>
+                                            {projectStatus.map(
+                                                (state) =>
+                                                    state.status === prj.projectStatus?.status && (
+                                                        <span
+                                                            key={state.status}
+                                                            className="badge rounded-pill mb-3 ms-2 flex-shrink-0"
+                                                            style={{
+                                                                backgroundColor: state.bgColor,
+                                                                color: state.textColor,
+                                                                fontSize: "12px",
+                                                                whiteSpace: "nowrap"
+                                                            }}
+                                                        >
+                                                            {state.status}
+                                                        </span>
+                                                    )
+                                            )}
                                         </div>
-                                        <div className='text-start ms-2'>
-                                            <p>:<span className='ms-2'>{prj.projectCode}</span></p>
-                                            <span>:<span className='ms-2'>{new Date(prj.createdAt).toLocaleDateString(
-                                                "en-US",
-                                                { month: "short", day: "2-digit", year: "numeric" }
-                                            )}</span></span>
+                                        <div className='d-flex justify-content-start'>
+                                            <div className='fw-bold text-start'>
+                                                <p>Project Code</p>
+                                                <span>Created At</span>
+                                            </div>
+                                            <div className='text-start ms-2'>
+                                                <p>:<span className='ms-2'>{prj.projectCode}</span></p>
+                                                <span>:<span className='ms-2'>{new Date(prj.createdAt).toLocaleDateString(
+                                                    "en-US",
+                                                    { month: "short", day: "2-digit", year: "numeric" }
+                                                )}</span></span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
                 ) : (<div className='mt-5 mb-5'>No Projects Available</div>)}
-                
+
             </div>
             <div className='d-flex justify-content-end mt-3'>
                 <button className='btn action-button me-2 mt-2 fs-6' onClick={handleContinue}>
