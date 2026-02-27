@@ -12,11 +12,15 @@ function BOQProjectInfo({ projects, continueRoute }) {
     const [selectedCompany, setSelectedCompany] = useState(null);
     const projectStatus = useProjectStatus();
     const navigate = useNavigate();
-    function handleContinue() {
-        if (projectId) {
-            navigate(`${continueRoute}/${projectId}`);
+
+    function handleContinue(id) {
+        const targetId = id || projectId;
+        console.log(targetId);
+        if (targetId) {
+            navigate(`${continueRoute}/${targetId}`);
         }
     }
+
     const companyOptions = Array.from(
         new Set(projects.map(prj => prj.companyName || ''))
     ).filter(Boolean).map(name => ({ label: name, value: name }));
@@ -55,18 +59,20 @@ function BOQProjectInfo({ projects, continueRoute }) {
                             options={companyOptions}
                             value={selectedCompany}
                             onChange={setSelectedCompany}
-                            isDisabled={true}
                         />
                     </div>
                 </div>
                 {filteredProjects.length > 0 ? (
                     <div className='row ms-2 me-2 mb-3'>
                         {filteredProjects.map((prj, index) => (
-                            <div className='col-lg-4 col-md-6 col-sm-12 p-2 mt-1' key={index}>
-                                <div className={`${projectId === prj.id ? 'selected-card ' : ''}card project-card h-100 shadow-sm`}
+                            <div className='col-lg-4 col-md-6 col-sm-12 p-2 mt-1' key={prj.projectId || index}>
+                                <div className={`${projectId === prj.projectId ? 'selected-card ' : ''}card project-card h-100 shadow-sm`}
                                     style={{ border: '0.5px solid #0051973D', cursor: 'pointer' }}
-                                    onClick={() => { setProjectId(prj.id) }}
-                                    onDoubleClick={() => { setProjectId(prj.id); handleContinue() }}>
+                                    onClick={() => setProjectId(prj.projectId)}
+                                    onDoubleClick={() => {
+                                        setProjectId(prj.projectId);
+                                        handleContinue(prj.projectId);
+                                    }}>
                                     <div className='card-body'>
                                         <div className="d-flex justify-content-between align-items-start text-start">
                                             <span
@@ -112,11 +118,15 @@ function BOQProjectInfo({ projects, continueRoute }) {
                             </div>
                         ))}
                     </div>
-                ) : (<div className='mt-5 mb-5'>No Projects Available</div>)}
+                ) : (<div className='mt-5 mb-5 text-center'>No Projects Available</div>)}
 
             </div>
             <div className='d-flex justify-content-end mt-3'>
-                <button className='btn action-button me-2 mt-2 fs-6' onClick={handleContinue}>
+                <button
+                    className='btn action-button me-2 mt-2 fs-6'
+                    onClick={() => handleContinue()}
+                    disabled={!projectId}
+                >
                     <span className='me-2'>Continue</span>
                     <ArrowRight size={18} />
                 </button>
