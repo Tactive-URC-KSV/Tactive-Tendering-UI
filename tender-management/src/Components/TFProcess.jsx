@@ -105,7 +105,7 @@ function TFProcess({ projectId: propProjectId }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [highlightedNodes, setHighlightedNodes] = useState(new Set());
     const debouncedSearchQuery = useDebounce(searchQuery, 3000);
-
+    const [searchTerm, setSearchTerm] = useState('');
     const expandParents = async (searchResults) => {
         const parentsToExpand = new Set();
         const parentsByLevel = new Map();
