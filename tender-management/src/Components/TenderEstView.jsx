@@ -681,61 +681,131 @@ function BOQStructureView({ projectId }) {
   );
 }
 function AbstractView({ projectId }) {
+
   const [parentBoq, setParentBoq] = useState([]);
+  const [parentTotals, setParentTotals] = useState({});
+
   useEffect(() => {
-    refreshParentBoqData();
+    if (projectId) {
+      refreshParentBoqData();
+      fetchParentTotals();
+    }
   }, [projectId]);
+
+  // 🔹 Fetch Parent BOQ list (Level 1)
   const refreshParentBoqData = async () => {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getParentBoq/${projectId}`, {
-        headers: {
-          Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/project/getParentBoq/${projectId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
         }
-      });
+      );
+
       if (res.status === 200) {
         setParentBoq(res.data || []);
       } else {
-        console.error('Failed to fetch BOQ data:', res.status);
         setParentBoq([]);
       }
+
     } catch (err) {
-      if (err?.response?.status === 401) {
-        // navigate('/login');
-      }
       setParentBoq([]);
     }
   };
+
+  // 🔹 Fetch Calculated Totals Map
+  const fetchParentTotals = async () => {
+    try {
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/project/getParentBoqTotals/${projectId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (res.status === 200) {
+        setParentTotals(res.data || {});
+      }
+
+    } catch (err) {
+      setParentTotals({});
+    }
+  };
+
   const boqNameDisplay = (boqName) => {
     return boqName && boqName.length > 40
       ? boqName.substring(0, 40) + '...'
       : boqName;
-  }
+  };
+
   return (
-    <div className="p-3 bg-white rounded-3 ms-3 me-3 mt-5" style={{ border: '1px solid #0051973D' }}>
+    <div
+      className="p-3 bg-white rounded-3 ms-3 me-3 mt-5"
+      style={{ border: '1px solid #0051973D' }}
+    >
       <div className="text-start fw-bold">
         BOQ Work Packages
       </div>
+
       <div className="table-responsive">
         <table className="table table-borderless">
           <thead>
-            <tr style={{ borderBottom: '0.5px solid #0051973D', color: '#005197' }}>
+            <tr
+              style={{
+                borderBottom: '0.5px solid #0051973D',
+                color: '#005197'
+              }}
+            >
               <th className="px-2">S.no</th>
               <th className="px-2 text-start">BOQ Code</th>
               <th className="px-2 text-start">BOQ Name</th>
-              <th className="px-2">Amount</th>
+              <th className="px-2 text-end">Total Amount</th>
             </tr>
           </thead>
+
           <tbody>
-            {parentBoq.map((boq, index) => (
-              <tr className="boq-leaf-row bg-white" key={index}>
-                <td className="px-2">{index + 1}</td>
-                <td className="px-2 text-start" title={boq.boqCode}>{boqNameDisplay(boq.boqCode)}</td>
-                <td className="px-2 text-start" title={boq.boqName}>{boq.boqName ? boqNameDisplay(boq.boqName) : '-'}</td>
-                <td className="px-2">{boq.totalAmount?.toFixed(2) || 0}</td>
-              </tr>
-            ))}
+            {parentBoq.map((boq, index) => {
+
+              const calculatedTotal =
+                parentTotals[boq.id] ?? 0;   // 👈 Map lookup
+
+              return (
+                <tr key={boq.id} className="bg-white">
+                  <td className="px-2">{index + 1}</td>
+
+                  <td
+                    className="px-2 text-start"
+                    title={boq.boqCode}
+                  >
+                    {boqNameDisplay(boq.boqCode)}
+                  </td>
+
+                  <td
+                    className="px-2 text-start"
+                    title={boq.boqName}
+                  >
+                    {boq.boqName
+                      ? boqNameDisplay(boq.boqName)
+                      : '-'}
+                  </td>
+
+                  <td className="px-2 text-end fw-semibold">
+                    {calculatedTotal.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    })}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
+
         </table>
       </div>
     </div>
