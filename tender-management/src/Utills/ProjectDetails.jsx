@@ -96,7 +96,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
                         />
                     </div>
                 </div>
-                <div className="row align-items-center ms-4 me-4 ">
+                {/* <div className="row align-items-center ms-4 me-4 ">
                     <div className="col-md-6 mt-3 mb-4">
                         <label className="projectform  text-start d-block">Agreement date</label>
                         <Flatpickr
@@ -118,7 +118,7 @@ function ProjectInfo({ project, handleSubmit, region, scopePack, sector, setProj
 
                         />
                     </div>
-                </div>
+                </div> */}
                 <div className="row align-items-center ms-4 me-4 ">
                     <div className="col-md-6 mt-3 mb-4">
                         <label className="projectform text-start d-block"> Start date </label>

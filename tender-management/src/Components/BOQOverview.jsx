@@ -410,10 +410,10 @@ function BOQOverview({ projectId }) {
     const cancelDelete = () => {
         setShowConfirmDialog(false);
     };
-    const BOQStats = [
-        { label: 'Total BOQ', value: totalBOQ, bgColor: '#F0FDF4', color: '#2BA95A' },
-        { label: 'Level 1 BOQ', value: parentBoq.length, bgColor: '#EFF6FF', color: '#2563EB' },
-    ];
+    // const BOQStats = [
+    //     { label: 'Total BOQ', value: totalBOQ, bgColor: '#F0FDF4', color: '#2BA95A' },
+    //     { label: 'Level 1 BOQ', value: parentBoq.length, bgColor: '#EFF6FF', color: '#2563EB' },
+    // ];
     useEffect(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${projectId}`, {
             headers: {
@@ -729,6 +729,8 @@ function BOQOverview({ projectId }) {
                     <div className="ms-3">
                         <ArrowLeft size={20} onClick={() => window.history.back()} />
                         <span className='ms-2'>BOQ Definition</span>
+                        <span>-</span>
+                        <span>{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</span>
                     </div>
                     <div className="me-3">
                         <button className="btn export-button me-2" onMouseEnter={() => setShowPopover(true)}>
@@ -747,7 +749,7 @@ function BOQOverview({ projectId }) {
                         )}
                     </div>
                 </div>
-                <div className="bg-white rounded-3 ms-3 me-3 mt-2 p-2" style={{ border: '0.5px solid #0051973D' }}>
+                {/* <div className="bg-white rounded-3 ms-3 me-3 mt-2 p-2" style={{ border: '0.5px solid #0051973D' }}>
                     <p className="fw-bold text-start mt-2 ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</p>
                     <div className="row justify-content-between ms-3">
                         {BOQStats.map((stats, index) => (
@@ -759,7 +761,7 @@ function BOQOverview({ projectId }) {
                             </div>
                         ))}
                     </div>
-                </div>
+                </div> */}
 
                 <div className="bg-white rounded-3 ms-3 me-3 mt-4 p-2" style={{ border: '0.5px solid #0051973D' }}>
                     <div className="d-flex justify-content-between mb-3">
