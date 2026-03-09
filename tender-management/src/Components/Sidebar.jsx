@@ -39,7 +39,7 @@ function Sidebar({ children }) {
     { label: "Project Management", path: "projectmanagement", icon: <FaPlus />, key: "PROJECT_MANAGEMENT" },
     { label: "BOQ Definition", path: "boqdefinition", icon: <FaListAlt />, key: "BOQ_DEFINITION" },
     { label: "Tender Estimation", path: "tenderestimation", icon: <FaCalculator />, key: "TENDER_ESTIMATION" },
-    { label: "Cost Code Mapping", path: "costcodemapping", icon: <FaMapSigns />, key: "COST_CODE_MAPPING" },
+    // { label: "Cost Code Mapping", path: "costcodemapping", icon: <FaMapSigns />, key: "COST_CODE_MAPPING" },
     { label: "Tender Floating", path: "tenderfloating", icon: <FaPaperPlane />, key: "TENDER_FLOATING" },
     { label: "Receiving Offers", path: "receivingoffers", icon: <FaInbox />, key: "RECEIVING_OFFERS" },
     { label: "Tender Tracking", path: "tendertracking", icon: <FaSearch />, key: "TENDER_TRACKING" },
