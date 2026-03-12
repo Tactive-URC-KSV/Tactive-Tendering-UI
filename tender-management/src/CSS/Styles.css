@@ -970,3 +970,24 @@ label {
   border: 1px solid #00519726;
   border-radius: 10px
 }
+
+/* Custom Tabs for Navigation */
+.custom-tab {
+  border: none;
+  border-bottom: 2px solid transparent;
+  background-color: white;
+  font-weight: 400;
+  color: #6c757d;
+  border-radius: 0;
+  transition: all 0.2s ease-in-out;
+}
+
+.custom-tab.active {
+  border-bottom: 2px solid #005197 !important;
+  font-weight: 600 !important;
+  color: #005197 !important;
+}
+
+.custom-tab:hover {
+  color: #005197;
+}

@@ -73,17 +73,34 @@ function CompanyForm() {
                 }))
             ));
         axios.get(`${baseUrl}/companyLevel`, { headers })
-            .then(r => setCompanyLevelOptions(toOptions(r.data, "level")));
+            .then(r => setCompanyLevelOptions(
+                (r.data?.data ?? r.data ?? []).map(item => ({
+                    value: item.code,
+                    label: item.label
+                }))
+            ));
         axios.get(`${baseUrl}/companyStatus`, { headers })
             .then(r => setCompanyStatusOptions(toOptions(r.data, "comStatus")));
         axios.get(`${baseUrl}/companyNature`, { headers })
-            .then(r => setCompanyNatureOptions(toOptions(r.data, "comNature")));
+            .then(r => setCompanyNatureOptions(
+                (r.data?.data ?? r.data ?? []).map(item => ({
+                    value: item.code,
+                    label: item.label
+                }))
+            ));
         axios.get(`${baseUrl}/companyConstitution`, { headers })
             .then(r => setConstitutionOptions(toOptions(r.data, "comConstitution")));
         axios.get(`${baseUrl}/businessNature`, { headers })
             .then(r => setNatureOfBusinessOptions(toOptions(r.data, "businessNature")));
         axios.get(`${baseUrl}/language`, { headers })
-            .then(r => setLanguageOptions(toOptions(r.data, "language")));
+            .then(r => {
+                const options = toOptions(r.data, "language");
+                setLanguageOptions(options);
+                const defaultOpt = options.find(o => o.label?.toLowerCase() === 'english');
+                if (defaultOpt) {
+                    setBasicInfo(prev => ({ ...prev, defaultLanguageId: defaultOpt.value }));
+                }
+            });
         axios.get(`${baseUrl}/territoryType`, { headers })
             .then(r => setTerritoryTypeOptions(r.data.map(item => ({ value: item.code, label: item.label }))));
         axios.get(`${baseUrl}/taxType`, { headers })
@@ -91,7 +108,14 @@ function CompanyForm() {
         axios.get(`${baseUrl}/identityType`, { headers })
             .then(r => setAdditionalInfoTypeOptions(toOptions(r.data, "idType")));
         axios.get(`${baseUrl}/project/currency`, { headers })
-            .then(r => setCurrencyOptions(toOptions(r.data, "currencyName")))
+            .then(r => {
+                const options = toOptions(r.data, "currencyName");
+                setCurrencyOptions(options);
+                const defaultOpt = options.find(o => o.label?.toLowerCase() === 'indian rupee' || o.label?.toLowerCase() === 'inr' || o.label?.toLowerCase().includes('rupee'));
+                if (defaultOpt) {
+                    setBasicInfo(prev => ({ ...prev, defaultCurrency: defaultOpt.value }));
+                }
+            });
         axios.get(`${baseUrl}/addressType`, { headers })
             .then(r => setAddressTypeOptions(toOptions(r.data, "addressType")))
         axios.get(`${baseUrl}/countries`, { headers })
@@ -273,6 +297,7 @@ function CompanyForm() {
     };
 
     const handleAddMoreAddress = () => {
+        if (!validateCurrentTab()) return;
         setExtraAddresses(prev => [...prev, { ...emptyAddress }]);
     };
 
@@ -334,6 +359,7 @@ function CompanyForm() {
 
     // Generic helpers for extra sections
     const handleAddMoreSection = (setter, emptyObj) => () => {
+        if (!validateCurrentTab()) return;
         setter(prev => [...prev, { ...emptyObj }]);
     };
     const handleRemoveSection = (setter) => (index) => {
@@ -484,6 +510,14 @@ function CompanyForm() {
         const isCompanyType = selectedType?.label?.toLowerCase() === 'company' || selectedType?.value === 'COMPANY';
         setIsGroup(isGroupType);
 
+        if (isGroupType && companyLevelOptions.length > 0) {
+            setBasicInfo(prev => ({ ...prev, companyLevelId: companyLevelOptions[0].value }));
+        } else if (isCompanyType && companyLevelOptions.length > 1) {
+            setBasicInfo(prev => ({ ...prev, companyLevelId: companyLevelOptions[1].value }));
+        } else {
+            setBasicInfo(prev => ({ ...prev, companyLevelId: null }));
+        }
+
         if (isCompanyType) {
             const fetchParentCompanies = async () => {
                 try {
@@ -525,7 +559,7 @@ function CompanyForm() {
             setParentCompanyOptions([]);
             setBasicInfo(prev => ({ ...prev, parentCompanyId: null }));
         }
-    }, [basicInfo.companyTypeId, companyTypeOptions]);
+    }, [basicInfo.companyTypeId, companyTypeOptions, companyLevelOptions]);
 
     const handleAddAddress = () => {
         if (!addressDetails.addressTypeId || !addressDetails.countryId || !addressDetails.stateId || !addressDetails.cityId) {
@@ -561,6 +595,10 @@ function CompanyForm() {
     const handleAddContact = () => {
         if (!contactDetails.name || !contactDetails.position) {
             toast.warn("Please enter required contact details (Name, Position)");
+            return;
+        }
+        if (!contactDetails.phoneNo || !contactDetails.email) {
+            toast.warn("Please enter required contact details (Phone No, Email ID)");
             return;
         }
         const allContacts = [contactDetails, ...extraContacts];
@@ -629,6 +667,9 @@ function CompanyForm() {
     };
 
     const handleReset = () => {
+        const defaultLangOpt = languageOptions.find(o => o.label?.toLowerCase() === 'english');
+        const defaultCurrOpt = currencyOptions.find(o => o.label?.toLowerCase() === 'indian rupee' || o.label?.toLowerCase() === 'inr' || o.label?.toLowerCase().includes('rupee'));
+
         setBasicInfo({
             companyTypeId: null,
             companyLevelId: null,
@@ -640,8 +681,8 @@ function CompanyForm() {
             constitutionId: null,
             companyStatusId: null,
             finStartMonth: null,
-            defaultLanguageId: null,
-            defaultCurrency: null,
+            defaultLanguageId: defaultLangOpt ? defaultLangOpt.value : null,
+            defaultCurrency: defaultCurrOpt ? defaultCurrOpt.value : null,
             bank: ""
         });
         setAddressDetails({
@@ -718,6 +759,113 @@ function CompanyForm() {
         setCitiesOption([]);
         setTerritoryOptions([]);
         setParentCompanyOptions([]);
+    };
+
+    const validateCurrentTab = () => {
+        let missingFields = [];
+
+        if (activeTab === "overview") {
+            if (!basicInfo.companyTypeId) missingFields.push("Company Type");
+            if (!basicInfo.companyLevelId) missingFields.push("Company Level");
+            if (isCompany && !basicInfo.parentCompanyId) missingFields.push("Parent Company");
+            if (!basicInfo.companyName) missingFields.push("Company Name");
+            if (!basicInfo.shortName) missingFields.push("Short Name");
+
+            if (showDetails) {
+                if (!basicInfo.companyNatureId) missingFields.push("Company Nature");
+                if (!basicInfo.companyStatusId) missingFields.push("Company Status");
+                if (!basicInfo.finStartMonth) missingFields.push("Fin. Start Month");
+                if (!basicInfo.defaultLanguageId) missingFields.push("Default Language");
+                if (!basicInfo.defaultCurrency) missingFields.push("Default Currency");
+            }
+        } else if (activeTab === "address") {
+            if (!addressDetails.addressTypeId) missingFields.push("Address Type");
+            if (!addressDetails.countryId) missingFields.push("Country");
+            if (!addressDetails.stateId) missingFields.push("State");
+            if (!addressDetails.cityId) missingFields.push("City");
+
+            extraAddresses.forEach((extra, idx) => {
+                if (!extra.addressTypeId) missingFields.push(`Address ${idx + 2} Type`);
+                if (!extra.countryId) missingFields.push(`Address ${idx + 2} Country`);
+                if (!extra.stateId) missingFields.push(`Address ${idx + 2} State`);
+                if (!extra.cityId) missingFields.push(`Address ${idx + 2} City`);
+            });
+        } else if (activeTab === "contact") {
+            if (!contactDetails.position) missingFields.push("Position");
+            if (!contactDetails.name) missingFields.push("Name");
+            if (!contactDetails.phoneNo) missingFields.push("Phone No");
+            if (!contactDetails.email) missingFields.push("Email ID");
+            
+            extraContacts.forEach((extra, idx) => {
+                if (!extra.position) missingFields.push(`Contact ${idx + 2} Position`);
+                if (!extra.name) missingFields.push(`Contact ${idx + 2} Name`);
+                if (!extra.phoneNo) missingFields.push(`Contact ${idx + 2} Phone No`);
+                if (!extra.email) missingFields.push(`Contact ${idx + 2} Email ID`);
+            });
+        } else if (activeTab === "tax") {
+            if (!taxDetails.taxTypeId) missingFields.push("Tax Type");
+            if (!taxDetails.territoryTypeId) missingFields.push("Territory Type");
+            if (['STATE', 'CITY'].includes(taxDetails.territoryTypeId)) {
+                if (!taxFilterCountry) missingFields.push("Filter Country");
+                if (taxDetails.territoryTypeId === 'CITY' && !taxFilterState) missingFields.push("Filter State");
+            }
+            if (!taxDetails.territory) missingFields.push("Territory");
+            if (!taxDetails.taxRegNo) missingFields.push("Tax Reg. No");
+            if (!taxDetails.taxRegDate) missingFields.push("Tax Reg. Date");
+            if (!taxDetails.effectiveFrom) missingFields.push("Effective From");
+
+            extraTaxes.forEach((extra, idx) => {
+                if (!extra.taxTypeId) missingFields.push(`Tax ${idx + 2} Type`);
+                if (!extra.territoryTypeId) missingFields.push(`Tax ${idx + 2} Territory Type`);
+                if (['STATE', 'CITY'].includes(extra.territoryTypeId)) {
+                    if (!extra.taxFilterCountry) missingFields.push(`Tax ${idx + 2} Filter Country`);
+                    if (extra.territoryTypeId === 'CITY' && !extra.taxFilterState) missingFields.push(`Tax ${idx + 2} Filter State`);
+                }
+                if (!extra.territory) missingFields.push(`Tax ${idx + 2} Territory`);
+                if (!extra.taxRegNo) missingFields.push(`Tax ${idx + 2} Reg. No`);
+                if (!extra.taxRegDate) missingFields.push(`Tax ${idx + 2} Reg. Date`);
+                if (!extra.effectiveFrom) missingFields.push(`Tax ${idx + 2} Effective From`);
+            });
+        } else if (activeTab === "director") {
+            if (!directorDetails.directorTypeId) missingFields.push("Director Type");
+            if (!directorDetails.directorName) missingFields.push("Director Name");
+
+            extraDirectors.forEach((extra, idx) => {
+                if (!extra.directorTypeId) missingFields.push(`Director ${idx + 2} Type`);
+                if (!extra.directorName) missingFields.push(`Director ${idx + 2} Name`);
+            });
+        } else if (activeTab === "jv") {
+            if (!jointVenture.partnerId) missingFields.push("Partner Name");
+            if (!jointVenture.sharePercentage) missingFields.push("Share %");
+
+            extraJvs.forEach((extra, idx) => {
+                if (!extra.partnerId) missingFields.push(`JV ${idx + 2} Partner Name`);
+                if (!extra.sharePercentage) missingFields.push(`JV ${idx + 2} Share %`);
+            });
+        } else if (activeTab === "profile") {
+            if (!companyProfile.orderNo) missingFields.push("Order No");
+            if (!companyProfile.description) missingFields.push("Description");
+        } else if (activeTab === "additional") {
+            if (!additionalInfo.idTypeId) missingFields.push("Type");
+
+            extraAdditionalInfos.forEach((extra, idx) => {
+                if (!extra.idTypeId) missingFields.push(`Additional Info ${idx + 2} Type`);
+            });
+        } else if (activeTab === "local") {
+            if (!localName.languageId) missingFields.push("Language");
+            if (!localName.name) missingFields.push("Name");
+
+            extraLocalNames.forEach((extra, idx) => {
+                if (!extra.languageId) missingFields.push(`Local Name ${idx + 2} Language`);
+                if (!extra.name) missingFields.push(`Local Name ${idx + 2} Name`);
+            });
+        }
+
+        if (missingFields.length > 0) {
+            toast.warn(`Please enter required details (${missingFields.join(", ")})`);
+            return false;
+        }
+        return true;
     };
 
     const handleSave = async () => {
@@ -844,19 +992,16 @@ function CompanyForm() {
                     {tabs.filter(tab => showDetails || tab.id === "overview").map((tab) => (
                         <button
                             key={tab.id}
-                            className={`d-flex align-items-center px-4 py-3 text-nowrap ${activeTab === tab.id
-                                ? ""
-                                : "text-muted"
+                            className={`custom-tab d-flex align-items-center px-4 py-3 text-nowrap ${activeTab === tab.id
+                                ? "active"
+                                : ""
                                 }`}
-                            style={{
-                                border: "none",
-                                borderBottom: activeTab === tab.id ? `2px solid ${bluePrimary}` : "2px solid transparent",
-                                backgroundColor: "white",
-                                fontWeight: activeTab === tab.id ? 600 : 400,
-                                color: activeTab === tab.id ? bluePrimary : "#6c757d",
-                                borderRadius: 0
+                            onClick={() => {
+                                if (activeTab === tab.id) return;
+                                if (validateCurrentTab()) {
+                                    setActiveTab(tab.id);
+                                }
                             }}
-                            onClick={() => setActiveTab(tab.id)}
                         >
                             <span className="me-2">{tab.icon}</span>
                             {tab.label}
@@ -869,11 +1014,7 @@ function CompanyForm() {
                 <div className="col-12">
                     {activeTab === "overview" && (
                         <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: "8px" }}>
-                            <div className="card-header text-white text-center py-3" style={{ backgroundColor: bluePrimary }}>
-                                <Building2 size={20} className="me-2" />
-                                <strong>Basic Information</strong>
-                            </div>
-                            <div className="card-body p-5 bg-white">
+                            <div className="card-body p-4 bg-white">
                                 <div className="row mt-2">
                                     <div className="col-md-6 mb-4 position-relative">
                                         <label className="projectform-select d-block">Company Type <span style={{ color: "red" }}>*</span></label>
@@ -1033,12 +1174,7 @@ function CompanyForm() {
                         <>
                             {activeTab === "address" && (
                                 <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: "8px", }}>
-                                    <div className="card-header text-white text-center py-3" style={{ backgroundColor: bluePrimary }}>
-                                        <MapPin size={20} className="me-2" />
-                                        <strong>Address Details</strong>
-                                    </div>
-                                    <div className="card-body p-5 bg-white">
-                                        <div className="row mt-2">
+                                    <div className="card-body p-4 bg-white">                                        <div className="row mt-2">
                                             <div className="col-md-6 mb-4 position-relative">
                                                 <label className="projectform-select d-block">Address Type <span style={{ color: "red" }}>*</span></label>
                                                 <Select
@@ -1205,7 +1341,7 @@ function CompanyForm() {
 
                                     {/* Extra Address Sections */}
                                     {extraAddresses.map((extra, idx) => (
-                                        <div key={idx} className="card-body p-5 bg-white" style={{ borderTop: `2px solid ${bluePrimary}` }}>
+                                        <div key={idx} className="card-body p-4 bg-white" style={{ borderTop: `2px solid ${bluePrimary}` }}>
                                             <div className="d-flex justify-content-between align-items-center mb-3">
                                                 <h6 className="mb-0 fw-bold" style={{ color: bluePrimary }}>
                                                     <MapPin size={18} className="me-2" />
@@ -1223,7 +1359,7 @@ function CompanyForm() {
                                             </div>
                                             <div className="row mt-2">
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform-select d-block">Address Type</label>
+                                                    <label className="projectform-select d-block">Address Type <span style={{ color: "red" }}>*</span></label>
                                                     <Select
                                                         classNamePrefix="select"
                                                         placeholder="Select Address Type"
@@ -1254,7 +1390,7 @@ function CompanyForm() {
                                                     />
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform-select d-block">Country</label>
+                                                    <label className="projectform-select d-block">Country <span style={{ color: "red" }}>*</span></label>
                                                     <Select
                                                         classNamePrefix="select"
                                                         placeholder="Select Country"
@@ -1275,7 +1411,7 @@ function CompanyForm() {
                                                     />
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform-select d-block">State</label>
+                                                    <label className="projectform-select d-block">State <span style={{ color: "red" }}>*</span></label>
                                                     <Select
                                                         classNamePrefix="select"
                                                         placeholder="Select State"
@@ -1295,7 +1431,7 @@ function CompanyForm() {
                                                     />
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform-select d-block">City</label>
+                                                    <label className="projectform-select d-block">City <span style={{ color: "red" }}>*</span></label>
                                                     <Select
                                                         classNamePrefix="select"
                                                         placeholder="Select City"
@@ -1375,7 +1511,7 @@ function CompanyForm() {
                                     ))}
 
                                     {/* Add One More Address Button */}
-                                    <div className="card-body px-5 pb-4 pt-3 bg-white">
+                                    <div className="card-body px-4 pb-4 pt-3 bg-white">
                                         <button
                                             type="button"
                                             className="btn d-flex align-items-center gap-2 fw-bold"
@@ -1395,11 +1531,7 @@ function CompanyForm() {
                             )}
                             {activeTab === "contact" && (
                                 <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: "8px", }}>
-                                    <div className="card-header text-white text-center py-3" style={{ backgroundColor: bluePrimary }}>
-                                        <Mail size={20} className="me-2" />
-                                        <strong>Contact Details</strong>
-                                    </div>
-                                    <div className="card-body p-5 bg-white">
+                                    <div className="card-body p-4 bg-white">
                                         <div className="row mt-2">
                                             <div className="col-md-6 mb-4 position-relative">
                                                 <label className="projectform-select d-block">Position <span style={{ color: "red" }}>*</span></label>
@@ -1424,7 +1556,7 @@ function CompanyForm() {
                                                 />
                                             </div>
                                             <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform d-block">Phone No</label>
+                                                <label className="projectform d-block">Phone No <span style={{ color: "red" }}>*</span></label>
                                                 <input
                                                     type="text"
                                                     name="phoneNo"
@@ -1435,7 +1567,7 @@ function CompanyForm() {
                                                 />
                                             </div>
                                             <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform d-block">Email ID</label>
+                                                <label className="projectform d-block">Email ID <span style={{ color: "red" }}>*</span></label>
                                                 <input
                                                     type="email"
                                                     name="email"
@@ -1450,7 +1582,7 @@ function CompanyForm() {
 
                                     {/* Extra Contact Sections */}
                                     {extraContacts.map((extra, idx) => (
-                                        <div key={idx} className="card-body p-5 bg-white" style={{ borderTop: `2px solid ${bluePrimary}` }}>
+                                        <div key={idx} className="card-body p-4 bg-white" style={{ borderTop: `2px solid ${bluePrimary}` }}>
                                             <div className="d-flex justify-content-between align-items-center mb-3">
                                                 <h6 className="mb-0 fw-bold" style={{ color: bluePrimary }}>
                                                     <Mail size={18} className="me-2" />
@@ -1468,7 +1600,7 @@ function CompanyForm() {
                                             </div>
                                             <div className="row mt-2">
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform-select d-block">Position</label>
+                                                    <label className="projectform-select d-block">Position <span style={{ color: "red" }}>*</span></label>
                                                     <input
                                                         type="text"
                                                         value={extra.position}
@@ -1478,7 +1610,7 @@ function CompanyForm() {
                                                     />
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform d-block">Name</label>
+                                                    <label className="projectform d-block">Name <span style={{ color: "red" }}>*</span></label>
                                                     <input
                                                         type="text"
                                                         value={extra.name}
@@ -1488,7 +1620,7 @@ function CompanyForm() {
                                                     />
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform d-block">Phone No</label>
+                                                    <label className="projectform d-block">Phone No <span style={{ color: "red" }}>*</span></label>
                                                     <input
                                                         type="text"
                                                         value={extra.phoneNo}
@@ -1498,7 +1630,7 @@ function CompanyForm() {
                                                     />
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform d-block">Email ID</label>
+                                                    <label className="projectform d-block">Email ID <span style={{ color: "red" }}>*</span></label>
                                                     <input
                                                         type="email"
                                                         value={extra.email}
@@ -1512,7 +1644,7 @@ function CompanyForm() {
                                     ))}
 
                                     {/* Add One More Contact Button */}
-                                    <div className="card-body px-5 pb-4 pt-3 bg-white">
+                                    <div className="card-body px-4 pb-4 pt-3 bg-white">
                                         <button
                                             type="button"
                                             className="btn d-flex align-items-center gap-2 fw-bold"
@@ -1532,11 +1664,7 @@ function CompanyForm() {
                             )}
                             {activeTab === "tax" && (
                                 <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: "8px", }}>
-                                    <div className="card-header text-white text-center py-3" style={{ backgroundColor: bluePrimary }}>
-                                        <Landmark size={20} className="me-2" />
-                                        <strong>Tax Details</strong>
-                                    </div>
-                                    <div className="card-body p-5 bg-white">
+                                    <div className="card-body p-4 bg-white">
                                         <div className="row mt-2">
                                             <div className="col-md-6 mb-4 position-relative">
                                                 <label className="projectform-select d-block">Tax Type <span style={{ color: "red" }}>*</span></label>
@@ -1693,7 +1821,7 @@ function CompanyForm() {
 
                                     {/* Extra Tax Sections */}
                                     {extraTaxes.map((extra, idx) => (
-                                        <div key={idx} className="card-body p-5 bg-white" style={{ borderTop: `2px solid ${bluePrimary}` }}>
+                                        <div key={idx} className="card-body p-4 bg-white" style={{ borderTop: `2px solid ${bluePrimary}` }}>
                                             <div className="d-flex justify-content-between align-items-center mb-3">
                                                 <h6 className="mb-0 fw-bold" style={{ color: bluePrimary }}>
                                                     <Landmark size={18} className="me-2" />
@@ -1711,7 +1839,7 @@ function CompanyForm() {
                                             </div>
                                             <div className="row mt-2">
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform-select d-block">Tax Type</label>
+                                                    <label className="projectform-select d-block">Tax Type <span style={{ color: "red" }}>*</span></label>
                                                     <Select
                                                         classNamePrefix="select"
                                                         placeholder="Select Tax Type"
@@ -1722,7 +1850,7 @@ function CompanyForm() {
                                                     />
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform-select d-block">Territory Type</label>
+                                                    <label className="projectform-select d-block">Territory Type <span style={{ color: "red" }}>*</span></label>
                                                     <Select
                                                         classNamePrefix="select"
                                                         placeholder="Select Territory Type"
@@ -1748,7 +1876,7 @@ function CompanyForm() {
                                                 {['STATE', 'CITY'].includes(extra.territoryTypeId) && (
                                                     <>
                                                         <div className={`${extra.territoryTypeId === 'CITY' ? 'col-md-4' : 'col-md-6'} mb-4 position-relative`}>
-                                                            <label className="projectform-select d-block">Filter Country</label>
+                                                            <label className="projectform-select d-block">Filter Country <span style={{ color: "red" }}>*</span></label>
                                                             <Select
                                                                 classNamePrefix="select"
                                                                 placeholder="Select Country"
@@ -1760,7 +1888,7 @@ function CompanyForm() {
                                                         </div>
                                                         {extra.territoryTypeId === 'CITY' && (
                                                             <div className="col-md-4 mb-4 position-relative">
-                                                                <label className="projectform-select d-block">Filter State</label>
+                                                                <label className="projectform-select d-block">Filter State <span style={{ color: "red" }}>*</span></label>
                                                                 <Select
                                                                     classNamePrefix="select"
                                                                     placeholder="Select State"
@@ -1775,7 +1903,7 @@ function CompanyForm() {
                                                     </>
                                                 )}
                                                 <div className={`${extra.territoryTypeId === 'CITY' ? 'col-md-4' : 'col-md-6'} mb-4 position-relative`}>
-                                                    <label className="projectform-select d-block">Territory</label>
+                                                    <label className="projectform-select d-block">Territory <span style={{ color: "red" }}>*</span></label>
                                                     <Select
                                                         classNamePrefix="select"
                                                         placeholder="Select Territory"
@@ -1790,7 +1918,7 @@ function CompanyForm() {
                                                     />
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform d-block">Tax Reg. No</label>
+                                                    <label className="projectform d-block">Tax Reg. No <span style={{ color: "red" }}>*</span></label>
                                                     <input
                                                         type="text"
                                                         value={extra.taxRegNo}
@@ -1800,7 +1928,7 @@ function CompanyForm() {
                                                     />
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform d-block">Tax Reg. Date</label>
+                                                    <label className="projectform d-block">Tax Reg. Date <span style={{ color: "red" }}>*</span></label>
                                                     <Flatpickr
                                                         className="form-input w-100"
                                                         placeholder="Select Date"
@@ -1811,7 +1939,7 @@ function CompanyForm() {
                                                     <CalendarIcon className="position-absolute end-0 top-50 translate-middle-y me-3" style={{ pointerEvents: "none" }} />
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform d-block">Effective From</label>
+                                                    <label className="projectform d-block">Effective From <span style={{ color: "red" }}>*</span></label>
                                                     <Flatpickr
                                                         className="form-input w-100"
                                                         placeholder="Select Date"
@@ -1857,7 +1985,7 @@ function CompanyForm() {
                                     ))}
 
                                     {/* Add One More Tax Button */}
-                                    <div className="card-body px-5 pb-4 pt-3 bg-white">
+                                    <div className="card-body px-4 pb-4 pt-3 bg-white">
                                         <button
                                             type="button"
                                             className="btn d-flex align-items-center gap-2 fw-bold"
@@ -1877,11 +2005,7 @@ function CompanyForm() {
                             )}
                             {activeTab === "director" && (
                                 <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: "8px", }}>
-                                    <div className="card-header text-white text-center py-3" style={{ backgroundColor: bluePrimary }}>
-                                        <Users size={20} className="me-2" />
-                                        <strong>Director Details</strong>
-                                    </div>
-                                    <div className="card-body p-5 bg-white">
+                                    <div className="card-body p-4 bg-white">
                                         <div className="row mt-2">
                                             <div className="col-md-6 mb-4 position-relative">
                                                 <label className="projectform-select d-block">Director Type <span style={{ color: "red" }}>*</span></label>
@@ -1932,7 +2056,7 @@ function CompanyForm() {
 
                                     {/* Extra Director Sections */}
                                     {extraDirectors.map((extra, idx) => (
-                                        <div key={idx} className="card-body p-5 bg-white" style={{ borderTop: `2px solid ${bluePrimary}` }}>
+                                        <div key={idx} className="card-body p-4 bg-white" style={{ borderTop: `2px solid ${bluePrimary}` }}>
                                             <div className="d-flex justify-content-between align-items-center mb-3">
                                                 <h6 className="mb-0 fw-bold" style={{ color: bluePrimary }}>
                                                     <Users size={18} className="me-2" />
@@ -1950,7 +2074,7 @@ function CompanyForm() {
                                             </div>
                                             <div className="row mt-2">
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform-select d-block">Director Type</label>
+                                                    <label className="projectform-select d-block">Director Type <span style={{ color: "red" }}>*</span></label>
                                                     <Select
                                                         classNamePrefix="select"
                                                         placeholder="Select Director Type"
@@ -1961,7 +2085,7 @@ function CompanyForm() {
                                                     />
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform d-block">Director Name</label>
+                                                    <label className="projectform d-block">Director Name <span style={{ color: "red" }}>*</span></label>
                                                     <input
                                                         type="text"
                                                         value={extra.directorName}
@@ -1995,7 +2119,7 @@ function CompanyForm() {
                                     ))}
 
                                     {/* Add One More Director Button */}
-                                    <div className="card-body px-5 pb-4 pt-3 bg-white">
+                                    <div className="card-body px-4 pb-4 pt-3 bg-white">
                                         <button
                                             type="button"
                                             className="btn d-flex align-items-center gap-2 fw-bold"
@@ -2015,11 +2139,7 @@ function CompanyForm() {
                             )}
                             {activeTab === "jv" && (
                                 <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: "8px", }}>
-                                    <div className="card-header text-white text-center py-3" style={{ backgroundColor: bluePrimary }}>
-                                        <Handshake size={20} className="me-2" />
-                                        <strong>Joint Venture</strong>
-                                    </div>
-                                    <div className="card-body p-5 bg-white">
+                                    <div className="card-body p-4 bg-white">
                                         <div className="row mt-2">
                                             <div className="col-md-6 mb-4 position-relative">
                                                 <label className="projectform d-block">Partner Name <span style={{ color: "red" }}>*</span></label>
@@ -2048,7 +2168,7 @@ function CompanyForm() {
 
                                     {/* Extra JV Sections */}
                                     {extraJvs.map((extra, idx) => (
-                                        <div key={idx} className="card-body p-5 bg-white" style={{ borderTop: `2px solid ${bluePrimary}` }}>
+                                        <div key={idx} className="card-body p-4 bg-white" style={{ borderTop: `2px solid ${bluePrimary}` }}>
                                             <div className="d-flex justify-content-between align-items-center mb-3">
                                                 <h6 className="mb-0 fw-bold" style={{ color: bluePrimary }}>
                                                     <Handshake size={18} className="me-2" />
@@ -2066,7 +2186,7 @@ function CompanyForm() {
                                             </div>
                                             <div className="row mt-2">
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform d-block">Partner Name</label>
+                                                    <label className="projectform d-block">Partner Name <span style={{ color: "red" }}>*</span></label>
                                                     <input
                                                         type="text"
                                                         value={extra.partnerId}
@@ -2076,7 +2196,7 @@ function CompanyForm() {
                                                     />
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform d-block">Share %</label>
+                                                    <label className="projectform d-block">Share % <span style={{ color: "red" }}>*</span></label>
                                                     <input
                                                         type="number"
                                                         value={extra.sharePercentage}
@@ -2090,7 +2210,7 @@ function CompanyForm() {
                                     ))}
 
                                     {/* Add One More JV Button */}
-                                    <div className="card-body px-5 pb-4 pt-3 bg-white">
+                                    <div className="card-body px-4 pb-4 pt-3 bg-white">
                                         <button
                                             type="button"
                                             className="btn d-flex align-items-center gap-2 fw-bold"
@@ -2110,11 +2230,7 @@ function CompanyForm() {
                             )}
                             {activeTab === "profile" && (
                                 <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: "8px", }}>
-                                    <div className="card-header text-white text-center py-3" style={{ backgroundColor: bluePrimary }}>
-                                        <FileText size={20} className="me-2" />
-                                        <strong>Company Profile</strong>
-                                    </div>
-                                    <div className="card-body p-5 bg-white">
+                                    <div className="card-body p-4 bg-white">
                                         <div className="row mb-4">
                                             <div className="col-md-6 position-relative">
                                                 <label className="projectform d-block">Order No <span style={{ color: "red" }}>*</span></label>
@@ -2202,11 +2318,7 @@ function CompanyForm() {
                             )}
                             {activeTab === "additional" && (
                                 <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: "8px", }}>
-                                    <div className="card-header text-white text-center py-3" style={{ backgroundColor: bluePrimary }}>
-                                        <Info size={20} className="me-2" />
-                                        <strong>Additional Info</strong>
-                                    </div>
-                                    <div className="card-body p-5 bg-white">
+                                    <div className="card-body p-4 bg-white">
                                         <div className="row mt-2">
                                             <div className="col-md-6 mb-4 position-relative">
                                                 <label className="projectform-select d-block">Type <span style={{ color: "red" }}>*</span></label>
@@ -2234,7 +2346,7 @@ function CompanyForm() {
 
                                     {/* Extra Additional Info Sections */}
                                     {extraAdditionalInfos.map((extra, idx) => (
-                                        <div key={idx} className="card-body p-5 bg-white" style={{ borderTop: `2px solid ${bluePrimary}` }}>
+                                        <div key={idx} className="card-body p-4 bg-white" style={{ borderTop: `2px solid ${bluePrimary}` }}>
                                             <div className="d-flex justify-content-between align-items-center mb-3">
                                                 <h6 className="mb-0 fw-bold" style={{ color: bluePrimary }}>
                                                     <Info size={18} className="me-2" />
@@ -2252,7 +2364,7 @@ function CompanyForm() {
                                             </div>
                                             <div className="row mt-2">
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform-select d-block">Type</label>
+                                                    <label className="projectform-select d-block">Type <span style={{ color: "red" }}>*</span></label>
                                                     <Select
                                                         classNamePrefix="select"
                                                         placeholder="Select Type"
@@ -2277,7 +2389,7 @@ function CompanyForm() {
                                     ))}
 
                                     {/* Add One More Additional Info Button */}
-                                    <div className="card-body px-5 pb-4 pt-3 bg-white">
+                                    <div className="card-body px-4 pb-4 pt-3 bg-white">
                                         <button
                                             type="button"
                                             className="btn d-flex align-items-center gap-2 fw-bold"
@@ -2297,11 +2409,7 @@ function CompanyForm() {
                             )}
                             {activeTab === "local" && (
                                 <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: "8px", }}>
-                                    <div className="card-header text-white text-center py-3" style={{ backgroundColor: bluePrimary }}>
-                                        <Languages size={20} className="me-2" />
-                                        <strong>Local Name</strong>
-                                    </div>
-                                    <div className="card-body p-5 bg-white">
+                                    <div className="card-body p-4 bg-white">
                                         <div className="row mt-2">
                                             <div className="col-md-6 mb-4 position-relative">
                                                 <label className="projectform-select d-block">Language <span style={{ color: "red" }}>*</span></label>
@@ -2329,7 +2437,7 @@ function CompanyForm() {
 
                                     {/* Extra Local Name Sections */}
                                     {extraLocalNames.map((extra, idx) => (
-                                        <div key={idx} className="card-body p-5 bg-white" style={{ borderTop: `2px solid ${bluePrimary}` }}>
+                                        <div key={idx} className="card-body p-4 bg-white" style={{ borderTop: `2px solid ${bluePrimary}` }}>
                                             <div className="d-flex justify-content-between align-items-center mb-3">
                                                 <h6 className="mb-0 fw-bold" style={{ color: bluePrimary }}>
                                                     <Languages size={18} className="me-2" />
@@ -2347,7 +2455,7 @@ function CompanyForm() {
                                             </div>
                                             <div className="row mt-2">
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform-select d-block">Language</label>
+                                                    <label className="projectform-select d-block">Language <span style={{ color: "red" }}>*</span></label>
                                                     <Select
                                                         classNamePrefix="select"
                                                         placeholder="Select Language"
@@ -2358,7 +2466,7 @@ function CompanyForm() {
                                                     />
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform d-block">Name</label>
+                                                    <label className="projectform d-block">Name <span style={{ color: "red" }}>*</span></label>
                                                     <input
                                                         type="text"
                                                         value={extra.name}
@@ -2372,7 +2480,7 @@ function CompanyForm() {
                                     ))}
 
                                     {/* Add One More Local Name Button */}
-                                    <div className="card-body px-5 pb-4 pt-3 bg-white">
+                                    <div className="card-body px-4 pb-4 pt-3 bg-white">
                                         <button
                                             type="button"
                                             className="btn d-flex align-items-center gap-2 fw-bold"
@@ -2418,9 +2526,11 @@ function CompanyForm() {
                         </button>
                     ) : (
                         <button className="btn px-4 fw-bold text-white d-flex align-items-center gap-2" style={{ backgroundColor: bluePrimary, borderRadius: '8px' }} onClick={() => {
-                            const visibleTabs = tabs.filter(tab => showDetails || tab.id === "overview");
-                            const currentIdx = visibleTabs.findIndex(t => t.id === activeTab);
-                            if (currentIdx < visibleTabs.length - 1) setActiveTab(visibleTabs[currentIdx + 1].id);
+                            if (validateCurrentTab()) {
+                                const visibleTabs = tabs.filter(tab => showDetails || tab.id === "overview");
+                                const currentIdx = visibleTabs.findIndex(t => t.id === activeTab);
+                                if (currentIdx < visibleTabs.length - 1) setActiveTab(visibleTabs[currentIdx + 1].id);
+                            }
                         }}>
                             Next
                             <ArrowRight size={18} />

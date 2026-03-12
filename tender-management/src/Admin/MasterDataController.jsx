@@ -27,10 +27,10 @@ function MasterDataController({ children }) {
 
   const generalMasterData = [
     { label: "Address Type", path: "addresstype" },
-    { label: "Company Level", path: "companylevel" },
+    // { label: "Company Level", path: "companylevel" },
     { label: "Company Status", path: "companystatus" },
     { label: "Company Constitution", path: "companyconstitution" },
-    { label: "Comapny Nature", path: "companynature" },
+    // { label: "Comapny Nature", path: "companynature" },
     { label: "Nature Of Business", path: "companynatureofbusiness" },
     { label: "Language", path: "companylanguage" },
     { label: "Entity Type", path: "contractortype" },

@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 import { FaCheckCircle, FaFileAlt, FaInfoCircle } from "react-icons/fa";
+import { ArrowLeft } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import "../CSS/Styles.css";
@@ -178,7 +179,7 @@ function ProjectCreation() {
                 if (response.status === 201) {
                     currentProjectId = response.data.id || response.data.projectId;
                     setProject((prev) => ({ ...prev, id: currentProjectId }));
-                    setEnabledTabs((prev) => [...prev, "feasibility"]); 
+                    setEnabledTabs((prev) => [...prev, "feasibility"]);
                     toast.success("Project created successfully!");
                 }
             }
@@ -221,42 +222,57 @@ function ProjectCreation() {
 
     return (
         <div className="container-fluid mt-3 p-4">
-            <div className="row align-items-center mb-4">
-                <div className="col-auto">
+            <div className="row align-items-center mb-4 ms-2">
+                <div className="col-auto d-flex align-items-center gap-3">
+                    <button className="btn cancel-button d-flex align-items-center" onClick={() => navigate(-1)}>
+                        <ArrowLeft size={18} className="me-2" /> Previous
+                    </button>
                     {projectId ? (
-                        <div className="fw-bold mb-0 ms-2">{project.projectName}</div>
+                        <div className="fw-bold mb-0 fs-5" style={{ color: "#005197" }}>{project.projectName}</div>
                     ) : (
-                        <div className="fw-bold mb-0 ms-2">Project Creation</div>
+                        <div className="fw-bold mb-0 fs-5" style={{ color: "#005197" }}>Project Creation</div>
                     )}
                 </div>
             </div>
-            <div className="row d-flex justify-content-around mb-4 ms-2 me-2 bg-white rounded ">
-                <div className="col-lg-4 col-md-4">
+            <div className="row g-0 mb-4 ms-2 me-2 bg-white rounded shadow-sm overflow-hidden">
+                <div className="col-lg-4 col-md-4 text-center px-0">
                     <button
-                        className={`tab ${activeTab === "info" ? "active" : ""} ${
-                            enabledTabs.includes("info") ? "enabled" : ""
-                        } w-75 h-100 p-2`}
+                        className={`btn w-100 h-100 p-2 d-flex align-items-center justify-content-center fw-bold rounded-0`}
+                        style={{
+                            backgroundColor: activeTab === "info" ? "#005197" : "transparent",
+                            color: activeTab === "info" ? "white" : "#6c757d",
+                            border: "none",
+                            margin: "0",
+                        }}
                         onClick={() => handleTabs("info")}
                     >
                         <FaInfoCircle className="me-2" /> Project Info
                     </button>
                 </div>
-                <div className="col-lg-4 col-md-4">
+                <div className="col-lg-4 col-md-4 text-center px-0">
                     <button
-                        className={`tab ${activeTab === "feasibility" ? "active" : ""} ${
-                            enabledTabs.includes("feasibility") ? "enabled" : ""
-                        } w-75 h-100 p-2`}
+                        className={`btn w-100 h-100 p-2 d-flex align-items-center justify-content-center fw-bold rounded-0`}
+                        style={{
+                            backgroundColor: activeTab === "feasibility" ? "#005197" : "transparent",
+                            color: activeTab === "feasibility" ? "white" : "#6c757d",
+                            border: "none",
+                            margin: "0",
+                        }}
                         onClick={() => handleTabs("feasibility")}
                         disabled={!enabledTabs.includes("feasibility")}
                     >
                         <FaCheckCircle className="me-2" /> Feasibility Study
                     </button>
                 </div>
-                <div className="col-lg-4 col-md-4">
+                <div className="col-lg-4 col-md-4 text-center px-0">
                     <button
-                        className={`tab ${activeTab === "document" ? "active" : ""} ${
-                            enabledTabs.includes("document") ? "enabled" : ""
-                        } w-75 h-100 p-2`}
+                        className={`btn w-100 h-100 p-2 d-flex align-items-center justify-content-center fw-bold rounded-0`}
+                        style={{
+                            backgroundColor: activeTab === "document" ? "#005197" : "transparent",
+                            color: activeTab === "document" ? "white" : "#6c757d",
+                            border: "none",
+                            margin: "0",
+                        }}
                         onClick={() => handleTabs("document")}
                         disabled={!enabledTabs.includes("document")}
                     >
