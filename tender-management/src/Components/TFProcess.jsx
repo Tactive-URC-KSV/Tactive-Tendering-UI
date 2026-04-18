@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from "react";
-import { ArrowLeft, ArrowRight, BoxesIcon, ChevronDown, ChevronRight, Folder, Info, Paperclip, Plus, User2, X, Download, Edit, Send, File as FileIcon, Building, Dot, Eye } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { ArrowLeft, ArrowRight, BoxesIcon, ChevronDown, ChevronRight, Folder, Info, Paperclip, Plus, User2, X, Download, Edit, Send, File as FileIcon, Building, Dot, Eye, Search } from 'lucide-react';
 import axios from "axios";
 import Flatpickr from "react-flatpickr";
 import { FaCalendarAlt, FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
@@ -99,9 +99,79 @@ function TFProcess({ projectId: propProjectId }) {
     });
 
     const scopes = useScope() || [];
-    const scopeOptions = scopes.map(s => ({ value: s.id, label: s.scope }));
+    const scopeOptions = useMemo(() => {
+        const baseOptions = (scopes || []).map(s => ({ value: s.id, label: s.scope }));
+        if (baseOptions.length > 0) {
+            return [{ value: 'all', label: 'Select All' }, ...baseOptions];
+        }
+        return baseOptions;
+    }, [scopes]);
     const [selectedScopes, setSelectedScopes] = useState([]);
     const [openNodes, setOpenNodes] = useState(new Set());
+
+    function getSelectedLeafBoqs(tree) {
+        let result = [];
+        if (!selectedBoq || selectedBoq.size === 0) return [];
+
+        const traverse = (nodes, parent = null) => {
+            nodes.forEach(boq => {
+                const nodeWithParent = { ...boq };
+                if (parent) {
+                    nodeWithParent.parentBoq = parent;
+                    nodeWithParent.parentBOQ = parent;
+                }
+
+                if (boq.lastLevel === true && selectedBoq.has(boq.id)) {
+                    result.push(nodeWithParent);
+                } else if (Array.isArray(boq.children)) {
+                    traverse(boq.children, nodeWithParent);
+                }
+            });
+        };
+        traverse(tree);
+        return result;
+    }
+
+    const selectedBoqArray = useMemo(() => getSelectedLeafBoqs(parentTree), [parentTree, selectedBoq]);
+
+    const buildBoqTree = useCallback((selected) => {
+        const nodes = new Map();
+        const ensureNode = (boq) => {
+            if (!boq) return null;
+            const parentProp = boq.parentBOQ ?? boq.parentBoq ?? null;
+            if (nodes.has(boq.id)) return nodes.get(boq.id);
+            const node = { ...boq, children: [] };
+            nodes.set(boq.id, node);
+            const parent = parentProp ? ensureNode(parentProp) : null;
+            if (parent) {
+                parent.children.push(node);
+                node._parent = parent;
+            }
+            return node;
+        };
+        selected.forEach(boq => ensureNode(boq));
+        const roots = [...nodes.values()].filter(n => !n._parent);
+        return roots;
+    }, []);
+
+    // Initialize openNodes with all root and intermediate parents by default
+    useEffect(() => {
+        if (tab === 'package' && selectedBoqArray.length > 0) {
+            const boqStructure = buildBoqTree(selectedBoqArray);
+            const allParentIds = new Set();
+            const collectIds = (nodes) => {
+                nodes.forEach(n => {
+                    if (!n.lastLevel) {
+                        allParentIds.add(n.id);
+                        if (n.children) collectIds(n.children);
+                    }
+                });
+            };
+            collectIds(boqStructure);
+            setOpenNodes(allParentIds);
+        }
+    }, [tab, selectedBoqArray, buildBoqTree]);
+
     const [searchQuery, setSearchQuery] = useState('');
     const [highlightedNodes, setHighlightedNodes] = useState(new Set());
     const debouncedSearchQuery = useDebounce(searchQuery, 3000);
@@ -263,6 +333,7 @@ function TFProcess({ projectId: propProjectId }) {
     const [selectedType, setSelectedType] = useState(null);
     const [selectedGrade, setSelectedGrade] = useState(null);
     const [selectedContractor, setSelectedContractor] = useState([]);
+    const [selectedBoqForModal, setSelectedBoqForModal] = useState(null);
 
     const booleanOptions = [
         { value: true, label: 'Yes' },
@@ -528,8 +599,9 @@ function TFProcess({ projectId: propProjectId }) {
                 }
             });
             if (res.status === 200) {
-                setParentBoq(res.data || []);
-                handleParentBoqTree(res.data || []);
+                const boqData = res.data?.data || res.data || [];
+                setParentBoq(boqData);
+                handleParentBoqTree(boqData);
             } else {
                 console.error('Failed to fetch BOQ data:', res.status);
                 setParentBoq([]);
@@ -708,22 +780,7 @@ function TFProcess({ projectId: propProjectId }) {
         });
     };
 
-    const getSelectedLeafBoqs = (tree) => {
-        let result = [];
-        if (!selectedBoq || selectedBoq.size === 0) return [];
 
-        const traverse = (nodes) => {
-            nodes.forEach(boq => {
-                if (boq.lastLevel === true && selectedBoq.has(boq.id)) {
-                    result.push(boq);
-                } else if (Array.isArray(boq.children)) {
-                    traverse(boq.children);
-                }
-            });
-        };
-        traverse(tree);
-        return result;
-    };
 
     const toggleRemovalSelection = (boqId) => {
         setBoqForRemoval(prevSet => {
@@ -861,7 +918,7 @@ function TFProcess({ projectId: propProjectId }) {
     }
 
     const BOQNode = ({ boq, level = 0 }) => {
-        const canExpand = boq.level === 1 || boq.level === 2;
+        const canExpand = boq.lastLevel === false;
         const isExpanded = expandedParentIds.has(boq.id);
         const childrenStatus = boq.children;
         const isLoading = isExpanded && childrenStatus === 'pending';
@@ -913,7 +970,7 @@ function TFProcess({ projectId: propProjectId }) {
                         />
                     </td>
                     <td className="px-2">{boq.boqCode}</td>
-                    <td className="px-2" title={boq.boqName}>{boqNameDisplay}</td>
+                    <td className="px-2" title="Click to view full BOQ Name" onClick={(e) => { e.stopPropagation(); setSelectedBoqForModal(boq); }} style={{ cursor: 'pointer' }}>{boqNameDisplay}</td>
                     <td className="px-2">{boq.uom?.uomCode || '-'}</td>
                     <td className="px-2">{boq.quantity?.toFixed(3) || 0}</td>
                 </tr>
@@ -974,12 +1031,13 @@ function TFProcess({ projectId: propProjectId }) {
                             }}
                         >{boq.boqCode}</span>
                         <span
-                            className="ms-3 text-dark"
-                            title={boq.boqName}
+                            className="ms-3"
+                            title="Click to view full BOQ Name"
                             onClick={(e) => {
-                                if (boq.level > 0) e.stopPropagation();
-                                if (canExpand) handleToggle(boq.id);
+                                e.stopPropagation();
+                                setSelectedBoqForModal(boq);
                             }}
+                            style={{ cursor: 'pointer' }}
                         >{boqNameDisplay}</span>
                     </div>
 
@@ -1055,9 +1113,14 @@ function TFProcess({ projectId: propProjectId }) {
                         </div>
                         <div className="d-flex align-items-center gap-3">
                             <div className="position-relative" style={{ width: '300px' }}>
+                                <Search
+                                    className="position-absolute"
+                                    style={{ right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#6B7280', zIndex: 1 }}
+                                    size={18}
+                                />
                                 <input
                                     type="text"
-                                    className="form-control"
+                                    className="form-input w-100"
                                     placeholder="Search BOQ..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -1099,6 +1162,27 @@ function TFProcess({ projectId: propProjectId }) {
                 <div className="d-flex justify-content-end mt-4 me-3">
                     <button className="btn btn-lg action-button" disabled={selectedBoq.size === 0} onClick={handleNextTabChange}><span className="fw-bold me-2">Confirm & Proceed</span><ArrowRight size={18} /></button>
                 </div>
+
+                {selectedBoqForModal && (
+                    <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1050 }}>
+                        <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                            <div className="modal-content">
+                                <div className="modal-header" style={{ backgroundColor: '#005197' }}>
+                                    <h5 className="modal-title fw-medium text-white">BOQ Name : {selectedBoqForModal.boqCode}</h5>
+                                    <button type="button" className="btn-close text-white bg-white" onClick={() => setSelectedBoqForModal(null)}></button>
+                                </div>
+                                <div className="modal-body text-start" style={{ maxHeight: '60vh', overflowY: 'auto', wordWrap: 'break-word', borderBottom: 'none' }}>
+                                    <p className="fs-6 lh-lg" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{selectedBoqForModal.boqName}</p>
+                                </div>
+                                <div className="modal-footer" style={{ borderTop: 'none' }}>
+                                    <button type="button" className="btn btn-secondary px-4 mt-2 mb-2" onClick={() => setSelectedBoqForModal(null)}>
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </>
         );
     }
@@ -1228,8 +1312,22 @@ function TFProcess({ projectId: propProjectId }) {
                             placeholder="Select Scope of Package"
                             className="w-100"
                             classNamePrefix="select"
-                            value={scopeOptions.filter(opt => selectedScopes.includes(opt.value))}
-                            onChange={(selected) => setSelectedScopes(selected ? selected.map(s => s.value) : [])}
+                            value={
+                                selectedScopes.length === scopes.length && scopes.length > 0
+                                    ? scopeOptions.filter(opt => opt.value === 'all' || selectedScopes.includes(opt.value))
+                                    : scopeOptions.filter(opt => selectedScopes.includes(opt.value))
+                            }
+                            onChange={(selected) => {
+                                if (selected && selected.some(opt => opt.value === 'all')) {
+                                    if (selectedScopes.length === scopes.length) {
+                                        setSelectedScopes([]);
+                                    } else {
+                                        setSelectedScopes(scopes.map(s => s.id));
+                                    }
+                                } else {
+                                    setSelectedScopes(selected ? selected.map(s => s.value) : []);
+                                }
+                            }}
                             hideSelectedOptions={false}
                             closeMenuOnSelect={false}
                             components={{
@@ -1436,7 +1534,7 @@ function TFProcess({ projectId: propProjectId }) {
         );
     }
 
-    const packageDetails = (selectedBoqArray) => {
+    const PackageDetails = ({ selectedBoqArray }) => {
         const toggleNode = (id) => {
             setOpenNodes((prev) => {
                 const updated = new Set(prev);
@@ -1444,25 +1542,7 @@ function TFProcess({ projectId: propProjectId }) {
                 return updated;
             });
         };
-        const buildBoqTree = (selected) => {
-            const nodes = new Map();
-            const ensureNode = (boq) => {
-                if (!boq) return null;
-                const parentProp = boq.parentBOQ ?? boq.parentBoq ?? null;
-                if (nodes.has(boq.id)) return nodes.get(boq.id);
-                const node = { ...boq, children: [] };
-                nodes.set(boq.id, node);
-                const parent = parentProp ? ensureNode(parentProp) : null;
-                if (parent) {
-                    parent.children.push(node);
-                    node._parent = parent;
-                }
-                return node;
-            };
-            selected.forEach(boq => ensureNode(boq));
-            const roots = [...nodes.values()].filter(n => !n._parent);
-            return roots;
-        };
+
         const boqStructure = buildBoqTree(selectedBoqArray);
         const buildParentChildMap = (boqStructure) => {
             const map = new Map();
@@ -1509,7 +1589,37 @@ function TFProcess({ projectId: propProjectId }) {
         };
         const renderParentSections = (nodes, depth = 0) => {
             return nodes.map(node => {
-                if (node.lastLevel) return null;
+                if (node.lastLevel) {
+                    // Render top-level leaves in their own table if they are roots
+                    if (depth === 0) {
+                        return (
+                            <div key={node.id} className="table table-responsive mt-2 ms-0">
+                                <table className="table table-borderless">
+                                    <tbody>
+                                        <tr key={node.id}>
+                                            <td style={{ width: '40px' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    className="form-check-input"
+                                                    style={{ borderColor: '#005197' }}
+                                                    checked={boqForRemoval.has(node.id)}
+                                                    onChange={() => toggleRemovalSelection(node.id)}
+                                                />
+                                            </td>
+                                            <td style={{ width: '150px' }}>{node.boqCode}</td>
+                                            <td title={node.boqName}>
+                                                {boqNameDisplay(node.boqName)}
+                                            </td>
+                                            <td style={{ width: '80px' }}>{node.uom?.uomCode || '-'}</td>
+                                            <td style={{ width: '100px' }}>{node.quantity?.toFixed(3) || 0}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        );
+                    }
+                    return null;
+                }
                 const isOpen = openNodes.has(node.id);
                 const lastLevelChildren = getImmediateLastLevelChildren(node);
                 return (
@@ -1530,7 +1640,7 @@ function TFProcess({ projectId: propProjectId }) {
                                     <tbody>
                                         {lastLevelChildren.map(child => (
                                             <tr key={child.id}>
-                                                <td>
+                                                <td style={{ width: '40px' }}>
                                                     <input
                                                         type="checkbox"
                                                         className="form-check-input"
@@ -1540,12 +1650,12 @@ function TFProcess({ projectId: propProjectId }) {
                                                     />
 
                                                 </td>
-                                                <td>{child.boqCode}</td>
+                                                <td style={{ width: '150px' }}>{child.boqCode}</td>
                                                 <td title={child.boqName}>
                                                     {boqNameDisplay(child.boqName)}
                                                 </td>
-                                                <td>{child.uom?.uomCode || '-'}</td>
-                                                <td>{child.quantity?.toFixed(3) || 0}</td>
+                                                <td style={{ width: '80px' }}>{child.uom?.uomCode || '-'}</td>
+                                                <td style={{ width: '100px' }}>{child.quantity?.toFixed(3) || 0}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1644,13 +1754,21 @@ function TFProcess({ projectId: propProjectId }) {
                 <div className="row d-flex mt-4 justify-content-between ms-3 me-3">
                     <div className="col-md-4 mb-4">
                         <label className="projectform text-start d-block"> Search </label>
-                        <input
-                            type="text"
-                            className="form-input w-100"
-                            placeholder="Search by Contractor"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                        <div className="position-relative" style={{ width: '100%' }}>
+                            <Search
+                                className="position-absolute"
+                                style={{ right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#6B7280', zIndex: 1 }}
+                                size={18}
+                            />
+                            <input
+                                type="text"
+                                className="form-input w-100"
+                                placeholder="Search by Contractor"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                style={{ paddingRight: '30px' }}
+                            />
+                        </div>
                     </div>
                     <div className="col-md-4 mb-4">
                         <label className="projectform-select text-start d-block">
@@ -1867,7 +1985,7 @@ function TFProcess({ projectId: propProjectId }) {
                 case 'general':
                     return generalDetails();
                 case 'package':
-                    return packageDetails(selectedBoqArray);
+                    return <PackageDetails selectedBoqArray={selectedBoqArray} />;
                 case 'contractor':
                     return contractorDetails();
                 case 'attachment':

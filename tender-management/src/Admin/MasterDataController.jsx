@@ -9,60 +9,57 @@ function MasterDataController({ children }) {
   const currentPath = location.pathname.split("/").pop();
 
   const [openSections, setOpenSections] = useState({
-    gm: true,
-    stam: false,
+    general_master: false,
+    process_master: true,
   });
 
- const toggleSection = (key) => {
-  setOpenSections((prev) => {
-    const updated = {};
+  const toggleSection = (key) => {
+    setOpenSections((prev) => {
+      const updated = {};
 
-    Object.keys(prev).forEach(k => {
-      updated[k] = k === key ? !prev[k] : false;
+      Object.keys(prev).forEach(k => {
+        updated[k] = k === key ? !prev[k] : false;
+      });
+
+      return updated;
     });
-
-    return updated;
-  });
-};
+  };
 
   const generalMasterData = [
-    { label: "Region", path: "region" },
-    { label: "Sector", path: "sector" },
-    { label: "Scope of Packages", path: "scopes" },
-    { label: "List of Approvals", path: "approvals" },
-    { label: "Cost Code Type", path: "costcodetype" },
-    { label: "Address Type", path: "addresstype" },
-    { label: "Resource Nature", path: "resourcenature" },
     { label: "Resource Type", path: "resourcetype" },
-    //{ label: "Quantity Type", path: "quantitytype" },
-    //{ label: "Company Type", path: "companytype" },
-    { label: "Company Level", path: "companylevel" },
-    { label: "Company Status", path: "companystatus" },
+    { label: "Address Type", path: "addresstype" },
+    // { label: "Company Level", path: "companylevel" },
+    // { label: "Company Status", path: "companystatus" },
     { label: "Company Constitution", path: "companyconstitution" },
-    { label: "Comapny Nature", path: "companynature"},
-    { label: "Nature Of Business", path: "companynatureofbusiness"},
-    { label: "Language", path: "companylanguage"},
-    { label: "Entity Type", path: "contractortype"},
-    { label: "Nature Of Business" , path: "contractornatureofbusiness"},
-    { label: "Contractor Grade", path: "contractorgrade"},
-    { label: "Tax Type", path: "taxtype"},
-    // { label: "Territory Type", path: "territorytype"},
-    { label: "Identity Type", path: "identitytype"},
-  ];
-  const staMasterData = [
-    { label: "UOM", path: "uom" },
-    { label: "Cost Code Activity", path: "costcodeactivity" },
+    // { label: "Comapny Nature", path: "companynature" },
+    { label: "Nature Of Business", path: "companynatureofbusiness" },
+    { label: "Language", path: "companylanguage" },
+    { label: "Entity Type", path: "contractortype" },
+    { label: "Nature Of Business", path: "contractornatureofbusiness" },
+    { label: "Contractor Grade", path: "contractorgrade" },
+    // { label: "Tax Type", path: "taxtype" },
+    { label: "Identity Type", path: "identitytype" },
     { label: "Country", path: "country" },
     { label: "State", path: "state" },
     { label: "City", path: "city" },
+    { label: "Currency", path: "currency" },
+    { label: "Designation", path: "designation" }
+  ];
+  const processMasterData = [
+    { label: "Region", path: "region" },
+    { label: "Sector", path: "sector" },
+    { label: "Scope of Packages", path: "scopes" },
+    { label: "UOM", path: "uom" },
+    // { label: "Approval Documents", path: "approvals" },
+    { label: "Attributes", path: "attributes" },
     { label: "Resources", path: "resources" },
-    { label: "Attributes", path: "attributes"},
-    { label: "Currency", path: "currency"},
+    { label: "Cost Code Activity", path: "costcodeactivity" },
+
   ];
   const renderSection = (key, title, data) => (
     <>
       <li
-        className={`menu-heading mt-3 fw-medium d-flex align-items-center justify-content-between cursor-pointer ${openSections[key] ? "text-primary": "text-dark"}`}
+        className={`menu-heading mt-3 fw-bold d-flex align-items-center justify-content-between cursor-pointer ${openSections[key] ? "text-primary" : ""}`}
         onClick={() => toggleSection(key)}
       >
         <span>{title}</span>
@@ -72,9 +69,8 @@ function MasterDataController({ children }) {
         data.map((item, index) => (
           <li key={index} className="mt-2">
             <button
-              className={`btn admin-nav-btn ${
-                currentPath === item.path ? "active" : ""
-              } ms-2 w-100 text-start`}
+              className={`btn admin-nav-btn ${currentPath === item.path ? "active" : ""
+                } ms-2 w-100 text-start`}
               onClick={() =>
                 navigate(`/adminportal/${item.path}`)
               }
@@ -86,12 +82,13 @@ function MasterDataController({ children }) {
     </>
   );
   return (
-      <div className="row min-vh-100">
+    <div className="row min-vh-100">
       <div className="admin-sidebar p-3">
         <nav>
           <ul className="list-unstyled">
-            {renderSection("gm", "General Master", generalMasterData)}
-            {renderSection("stam", "Standalone Master", staMasterData)}
+            {renderSection("process_master", "Process Master", processMasterData)}
+            {renderSection("general_master", "General Master", generalMasterData)}
+
           </ul>
         </nav>
       </div>

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { ArrowLeft, Check, Eye, IndianRupee, X } from "lucide-react";
+import { ArrowLeft, Check, Eye, IndianRupee, X, MapPin } from "lucide-react";
 import { use, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -17,6 +17,8 @@ import { useSectors } from "../Context/SectorsContext";
 import { useRegions } from "../Context/RegionsContext";
 import { useScope } from "../Context/ScopeContext";
 import { useUom } from "../Context/UomContext";
+import { decodeToken } from "../config/Jwt";
+
 
 function ProjectOverview() {
     const { projectId } = useParams();
@@ -33,6 +35,8 @@ function ProjectOverview() {
     const uom = useUom();
     const [user, setUser] = useState('');
     const [approvalDoc, setApprovalDoc] = useState();
+    const token = sessionStorage.getItem("token");
+    const decoded = decodeToken(token);
 
     const editDetails = () => {
         navigate(`/projectmanagement/project/${project.id}#info`);
@@ -125,38 +129,40 @@ function ProjectOverview() {
         { label: "Project Name", value: project.projectName },
         { label: "Project Code", value: project.projectCode },
         { label: "Short Name", value: project.shortName },
-        { label: "Agreement Date", value: project.agreementDate },
-        { label: "Agreement Number", value: project.agreementNumber },
         { label: "Start Date", value: project.startDate },
         { label: "End Date", value: project.endDate },
         { label: "Sector", value: project.sector?.sectorName || "N/A" },
-        { label: "Address", value: project.address },
-        { label: "City", value: project.city },
         { label: "Region", value: project.region?.regionName || "N/A" },
         {
             label: "Scope of Packages",
-            value:
-                project.scopeOfPackage?.map((pkg) => pkg.scope).join(", ") || "N/A",
+            value: project.scopeOfPackage?.map((pkg) => pkg.scope || pkg).join(", ") || "N/A",
         },
     ];
 
 
     const technicalInfo = [
-        { label: "Number of Floors", value: project.numberOfFloors || "N/A" },
-        { label: "Car Parking Floors", value: project.carParkingFloors || "N/A" },
-        { label: "Above Ground", value: project.numberOfAboveGround || "N/A" },
-        { label: "Below Ground", value: project.numberOfBelowGround || "N/A" },
         { label: "Unit of Measurement", value: project.uom?.uomCode || "N/A" },
-        { label: "Building Area", value: project.buildingArea || "N/A" },
-        { label: "Other Amenities", value: project.otherAmenities?.join(", ") || "N/A" },
-        { label: "Rate Per Unit", value: project.ratePerUnit || "N/A" },
-        { label: "Estimated Value", value: `${(project.estimatedValue / 1000000).toFixed(2)} M` || "N/A" },
+        ...(project.techFields?.map(tf => ({
+            label: tf.techField?.fieldName || "N/A",
+            value: tf.value || "N/A"
+        })) || [])
     ];
+
+    const getTechFieldValue = (nameFragment) => {
+        const field = project.techFields?.find(f => f.techField?.fieldName?.toLowerCase().includes(nameFragment.toLowerCase()));
+        return field?.value;
+    };
+
+    const ratePerUnit = getTechFieldValue('rate') || project.ratePerUnit;
+    const estimatedValue = getTechFieldValue('estimated') || project.estimatedValue;
+    const noOfFloors = getTechFieldValue('floor') || project.numberOfFloors;
+    const buildingArea = getTechFieldValue('area') || project.buildingArea;
+
     const projectEstimationOverview = [
-        { label: 'No.Of.Floors', value: project.numberOfFloors || 'N/A', bgColor: '#EFF6FF', color: '#2563EB' },
-        { label: 'Total Area', value: project.buildingArea || 'N/A', bgColor: '#F0FDF4', color: '#2BA95A' },
-        { label: 'Rate per Units', value: <><IndianRupee size={14} />{project.ratePerUnit} </>, bgColor: '#FAF5FF', color: '#9333EA' },
-        { label: 'Estimated value', value: <><IndianRupee size={14} />{(project.estimatedValue / 1000000).toFixed(2)} M</>, bgColor: '#FFF7ED', color: '#EA580C' },
+        { label: 'No.Of.Floors', value: noOfFloors || 'N/A', bgColor: '#EFF6FF', color: '#2563EB' },
+        { label: 'Total Area', value: buildingArea || 'N/A', bgColor: '#F0FDF4', color: '#2BA95A' },
+        { label: 'Rate per Units', value: <><IndianRupee size={14} />{ratePerUnit || 'N/A'} </>, bgColor: '#FAF5FF', color: '#9333EA' },
+        { label: 'Estimated value', value: estimatedValue ? <><IndianRupee size={14} />{(!isNaN(estimatedValue) ? (estimatedValue / 1000000).toFixed(2) : estimatedValue)} M</> : 'N/A', bgColor: '#FFF7ED', color: '#EA580C' },
     ];
     const finFeasibility = [
         { label: 'Selling cost', value: <><IndianRupee size={14} />{feasbilityStudy?.financialFeasibility?.sellingCost} </> },
@@ -320,6 +326,36 @@ function ProjectOverview() {
                             ))}
                         </div>
                     </div>
+
+                    <div className="text-start d-flex align-items-center p-2 mt-3" style={{ borderTop: '1px solid #0051973D' }}>
+                        <div className="mt-2 ms-3">
+                            <p className="fw-bold" style={{ fontSize: '16px' }}>
+                                <MapPin size={22} className="me-2 mb-1" style={{ color: '#005197' }} /> 
+                                Project Addresses
+                            </p>
+                        </div>
+                    </div>
+                    <div className="mt-2 ms-4 text-start" >
+                        <div className="row">
+                            {project.projectAddresses?.length > 0 ? (
+                                project.projectAddresses.map((addr, idx) => {
+                                    const locationString = [addr.city, addr.state, addr.country].filter(Boolean).join(", ");
+                                    return (
+                                        <div className="col-md-4 mb-3" key={idx} style={{ fontSize: '14px' }}>
+                                            <div className="text-muted mb-1">Location {idx + 1}</div>
+                                            {addr.address && <div className="fw-bold">{addr.address}</div>}
+                                            {locationString && <div className="fw-bold">{locationString}</div>}
+                                            {addr.phone && <div className="mt-1"><span className="text-muted">Phone:</span> <span className="fw-medium">{addr.phone}</span></div>}
+                                            {addr.email && <div><span className="text-muted">Email:</span> <span className="fw-medium">{addr.email}</span></div>}
+                                            {!addr.address && !locationString && !addr.phone && !addr.email && <div className="text-muted fst-italic">Empty Address Entry</div>}
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="col-12 mb-3 text-muted" style={{ fontSize: '14px' }}>No addresses provided.</div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
             <div className="row mb-4 mt-2 rounded-3 bg-white mx-5" style={{ border: '0.5px solid #0051973D' }}>
@@ -344,7 +380,7 @@ function ProjectOverview() {
                     </div>
                     <div className="ms-3 text-start p-1" style={{ borderBottom: '0.5px solid #0051973D' }}>
                         <p className="text-muted">Other Amenities</p>
-                        <p className="fw-bold">{project.otherAmenities?.join(", ") || "N/A"}</p>
+                        <p className="fw-bold">{project.otherAmenities?.join(", ") || getTechFieldValue('amenities') || "N/A"}</p>
                     </div>
                     <div className="fw-bold text-start mt-3 ms-3 p-2" style={{ fontSize: '16px' }}><GeneralInfo /><span className="ms-2">Technical Feasibility</span></div>
                     <div className="d-flex text-start ms-3 justify-content-between p-2" style={{ borderBottom: '0.5px solid #0051973D' }}>
@@ -387,7 +423,7 @@ function ProjectOverview() {
                         <span className="text-muted">Financial Backup</span>
                         <p className="fw-bold mt-1">{feasbilityStudy?.financialFeasibility?.financialBackup?.join(", ") || "N/A"}</p>
                     </div>
-                    {feasbilityStudy?.reviewedBy === null ? (
+                    {decoded.role === 'ADMIN' && feasbilityStudy?.reviewedBy === null ? (
                         <div className=" ms-3 text-start mt-4 me-3">
                             <span className="text-muted">Feasibility analysis</span>
                             <p className="fw-bold mt-1">Review and approve or reject the feasibility study based on the analysis</p>

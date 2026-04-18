@@ -3,26 +3,24 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { FaTimes } from 'react-icons/fa';
-import Floors from '../assest/Floors.svg?react';
-import Area from '../assest/Area.svg?react';
-import Cost from '../assest/Cost.svg?react';
-import TotalCost from '../assest/TotalCost.svg?react';
-import Amenities from '../assest/Amenities.svg?react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
-function FeasibilityStudy({ project, setActiveTab }) {
+function FeasibilityStudy({ project, sectorId, setActiveTab }) {
     const [listOfApprovals, setListOfApprovals] = useState([]);
     const [selectedApprovals, setSelectedApprovals] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [roiFields, setRoiFields] = useState([]);
+    const [techFields, setTechFields] = useState([]);
+    const [roiFieldValues, setRoiFieldValues] = useState({});
     const [financialData, setFinancialData] = useState({
         marketAvailability: '',
         financialBackup: '',
-        sellingCost: '',
-        rentalCost: '',
         expectedProfit: '',
         profitPercentage: '',
         roiYear: '',
+        sellingCost: '',
+        rentalCost: '',
     });
     const [technicalData, setTechnicalData] = useState({
         executionCapabilities: '',
@@ -31,23 +29,39 @@ function FeasibilityStudy({ project, setActiveTab }) {
     const navigate = useNavigate();
 
     useEffect(() => {
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/listOfApprovals`, {
-            headers: {
-                Authorization: `Bearer ${sessionStorage.getItem('token')}`
-            }
-        })
-            .then(response => {
-                if (response.status === 200) {
-                    setListOfApprovals(response.data);
+        const id = sectorId || project?.sectorId || project?.sector?.id;
+        if (id) {
+            axios.get(`${import.meta.env.VITE_API_BASE_URL}/sector/fields/${id}`, {
+                headers: {
+                    Authorization: `Bearer ${sessionStorage.getItem('token')}`
                 }
             })
-            .catch(error => {
-                console.error('Error fetching sectors:', error);
-            })
-    }, []);
+                .then(response => {
+                    const fields = Array.isArray(response.data) ? response.data : response.data.data || [];
+
+                    // Approvals (Documents Section)
+                    const approvals = fields.filter(f => f.fieldSection === 'DOCUMENTS');
+                    setListOfApprovals(approvals);
+
+                    // ROI Fields
+                    const roi = fields.filter(f => f.fieldSection === 'ROI');
+                    setRoiFields(roi);
+
+                    // Tech Fields (Project Estimation Overview)
+                    const tech = fields.filter(f => f.fieldSection === 'TECH');
+                    setTechFields(tech);
+
+                    // Initialize ROI values if they exist in existing feasibility
+                    // (Assuming we might want to pre-load them if editing, but for now just initialize)
+                })
+                .catch(error => {
+                    console.error('Error fetching sector fields:', error);
+                })
+        }
+    }, [sectorId, project?.sectorId, project?.sector?.id]);
     const approvalDocuments = listOfApprovals.map(approval => ({
         value: approval.id,
-        label: approval.documentName
+        label: approval.fieldName
     }));
 
     const handleCommentChange = (index, comment) => {
@@ -75,11 +89,11 @@ function FeasibilityStudy({ project, setActiveTab }) {
     };
 
     const handleSubmit = async () => {
-        if(!financialData?.marketAvailability){
+        if (!financialData?.marketAvailability) {
             toast.error("Please enter market availability");
             return;
         }
-        if(!financialData?.financialBackup){
+        if (!financialData?.financialBackup) {
             toast.error("Please enter financial backup");
             return;
         }
@@ -99,6 +113,10 @@ function FeasibilityStudy({ project, setActiveTab }) {
                 ...financialData,
                 marketAvailability: normalizeArray(financialData.marketAvailability),
                 financialBackup: normalizeArray(financialData.financialBackup),
+                roiFields: roiFields.map(field => ({
+                    roiFieldId: field.id,
+                    value: roiFieldValues[field.id] || ""
+                }))
             };
             formData.append(
                 'techFeasibility',
@@ -153,11 +171,12 @@ function FeasibilityStudy({ project, setActiveTab }) {
 
     const isSubmitDisabled = () => {
         const isFinancialDataEmpty = Object.values(financialData).every(value => !value || value === '');
+        const isRoiFieldsEmpty = Object.values(roiFieldValues).every(value => !value || value === '');
         const isTechnicalDataEmpty = Object.values(technicalData).every(value => !value || value === '');
         const isApprovalsEmpty = selectedApprovals.every(
             approval => !approval.comment && approval.isApproved === null && !approval.file
         );
-        return isFinancialDataEmpty && isTechnicalDataEmpty && isApprovalsEmpty;
+        return isFinancialDataEmpty && isRoiFieldsEmpty && isTechnicalDataEmpty && isApprovalsEmpty;
     };
 
     return (
@@ -168,42 +187,51 @@ function FeasibilityStudy({ project, setActiveTab }) {
                         Project Estimation Overview
                     </p>
                 </div>
-                <div className="row d-flex justify-content-around ms-4 me-4 mt-3 mb-3">
-                    <div className="col-12 col-md-6 col-lg-6">
-                        <div className="estimation-container text-start w-100 p-1 px-1">
-                            <p className='report-feild fw-bold mb-2 mt-2 ms-2'><span className="me-2"><Floors /></span>Number 0f Floors</p><br />
-                            <p className='value fw-bold fs-6 ms-2'>{project.numberOfFloors}</p>
-                        </div>
-                    </div>
-                    <div className="col-12 col-md-6 col-lg-6">
-                        <div className="estimation-container text-start w-100 p-1 px-1">
-                            <p className='report-feild fw-bold mb-2 mt-2 ms-2'><span className="me-2"><Area /></span>Total Building Area</p><br />
-                            <p className='value fw-bold fs-6 ms-2'>{project.buildingArea}</p>
-                        </div>
-                    </div>
-                </div>
-                <div className="row d-flex justify-content-around ms-4 me-4 mb-3">
-                    <div className="col-12 col-md-6 col-lg-6">
-                        <div className="estimation-container text-start w-100 p-1 px-1">
-                            <p className='report-feild fw-bold mb-2 mt-2 ms-2'><span className="me-2"><Cost /></span>Rate per Units</p><br />
-                            <p className='value fw-bold fs-6 ms-2'>{project.ratePerUnit}</p>
-                        </div>
-                    </div>
-                    <div className="col-12 col-md-6 col-lg-6">
-                        <div className="estimation-container text-start w-100 p-1 px-1">
-                            <p className='report-feild fw-bold mb-2 mt-2 ms-2'><span className="me-2"><TotalCost /></span>Estimated Cost</p><br />
-                            <p className='value fw-bold fs-6 ms-2'>$ {(project.estimatedValue / 1000000).toFixed(2)} M</p>
-                        </div>
-                    </div>
-                </div>
-                <div className="row d-flex justify-content-around ms-4 me-4 mb-3">
-                    <div className="col-12">
-                        <div className="estimation-container text-start w-100 p-1 px-1">
-                            <p className='report-feild fw-bold mb-2 mt-2 ms-2'><span className="me-2"><Amenities /></span>Other Amenities</p><br />
-                            <p className='value fw-bold fs-6 ms-2'>{Array.isArray(project.otherAmenities) ? project.otherAmenities.join(', ') : project.otherAmenities}</p>
-                        </div>
-                    </div>
-                </div>
+                {(() => {
+                    // Build a lookup: fieldId -> value from project.techFields
+                    const techValueMap = {};
+                    if (Array.isArray(project.techFields)) {
+                        project.techFields.forEach(tf => {
+                            const fieldId = tf.techField?.id || tf.techFieldId;
+                            if (fieldId) techValueMap[fieldId] = tf.value;
+                        });
+                    }
+
+                    if (techFields.length === 0) {
+                        return (
+                            <div className="row ms-4 me-4 mb-3">
+                                <div className="col-12 text-center text-muted py-3">
+                                    No technical fields configured for this sector.
+                                </div>
+                            </div>
+                        );
+                    }
+
+                    const rows = [];
+                    for (let i = 0; i < techFields.length; i += 2) {
+                        const left = techFields[i];
+                        const right = techFields[i + 1];
+                        rows.push(
+                            <div className="row d-flex justify-content-around ms-4 me-4 mb-3" key={left.id}>
+                                <div className="col-12 col-md-6 col-lg-6">
+                                    <div className="estimation-container text-start w-100 p-1 px-1">
+                                        <p className='report-feild fw-bold mb-2 mt-2 ms-2'>{left.fieldName}</p><br />
+                                        <p className='value fw-bold fs-6 ms-2'>{techValueMap[left.id] ?? '—'}</p>
+                                    </div>
+                                </div>
+                                {right && (
+                                    <div className="col-12 col-md-6 col-lg-6">
+                                        <div className="estimation-container text-start w-100 p-1 px-1">
+                                            <p className='report-feild fw-bold mb-2 mt-2 ms-2'>{right.fieldName}</p><br />
+                                            <p className='value fw-bold fs-6 ms-2'>{techValueMap[right.id] ?? '—'}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }
+                    return rows;
+                })()}
             </div>
             <div className="mb-3 pb-5 bg-white">
                 <div className="row px-3 mt-3 mb-5" style={{ height: '33px' }}>
@@ -344,57 +372,35 @@ function FeasibilityStudy({ project, setActiveTab }) {
                 </div>
                 <div className="row">
                     <span className="text-start fs-6 fw-bold mb-3" style={{ marginLeft: '40px' }}>
-                        Return of Investment (ROI)
+                        Return on Investment (ROI)
                     </span>
                 </div>
-                <div className="row align-items-center ms-4 me-4">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Selling Cost</label>
-                        <input
-                            type="number"
-                            className="form-input w-100"
-                            placeholder="Enter Selling Cost"
-                            value={financialData.sellingCost}
-                            onChange={(e) => setFinancialData({ ...financialData, sellingCost: e.target.value })}
-                            onWheel={(e) => e.target.blur()}
-                        />
+                {roiFields.length > 0 ? (
+                    <div className="row align-items-center ms-4 me-4">
+                        {roiFields.map((field, idx) => (
+                            <div className="col-md-6 mt-3 mb-4" key={field.id}>
+                                <label className="projectform text-start d-block">
+                                    {field.fieldName}
+                                    {field.mandatory && <span className="text-danger">*</span>}
+                                </label>
+                                <input
+                                    type={field.fieldType === 'NUMBER' ? 'number' : 'text'}
+                                    className="form-input w-100"
+                                    placeholder={`Enter ${field.fieldName}`}
+                                    value={roiFieldValues[field.id] || ""}
+                                    onChange={(e) => setRoiFieldValues({ ...roiFieldValues, [field.id]: e.target.value })}
+                                    onWheel={(e) => field.fieldType === 'NUMBER' && e.target.blur()}
+                                />
+                            </div>
+                        ))}
                     </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Rental Cost</label>
-                        <input
-                            type="number"
-                            className="form-input w-100"
-                            placeholder="Enter Rental Cost"
-                            value={financialData.rentalCost}
-                            onChange={(e) => setFinancialData({ ...financialData, rentalCost: e.target.value })}
-                            onWheel={(e) => e.target.blur()}
-                        />
+                ) : (
+                    <div className="row align-items-center ms-4 me-4">
+                        <div className="col-12 text-center text-muted py-3">
+                            No ROI fields configured for this sector.
+                        </div>
                     </div>
-                </div>
-                <div className="row align-items-center ms-4 me-4">
-                    <div className="col-md-6 mt-3 mb-3">
-                        <label className="projectform text-start d-block">ROI in Years</label>
-                        <input
-                            type="number"
-                            className="form-input w-100"
-                            placeholder="Years"
-                            value={financialData.roiYear}
-                            onChange={(e) => setFinancialData({ ...financialData, roiYear: e.target.value })}
-                            onWheel={(e) => e.target.blur()}
-                        />
-                    </div>
-                    <div className="col-md-6 mt-3 mb-3">
-                        <label className="projectform text-start d-block">Estimated Profit Percentage</label>
-                        <input
-                            type="number"
-                            className="form-input w-100"
-                            placeholder="%"
-                            value={financialData.profitPercentage}
-                            onChange={(e) => setFinancialData({ ...financialData, profitPercentage: e.target.value })}
-                            onWheel={(e) => e.target.blur()}
-                        />
-                    </div>
-                </div>
+                )}
             </div>
             <div className="d-flex justify-content-between">
                 <button className="btn cancel-button mt-2 ms-4" onClick={() => { setActiveTab('info') }}>

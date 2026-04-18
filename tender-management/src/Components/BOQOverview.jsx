@@ -11,7 +11,8 @@ import { toast } from 'react-toastify';
 import { useNavigate } from "react-router-dom";
 import { useUom } from "../Context/UomContext";
 import useDebounce from "../Utills/useDebounce";
-import { searchBoq } from "../Utills/projectApi";
+import { searchBoq, updateBOQHierarchy } from "../Utills/projectApi";
+import { Move, Save, X, ChevronLeft } from 'lucide-react';
 
 
 function ConfirmationDialog({ isOpen, onClose, onConfirm, message }) {
@@ -41,6 +42,47 @@ function ConfirmationDialog({ isOpen, onClose, onConfirm, message }) {
     );
 }
 
+function HierarchySelectionNode({ boq, onSelect, selectedBoqForMove, level = 0 }) {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const BoqIcon = isExpanded ? ChevronDown : ChevronRight;
+    const isSelf = boq.id === selectedBoqForMove?.id;
+
+    if (boq.lastLevel === true) return null; // Only non-leaf nodes can be parents
+
+    return (
+        <div className="ms-3">
+            <div
+                className={`d-flex align-items-center p-2 rounded ${isSelf ? 'text-muted' : 'text-dark'}`}
+                style={{ cursor: isSelf ? 'not-allowed' : 'pointer', borderBottom: '1px solid #f0f0f0' }}
+            >
+                <div onClick={() => setIsExpanded(!isExpanded)} className="me-2">
+                    <BoqIcon size={16} />
+                </div>
+                <div
+                    className="flex-grow-1"
+                    onClick={() => !isSelf && onSelect(boq.id)}
+                >
+                    <span className="fw-medium">{boq.boqCode}</span>
+                    <span className="ms-2 small">{boq.boqName?.substring(0, 50)}</span>
+                </div>
+            </div>
+            {isExpanded && Array.isArray(boq.children) && (
+                <div className="ms-2">
+                    {boq.children.map(child => (
+                        <HierarchySelectionNode
+                            key={child.id}
+                            boq={child}
+                            onSelect={onSelect}
+                            selectedBoqForMove={selectedBoqForMove}
+                            level={level + 1}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function BOQOverview({ projectId }) {
     const navigate = useNavigate();
     const [parentBoq, setParentBoq] = useState([]);
@@ -49,7 +91,7 @@ function BOQOverview({ projectId }) {
     const [uploadScreen, setUploadScreen] = useState(false);
     const [expandedParentIds, setExpandedParentIds] = useState(new Set());
     const [isAllExpanded, setIsAllExpanded] = useState(false);
-    const [showPopover, setShowPopover] = useState(false);
+    const [showExportModal, setShowExportModal] = useState(false);
     const [selectedNodes, setSelectedNodes] = useState(new Set());
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [totalBOQ, setTotalBOQ] = useState(0);
@@ -58,14 +100,21 @@ function BOQOverview({ projectId }) {
     const [isExpanding, setIsExpanding] = useState(false);
     const debouncedSearchQuery = useDebounce(searchQuery, 3000);
     const uoms = useUom();
+    const [selectedBoqForModal, setSelectedBoqForModal] = useState(null);
+    const [isHierarchyMode, setIsHierarchyMode] = useState(false);
+    const [hierarchyUpdates, setHierarchyUpdates] = useState({}); // childId -> parentId
+    const [showHierarchyModal, setShowHierarchyModal] = useState(false);
+    const [selectedBoqForMove, setSelectedBoqForMove] = useState(null);
+    const [boqCurrentPage, setBoqCurrentPage] = useState(0);
+    const [boqTotalPages, setBoqTotalPages] = useState(0);
+    const [boqTotalItems, setBoqTotalItems] = useState(0);
+    const pageSize = 15;
 
     const handleExpandCollapseAll = async () => {
         if (isAllExpanded) {
-            // Collapse All
             setExpandedParentIds(new Set());
             setIsAllExpanded(false);
         } else {
-            // Expand All
             setIsExpanding(true);
             const newExpandedIds = new Set();
             let tempTree = JSON.parse(JSON.stringify(parentTree)); // Deep copy to manage state locally
@@ -235,26 +284,33 @@ function BOQOverview({ projectId }) {
         const uom = uoms.find((uom) => uom.id === uomId);
         return uom?.uomCode;
     }
-    const refreshParentBoqData = async () => {
+    const refreshParentBoqData = async (page = 0) => {
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getParentBoq/${projectId}`, {
+                params: { page, size: pageSize },
                 headers: {
                     Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                     'Content-Type': 'application/json'
                 }
             });
             if (res.status === 200) {
-                setParentBoq(res.data || []);
-                handleParentBoqTree(res.data || []);
+                const { data, currentPage, totalPages, totalItems } = res.data;
+                setParentBoq(data || []);
+                handleParentBoqTree(data || []);
+                setBoqCurrentPage(currentPage);
+                setBoqTotalPages(totalPages);
+                setBoqTotalItems(totalItems);
             } else {
                 console.error('Failed to fetch BOQ data:', res.status);
                 setParentBoq([]);
+                setBoqTotalPages(0);
             }
         } catch (err) {
             if (err?.response?.status === 401) {
                 navigate('/login');
             }
             setParentBoq([]);
+            setBoqTotalPages(0);
         }
     };
 
@@ -410,10 +466,10 @@ function BOQOverview({ projectId }) {
     const cancelDelete = () => {
         setShowConfirmDialog(false);
     };
-    const BOQStats = [
-        { label: 'Total BOQ', value: totalBOQ, bgColor: '#F0FDF4', color: '#2BA95A' },
-        { label: 'Level 1 BOQ', value: parentBoq.length, bgColor: '#EFF6FF', color: '#2563EB' },
-    ];
+    // const BOQStats = [
+    //     { label: 'Total BOQ', value: totalBOQ, bgColor: '#F0FDF4', color: '#2BA95A' },
+    //     { label: 'Level 1 BOQ', value: parentBoq.length, bgColor: '#EFF6FF', color: '#2563EB' },
+    // ];
     useEffect(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${projectId}`, {
             headers: {
@@ -455,6 +511,34 @@ function BOQOverview({ projectId }) {
             console.error('Error fetching total BOQ:', err);
         });
     }
+
+    const handleHierarchySave = async () => {
+        if (Object.keys(hierarchyUpdates).length === 0) {
+            toast.warn("No hierarchy changes to save.");
+            return;
+        }
+
+        try {
+            const response = await updateBOQHierarchy(projectId, hierarchyUpdates);
+            toast.success(response || "Hierarchy updated successfully");
+            setHierarchyUpdates({});
+            setIsHierarchyMode(false);
+            refreshParentBoqData();
+        } catch (error) {
+            console.error("Error updating hierarchy:", error);
+            toast.error(error?.response?.data || "Failed to update hierarchy");
+        }
+    };
+
+    const handleMoveNode = (childId, parentId) => {
+        setHierarchyUpdates(prev => ({
+            ...prev,
+            [childId]: parentId
+        }));
+        setShowHierarchyModal(false);
+        setSelectedBoqForMove(null);
+        toast.info("Change staged. Save to apply.");
+    };
     const handleParentBoqTree = (data = parentBoq) => {
         if (Array.isArray(data) && data.length > 0) {
             const parentTree = new Map();
@@ -583,9 +667,25 @@ function BOQOverview({ projectId }) {
                         />
                     </td>
                     <td className="px-2">{boq.boqCode}</td>
-                    <td className="px-2" title={boq.boqName}>{boqNameDisplay}</td>
+                    <td className="px-2" title="Click to view full BOQ Name" onClick={(e) => { e.stopPropagation(); setSelectedBoqForModal(boq); }} style={{ cursor: 'pointer' }}>
+                        {boqNameDisplay}
+                        {hierarchyUpdates[boq.id] && <span className="badge bg-warning ms-2">Moved</span>}
+                    </td>
                     <td className="px-2">{boq?.uom?.uomCode || '-'}</td>
                     <td className="px-2">{boq.quantity?.toFixed(3) || 0}</td>
+                    {isHierarchyMode && (
+                        <td className="px-2">
+                            <Move
+                                size={16}
+                                style={{ cursor: 'pointer', color: '#005197' }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedBoqForMove(boq);
+                                    setShowHierarchyModal(true);
+                                }}
+                            />
+                        </td>
+                    )}
                 </tr>
             );
         }
@@ -608,7 +708,39 @@ function BOQOverview({ projectId }) {
                     >
                         {canExpand ? <BoqIcon size={18} /> : <span style={{ width: 20, marginRight: 4 }}></span>}
                         <span className="ms-2 fw-bold">{boq.boqCode}</span>
-                        <span className="ms-3 text-dark" title={boq.boqName}>{boqNameDisplay}</span>
+                        <span className="ms-3" title="Click to view full BOQ Name" onClick={(e) => { e.stopPropagation(); setSelectedBoqForModal(boq); }} style={{ cursor: 'pointer' }}>
+                            {boqNameDisplay}
+                            {hierarchyUpdates[boq.id] && <span className="badge bg-warning ms-2">Moved</span>}
+                        </span>
+
+                        <div className="ms-auto d-flex align-items-center gap-2">
+                            {isHierarchyMode && (
+                                <Move
+                                    size={16}
+                                    style={{ cursor: 'pointer', color: '#005197' }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedBoqForMove(boq);
+                                        setShowHierarchyModal(true);
+                                    }}
+                                />
+                            )}
+                            {hasNoChildren && (
+                                <DeleteIcon
+                                    style={{
+                                        cursor: 'pointer',
+                                        width: '16px',
+                                        height: '16px'
+                                    }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedNodes(new Set([boq.id]));
+                                        setShowConfirmDialog(true);
+                                    }}
+                                    title="Delete this empty BOQ"
+                                />
+                            )}
+                        </div>
                     </div>
 
                     {isExpanded && canExpand && (
@@ -640,6 +772,7 @@ function BOQOverview({ projectId }) {
                                                         <th className="px-2">BOQ Name</th>
                                                         <th className="px-2">UOM</th>
                                                         <th className="px-2">Quantity</th>
+                                                        {isHierarchyMode && <th className="px-2">Move</th>}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -729,25 +862,39 @@ function BOQOverview({ projectId }) {
                     <div className="ms-3">
                         <ArrowLeft size={20} onClick={() => window.history.back()} />
                         <span className='ms-2'>BOQ Definition</span>
+                        <span>-</span>
+                        <span>{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</span>
                     </div>
                     <div className="me-3">
-                        <button className="btn export-button me-2" onMouseEnter={() => setShowPopover(true)}>
+                        <button className="btn export-button me-2" onClick={() => setShowExportModal(true)}>
                             <span className="me-2"><Export /></span>Export File
                         </button>
                         <button className="btn import-button ms-2" onClick={() => setUploadScreen(true)}>
                             <span className="me-2"><Import /></span>Import File
                         </button>
-                        {showPopover && (
-                            <div className="popover bs-popover-bottom show position-absolute mt-1" onMouseLeave={() => setShowPopover(false)} style={{ zIndex: 10 }}>
-                                <div className="popover-body d-flex flex-column">
-                                    <button className="btn action-button mb-2" onClick={exportPdf}>PDF</button>
-                                    <button className="btn action-button" onClick={exportExcel}>Excel</button>
+                        {showExportModal && (
+                            <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1050 }}>
+                                <div className="modal-dialog modal-md modal-dialog-centered">
+                                    <div className="modal-content shadow">
+                                        <div className="modal-header border-bottom-0" style={{ backgroundColor: '#005197', color: 'white' }}>
+                                            <h5 className="modal-title fw-medium fs-6">Select Export Format</h5>
+                                            <button type="button" className="btn-close btn-close-white" onClick={() => setShowExportModal(false)}></button>
+                                        </div>
+                                        <div className="modal-body d-flex flex-column gap-3 p-4">
+                                            <button className="btn action-button py-2" onClick={() => { exportPdf(); setShowExportModal(false); }}>
+                                                Export as PDF
+                                            </button>
+                                            <button className="btn action-button py-2" onClick={() => { exportExcel(); setShowExportModal(false); }}>
+                                                Export as Excel
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         )}
                     </div>
                 </div>
-                <div className="bg-white rounded-3 ms-3 me-3 mt-2 p-2" style={{ border: '0.5px solid #0051973D' }}>
+                {/* <div className="bg-white rounded-3 ms-3 me-3 mt-2 p-2" style={{ border: '0.5px solid #0051973D' }}>
                     <p className="fw-bold text-start mt-2 ms-2">{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</p>
                     <div className="row justify-content-between ms-3">
                         {BOQStats.map((stats, index) => (
@@ -759,10 +906,10 @@ function BOQOverview({ projectId }) {
                             </div>
                         ))}
                     </div>
-                </div>
+                </div> */}
 
-                <div className="bg-white rounded-3 ms-3 me-3 mt-4 p-2" style={{ border: '0.5px solid #0051973D' }}>
-                    <div className="d-flex justify-content-between mb-3">
+                <div className="bg-white rounded-3 ms-3 me-3 mt-4 p-2 d-flex flex-column" style={{ border: '0.5px solid #0051973D', maxHeight: '80vh' }}>
+                    <div className="d-flex justify-content-between mb-3 sticky-top bg-white p-2" style={{ top: 0, zIndex: 10, borderBottom: '1px solid #f0f0f0' }}>
                         <div className="fw-bold text-start mt-2 ms-1 d-flex align-items-center gap-3">
                             <span>BOQ Structure</span>
                         </div>
@@ -770,13 +917,32 @@ function BOQOverview({ projectId }) {
                             <div className="position-relative" style={{ width: '300px' }}>
                                 <input
                                     type="text"
-                                    className="form-control"
+                                    className="form-input"
                                     placeholder="Search BOQ..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     style={{ paddingRight: '30px' }}
                                 />
                             </div>
+                            <button
+                                className={`btn ${isHierarchyMode ? 'btn-warning' : ''} me-2 d-flex align-items-center gap-2`}
+                                style={!isHierarchyMode ? { borderColor: '#005197', color: '#005197' } : {}}
+                                onClick={() => setIsHierarchyMode(!isHierarchyMode)}
+                                title={isHierarchyMode ? "Exit Hierarchy Mode" : "Edit BOQ Hierarchy"}
+                            >
+                                <Move size={18} />
+                                <span className="d-none d-lg-inline">Edit BOQ Hierarchy</span>
+                            </button>
+                            {isHierarchyMode && Object.keys(hierarchyUpdates).length > 0 && (
+                                <button
+                                    className="btn btn-success me-2 d-flex align-items-center gap-2"
+                                    onClick={handleHierarchySave}
+                                    title="Save hierarchy changes"
+                                >
+                                    <Save size={18} />
+                                    <span className="d-none d-lg-inline">Save Changes</span>
+                                </button>
+                            )}
                             <button
                                 className="btn p-0 me-2"
                                 style={{
@@ -789,7 +955,7 @@ function BOQOverview({ projectId }) {
                                 title={isAllExpanded ? "Collapse All" : "Expand All"}
                             >
                                 {isExpanding ? (
-                                    <div className="spinner-border spinner-border-sm text-primary" role="status">
+                                    <div className="spinner-border spinner-border-sm" style={{ color: '#005197' }} role="status">
                                         <span className="visually-hidden">Loading...</span>
                                     </div>
                                 ) : (
@@ -804,7 +970,7 @@ function BOQOverview({ projectId }) {
                         </div>
                     </div>
 
-                    <div className="boq-structure-list mt-3">
+                    <div className="boq-structure-list mt-3 flex-grow-1 overflow-y-auto px-2" style={{ scrollbarWidth: 'thin' }}>
                         {visibleTree.length > 0 && visibleTree.every(boq => boq.lastLevel === true) ? (
                             <div className="table-responsive">
                                 <table className="table table-borderless">
@@ -830,7 +996,58 @@ function BOQOverview({ projectId }) {
                             ))
                         )}
                     </div>
+                    {parentBoq.length > 0 && (
+                        <div className='d-flex justify-content-between align-items-center mt-3 p-3 border-top bg-white sticky-bottom' style={{ bottom: 0, zIndex: 10 }}>
+                            <div className="d-flex align-items-center gap-3">
+                                <span className="text-muted small">
+                                    Showing {(boqCurrentPage * pageSize) + 1} - {Math.min((boqCurrentPage + 1) * pageSize, boqTotalItems)} of {boqTotalItems} Items
+                                </span>
+                            </div>
+                            <div className='d-flex align-items-center gap-2'>
+                                <button
+                                    className="btn pagination-btn"
+                                    onClick={() => refreshParentBoqData(boqCurrentPage - 1)}
+                                    disabled={boqCurrentPage === 0}
+                                    style={{ padding: '4px 8px', border: '1px solid #dee2e6', backgroundColor: boqCurrentPage === 0 ? '#f8f9fa' : 'white' }}
+                                >
+                                    <ChevronLeft size={16} />
+                                </button>
+                                <div className="px-3 py-1 rounded bg-light border small fw-medium">
+                                    Page {boqCurrentPage + 1} of {boqTotalPages || 1}
+                                </div>
+                                <button
+                                    className="btn pagination-btn"
+                                    onClick={() => refreshParentBoqData(boqCurrentPage + 1)}
+                                    disabled={boqCurrentPage >= boqTotalPages - 1}
+                                    style={{ padding: '4px 8px', border: '1px solid #dee2e6', backgroundColor: boqCurrentPage >= boqTotalPages - 1 ? '#f8f9fa' : 'white' }}
+                                >
+                                    <ChevronRight size={16} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
+
+                {selectedBoqForModal && (
+                    <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1050 }}>
+                        <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                            <div className="modal-content">
+                                <div className="modal-header" style={{ backgroundColor: '#005197' }}>
+                                    <h5 className="modal-title fw-medium text-white">BOQ Name : {selectedBoqForModal.boqCode}</h5>
+                                    <button type="button" className="btn-close text-white bg-white" onClick={() => setSelectedBoqForModal(null)}></button>
+                                </div>
+                                <div className="modal-body text-start" style={{ maxHeight: '60vh', overflowY: 'auto', wordWrap: 'break-word', borderBottom: 'none' }}>
+                                    <p className="fs-6 lh-lg" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{selectedBoqForModal.boqName}</p>
+                                </div>
+                                <div className="modal-footer" style={{ borderTop: 'none' }}>
+                                    <button type="button" className="btn btn-secondary px-4 mt-2 mb-2" onClick={() => setSelectedBoqForModal(null)}>
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <ConfirmationDialog
                     isOpen={showConfirmDialog}
@@ -838,6 +1055,42 @@ function BOQOverview({ projectId }) {
                     onConfirm={confirmDelete}
                     message={`Are you sure you want to delete ${selectedNodes.size} selected BOQ item(s)?`}
                 />
+
+                {showHierarchyModal && (
+                    <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1100 }}>
+                        <div className="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable">
+                            <div className="modal-content">
+                                <div className="modal-header text-white" style={{ backgroundColor: '#005197' }}>
+                                    <h5 className="modal-title">Select New Parent</h5>
+                                    <button type="button" className="btn-close btn-close-white" onClick={() => setShowHierarchyModal(false)}></button>
+                                </div>
+                                <div className="modal-body text-start" style={{ maxHeight: '60vh' }}>
+                                    <p className="mb-3 text-muted small">Moving: <strong>{selectedBoqForMove?.boqCode}</strong></p>
+                                    <div
+                                        className="p-2 mb-3 rounded border fw-bold"
+                                        style={{ cursor: 'pointer', backgroundColor: '#f8f9fa', color: '#005197', borderColor: '#005197' }}
+                                        onClick={() => handleMoveNode(selectedBoqForMove.id, "ROOT")}
+                                    >
+                                        Move to Root (No Parent)
+                                    </div>
+                                    <div className="hierarchy-tree">
+                                        {parentTree.map(node => (
+                                            <HierarchySelectionNode
+                                                key={node.id}
+                                                boq={node}
+                                                onSelect={(parentId) => handleMoveNode(selectedBoqForMove.id, parentId)}
+                                                selectedBoqForMove={selectedBoqForMove}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="modal-footer">
+                                    <button type="button" className="btn btn-secondary" onClick={() => setShowHierarchyModal(false)}>Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         )
     );

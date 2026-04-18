@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 import { FaCheckCircle, FaFileAlt, FaInfoCircle } from "react-icons/fa";
+import { ArrowLeft } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import "../CSS/Styles.css";
@@ -15,25 +16,11 @@ function ProjectCreation() {
     const [loading, setLoading] = useState(false);
     const [project, setProject] = useState({
         id: "",
-        projectCode: "",
         projectName: "",
         shortName: "",
-        agreementNumber: "",
-        agreementDate: "",
         startDate: "",
         endDate: "",
-        buildingArea: "",
-        phoneNo: "",
-        email: "",
-        numberOfFloors: "",
-        numberOfAboveGround: "",
-        numberOfBelowGround: "",
-        carParkingFloors: "",
-        ratePerUnit: "",
-        city: "",
-        address: "",
-        otherAmenities: "",
-        estimatedValue: "",
+        needFeasibility: false
     });
     const [region, setRegion] = useState("");
     const [sector, setSector] = useState("");
@@ -43,6 +30,10 @@ function ProjectCreation() {
     const [enabledTabs, setEnabledTabs] = useState([]);
     const fileInputRef = useRef(null);
     const [uploadedFiles, setUploadedFiles] = useState([]);
+    const [company, setCompany] = useState(null);
+    const emptyAddress = { country: null, state: null, city: null, address: '', phoneNo: '', email: '' };
+    const [addresses, setAddresses] = useState([{ ...emptyAddress }]);
+    const [techFieldValues, setTechFieldValues] = useState({});
 
     // Handle unauthorized errors within component scope
     const handleUnauthorized = () => {
@@ -83,11 +74,89 @@ function ProjectCreation() {
                 })
                 .then((res) => {
                     if (res.status === 200) {
-                        setProject(res.data);
-                        setScopePack(res.data.scopeOfPackages?.map((pkg) => pkg) || []);
-                        setRegion(res.data.regionId || "");
-                        setSector(res.data.sectorId || "");
-                        setUom(res.data.uomId || "");
+                        setProject({
+                            ...res.data,
+                            startDate: res.data.startDate ? new Date(res.data.startDate) : null,
+                            endDate: res.data.endDate ? new Date(res.data.endDate) : null
+                        });
+                        setScopePack(res.data.scopeOfPackageIds || res.data.scopeOfPackages?.map((pkg) => pkg) || res.data.scopeOfPackage?.map(pkg => pkg.id) || []);
+                        setRegion(res.data.regionId || res.data.region?.id || "");
+                        setSector(res.data.sectorId || res.data.sector?.id || "");
+                        setUom(res.data.uomId || res.data.uom?.id || "");
+                        setCompany(res.data.companyId || res.data.company?.id || null);
+
+                        const rawAddrs = res.data.projectAddresses && res.data.projectAddresses.length > 0 ? res.data.projectAddresses : (res.data.addresses || []);
+
+                        if (rawAddrs.length > 0) {
+                            const baseUrl = import.meta.env.VITE_API_BASE_URL;
+                            const authHeaders = { Authorization: `Bearer ${sessionStorage.getItem("token")}` };
+                            
+                            let _allCountries = null;
+                            const resolveLocationIds = async (cVal, sVal, cityVal) => {
+                                let resolvedCId = cVal, resolvedSId = sVal, resolvedCityId = cityVal;
+
+                                if (cVal) {
+                                    if (!_allCountries) {
+                                        try {
+                                            const cRes = await axios.get(`${baseUrl}/countries`, { headers: authHeaders });
+                                            _allCountries = Array.isArray(cRes.data) ? cRes.data : (cRes.data?.data || []);
+                                        } catch(e) { _allCountries = []; }
+                                    }
+                                    const obj = _allCountries.find(c => String(c.country).toLowerCase() === String(cVal).toLowerCase() || c.id === cVal);
+                                    if (obj) resolvedCId = obj.id;
+                                }
+                                
+                                if (resolvedCId) {
+                                    try {
+                                        const sRes = await axios.get(`${baseUrl}/states/${resolvedCId}`, { headers: authHeaders });
+                                        const states = Array.isArray(sRes.data) ? sRes.data : (sRes.data?.data || []);
+                                        const obj = states.find(s => String(s.state).toLowerCase() === String(sVal).toLowerCase() || s.id === sVal);
+                                        if (obj) resolvedSId = obj.id;
+                                    } catch(e) {}
+                                }
+                                
+                                if (resolvedSId) {
+                                    try {
+                                        const cityRes = await axios.get(`${baseUrl}/cities/byState/${resolvedSId}`, { headers: authHeaders });
+                                        const cities = Array.isArray(cityRes.data) ? cityRes.data : (cityRes.data?.data || []);
+                                        const obj = cities.find(c => String(c.city).toLowerCase() === String(cityVal).toLowerCase() || c.id === cityVal);
+                                        if (obj) resolvedCityId = obj.id;
+                                    } catch(e) {}
+                                }
+                                return { resolvedCId, resolvedSId, resolvedCityId };
+                            };
+
+                            const parseAddresses = async () => {
+                                const parsedAddrs = await Promise.all(rawAddrs.map(async (addr) => {
+                                    const phoneVal = addr.phone || addr.phoneNo || '';
+                                    const loc = await resolveLocationIds(addr.country, addr.state, addr.city);
+                                    return {
+                                        ...addr,
+                                        address: addr.address || '',
+                                        city: loc.resolvedCityId,
+                                        state: loc.resolvedSId,
+                                        country: loc.resolvedCId,
+                                        phoneNo: phoneVal,
+                                        email: addr.email || ''
+                                    };
+                                }));
+                                setAddresses(parsedAddrs);
+                            };
+                            parseAddresses();
+                        } else {
+                            setAddresses([]);
+                        }
+
+                        if (res.data.techFields && res.data.techFields.length > 0) {
+                            const tfv = {};
+                            res.data.techFields.forEach(tf => {
+                                const fieldId = tf.techField?.id || tf.techFieldId;
+                                if (fieldId) {
+                                    tfv[fieldId] = { value: tf.value };
+                                }
+                            });
+                            setTechFieldValues(tfv);
+                        }
                     }
                 })
                 .catch((err) => {
@@ -118,7 +187,7 @@ function ProjectCreation() {
         }
     }, [projectId]);
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (needFeasibility = false) => {
         try {
             setLoading(true);
 
@@ -130,19 +199,44 @@ function ProjectCreation() {
                 toast.error("Short name is required");
                 return;
             }
+            if (!company) {
+                toast.error("Company selection is required");
+                return;
+            }
 
-            project.otherAmenities = Array.isArray(project.otherAmenities)
-                ? project.otherAmenities
-                : project.otherAmenities.split(",").map((a) => a.trim());
-
-            project.estimatedValue = project.buildingArea * project.ratePerUnit;
+            const formatDate = (date) => {
+                if (!date) return "";
+                if (typeof date === 'string') return date.split('T')[0];
+                if (date instanceof Date) {
+                    const d = new Date(date);
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                }
+                return date;
+            };
 
             const projectJson = {
-                project,
-                regionId: region,
-                sectorId: sector,
-                uomId: uom,
-                scopeOfPackageIds: scopePack,
+                projectName: project.projectName || "",
+                shortName: project.shortName || "",
+                startDate: formatDate(project.startDate),
+                endDate: formatDate(project.endDate),
+                needFeasibility: needFeasibility,
+                companyId: company || "",
+                sectorId: sector || "",
+                regionId: region || "",
+                uomId: uom || "",
+                scopeOfPackageIds: scopePack || [],
+                addresses: addresses.map(addr => ({
+                    address: addr.address || "",
+                    city: addr.city || "",
+                    state: addr.state || "",
+                    country: addr.country || "",
+                    phone: addr.phoneNo || "",
+                    email: addr.email || ""
+                })),
+                techFields: Object.keys(techFieldValues).map(key => ({
+                    techFieldId: key,
+                    value: techFieldValues[key].value || ""
+                }))
             };
 
             let response;
@@ -178,7 +272,7 @@ function ProjectCreation() {
                 if (response.status === 201) {
                     currentProjectId = response.data.id || response.data.projectId;
                     setProject((prev) => ({ ...prev, id: currentProjectId }));
-                    setEnabledTabs((prev) => [...prev, "feasibility"]); 
+                    setEnabledTabs((prev) => [...prev, "feasibility"]);
                     toast.success("Project created successfully!");
                 }
             }
@@ -221,42 +315,54 @@ function ProjectCreation() {
 
     return (
         <div className="container-fluid mt-3 p-4">
-            <div className="row align-items-center mb-4">
-                <div className="col-auto">
+            <div className="row align-items-center mb-4 ms-2">
+                <div className="col-auto d-flex align-items-center gap-3">
                     {projectId ? (
-                        <div className="fw-bold mb-0 ms-2">{project.projectName}</div>
+                        <div className="fw-bold mb-0 fs-5" style={{ color: "#005197" }}>{project.projectName}</div>
                     ) : (
-                        <div className="fw-bold mb-0 ms-2">Project Creation</div>
+                        <div className="fw-bold mb-0 fs-5" style={{ color: "#005197" }}>Project Creation</div>
                     )}
                 </div>
             </div>
-            <div className="row d-flex justify-content-around mb-4 ms-2 me-2 bg-white rounded ">
-                <div className="col-lg-4 col-md-4">
+            <div className="row g-0 mb-4 ms-2 me-2 bg-white rounded shadow-sm overflow-hidden">
+                <div className="col-lg-4 col-md-4 text-center px-0">
                     <button
-                        className={`tab ${activeTab === "info" ? "active" : ""} ${
-                            enabledTabs.includes("info") ? "enabled" : ""
-                        } w-75 h-100 p-2`}
+                        className={`btn w-100 h-100 p-2 d-flex align-items-center justify-content-center fw-bold rounded-0`}
+                        style={{
+                            backgroundColor: activeTab === "info" ? "#005197" : "transparent",
+                            color: activeTab === "info" ? "white" : "#6c757d",
+                            border: "none",
+                            margin: "0",
+                        }}
                         onClick={() => handleTabs("info")}
                     >
                         <FaInfoCircle className="me-2" /> Project Info
                     </button>
                 </div>
-                <div className="col-lg-4 col-md-4">
+                <div className="col-lg-4 col-md-4 text-center px-0">
                     <button
-                        className={`tab ${activeTab === "feasibility" ? "active" : ""} ${
-                            enabledTabs.includes("feasibility") ? "enabled" : ""
-                        } w-75 h-100 p-2`}
+                        className={`btn w-100 h-100 p-2 d-flex align-items-center justify-content-center fw-bold rounded-0`}
+                        style={{
+                            backgroundColor: activeTab === "feasibility" ? "#005197" : "transparent",
+                            color: activeTab === "feasibility" ? "white" : "#6c757d",
+                            border: "none",
+                            margin: "0",
+                        }}
                         onClick={() => handleTabs("feasibility")}
                         disabled={!enabledTabs.includes("feasibility")}
                     >
                         <FaCheckCircle className="me-2" /> Feasibility Study
                     </button>
                 </div>
-                <div className="col-lg-4 col-md-4">
+                <div className="col-lg-4 col-md-4 text-center px-0">
                     <button
-                        className={`tab ${activeTab === "document" ? "active" : ""} ${
-                            enabledTabs.includes("document") ? "enabled" : ""
-                        } w-75 h-100 p-2`}
+                        className={`btn w-100 h-100 p-2 d-flex align-items-center justify-content-center fw-bold rounded-0`}
+                        style={{
+                            backgroundColor: activeTab === "document" ? "#005197" : "transparent",
+                            color: activeTab === "document" ? "white" : "#6c757d",
+                            border: "none",
+                            margin: "0",
+                        }}
                         onClick={() => handleTabs("document")}
                         disabled={!enabledTabs.includes("document")}
                     >
@@ -268,6 +374,7 @@ function ProjectCreation() {
                 {activeTab === "info" && (
                     <ProjectDetails
                         project={project}
+                        feasbilityStudy={feasbilityStudy}
                         region={region}
                         sector={sector}
                         scopePack={scopePack}
@@ -282,10 +389,16 @@ function ProjectCreation() {
                         fileInputRef={fileInputRef}
                         uploadedFiles={uploadedFiles}
                         setUploadedFiles={setUploadedFiles}
+                        company={company}
+                        setCompany={setCompany}
+                        addresses={addresses}
+                        setAddresses={setAddresses}
+                        techFieldValues={techFieldValues}
+                        setTechFieldValues={setTechFieldValues}
                     />
                 )}
                 {activeTab === "feasibility" && (
-                    <FeasibilityStudy project={project} setActiveTab={setActiveTab} />
+                    <FeasibilityStudy project={project} sectorId={sector} setActiveTab={setActiveTab} />
                 )}
                 {activeTab === "document" && <Documents project={project} setActiveTab={setActiveTab} />}
             </div>
