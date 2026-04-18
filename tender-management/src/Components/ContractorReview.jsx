@@ -68,7 +68,8 @@ function ContractorReviewMinimal() {
       const data = response.data.data || response.data || [];
       setContractors(data);
       if (data.length > 0 && !selectedContractorId) {
-        setSelectedContractorId(data[0].id);
+        const first = data[0];
+        setSelectedContractorId(first.contractor?.id || first.id);
       }
     } catch (error) {
       console.error("Error fetching contractors:", error);
@@ -84,10 +85,29 @@ function ContractorReviewMinimal() {
       setDetailsLoading(true);
       setContractorDetails(null);
       try {
-        const response = await axios.get(`${baseUrl}/contractor/${selectedContractorId}`, { headers });
-        setContractorDetails(response.data);
+        const response = await axios.get(`${baseUrl}/contractor/byInviteId/${selectedContractorId}`, { headers });
+        const data = response.data.data || response.data;
+        
+        setContractorDetails({
+          contractor: data,
+          addresses: data.contractorAddresses || [],
+          contacts: data.contractorContacts || [],
+          taxDetails: data.contractorTaxDetails || [],
+          bankDetails: data.contractorBankDetails || [],
+          additionalInfo: data.contractorAddInfos || []
+        });
       } catch (error) {
         console.error("Error fetching contractor details:", error);
+        if (error.response && error.response.status === 409) {
+          setContractorDetails({ 
+            contractor: { status: "AWAITING_SUBMISSION", entityName: "Awaiting Submission" },
+            addresses: [],
+            contacts: [],
+            taxDetails: [],
+            bankDetails: [],
+            additionalInfo: []
+          });
+        }
       } finally {
         setDetailsLoading(false);
       }
@@ -105,11 +125,12 @@ function ContractorReviewMinimal() {
   };
 
   const handleVerification = async (status) => {
-    if (!selectedContractorId) return;
+    const contractorId = contractorDetails?.contractor?.id;
+    if (!contractorId) return;
 
     try {
       await axios.put(
-        `${baseUrl}/contractor/verify/${selectedContractorId}`,
+        `${baseUrl}/contractor/verify/${contractorId}`,
         null,
         {
           params: { contractorStatus: status },
@@ -196,7 +217,7 @@ function ContractorReviewMinimal() {
                         : "bg-white border-light"
                         }`}
                       style={{ cursor: "pointer", borderLeft: selectedContractorId === c.id ? '4px solid #0d6efd' : '1px solid #dee2e6' }}
-                      onClick={() => setSelectedContractorId(c.id)}
+                      onClick={() => setSelectedContractorId(c.contractor?.id || c.id)}
                     >
                       <div className="d-flex justify-content-between align-items-start mb-2">
                         <h6 className="fw-bold mb-0 text-dark">{c.name || c.entityName}</h6>
@@ -231,96 +252,136 @@ function ContractorReviewMinimal() {
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <h3 className="fw-bold text-dark mb-0">{contractorDetails.contractor.entityName || "Unknown Entity"}</h3>
                     <span className={`badge ${getStatusBadgeClass(contractorDetails.contractor.status)} fs-6`}>
-                      {contractorDetails.contractor.status}
+                      {contractorDetails.contractor.status === "AWAITING_SUBMISSION" ? "INVITED" : contractorDetails.contractor.status}
                     </span>
                   </div>
 
-                  <p className="text-muted mb-4 border-bottom pb-4">
-                    Submitted for verification. Please review the details below...
-                  </p>
-
-                  <ReviewSection icon={Info} title="Basic Information" id="basic-info" isOpen={openSections['basic-info']} toggleSection={toggleSection}>
-                    <div className="row g-4">
-                      <DetailGridItem label="Entity Code" value={contractorDetails.contractor.entityCode} />
-                      <DetailGridItem label="Entity Name" value={contractorDetails.contractor.entityName} />
-                      <DetailGridItem label="Effective Date" value={formatDate(contractorDetails.contractor.effectiveDate)} />
-
-                      <DetailGridItem label="Entity Type" value={contractorDetails.contractor.contractorType?.type} />
-                      <DetailGridItem label="Nature of Business" value={getNatureStr(contractorDetails.contractor.contractorNature)} />
-                      <DetailGridItem label="Grade" value={contractorDetails.contractor.contractorGrade?.gradeName} />
+                  {contractorDetails.contractor.status === "AWAITING_SUBMISSION" ? (
+                    <div className="text-center py-5">
+                      <AlertCircle size={48} className="text-warning mb-3 opacity-50" />
+                      <h5 className="text-muted">The contractor has not submitted their details yet.</h5>
+                      <p className="text-muted small">Once they submit the form via the link sent to them, their details will appear here for review.</p>
                     </div>
+                  ) : (
+                    <>
+                      <p className="text-muted mb-4 border-bottom pb-4">
+                        Submitted for verification. Please review the details below...
+                      </p>
 
-                    {contractorDetails.contractor.attachmentUrls && contractorDetails.contractor.attachmentUrls.length > 0 && (
-                      <div className="mt-4 pt-3 border-top">
-                        <small className="text-muted d-block mb-3">Attachments (Certificates/Licenses)</small>
-                        <div className="d-flex flex-wrap gap-3">
-                          {contractorDetails.contractor.attachmentUrls.map((url, index) => (
-                            <div key={index} className="d-flex align-items-center bg-light px-3 py-3 rounded border w-100">
-                              <File size={16} className="text-danger me-2" />
-                              <span className="text-dark small fw-medium">{getFileName(url)}</span>
-                            </div>
-                          ))}
+                      <ReviewSection icon={Info} title="Basic Information" id="basic-info" isOpen={openSections['basic-info']} toggleSection={toggleSection}>
+                        <div className="row g-4">
+                          <DetailGridItem label="Entity Code" value={contractorDetails.contractor.entityCode} />
+                          <DetailGridItem label="Entity Name" value={contractorDetails.contractor.entityName} />
+                          <DetailGridItem label="Effective Date" value={formatDate(contractorDetails.contractor.effectiveDate)} />
+
+                          <DetailGridItem label="Entity Type" value={contractorDetails.contractor.contractorType?.type} />
+                          <DetailGridItem label="Nature of Business" value={getNatureStr(contractorDetails.contractor.contractorNature)} />
+                          <DetailGridItem label="Grade" value={contractorDetails.contractor.contractorGrade?.gradeName} />
                         </div>
-                      </div>
-                    )}
-                  </ReviewSection>
-                  <ReviewSection icon={Home} title="Address Details" id="address-details" isOpen={openSections['address-details']} toggleSection={toggleSection}>
-                    <div className="row g-4">
-                      <DetailGridItem label="Address Type" value={contractorDetails.contractorAddress?.addressType?.addressType} />
-                      <DetailGridItem label="Address Line 1" value={contractorDetails.contractorAddress?.address1} />
-                      <DetailGridItem label="City" value={contractorDetails.contractorAddress?.city} />
-                      <DetailGridItem label="Zip Code" value={contractorDetails.contractorAddress?.zipCode} />
-                      <DetailGridItem label="Country" value={contractorDetails.contractorAddress?.country} />
-                    </div>
-                  </ReviewSection>
-                  <ReviewSection icon={User} title="Contact Person" id="contact-details" isOpen={openSections['contact-details']} toggleSection={toggleSection}>
-                    <div className="row g-4">
-                      <DetailGridItem label="Contact Name" value={contractorDetails.contractorContacts?.name} />
-                      <DetailGridItem label="Designation" value={contractorDetails.contractorContacts?.designation} />
-                      <DetailGridItem label="Email Address" value={contractorDetails.contractorContacts?.email} />
-                      <DetailGridItem label="Phone Number" value={contractorDetails.contractorContacts?.phoneNumber} />
-                    </div>
-                  </ReviewSection>
-                  <ReviewSection icon={FileText} title="Tax Details" id="tax-details" isOpen={openSections['tax-details']} toggleSection={toggleSection}>
-                    <div className="row g-4">
-                      <DetailGridItem label="Tax Type" value={contractorDetails.contractorTaxDetails?.taxType?.taxType} />
-                      <DetailGridItem label="Registration No" value={contractorDetails.contractorTaxDetails?.taxRegNumber} />
-                      <DetailGridItem label="Registration Date" value={formatDate(contractorDetails.contractorTaxDetails?.taxRegDate)} />
-                      <DetailGridItem label="Territory" value={contractorDetails.contractorTaxDetails?.territory} />
-                    </div>
-                  </ReviewSection>
-                  <ReviewSection icon={CreditCard} title="Bank Accounts" id="bank-accounts" isOpen={openSections['bank-accounts']} toggleSection={toggleSection}>
-                    <div className="row g-4">
-                      <DetailGridItem label="Bank Name" value={contractorDetails.contractorBankDetails?.bankName} />
-                      <DetailGridItem label="Account Holder" value={contractorDetails.contractorBankDetails?.accHolderName} />
-                      <DetailGridItem label="Account Number" value={contractorDetails.contractorBankDetails?.accNumber} />
-                      <DetailGridItem label="Branch" value={contractorDetails.contractorBankDetails?.branch} />
-                      <DetailGridItem label="Bank Address" value={contractorDetails.contractorBankDetails?.bankAddress} />
-                    </div>
-                  </ReviewSection>
-                  <ReviewSection icon={AlertCircle} title="Additional Info" id="additional-info" isOpen={openSections['additional-info']} toggleSection={toggleSection}>
-                    <div className="row g-4">
-                      <DetailGridItem label="Identity Type" value={contractorDetails.contractorAddInfo?.identityType?.idType} />
-                      <DetailGridItem label="Identity Reg No" value={contractorDetails.contractorAddInfo?.regNo} />
-                    </div>
-                  </ReviewSection>
-                  {(contractorDetails.contractor.status === 'PENDING' || contractorDetails.contractor.status === 'REJECTED') && (
-                    <div className="d-flex justify-content-end mt-3 pt-3 border-top">
-                      <button
-                        className="btn btn-outline-danger px-4 me-3 fw-medium"
-                        onClick={() => handleVerification('REJECTED')}
-                      >
-                        Reject
-                      </button>
-                      <button
-                        className="btn d-flex align-items-center px-4 fw-medium text-white"
-                        style={{ background: '#0DB27B' }}
-                        onClick={() => handleVerification('VERIFIED')}
-                      >
-                        <Briefcase size={18} className="me-2" />
-                        Verify & Add Contractor
-                      </button>
-                    </div>
+
+                        {contractorDetails.contractor.attachmentUrls && contractorDetails.contractor.attachmentUrls.length > 0 && (
+                          <div className="mt-4 pt-3 border-top">
+                            <small className="text-muted d-block mb-3">Attachments (Certificates/Licenses)</small>
+                            <div className="d-flex flex-wrap gap-3">
+                              {contractorDetails.contractor.attachmentUrls.map((url, index) => (
+                                <div key={index} className="d-flex align-items-center bg-light px-3 py-3 rounded border w-100">
+                                  <File size={16} className="text-danger me-2" />
+                                  <span className="text-dark small fw-medium">{getFileName(url)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </ReviewSection>
+                      <ReviewSection icon={Home} title="Address Details" id="address-details" isOpen={openSections['address-details']} toggleSection={toggleSection}>
+                        {(contractorDetails.addresses || []).length > 0 ? (contractorDetails.addresses || []).map((addr, idx) => (
+                          <div key={idx} className={idx > 0 ? 'mt-4 pt-3 border-top' : ''}>
+                            {(contractorDetails.addresses || []).length > 1 && <h6 className="fw-bold text-muted mb-3">Address ({idx + 1})</h6>}
+                            <div className="row g-4">
+                              <DetailGridItem label="Address Type" value={addr.addressType?.addressType} />
+                              <DetailGridItem label="Address Line 1" value={addr.address1} />
+                              <DetailGridItem label="Address Line 2" value={addr.address2} />
+                              <DetailGridItem label="Country" value={addr.country?.country || addr.country} />
+                              <DetailGridItem label="State" value={addr.state?.state || addr.state} />
+                              <DetailGridItem label="City" value={addr.city?.city || addr.city} />
+                              <DetailGridItem label="Zip Code" value={addr.zipcode || addr.zipCode} />
+                              <DetailGridItem label="Phone" value={addr.phone || addr.phoneNumber} />
+                              <DetailGridItem label="Email" value={addr.email} />
+                            </div>
+                          </div>
+                        )) : <p className="text-muted">No address details available.</p>}
+                      </ReviewSection>
+                      <ReviewSection icon={User} title="Contact Person" id="contact-details" isOpen={openSections['contact-details']} toggleSection={toggleSection}>
+                        {(contractorDetails.contacts || []).length > 0 ? (contractorDetails.contacts || []).map((contact, idx) => (
+                          <div key={idx} className={idx > 0 ? 'mt-4 pt-3 border-top' : ''}>
+                            {(contractorDetails.contacts || []).length > 1 && <h6 className="fw-bold text-muted mb-3">Contact ({idx + 1})</h6>}
+                            <div className="row g-4">
+                              <DetailGridItem label="Contact Name" value={contact.name} />
+                              <DetailGridItem label="Position" value={contact.position || contact.designation} />
+                              <DetailGridItem label="Email Address" value={contact.email} />
+                              <DetailGridItem label="Phone Number" value={contact.phoneNo || contact.phoneNumber} />
+                            </div>
+                          </div>
+                        )) : <p className="text-muted">No contact details available.</p>}
+                      </ReviewSection>
+                      <ReviewSection icon={FileText} title="Tax Details" id="tax-details" isOpen={openSections['tax-details']} toggleSection={toggleSection}>
+                        {(contractorDetails.taxDetails || []).length > 0 ? (contractorDetails.taxDetails || []).map((tax, idx) => (
+                          <div key={idx} className={idx > 0 ? 'mt-4 pt-3 border-top' : ''}>
+                            <div className="row g-4">
+                              <DetailGridItem label="Tax Type" value={tax.taxType?.taxType || tax.taxType} />
+                              <DetailGridItem label="Territory Type" value={tax.territoryTypeId || tax.territoryType} />
+                              <DetailGridItem label="Territory" value={tax.territory} />
+                              <DetailGridItem label="Registration No" value={tax.taxRegNo || tax.taxRegNumber} />
+                              <DetailGridItem label="Registration Date" value={formatDate(tax.taxRegDate)} />
+                              <DetailGridItem label="Email" value={tax.email} />
+                            </div>
+                          </div>
+                        )) : <p className="text-muted">No tax details available.</p>}
+                      </ReviewSection>
+                      <ReviewSection icon={CreditCard} title="Bank Accounts" id="bank-accounts" isOpen={openSections['bank-accounts']} toggleSection={toggleSection}>
+                        {(contractorDetails.bankDetails || []).length > 0 ? (contractorDetails.bankDetails || []).map((bank, idx) => (
+                          <div key={idx} className={idx > 0 ? 'mt-4 pt-3 border-top' : ''}>
+                            {(contractorDetails.bankDetails || []).length > 1 && <h6 className="fw-bold text-muted mb-3">Bank ({idx + 1})</h6>}
+                            <div className="row g-4">
+                              <DetailGridItem label="Bank Name" value={bank.bankName} />
+                              <DetailGridItem label="Account Holder" value={bank.accHolderName} />
+                              <DetailGridItem label="Account Number" value={bank.accNumber} />
+                              <DetailGridItem label="Branch" value={bank.branch} />
+                              <DetailGridItem label="Bank Address" value={bank.bankAddress} />
+                            </div>
+                          </div>
+                        )) : <p className="text-muted">No bank details available.</p>}
+                      </ReviewSection>
+                      <ReviewSection icon={AlertCircle} title="Additional Info" id="additional-info" isOpen={openSections['additional-info']} toggleSection={toggleSection}>
+                        {(contractorDetails.additionalInfo || []).length > 0 ? (contractorDetails.additionalInfo || []).map((info, idx) => (
+                          <div key={idx} className={idx > 0 ? 'mt-4 pt-3 border-top' : ''}>
+                            {(contractorDetails.additionalInfo || []).length > 1 && <h6 className="fw-bold text-muted mb-3">Info ({idx + 1})</h6>}
+                            <div className="row g-4">
+                              <DetailGridItem label="Identity Type" value={info.identityType?.idType || info.identityType} />
+                              <DetailGridItem label="Identity Reg No" value={info.regNo} />
+                            </div>
+                          </div>
+                        )) : <p className="text-muted">No additional info available.</p>}
+                      </ReviewSection>
+                      {(contractorDetails.contractor.status === 'PENDING' || contractorDetails.contractor.status === 'REJECTED') && (
+                        <div className="d-flex justify-content-end mt-3 pt-3 border-top">
+                          <button
+                            className="btn btn-outline-danger px-4 me-3 fw-medium"
+                            onClick={() => handleVerification('REJECTED')}
+                          >
+                            Reject
+                          </button>
+                          <button
+                            className="btn d-flex align-items-center px-4 fw-medium text-white"
+                            style={{ background: '#0DB27B' }}
+                            onClick={() => handleVerification('VERIFIED')}
+                          >
+                            <Briefcase size={18} className="me-2" />
+                            Verify & Add Contractor
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               ) : (

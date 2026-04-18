@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import '../CSS/Styles.css'
-import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, FileSymlink, FileText, Folder, Link, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, FileSymlink, FileText, Folder, Link, Search, SlidersHorizontal, X } from 'lucide-react';
 import { useEffect } from 'react';
 import axios from 'axios';
 import { FaCloudUploadAlt } from 'react-icons/fa';
@@ -381,6 +381,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    //    })
    // }
    const saveMappedBOQ = async () => {
+      setLoading(true)
       try {
          if (!BOQfile) {
             toast.error("Please upload a BOQ file");
@@ -454,7 +455,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       }
       catch (error) {
-         toast.error("Error saving BOQ mapping");
+         // toast.error("Error saving BOQ mapping");
+      }
+      finally {
+         setLoading(false);
+         window.location.href = `/boqdefinition/${projectId}`;
       }
    };
 
@@ -531,21 +536,25 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    };
 
    const renderNode = (node) => {
-      const marginClass = node.children === null
-         ? "ms-3"
-         : `ms-${(node.level - 1) * 2}`;
-      const icon = node.level === 1 ? <Folder size={16} color={'#9333EA'} />
-         : node.level === 2 ? <Folder size={16} color={'#2563EB'} />
-            : node.level === 3 ? <Folder size={16} color={'#CA8A04'} />
-               : node.lastLevel ? <FileText size={16} color={'#2BA95A'} />
+      const icon = node.level === 1 ? <Folder size={15} color={'#9333EA'} strokeWidth={2.5} />
+         : node.level === 2 ? <Folder size={15} color={'#2563EB'} strokeWidth={2.5} />
+            : node.level === 3 ? <Folder size={15} color={'#CA8A04'} strokeWidth={2.5} />
+               : node.lastLevel ? <FileText size={15} color={'#2BA95A'} strokeWidth={2.5} />
                   : null;
+
       return (
-         <div key={node.sno}>
-            <div className={marginClass}>
-               {icon}<span className='ms-1' style={{ fontSize: '14px' }}>{boqNameDisplay(node.boqCode || node.boqName, 10)}</span>
+         <div key={node.sno} className={node.parentSno || parentMap[node.sno] ? "tree-node" : "tree-root"}>
+            <div className="d-flex align-items-center mb-1">
+               {icon}
+               <span className='ms-2' style={{ fontSize: '13px', fontWeight: node.level === 1 ? '600' : '400' }}>
+                  {boqNameDisplay(node.boqName || node.boqCode, 20)}
+               </span>
             </div>
-            {Array.isArray(node.children) &&
-               node.children.map(child => renderNode(child))}
+            {Array.isArray(node.children) && node.children.length > 0 && (
+               <div className="tree-children">
+                  {node.children.map(child => renderNode(child))}
+               </div>
+            )}
          </div>
       );
    };
@@ -612,35 +621,35 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          });
       };
       const assignLevel = (level) => {
-        if (level === 3) {
+         if (level === 3) {
             let violationExists = false;
             violationExists = excelData.some(item => {
-                return item.level === 2 && !parentMap[item.sno];
+               return item.level === 2 && !parentMap[item.sno];
             });
             if (!violationExists) {
-                violationExists = Object.keys(levelMap).some(sno => {
-                    return levelMap[sno] === 2 && !parentMap[sno];
-                });
+               violationExists = Object.keys(levelMap).some(sno => {
+                  return levelMap[sno] === 2 && !parentMap[sno];
+               });
             }
             if (violationExists) {
-                toast.error("Cannot assign level 3 without assigning parents to all level 2 items.");
-                return;
+               toast.error("Cannot assign level 3 without assigning parents to all level 2 items.");
+               return;
             }
-        }
-        setLevelMap(prev => {
+         }
+         setLevelMap(prev => {
             const updated = { ...prev };
             selectedRow.forEach(sno => {
-                updated[sno] = level;
+               updated[sno] = level;
             });
             return updated;
-        });
-        setExcelData(prev =>
+         });
+         setExcelData(prev =>
             prev.map(item =>
-                selectedRow.has(item.sno) ? { ...item, level: level } : item
+               selectedRow.has(item.sno) ? { ...item, level: level } : item
             )
-        );
-        setSelectedRow(new Set());
-    };
+         );
+         setSelectedRow(new Set());
+      };
       const clearLevel = () => {
          setLevelMap(prev => {
             const updated = { ...prev };
@@ -712,7 +721,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             toast.error("Please select at least one BOQ item.");
             return;
          }
-         const isnoLevelItems = excelData.filter(item =>  item.level !== 0);
+         const isnoLevelItems = excelData.filter(item => item.level !== 0);
          if (isnoLevelItems.length === 0) {
             toast.error("Level 0 items cannot be assigned as parent. Assign a level first.");
             return;
@@ -782,13 +791,21 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                      <div className='row g-2 p-3 align-items-end'>
                         <div className='col-lg-8 col-md-8 col-sm-8'>
                            <label className="text-start d-block">Search BOQ</label>
-                           <input
-                              type="text"
-                              className="form-search-input w-100"
-                              placeholder="Search by BOQ Code or Description..."
-                              value={searchTerm}
-                              onChange={(e) => setSearchTerm(e.target.value)}
-                           />
+                           <div className="position-relative" style={{ width: '400px' }}>
+                              <Search
+                                 className="position-absolute"
+                                 style={{ right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#6B7280', zIndex: 1 }}
+                                 size={18}
+                              />
+                              <input
+                                 type="text"
+                                 className="form-input w-100"
+                                 placeholder="Search by BOQ Code or Description..."
+                                 value={searchTerm}
+                                 onChange={(e) => setSearchTerm(e.target.value)}
+                                 style={{ paddingRight: '30px' }}
+                              />
+                           </div>
                         </div>
                         {excelData.length > 0 && (
                            <div className='col-lg-4 col-md-4 col-sm-4 text-end'>
@@ -868,7 +885,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                              }
                                           }}
                                        >
-                                          <td>{isParentSelecting && !item.lastLevel && item.level !== 0 && item.level < selectedChildLevel ? (<span></span>) : (<input
+                                          <td>{(isParentSelecting && !item.lastLevel && item.level !== 0 && item.level < selectedChildLevel) || item.level === 1 ? (<span></span>) : (<input
                                              type="checkbox"
                                              className="form-check-input"
                                              style={{ borderColor: '#005197' }}
@@ -889,7 +906,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                           </td>
                                           <td className="text-center text-nowrap">{levelDisplay(item.level, item.lastLevel)}</td>
                                           <td className="text-center text-muted small text-nowrap">
-                                             {item.parentSno > 0 ? item.parentSno : 'Not Assigned'}
+                                             {item.level === 1 ? "-" : (item.parentSno > 0 ? item.parentSno : 'Not Assigned')}
                                           </td>
                                        </tr>
                                     ))}

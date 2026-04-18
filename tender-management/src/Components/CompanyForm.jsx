@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Building2, MapPin, Mail, Landmark, Users, UploadCloud, FileText, X, Handshake, Info, Languages, Calendar, Building, Briefcase, Plus, Trash2, ArrowLeft, RotateCcw, ArrowRight } from 'lucide-react';
 import Select from 'react-select';
 import Flatpickr from "react-flatpickr";
@@ -9,7 +10,11 @@ import { toast } from 'react-toastify';
 function CompanyForm() {
     const bluePrimary = "#005197";
 
+    const location = useLocation();
+    const editCompanyId = location.state?.editCompanyId || null;
+
     const [activeTab, setActiveTab] = useState("overview");
+    const [isSaving, setIsSaving] = useState(false);
 
     const tabs = [
         { id: "overview", label: "Overview", icon: <Building size={16} /> },
@@ -35,6 +40,7 @@ function CompanyForm() {
     const [languageOptions, setLanguageOptions] = useState([]);
     const [territoryTypeOptions, setTerritoryTypeOptions] = useState([]);
     const [taxTypeOptions, setTaxTypeOptions] = useState([]);
+    const [designationOptions, setDesignationOptions] = useState([]);
     const [additionalInfoTypeOptions, setAdditionalInfoTypeOptions] = useState([]);
     const [currencyOptions, setCurrencyOptions] = useState([]);
     const [addressTypeOptions, setAddressTypeOptions] = useState([]);
@@ -59,8 +65,10 @@ function CompanyForm() {
                 value: item.id,
                 label: item[labelKey]
             }));
-    const getSelectedOption = (value, options) =>
-        options.find(opt => opt.value === value) || null;
+    const getSelectedOption = (value, options) => {
+        if (value === null || value === undefined) return null;
+        return options.find(opt => String(opt.value) === String(value)) || null;
+    };
     const token = sessionStorage.getItem("token");
     useEffect(() => {
         const headers = { Authorization: `Bearer ${token}` };
@@ -80,7 +88,12 @@ function CompanyForm() {
                 }))
             ));
         axios.get(`${baseUrl}/companyStatus`, { headers })
-            .then(r => setCompanyStatusOptions(toOptions(r.data, "comStatus")));
+            .then(r => setCompanyStatusOptions(
+                (r.data?.data ?? r.data ?? []).map(item => ({
+                    value: item.code,
+                    label: item.label
+                }))
+            ));
         axios.get(`${baseUrl}/companyNature`, { headers })
             .then(r => setCompanyNatureOptions(
                 (r.data?.data ?? r.data ?? []).map(item => ({
@@ -104,7 +117,14 @@ function CompanyForm() {
         axios.get(`${baseUrl}/territoryType`, { headers })
             .then(r => setTerritoryTypeOptions(r.data.map(item => ({ value: item.code, label: item.label }))));
         axios.get(`${baseUrl}/taxType`, { headers })
-            .then(r => setTaxTypeOptions(toOptions(r.data, "taxType")));
+            .then(r => setTaxTypeOptions(
+                (r.data?.data ?? r.data ?? []).map(item => ({
+                    value: item.code,
+                    label: item.label
+                }))
+            ));
+        axios.get(`${baseUrl}/designation`, { headers })
+            .then(r => setDesignationOptions(toOptions(r.data, "designationName")));
         axios.get(`${baseUrl}/identityType`, { headers })
             .then(r => setAdditionalInfoTypeOptions(toOptions(r.data, "idType")));
         axios.get(`${baseUrl}/project/currency`, { headers })
@@ -123,6 +143,275 @@ function CompanyForm() {
         axios.get(`${baseUrl}/directorType`, { headers })
             .then(r => setDirectorTypeOptions(r.data.map(item => ({ value: item.code, label: item.label }))));
     }, []);
+
+    useEffect(() => {
+        if (!editCompanyId) return;
+
+        const fetchEditData = async () => {
+            const token = sessionStorage.getItem("token");
+            const headers = { Authorization: `Bearer ${token}` };
+            const baseUrl = import.meta.env.VITE_API_BASE_URL;
+
+            try {
+                const response = await axios.get(`${baseUrl}/companyDetails`, { headers });
+                let data = response.data;
+                if (data && !Array.isArray(data) && data.data && Array.isArray(data.data)) {
+                    data = data.data;
+                }
+                const list = Array.isArray(data) ? data : [];
+                const company = list.find(c => c.companyId === parseInt(editCompanyId) || c.id === parseInt(editCompanyId) || c.id === editCompanyId || c.companyId === editCompanyId);
+
+                if (company) {
+                    setBasicInfo(prev => ({
+                        ...prev,
+                        companyTypeId: company.comType?.id || company.comType || company.comTypeId || null,
+                        companyLevelId: company.companyLevel?.id || company.companyLevel || company.comLevelId || null,
+                        parentCompanyId: company.parentCompany?.id || company.parentCompanyId || null,
+                        companyName: company.companyName || "",
+                        shortName: company.shortName || "",
+                        companyNatureId: company.companyNature?.id || company.companyNature || company.comNatureId || null,
+                        natureOfBusinessId: company.businessNature?.id || company.businessNature || company.businessNatureId || null,
+                        constitutionId: company.companyConstitution?.id || company.companyConstitution || company.companyConstitutionId || null,
+                        companyStatusId: company.companyStatus?.id || company.companyStatus || company.statusId || null,
+                        finStartMonth: company.finStartMonth || null,
+                        defaultLanguageId: company.language?.id || company.language || company.languageId || null,
+                        defaultCurrency: company.currency?.id || company.currency || company.currencyId || null,
+                        bank: company.bank || ""
+                    }));
+
+                    if (company.addressDetails && company.addressDetails.length > 0) {
+                        const first = company.addressDetails[0];
+
+                        const getId = (obj, fallback) => {
+                            if (obj && typeof obj === 'object') {
+                                return obj.id || obj.countryId || obj.stateId || obj.cityId || fallback;
+                            }
+                            return obj || fallback || null;
+                        };
+
+                        const cId = getId(first.country, first.countryId);
+                        const sId = getId(first.state, first.stateId);
+                        const cityId = getId(first.city, first.cityId);
+
+                        let _allCountries = null;
+                        const resolveLocationIds = async (cVal, sVal, cityVal) => {
+                            let resolvedCId = cVal;
+                            let resolvedSId = sVal;
+                            let resolvedCityId = cityVal;
+                            let stOptions = [];
+                            let ctyOptions = [];
+
+                            if (cVal) {
+                                if (!_allCountries) {
+                                    try {
+                                        const cRes = await axios.get(`${baseUrl}/countries`, { headers });
+                                        _allCountries = cRes.data || [];
+                                    } catch (e) { _allCountries = []; }
+                                }
+                                const obj = _allCountries.find(c => String(c.country).toLowerCase() === String(cVal).toLowerCase() || c.id === cVal);
+                                if (obj) resolvedCId = obj.id;
+                            }
+
+                            if (resolvedCId) {
+                                try {
+                                    const sRes = await axios.get(`${baseUrl}/states/${resolvedCId}`, { headers });
+                                    const states = sRes.data || [];
+                                    stOptions = toOptions(states, "state");
+                                    const obj = states.find(s => String(s.state).toLowerCase() === String(sVal).toLowerCase() || s.id === sVal);
+                                    if (obj) resolvedSId = obj.id;
+                                } catch (e) { }
+                            }
+
+                            if (resolvedSId) {
+                                try {
+                                    const cityRes = await axios.get(`${baseUrl}/cities/byState/${resolvedSId}`, { headers });
+                                    const cities = cityRes.data || [];
+                                    ctyOptions = toOptions(cities, "city");
+                                    const obj = cities.find(c => String(c.city).toLowerCase() === String(cityVal).toLowerCase() || c.id === cityVal);
+                                    if (obj) resolvedCityId = obj.id;
+                                } catch (e) { }
+                            }
+                            return { resolvedCId, resolvedSId, resolvedCityId, stOptions, ctyOptions };
+                        };
+
+                        const firstLoc = await resolveLocationIds(cId, sId, cityId);
+
+                        setAddressDetails(prev => ({
+                            ...prev,
+                            id: first.id || null,
+                            addressTypeId: getId(first.addressType, first.addressTypeId),
+                            address1: first.address1 || '',
+                            address2: first.address2 || '',
+                            countryId: firstLoc.resolvedCId,
+                            stateId: firstLoc.resolvedSId,
+                            cityId: firstLoc.resolvedCityId,
+                            zipCode: first.zipcode || first.zipCode || '',
+                            phoneNo: first.phone || first.phoneNo || '',
+                            faxNo: first.faxNo || '',
+                            email: first.email || '',
+                            website: first.website || ''
+                        }));
+                        setIsPrimaryAddress(!!first.primaryAddress || !!first.isPrimary);
+
+                        if (firstLoc.stOptions.length > 0) setStateOptions(firstLoc.stOptions);
+                        if (firstLoc.ctyOptions.length > 0) setCityOptions(firstLoc.ctyOptions);
+
+                        if (company.addressDetails.length > 1) {
+                            const extraArr = company.addressDetails.slice(1);
+
+                            const resolvedExtras = await Promise.all(extraArr.map(async (a) => {
+                                const ecId = getId(a.country, a.countryId);
+                                const esId = getId(a.state, a.stateId);
+                                const ecityId = getId(a.city, a.cityId);
+                                const loc = await resolveLocationIds(ecId, esId, ecityId);
+
+                                return {
+                                    id: a.id || null,
+                                    addressTypeId: getId(a.addressType, a.addressTypeId),
+                                    address1: a.address1 || '',
+                                    address2: a.address2 || '',
+                                    countryId: loc.resolvedCId,
+                                    stateId: loc.resolvedSId,
+                                    cityId: loc.resolvedCityId,
+                                    zipCode: a.zipcode || a.zipCode || '',
+                                    phoneNo: a.phone || a.phoneNo || '',
+                                    faxNo: a.faxNo || '',
+                                    email: a.email || '',
+                                    website: a.website || '',
+                                    isPrimary: !!a.primaryAddress || !!a.isPrimary,
+                                    stateOptions: loc.stOptions,
+                                    cityOptions: loc.ctyOptions
+                                };
+                            }));
+                            setExtraAddresses(resolvedExtras);
+                        }
+                    }
+
+                    if (company.contacts && company.contacts.length > 0) {
+                        const first = company.contacts[0];
+                        setContactDetails(prev => ({
+                            ...prev,
+                            position: first.designation?.id || first.position || '',
+                            name: first.name || '',
+                            phoneNo: first.phoneNo || '',
+                            email: first.email || ''
+                        }));
+                        if (company.contacts.length > 1) {
+                            setExtraContacts(company.contacts.slice(1).map(c => ({
+                                position: c.designation?.id || c.position || '',
+                                name: c.name || '',
+                                phoneNo: c.phoneNo || '',
+                                email: c.email || ''
+                            })));
+                        }
+                    }
+
+                    if (company.taxDetails && company.taxDetails.length > 0) {
+                        const first = company.taxDetails[0];
+                        setTaxDetails(prev => ({
+                            ...prev,
+                            taxTypeId: first.taxType?.id || first.taxType || first.taxTypeId || null,
+                            territoryTypeId: first.territoryType?.id || first.territoryTypeId || null,
+                            territory: first.territory?.id || first.territory || null,
+                            taxRegNo: first.taxRegNo || '',
+                            taxRegDate: first.taxRegDate || null,
+                            effectiveFrom: first.effectiveFrom || null,
+                            effectiveTo: first.effectiveTo || null
+                        }));
+                        if (company.taxDetails.length > 1) {
+                            setExtraTaxes(company.taxDetails.slice(1).map(t => ({
+                                taxTypeId: t.taxType?.id || t.taxType || t.taxTypeId || null,
+                                territoryTypeId: t.territoryType?.id || t.territoryTypeId || null,
+                                territory: t.territory?.id || t.territory || null,
+                                taxRegNo: t.taxRegNo || '',
+                                taxRegDate: t.taxRegDate || null,
+                                effectiveFrom: t.effectiveFrom || null,
+                                effectiveTo: t.effectiveTo || null
+                            })));
+                        }
+                    }
+
+                    if (company.directors && company.directors.length > 0) {
+                        const first = company.directors[0];
+                        setDirectorDetails(prev => ({
+                            ...prev,
+                            directorTypeId: first.directorType?.id || first.directorType || first.directorTypeId || null,
+                            directorName: first.directorName || '',
+                            noOfShares: first.noOfShares || '',
+                            sharePercentage: first.sharePercentage || ''
+                        }));
+                        if (company.directors.length > 1) {
+                            setExtraDirectors(company.directors.slice(1).map(d => ({
+                                directorTypeId: d.directorType?.id || d.directorType || d.directorTypeId || null,
+                                directorName: d.directorName || '',
+                                noOfShares: d.noOfShares || '',
+                                sharePercentage: d.sharePercentage || ''
+                            })));
+                        }
+                    }
+
+                    if (company.jointVentures && company.jointVentures.length > 0) {
+                        const first = company.jointVentures[0];
+                        setJointVenture(prev => ({
+                            ...prev,
+                            partnerId: first.partner?.id || first.partnerId || '',
+                            sharePercentage: first.sharePercentage || ''
+                        }));
+                        if (company.jointVentures.length > 1) {
+                            setExtraJvs(company.jointVentures.slice(1).map(j => ({
+                                partnerId: j.partner?.id || j.partnerId || '',
+                                sharePercentage: j.sharePercentage || ''
+                            })));
+                        }
+                    }
+
+                    if (company.profile && company.profile.length > 0) {
+                        const first = company.profile[0];
+                        setCompanyProfile(prev => ({
+                            ...prev,
+                            orderNo: first.orderNo || '',
+                            description: first.description || '',
+                            remarks: first.remarks || ''
+                        }));
+                    }
+
+                    if (company.additionalInfos && company.additionalInfos.length > 0) {
+                        const first = company.additionalInfos[0];
+                        setAdditionalInfo(prev => ({
+                            ...prev,
+                            idTypeId: first.identityType?.id || first.idType || first.idTypeId || null,
+                            registrationNo: first.registrationNo || ''
+                        }));
+                        if (company.additionalInfos.length > 1) {
+                            setExtraAdditionalInfos(company.additionalInfos.slice(1).map(a => ({
+                                idTypeId: a.identityType?.id || a.idType || a.idTypeId || null,
+                                registrationNo: a.registrationNo || ''
+                            })));
+                        }
+                    }
+
+                    if (company.localNames && company.localNames.length > 0) {
+                        const first = company.localNames[0];
+                        setLocalName(prev => ({
+                            ...prev,
+                            languageId: first.language?.id || first.language || first.languageId || null,
+                            name: first.name || ''
+                        }));
+                        if (company.localNames.length > 1) {
+                            setExtraLocalNames(company.localNames.slice(1).map(l => ({
+                                languageId: l.language?.id || l.language || l.languageId || null,
+                                name: l.name || ''
+                            })));
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching company details for edit:", error);
+            }
+        };
+
+        fetchEditData();
+    }, [editCompanyId]);
     const handleFiles = (e) => {
         const files = Array.from(e.target.files);
         setAttachments(prev => [...prev, ...files]);
@@ -216,8 +505,7 @@ function CompanyForm() {
         companyStatusId: null,
         finStartMonth: null,
         defaultLanguageId: null,
-        defaultCurrency: null,
-        bank: ""
+        defaultCurrency: null
     });
     const [addressDetails, setAddressDetails] = useState({
         addressTypeId: null,
@@ -347,8 +635,8 @@ function CompanyForm() {
     const [extraLocalNames, setExtraLocalNames] = useState([]);
 
     const emptyContact = { position: '', name: '', phoneNo: '', email: '' };
-    const emptyTax = { 
-        effectiveFrom: '', effectiveTo: '', taxTypeId: null, territoryTypeId: null, territory: '', 
+    const emptyTax = {
+        effectiveFrom: '', effectiveTo: '', taxTypeId: null, territoryTypeId: null, territory: '',
         taxRegNo: '', taxRegDate: '', address1: '', address2: '', city: '', pinCode: '', email: '',
         taxFilterCountry: null, taxFilterState: null, taxCountryOptions: [], taxStateOptions: [], territoryOptions: [], isLoadingTerritory: false
     };
@@ -608,9 +896,15 @@ function CompanyForm() {
     };
 
     const handleAddTax = () => {
-        if (!taxDetails.taxTypeId || !taxDetails.territoryTypeId || !taxDetails.taxRegNo || !taxDetails.taxRegDate || !taxDetails.effectiveFrom) {
-            toast.warn("Please enter required tax details");
+        if (!taxDetails.taxTypeId) {
+            toast.warn("Please select a Tax Type");
             return;
+        }
+        if (taxDetails.taxTypeId !== 'GST_UNREGISTER') {
+            if (!taxDetails.territoryTypeId || !taxDetails.taxRegNo || !taxDetails.taxRegDate || !taxDetails.effectiveFrom) {
+                toast.warn("Please enter required tax details");
+                return;
+            }
         }
         const allTaxes = [taxDetails, ...extraTaxes];
         setTaxList(prev => [...prev, ...allTaxes]);
@@ -795,7 +1089,7 @@ function CompanyForm() {
             if (!contactDetails.name) missingFields.push("Name");
             if (!contactDetails.phoneNo) missingFields.push("Phone No");
             if (!contactDetails.email) missingFields.push("Email ID");
-            
+
             extraContacts.forEach((extra, idx) => {
                 if (!extra.position) missingFields.push(`Contact ${idx + 2} Position`);
                 if (!extra.name) missingFields.push(`Contact ${idx + 2} Name`);
@@ -804,27 +1098,31 @@ function CompanyForm() {
             });
         } else if (activeTab === "tax") {
             if (!taxDetails.taxTypeId) missingFields.push("Tax Type");
-            if (!taxDetails.territoryTypeId) missingFields.push("Territory Type");
-            if (['STATE', 'CITY'].includes(taxDetails.territoryTypeId)) {
-                if (!taxFilterCountry) missingFields.push("Filter Country");
-                if (taxDetails.territoryTypeId === 'CITY' && !taxFilterState) missingFields.push("Filter State");
+            if (taxDetails.taxTypeId !== 'GST_UNREGISTER') {
+                if (!taxDetails.territoryTypeId) missingFields.push("Territory Type");
+                if (['STATE', 'CITY'].includes(taxDetails.territoryTypeId)) {
+                    if (!taxFilterCountry) missingFields.push("Filter Country");
+                    if (taxDetails.territoryTypeId === 'CITY' && !taxFilterState) missingFields.push("Filter State");
+                }
+                if (!taxDetails.territory) missingFields.push("Territory");
+                if (!taxDetails.taxRegNo) missingFields.push("Tax Reg. No");
+                if (!taxDetails.taxRegDate) missingFields.push("Tax Reg. Date");
+                if (!taxDetails.effectiveFrom) missingFields.push("Effective From");
             }
-            if (!taxDetails.territory) missingFields.push("Territory");
-            if (!taxDetails.taxRegNo) missingFields.push("Tax Reg. No");
-            if (!taxDetails.taxRegDate) missingFields.push("Tax Reg. Date");
-            if (!taxDetails.effectiveFrom) missingFields.push("Effective From");
 
             extraTaxes.forEach((extra, idx) => {
                 if (!extra.taxTypeId) missingFields.push(`Tax ${idx + 2} Type`);
-                if (!extra.territoryTypeId) missingFields.push(`Tax ${idx + 2} Territory Type`);
-                if (['STATE', 'CITY'].includes(extra.territoryTypeId)) {
-                    if (!extra.taxFilterCountry) missingFields.push(`Tax ${idx + 2} Filter Country`);
-                    if (extra.territoryTypeId === 'CITY' && !extra.taxFilterState) missingFields.push(`Tax ${idx + 2} Filter State`);
+                if (extra.taxTypeId !== 'GST_UNREGISTER') {
+                    if (!extra.territoryTypeId) missingFields.push(`Tax ${idx + 2} Territory Type`);
+                    if (['STATE', 'CITY'].includes(extra.territoryTypeId)) {
+                        if (!extra.taxFilterCountry) missingFields.push(`Tax ${idx + 2} Filter Country`);
+                        if (extra.territoryTypeId === 'CITY' && !extra.taxFilterState) missingFields.push(`Tax ${idx + 2} Filter State`);
+                    }
+                    if (!extra.territory) missingFields.push(`Tax ${idx + 2} Territory`);
+                    if (!extra.taxRegNo) missingFields.push(`Tax ${idx + 2} Reg. No`);
+                    if (!extra.taxRegDate) missingFields.push(`Tax ${idx + 2} Reg. Date`);
+                    if (!extra.effectiveFrom) missingFields.push(`Tax ${idx + 2} Effective From`);
                 }
-                if (!extra.territory) missingFields.push(`Tax ${idx + 2} Territory`);
-                if (!extra.taxRegNo) missingFields.push(`Tax ${idx + 2} Reg. No`);
-                if (!extra.taxRegDate) missingFields.push(`Tax ${idx + 2} Reg. Date`);
-                if (!extra.effectiveFrom) missingFields.push(`Tax ${idx + 2} Effective From`);
             });
         } else if (activeTab === "director") {
             if (!directorDetails.directorTypeId) missingFields.push("Director Type");
@@ -869,6 +1167,8 @@ function CompanyForm() {
     };
 
     const handleSave = async () => {
+        if (isSaving) return;
+
         if (!basicInfo.companyName || !basicInfo.shortName || !basicInfo.companyTypeId) {
             toast.warn("Please fill all required fields in Basic Information");
             return;
@@ -879,10 +1179,11 @@ function CompanyForm() {
             return;
         }
 
+        setIsSaving(true);
         try {
             const formData = new FormData();
             const companyDTO = {
-                companyId: null,
+                companyId: editCompanyId || null,
                 companyName: basicInfo.companyName.trim(),
                 shortName: basicInfo.shortName.trim(),
                 parentCompanyId: isCompany ? (basicInfo.parentCompanyId || null) : null,
@@ -892,65 +1193,87 @@ function CompanyForm() {
                 businessNatureId: showDetails ? basicInfo.natureOfBusinessId : null,
                 companyConstitutionId: showDetails ? basicInfo.constitutionId : null,
                 statusId: showDetails ? basicInfo.companyStatusId : null,
+                finStartMonth: showDetails ? basicInfo.finStartMonth : null,
                 languageId: showDetails ? basicInfo.defaultLanguageId : null,
                 currencyId: showDetails ? basicInfo.defaultCurrency : null,
-                bank: showDetails ? basicInfo.bank.trim() : "",
-                address: showDetails ? addressList.map(a => ({
+                address: showDetails ? [
+                    { ...addressDetails, isPrimary: isPrimaryAddress },
+                    ...extraAddresses
+                ].filter(a => a.addressTypeId).map(a => ({
+                    id: a.id || null,
                     addressTypeId: a.addressTypeId,
-                    address1: a.address1.trim(),
-                    address2: a.address2.trim(),
+                    address1: (a.address1 || "").trim(),
+                    address2: (a.address2 || "").trim(),
                     countryId: a.countryId,
                     stateId: a.stateId,
                     cityId: a.cityId,
-                    zipCode: a.zipCode.trim(),
-                    phoneNo: a.phoneNo.trim(),
-                    faxNo: a.faxNo.trim(),
-                    email: a.email.trim(),
-                    website: a.website.trim(),
-                    isPrimary: a.isPrimary
+                    zipcode: (a.zipCode || "").trim(),
+                    phone: (a.phoneNo || "").trim(),
+                    faxNo: (a.faxNo || "").trim(),
+                    email: (a.email || "").trim(),
+                    website: (a.website || "").trim(),
+                    isPrimary: !!a.isPrimary
                 })) : [],
-                profile: showDetails ? {
+                profile: showDetails && (companyProfile.orderNo || companyProfile.description) ? [{
                     orderNo: companyProfile.orderNo,
-                    description: companyProfile.description.trim(),
-                    remarks: companyProfile.remarks.trim()
-                } : null,
-                contacts: showDetails ? contactList.map(c => ({
+                    description: (companyProfile.description || "").trim(),
+                    remarks: (companyProfile.remarks || "").trim()
+                }] : [],
+                contacts: showDetails ? [
+                    contactDetails,
+                    ...extraContacts
+                ].filter(c => c.name || c.position).map(c => ({
                     position: c.position || null,
-                    name: c.name.trim(),
-                    phoneNo: c.phoneNo.trim(),
-                    email: c.email.trim()
+                    name: (c.name || "").trim(),
+                    phoneNo: (c.phoneNo || "").trim(),
+                    email: (c.email || "").trim()
                 })) : [],
-                taxDetails: showDetails ? taxList.map(t => ({
+                taxDetails: showDetails ? [
+                    taxDetails,
+                    ...extraTaxes
+                ].filter(t => t.taxTypeId).map(t => ({
                     effectiveFrom: t.effectiveFrom ? new Date(t.effectiveFrom).toISOString().split('T')[0] : null,
                     effectiveTo: t.effectiveTo ? new Date(t.effectiveTo).toISOString().split('T')[0] : null,
                     taxTypeId: t.taxTypeId,
                     territoryTypeId: t.territoryTypeId,
                     territory: t.territory || null,
-                    taxRegNo: t.taxRegNo.trim(),
+                    taxRegNo: (t.taxRegNo || "").trim(),
                     taxRegDate: t.taxRegDate ? new Date(t.taxRegDate).toISOString().split('T')[0] : null,
                     city: t.city || null,
-                    address1: t.address1.trim(),
-                    address2: t.address2.trim(),
-                    pinCode: t.pinCode.trim(),
-                    email: t.email.trim()
+                    address1: (t.address1 || "").trim(),
+                    address2: (t.address2 || "").trim(),
+                    pinCode: (t.pinCode || "").trim(),
+                    email: (t.email || "").trim()
                 })) : [],
-                directors: showDetails ? directorList.map(d => ({
+                directors: showDetails ? [
+                    directorDetails,
+                    ...extraDirectors
+                ].filter(d => d.directorName).map(d => ({
                     directorTypeId: d.directorTypeId,
-                    directorName: d.directorName.trim(),
+                    directorName: (d.directorName || "").trim(),
                     sharePercentage: d.sharePercentage ? parseFloat(d.sharePercentage) : null,
                     noOfShares: d.noOfShares ? parseInt(d.noOfShares) : null
                 })) : [],
-                jointVentures: showDetails ? jvList.map(j => ({
-                    partnerId: j.partnerId.trim(),
+                jointVentures: showDetails ? [
+                    jointVenture,
+                    ...extraJvs
+                ].filter(j => j.partnerId).map(j => ({
+                    partnerId: (j.partnerId || "").trim(),
                     sharePercentage: j.sharePercentage ? parseFloat(j.sharePercentage) : null
                 })) : [],
-                additionalInfos: showDetails ? additionalInfoList.map(a => ({
+                additionalInfos: showDetails ? [
+                    additionalInfo,
+                    ...extraAdditionalInfos
+                ].filter(a => a.idTypeId).map(a => ({
                     idTypeId: a.idTypeId,
-                    registrationNo: a.registrationNo.trim()
+                    registrationNo: (a.registrationNo || "").trim()
                 })) : [],
-                localNames: showDetails ? localNameList.map(l => ({
+                localNames: showDetails ? [
+                    localName,
+                    ...extraLocalNames
+                ].filter(l => l.name || l.languageId).map(l => ({
                     languageId: l.languageId,
-                    name: l.name.trim()
+                    name: (l.name || "").trim()
                 })) : []
             };
             formData.append(
@@ -960,6 +1283,7 @@ function CompanyForm() {
             attachments.forEach((file) => {
                 formData.append("files", file);
             });
+            console.log(companyDTO);
             const token = sessionStorage.getItem("token");
             const response = await axios.post(
                 `${import.meta.env.VITE_API_BASE_URL}/company/add`,
@@ -978,6 +1302,8 @@ function CompanyForm() {
             console.error("Error saving company:", error);
             const msg = error.response?.data || error.message || "Failed to save company";
             toast.error(msg);
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -1152,18 +1478,6 @@ function CompanyForm() {
                                                     options={currencyOptions}
                                                 />
                                             </div>
-
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform d-block">Bank</label>
-                                                <input
-                                                    type="text"
-                                                    name="bank"
-                                                    value={basicInfo.bank}
-                                                    onChange={handleInputChange(setBasicInfo)}
-                                                    className="form-input w-100"
-                                                    placeholder="Enter Bank Name"
-                                                />
-                                            </div>
                                         </>
                                     )}
                                 </div>
@@ -1175,168 +1489,168 @@ function CompanyForm() {
                             {activeTab === "address" && (
                                 <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: "8px", }}>
                                     <div className="card-body p-4 bg-white">                                        <div className="row mt-2">
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform-select d-block">Address Type <span style={{ color: "red" }}>*</span></label>
-                                                <Select
-                                                    classNamePrefix="select"
-                                                    placeholder="Select Address Type"
-                                                    value={getSelectedOption(addressDetails.addressTypeId, addressTypeOptions)}
-                                                    onChange={handleSelectChange(setAddressDetails, 'addressTypeId')}
-                                                    options={addressTypeOptions}
-                                                    isClearable
-                                                />
-                                            </div>
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform d-block">Address 1</label>
+                                        <div className="col-md-6 mb-4 position-relative">
+                                            <label className="projectform-select d-block">Address Type <span style={{ color: "red" }}>*</span></label>
+                                            <Select
+                                                classNamePrefix="select"
+                                                placeholder="Select Address Type"
+                                                value={getSelectedOption(addressDetails.addressTypeId, addressTypeOptions)}
+                                                onChange={handleSelectChange(setAddressDetails, 'addressTypeId')}
+                                                options={addressTypeOptions}
+                                                isClearable
+                                            />
+                                        </div>
+                                        <div className="col-md-6 mb-4 position-relative">
+                                            <label className="projectform d-block">Address 1</label>
+                                            <input
+                                                type="text"
+                                                name="address1"
+                                                value={addressDetails.address1}
+                                                onChange={handleInputChange(setAddressDetails)}
+                                                className="form-input w-100"
+                                                placeholder="Enter Address 1"
+                                            />
+                                        </div>
+                                        <div className="col-md-6 mb-4 position-relative">
+                                            <label className="projectform d-block">Address 2</label>
+                                            <input
+                                                type="text"
+                                                name="address2"
+                                                value={addressDetails.address2}
+                                                onChange={handleInputChange(setAddressDetails)}
+                                                className="form-input w-100"
+                                                placeholder="Enter Address 2"
+                                            />
+                                        </div>
+                                        <div className="col-md-6 mb-4 position-relative">
+                                            <label className="projectform-select d-block">Country <span style={{ color: "red" }}>*</span></label>
+                                            <Select
+                                                classNamePrefix="select"
+                                                placeholder="Select Country"
+                                                value={getSelectedOption(addressDetails.countryId, countryOptions)}
+                                                onChange={(selectedOption) => {
+                                                    setAddressDetails(prev => ({
+                                                        ...prev,
+                                                        countryId: selectedOption ? selectedOption.value : null,
+                                                        stateId: null,
+                                                        cityId: null
+                                                    }));
+                                                    if (selectedOption) {
+                                                        fetchStates(selectedOption.value);
+                                                    } else {
+                                                        setStateOptions([]);
+                                                        setCityOptions([]);
+                                                    }
+                                                }}
+                                                options={countryOptions}
+                                                isClearable
+                                            />
+                                        </div>
+                                        <div className="col-md-6 mb-4 position-relative">
+                                            <label className="projectform-select d-block">State <span style={{ color: "red" }}>*</span></label>
+                                            <Select
+                                                classNamePrefix="select"
+                                                placeholder="Select State"
+                                                value={getSelectedOption(addressDetails.stateId, stateOptions)}
+                                                onChange={(selectedOption) => {
+                                                    setAddressDetails(prev => ({
+                                                        ...prev,
+                                                        stateId: selectedOption ? selectedOption.value : null,
+                                                        cityId: null
+                                                    }));
+                                                    if (selectedOption) {
+                                                        fetchCities(selectedOption.value);
+                                                    } else {
+                                                        setCityOptions([]);
+                                                    }
+                                                }}
+                                                options={stateOptions}
+                                                isClearable
+                                                isDisabled={!addressDetails.countryId}
+                                            />
+                                        </div>
+                                        <div className="col-md-6 mb-4 position-relative">
+                                            <label className="projectform-select d-block">City <span style={{ color: "red" }}>*</span></label>
+                                            <Select
+                                                classNamePrefix="select"
+                                                placeholder="Select City"
+                                                value={getSelectedOption(addressDetails.cityId, cityOptions)}
+                                                onChange={handleSelectChange(setAddressDetails, 'cityId')}
+                                                options={cityOptions}
+                                                isClearable
+                                                isDisabled={!addressDetails.stateId}
+                                            />
+                                        </div>
+                                        <div className="col-md-6 mb-4 position-relative">
+                                            <label className="projectform d-block">Zip Code</label>
+                                            <input
+                                                type="text"
+                                                name="zipCode"
+                                                value={addressDetails.zipCode}
+                                                onChange={handleInputChange(setAddressDetails)}
+                                                className="form-input w-100"
+                                                placeholder="Enter Zip Code"
+                                            />
+                                        </div>
+                                        <div className="col-md-6 mb-4 position-relative">
+                                            <label className="projectform d-block">Phone No</label>
+                                            <input
+                                                type="text"
+                                                name="phoneNo"
+                                                value={addressDetails.phoneNo}
+                                                onChange={handleInputChange(setAddressDetails)}
+                                                className="form-input w-100"
+                                                placeholder="Enter Phone No"
+                                            />
+                                        </div>
+                                        <div className="col-md-6 mb-4 position-relative">
+                                            <label className="projectform d-block">Fax No</label>
+                                            <input
+                                                type="text"
+                                                name="faxNo"
+                                                value={addressDetails.faxNo}
+                                                onChange={handleInputChange(setAddressDetails)}
+                                                className="form-input w-100"
+                                                placeholder="Enter Fax No"
+                                            />
+                                        </div>
+                                        <div className="col-md-6 mb-4 position-relative">
+                                            <label className="projectform d-block">Email ID</label>
+                                            <input
+                                                type="email"
+                                                name="email"
+                                                value={addressDetails.email}
+                                                onChange={handleInputChange(setAddressDetails)}
+                                                className="form-input w-100"
+                                                placeholder="Enter Email ID"
+                                            />
+                                        </div>
+                                        <div className="col-md-6 mb-4 position-relative">
+                                            <label className="projectform d-block">Website</label>
+                                            <input
+                                                type="text"
+                                                name="website"
+                                                value={addressDetails.website}
+                                                onChange={handleInputChange(setAddressDetails)}
+                                                className="form-input w-100"
+                                                placeholder="Enter Website"
+                                            />
+                                        </div>
+                                        <div className="col-md-12 mb-4">
+                                            <div className="form-check form-switch custom-switch d-flex justify-content-end align-items-center w-100">
+                                                <label className="form-check-label me-5 fw-bold" style={{ color: bluePrimary }}>
+                                                    Is Primary <span style={{ color: "red" }}>*</span>
+                                                </label>
                                                 <input
-                                                    type="text"
-                                                    name="address1"
-                                                    value={addressDetails.address1}
-                                                    onChange={handleInputChange(setAddressDetails)}
-                                                    className="form-input w-100"
-                                                    placeholder="Enter Address 1"
+                                                    className="form-check-input"
+                                                    type="checkbox"
+                                                    checked={isPrimaryAddress}
+                                                    onChange={(e) => setIsPrimaryAddress(e.target.checked)}
+                                                    style={{ cursor: 'pointer', width: '45px', height: '22px' }}
                                                 />
-                                            </div>
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform d-block">Address 2</label>
-                                                <input
-                                                    type="text"
-                                                    name="address2"
-                                                    value={addressDetails.address2}
-                                                    onChange={handleInputChange(setAddressDetails)}
-                                                    className="form-input w-100"
-                                                    placeholder="Enter Address 2"
-                                                />
-                                            </div>
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform-select d-block">Country <span style={{ color: "red" }}>*</span></label>
-                                                <Select
-                                                    classNamePrefix="select"
-                                                    placeholder="Select Country"
-                                                    value={getSelectedOption(addressDetails.countryId, countryOptions)}
-                                                    onChange={(selectedOption) => {
-                                                        setAddressDetails(prev => ({
-                                                            ...prev,
-                                                            countryId: selectedOption ? selectedOption.value : null,
-                                                            stateId: null,
-                                                            cityId: null
-                                                        }));
-                                                        if (selectedOption) {
-                                                            fetchStates(selectedOption.value);
-                                                        } else {
-                                                            setStateOptions([]);
-                                                            setCityOptions([]);
-                                                        }
-                                                    }}
-                                                    options={countryOptions}
-                                                    isClearable
-                                                />
-                                            </div>
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform-select d-block">State <span style={{ color: "red" }}>*</span></label>
-                                                <Select
-                                                    classNamePrefix="select"
-                                                    placeholder="Select State"
-                                                    value={getSelectedOption(addressDetails.stateId, stateOptions)}
-                                                    onChange={(selectedOption) => {
-                                                        setAddressDetails(prev => ({
-                                                            ...prev,
-                                                            stateId: selectedOption ? selectedOption.value : null,
-                                                            cityId: null
-                                                        }));
-                                                        if (selectedOption) {
-                                                            fetchCities(selectedOption.value);
-                                                        } else {
-                                                            setCityOptions([]);
-                                                        }
-                                                    }}
-                                                    options={stateOptions}
-                                                    isClearable
-                                                    isDisabled={!addressDetails.countryId}
-                                                />
-                                            </div>
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform-select d-block">City <span style={{ color: "red" }}>*</span></label>
-                                                <Select
-                                                    classNamePrefix="select"
-                                                    placeholder="Select City"
-                                                    value={getSelectedOption(addressDetails.cityId, cityOptions)}
-                                                    onChange={handleSelectChange(setAddressDetails, 'cityId')}
-                                                    options={cityOptions}
-                                                    isClearable
-                                                    isDisabled={!addressDetails.stateId}
-                                                />
-                                            </div>
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform d-block">Zip Code</label>
-                                                <input
-                                                    type="text"
-                                                    name="zipCode"
-                                                    value={addressDetails.zipCode}
-                                                    onChange={handleInputChange(setAddressDetails)}
-                                                    className="form-input w-100"
-                                                    placeholder="Enter Zip Code"
-                                                />
-                                            </div>
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform d-block">Phone No</label>
-                                                <input
-                                                    type="text"
-                                                    name="phoneNo"
-                                                    value={addressDetails.phoneNo}
-                                                    onChange={handleInputChange(setAddressDetails)}
-                                                    className="form-input w-100"
-                                                    placeholder="Enter Phone No"
-                                                />
-                                            </div>
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform d-block">Fax No</label>
-                                                <input
-                                                    type="text"
-                                                    name="faxNo"
-                                                    value={addressDetails.faxNo}
-                                                    onChange={handleInputChange(setAddressDetails)}
-                                                    className="form-input w-100"
-                                                    placeholder="Enter Fax No"
-                                                />
-                                            </div>
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform d-block">Email ID</label>
-                                                <input
-                                                    type="email"
-                                                    name="email"
-                                                    value={addressDetails.email}
-                                                    onChange={handleInputChange(setAddressDetails)}
-                                                    className="form-input w-100"
-                                                    placeholder="Enter Email ID"
-                                                />
-                                            </div>
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform d-block">Website</label>
-                                                <input
-                                                    type="text"
-                                                    name="website"
-                                                    value={addressDetails.website}
-                                                    onChange={handleInputChange(setAddressDetails)}
-                                                    className="form-input w-100"
-                                                    placeholder="Enter Website"
-                                                />
-                                            </div>
-                                            <div className="col-md-12 mb-4">
-                                                <div className="form-check form-switch custom-switch d-flex justify-content-end align-items-center w-100">
-                                                    <label className="form-check-label me-5 fw-bold" style={{ color: bluePrimary }}>
-                                                        Is Primary <span style={{ color: "red" }}>*</span>
-                                                    </label>
-                                                    <input
-                                                        className="form-check-input"
-                                                        type="checkbox"
-                                                        checked={isPrimaryAddress}
-                                                        onChange={(e) => setIsPrimaryAddress(e.target.checked)}
-                                                        style={{ cursor: 'pointer', width: '45px', height: '22px' }}
-                                                    />
-                                                </div>
                                             </div>
                                         </div>
+                                    </div>
                                     </div>
 
                                     {/* Extra Address Sections */}
@@ -1535,13 +1849,14 @@ function CompanyForm() {
                                         <div className="row mt-2">
                                             <div className="col-md-6 mb-4 position-relative">
                                                 <label className="projectform-select d-block">Position <span style={{ color: "red" }}>*</span></label>
-                                                <input
-                                                    type="text"
-                                                    name="position"
-                                                    value={contactDetails.position}
-                                                    onChange={handleInputChange(setContactDetails)}
-                                                    className="form-input w-100"
-                                                    placeholder="Enter designation"
+                                                <Select
+                                                    options={designationOptions}
+                                                    placeholder="Select designation"
+                                                    className="w-100"
+                                                    classNamePrefix="select"
+                                                    isClearable
+                                                    value={designationOptions.find(o => o.value === contactDetails.position) || null}
+                                                    onChange={(opt) => setContactDetails(prev => ({ ...prev, position: opt ? opt.value : "" }))}
                                                 />
                                             </div>
                                             <div className="col-md-6 mb-4 position-relative">
@@ -1601,12 +1916,14 @@ function CompanyForm() {
                                             <div className="row mt-2">
                                                 <div className="col-md-6 mb-4 position-relative">
                                                     <label className="projectform-select d-block">Position <span style={{ color: "red" }}>*</span></label>
-                                                    <input
-                                                        type="text"
-                                                        value={extra.position}
-                                                        onChange={(e) => handleSectionChange(setExtraContacts)(idx, 'position', e.target.value)}
-                                                        className="form-input w-100"
-                                                        placeholder="Enter designation"
+                                                    <Select
+                                                        options={designationOptions}
+                                                        placeholder="Select designation"
+                                                        className="w-100"
+                                                        classNamePrefix="select"
+                                                        isClearable
+                                                        value={designationOptions.find(o => o.value === extra.position) || null}
+                                                        onChange={(opt) => handleSectionChange(setExtraContacts)(idx, 'position', opt ? opt.value : "")}
                                                     />
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
@@ -1676,146 +1993,150 @@ function CompanyForm() {
                                                     options={taxTypeOptions}
                                                 />
                                             </div>
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform-select d-block">Territory Type <span style={{ color: "red" }}>*</span></label>
-                                                <Select
-                                                    classNamePrefix="select"
-                                                    placeholder="Select Territory Type"
-                                                    value={getSelectedOption(taxDetails.territoryTypeId, territoryTypeOptions)}
-                                                    onChange={(selectedOption) => {
-                                                        const newTerritoryTypeId = selectedOption ? selectedOption.value : null;
-                                                        setTaxDetails(prev => ({
-                                                            ...prev,
-                                                            territoryTypeId: newTerritoryTypeId,
-                                                            territory: null
-                                                        }));
-                                                        if (selectedOption) {
-                                                            fetchTerritory(selectedOption.value);
-                                                        } else {
-                                                            setTerritoryOptions([]);
-                                                        }
-                                                    }}
-                                                    options={territoryTypeOptions}
-                                                    isClearable
-                                                    isSearchable
-                                                />
-                                            </div>
-                                            {['STATE', 'CITY'].includes(taxDetails.territoryTypeId) && (
+                                            {taxDetails.taxTypeId !== 'GST_UNREGISTER' && (
                                                 <>
-                                                    <div className={`${taxDetails.territoryTypeId === 'CITY' ? 'col-md-4' : 'col-md-6'} mb-4 position-relative`}>
-                                                        <label className="projectform-select d-block">Filter Country <span style={{ color: "red" }}>*</span></label>
+                                                    <div className="col-md-6 mb-4 position-relative">
+                                                        <label className="projectform-select d-block">Territory Type <span style={{ color: "red" }}>*</span></label>
                                                         <Select
                                                             classNamePrefix="select"
-                                                            placeholder="Select Country"
-                                                            value={taxFilterCountry}
-                                                            onChange={handleTaxCountryFilterChange}
-                                                            options={taxCountryOptions}
+                                                            placeholder="Select Territory Type"
+                                                            value={getSelectedOption(taxDetails.territoryTypeId, territoryTypeOptions)}
+                                                            onChange={(selectedOption) => {
+                                                                const newTerritoryTypeId = selectedOption ? selectedOption.value : null;
+                                                                setTaxDetails(prev => ({
+                                                                    ...prev,
+                                                                    territoryTypeId: newTerritoryTypeId,
+                                                                    territory: null
+                                                                }));
+                                                                if (selectedOption) {
+                                                                    fetchTerritory(selectedOption.value);
+                                                                } else {
+                                                                    setTerritoryOptions([]);
+                                                                }
+                                                            }}
+                                                            options={territoryTypeOptions}
+                                                            isClearable
+                                                            isSearchable
+                                                        />
+                                                    </div>
+                                                    {['STATE', 'CITY'].includes(taxDetails.territoryTypeId) && (
+                                                        <>
+                                                            <div className={`${taxDetails.territoryTypeId === 'CITY' ? 'col-md-4' : 'col-md-6'} mb-4 position-relative`}>
+                                                                <label className="projectform-select d-block">Filter Country <span style={{ color: "red" }}>*</span></label>
+                                                                <Select
+                                                                    classNamePrefix="select"
+                                                                    placeholder="Select Country"
+                                                                    value={taxFilterCountry}
+                                                                    onChange={handleTaxCountryFilterChange}
+                                                                    options={taxCountryOptions}
+                                                                    isClearable
+                                                                />
+                                                            </div>
+                                                            {taxDetails.territoryTypeId === 'CITY' && (
+                                                                <div className="col-md-4 mb-4 position-relative">
+                                                                    <label className="projectform-select d-block">Filter State <span style={{ color: "red" }}>*</span></label>
+                                                                    <Select
+                                                                        classNamePrefix="select"
+                                                                        placeholder="Select State"
+                                                                        value={taxFilterState}
+                                                                        onChange={handleTaxStateFilterChange}
+                                                                        options={taxStateOptions}
+                                                                        isDisabled={!taxFilterCountry}
+                                                                        isClearable
+                                                                    />
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                    <div className={`${taxDetails.territoryTypeId === 'CITY' ? 'col-md-4' : 'col-md-6'} mb-4 position-relative`}>
+                                                        <label className="projectform-select d-block">Territory <span style={{ color: "red" }}>*</span></label>
+                                                        <Select
+                                                            classNamePrefix="select"
+                                                            placeholder="Select Territory"
+                                                            value={getSelectedOption(taxDetails.territory, territoryOptions)}
+                                                            onChange={handleSelectChange(setTaxDetails, 'territory')}
+                                                            options={territoryOptions}
+                                                            isDisabled={
+                                                                (taxDetails.territoryTypeId === 'STATE' && !taxFilterCountry) ||
+                                                                (taxDetails.territoryTypeId === 'CITY' && !taxFilterState)
+                                                            }
                                                             isClearable
                                                         />
                                                     </div>
-                                                    {taxDetails.territoryTypeId === 'CITY' && (
-                                                        <div className="col-md-4 mb-4 position-relative">
-                                                            <label className="projectform-select d-block">Filter State <span style={{ color: "red" }}>*</span></label>
-                                                            <Select
-                                                                classNamePrefix="select"
-                                                                placeholder="Select State"
-                                                                value={taxFilterState}
-                                                                onChange={handleTaxStateFilterChange}
-                                                                options={taxStateOptions}
-                                                                isDisabled={!taxFilterCountry}
-                                                                isClearable
-                                                            />
-                                                        </div>
-                                                    )}
+                                                    <div className="col-md-6 mb-4 position-relative">
+                                                        <label className="projectform d-block">Tax Reg. No <span style={{ color: "red" }}>*</span></label>
+                                                        <input
+                                                            type="text"
+                                                            name="taxRegNo"
+                                                            value={taxDetails.taxRegNo}
+                                                            onChange={handleInputChange(setTaxDetails)}
+                                                            className="form-input w-100"
+                                                            placeholder="Enter Tax Reg. No"
+                                                        />
+                                                    </div>
+                                                    <div className="col-md-6 mb-4 position-relative">
+                                                        <label className="projectform d-block">Tax Reg. Date <span style={{ color: "red" }}>*</span></label>
+
+                                                        <Flatpickr
+                                                            className="form-input w-100"
+                                                            placeholder="Select Date"
+                                                            value={taxDetails.taxRegDate}
+                                                            onChange={(date) => setTaxDetails(prev => ({ ...prev, taxRegDate: date[0] }))}
+                                                            options={{ dateFormat: "d-M-Y" }}
+                                                        />
+                                                        <CalendarIcon className="position-absolute end-0 top-50 translate-middle-y me-3" style={{ pointerEvents: "none" }} />
+
+                                                    </div>
+                                                    <div className="col-md-6 mb-4 position-relative">
+                                                        <label className="projectform d-block">Effective From <span style={{ color: "red" }}>*</span></label>
+
+                                                        <Flatpickr
+                                                            className="form-input w-100"
+                                                            placeholder="Select Date"
+                                                            value={taxDetails.effectiveFrom}
+                                                            onChange={(date) => setTaxDetails(prev => ({ ...prev, effectiveFrom: date[0] }))}
+                                                            options={{ dateFormat: "d-M-Y" }}
+                                                        />
+                                                        <CalendarIcon className="position-absolute end-0 top-50 translate-middle-y me-3" style={{ pointerEvents: "none" }} />
+
+                                                    </div>
+                                                    <div className="col-md-6 mb-4 position-relative">
+                                                        <label className="projectform d-block">Effective To</label>
+
+                                                        <Flatpickr
+                                                            className="form-input w-100"
+                                                            placeholder="Select Date"
+                                                            value={taxDetails.effectiveTo}
+                                                            onChange={(date) => setTaxDetails(prev => ({ ...prev, effectiveTo: date[0] }))}
+                                                            options={{ dateFormat: "d-M-Y" }}
+                                                        />
+                                                        <CalendarIcon className="position-absolute end-0 top-50 translate-middle-y me-3" style={{ pointerEvents: "none" }} />
+                                                    </div>
+
+                                                    <div className="col-md-6 mb-4 position-relative">
+                                                        <label className="projectform d-block">Address 1</label>
+                                                        <input
+                                                            type="text"
+                                                            name="address1"
+                                                            value={taxDetails.address1}
+                                                            onChange={handleInputChange(setTaxDetails)}
+                                                            className="form-input w-100"
+                                                            placeholder="Enter Address 1"
+                                                        />
+                                                    </div>
+                                                    <div className="col-md-6 mb-4 position-relative">
+                                                        <label className="projectform d-block">Address 2</label>
+                                                        <input
+                                                            type="text"
+                                                            name="address2"
+                                                            value={taxDetails.address2}
+                                                            onChange={handleInputChange(setTaxDetails)}
+                                                            className="form-input w-100"
+                                                            placeholder="Enter Address 2"
+                                                        />
+                                                    </div>
                                                 </>
                                             )}
-                                            <div className={`${taxDetails.territoryTypeId === 'CITY' ? 'col-md-4' : 'col-md-6'} mb-4 position-relative`}>
-                                                <label className="projectform-select d-block">Territory <span style={{ color: "red" }}>*</span></label>
-                                                <Select
-                                                    classNamePrefix="select"
-                                                    placeholder="Select Territory"
-                                                    value={getSelectedOption(taxDetails.territory, territoryOptions)}
-                                                    onChange={handleSelectChange(setTaxDetails, 'territory')}
-                                                    options={territoryOptions}
-                                                    isDisabled={
-                                                        (taxDetails.territoryTypeId === 'STATE' && !taxFilterCountry) ||
-                                                        (taxDetails.territoryTypeId === 'CITY' && !taxFilterState)
-                                                    }
-                                                    isClearable
-                                                />
-                                            </div>
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform d-block">Tax Reg. No <span style={{ color: "red" }}>*</span></label>
-                                                <input
-                                                    type="text"
-                                                    name="taxRegNo"
-                                                    value={taxDetails.taxRegNo}
-                                                    onChange={handleInputChange(setTaxDetails)}
-                                                    className="form-input w-100"
-                                                    placeholder="Enter Tax Reg. No"
-                                                />
-                                            </div>
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform d-block">Tax Reg. Date <span style={{ color: "red" }}>*</span></label>
-
-                                                <Flatpickr
-                                                    className="form-input w-100"
-                                                    placeholder="Select Date"
-                                                    value={taxDetails.taxRegDate}
-                                                    onChange={(date) => setTaxDetails(prev => ({ ...prev, taxRegDate: date[0] }))}
-                                                    options={{ dateFormat: "d-M-Y" }}
-                                                />
-                                                <CalendarIcon className="position-absolute end-0 top-50 translate-middle-y me-3" style={{ pointerEvents: "none" }} />
-
-                                            </div>
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform d-block">Effective From <span style={{ color: "red" }}>*</span></label>
-
-                                                <Flatpickr
-                                                    className="form-input w-100"
-                                                    placeholder="Select Date"
-                                                    value={taxDetails.effectiveFrom}
-                                                    onChange={(date) => setTaxDetails(prev => ({ ...prev, effectiveFrom: date[0] }))}
-                                                    options={{ dateFormat: "d-M-Y" }}
-                                                />
-                                                <CalendarIcon className="position-absolute end-0 top-50 translate-middle-y me-3" style={{ pointerEvents: "none" }} />
-
-                                            </div>
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform d-block">Effective To</label>
-
-                                                <Flatpickr
-                                                    className="form-input w-100"
-                                                    placeholder="Select Date"
-                                                    value={taxDetails.effectiveTo}
-                                                    onChange={(date) => setTaxDetails(prev => ({ ...prev, effectiveTo: date[0] }))}
-                                                    options={{ dateFormat: "d-M-Y" }}
-                                                />
-                                                <CalendarIcon className="position-absolute end-0 top-50 translate-middle-y me-3" style={{ pointerEvents: "none" }} />
-                                            </div>
-
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform d-block">Address 1</label>
-                                                <input
-                                                    type="text"
-                                                    name="address1"
-                                                    value={taxDetails.address1}
-                                                    onChange={handleInputChange(setTaxDetails)}
-                                                    className="form-input w-100"
-                                                    placeholder="Enter Address 1"
-                                                />
-                                            </div>
-                                            <div className="col-md-6 mb-4 position-relative">
-                                                <label className="projectform d-block">Address 2</label>
-                                                <input
-                                                    type="text"
-                                                    name="address2"
-                                                    value={taxDetails.address2}
-                                                    onChange={handleInputChange(setTaxDetails)}
-                                                    className="form-input w-100"
-                                                    placeholder="Enter Address 2"
-                                                />
-                                            </div>
                                         </div>
                                     </div>
 
@@ -1849,137 +2170,141 @@ function CompanyForm() {
                                                         isClearable
                                                     />
                                                 </div>
-                                                <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform-select d-block">Territory Type <span style={{ color: "red" }}>*</span></label>
-                                                    <Select
-                                                        classNamePrefix="select"
-                                                        placeholder="Select Territory Type"
-                                                        value={getSelectedOption(extra.territoryTypeId, territoryTypeOptions)}
-                                                        onChange={(opt) => {
-                                                            const newTerritoryTypeId = opt ? opt.value : null;
-                                                            handleSectionChange(setExtraTaxes)(idx, 'territoryTypeId', newTerritoryTypeId);
-                                                            if (newTerritoryTypeId) {
-                                                                fetchExtraTaxTerritory(idx, newTerritoryTypeId);
-                                                            } else {
-                                                                handleSectionChange(setExtraTaxes)(idx, 'territoryOptions', []);
-                                                                handleSectionChange(setExtraTaxes)(idx, 'territory', null);
-                                                                handleSectionChange(setExtraTaxes)(idx, 'taxCountryOptions', []);
-                                                                handleSectionChange(setExtraTaxes)(idx, 'taxFilterCountry', null);
-                                                                handleSectionChange(setExtraTaxes)(idx, 'taxStateOptions', []);
-                                                                handleSectionChange(setExtraTaxes)(idx, 'taxFilterState', null);
-                                                            }
-                                                        }}
-                                                        options={territoryTypeOptions}
-                                                        isClearable
-                                                    />
-                                                </div>
-                                                {['STATE', 'CITY'].includes(extra.territoryTypeId) && (
+                                                {extra.taxTypeId !== 'GST_UNREGISTER' && (
                                                     <>
-                                                        <div className={`${extra.territoryTypeId === 'CITY' ? 'col-md-4' : 'col-md-6'} mb-4 position-relative`}>
-                                                            <label className="projectform-select d-block">Filter Country <span style={{ color: "red" }}>*</span></label>
+                                                        <div className="col-md-6 mb-4 position-relative">
+                                                            <label className="projectform-select d-block">Territory Type <span style={{ color: "red" }}>*</span></label>
                                                             <Select
                                                                 classNamePrefix="select"
-                                                                placeholder="Select Country"
-                                                                value={extra.taxFilterCountry}
-                                                                onChange={(opt) => handleExtraTaxCountryFilterChange(idx, opt, extra.territoryTypeId)}
-                                                                options={extra.taxCountryOptions || []}
+                                                                placeholder="Select Territory Type"
+                                                                value={getSelectedOption(extra.territoryTypeId, territoryTypeOptions)}
+                                                                onChange={(opt) => {
+                                                                    const newTerritoryTypeId = opt ? opt.value : null;
+                                                                    handleSectionChange(setExtraTaxes)(idx, 'territoryTypeId', newTerritoryTypeId);
+                                                                    if (newTerritoryTypeId) {
+                                                                        fetchExtraTaxTerritory(idx, newTerritoryTypeId);
+                                                                    } else {
+                                                                        handleSectionChange(setExtraTaxes)(idx, 'territoryOptions', []);
+                                                                        handleSectionChange(setExtraTaxes)(idx, 'territory', null);
+                                                                        handleSectionChange(setExtraTaxes)(idx, 'taxCountryOptions', []);
+                                                                        handleSectionChange(setExtraTaxes)(idx, 'taxFilterCountry', null);
+                                                                        handleSectionChange(setExtraTaxes)(idx, 'taxStateOptions', []);
+                                                                        handleSectionChange(setExtraTaxes)(idx, 'taxFilterState', null);
+                                                                    }
+                                                                }}
+                                                                options={territoryTypeOptions}
                                                                 isClearable
                                                             />
                                                         </div>
-                                                        {extra.territoryTypeId === 'CITY' && (
-                                                            <div className="col-md-4 mb-4 position-relative">
-                                                                <label className="projectform-select d-block">Filter State <span style={{ color: "red" }}>*</span></label>
-                                                                <Select
-                                                                    classNamePrefix="select"
-                                                                    placeholder="Select State"
-                                                                    value={extra.taxFilterState}
-                                                                    onChange={(opt) => handleExtraTaxStateFilterChange(idx, opt, extra.territoryTypeId)}
-                                                                    options={extra.taxStateOptions || []}
-                                                                    isDisabled={!extra.taxFilterCountry}
-                                                                    isClearable
-                                                                />
-                                                            </div>
+                                                        {['STATE', 'CITY'].includes(extra.territoryTypeId) && (
+                                                            <>
+                                                                <div className={`${extra.territoryTypeId === 'CITY' ? 'col-md-4' : 'col-md-6'} mb-4 position-relative`}>
+                                                                    <label className="projectform-select d-block">Filter Country <span style={{ color: "red" }}>*</span></label>
+                                                                    <Select
+                                                                        classNamePrefix="select"
+                                                                        placeholder="Select Country"
+                                                                        value={extra.taxFilterCountry}
+                                                                        onChange={(opt) => handleExtraTaxCountryFilterChange(idx, opt, extra.territoryTypeId)}
+                                                                        options={extra.taxCountryOptions || []}
+                                                                        isClearable
+                                                                    />
+                                                                </div>
+                                                                {extra.territoryTypeId === 'CITY' && (
+                                                                    <div className="col-md-4 mb-4 position-relative">
+                                                                        <label className="projectform-select d-block">Filter State <span style={{ color: "red" }}>*</span></label>
+                                                                        <Select
+                                                                            classNamePrefix="select"
+                                                                            placeholder="Select State"
+                                                                            value={extra.taxFilterState}
+                                                                            onChange={(opt) => handleExtraTaxStateFilterChange(idx, opt, extra.territoryTypeId)}
+                                                                            options={extra.taxStateOptions || []}
+                                                                            isDisabled={!extra.taxFilterCountry}
+                                                                            isClearable
+                                                                        />
+                                                                    </div>
+                                                                )}
+                                                            </>
                                                         )}
+                                                        <div className={`${extra.territoryTypeId === 'CITY' ? 'col-md-4' : 'col-md-6'} mb-4 position-relative`}>
+                                                            <label className="projectform-select d-block">Territory <span style={{ color: "red" }}>*</span></label>
+                                                            <Select
+                                                                classNamePrefix="select"
+                                                                placeholder="Select Territory"
+                                                                value={getSelectedOption(extra.territory, extra.territoryOptions || [])}
+                                                                onChange={(opt) => handleSectionChange(setExtraTaxes)(idx, 'territory', opt ? opt.value : null)}
+                                                                options={extra.territoryOptions || []}
+                                                                isDisabled={
+                                                                    (extra.territoryTypeId === 'STATE' && !extra.taxFilterCountry) ||
+                                                                    (extra.territoryTypeId === 'CITY' && !extra.taxFilterState)
+                                                                }
+                                                                isClearable
+                                                            />
+                                                        </div>
+                                                        <div className="col-md-6 mb-4 position-relative">
+                                                            <label className="projectform d-block">Tax Reg. No <span style={{ color: "red" }}>*</span></label>
+                                                            <input
+                                                                type="text"
+                                                                value={extra.taxRegNo}
+                                                                onChange={(e) => handleSectionChange(setExtraTaxes)(idx, 'taxRegNo', e.target.value)}
+                                                                className="form-input w-100"
+                                                                placeholder="Enter Tax Reg. No"
+                                                            />
+                                                        </div>
+                                                        <div className="col-md-6 mb-4 position-relative">
+                                                            <label className="projectform d-block">Tax Reg. Date <span style={{ color: "red" }}>*</span></label>
+                                                            <Flatpickr
+                                                                className="form-input w-100"
+                                                                placeholder="Select Date"
+                                                                value={extra.taxRegDate}
+                                                                onChange={(date) => handleSectionChange(setExtraTaxes)(idx, 'taxRegDate', date[0])}
+                                                                options={{ dateFormat: "d-M-Y" }}
+                                                            />
+                                                            <CalendarIcon className="position-absolute end-0 top-50 translate-middle-y me-3" style={{ pointerEvents: "none" }} />
+                                                        </div>
+                                                        <div className="col-md-6 mb-4 position-relative">
+                                                            <label className="projectform d-block">Effective From <span style={{ color: "red" }}>*</span></label>
+                                                            <Flatpickr
+                                                                className="form-input w-100"
+                                                                placeholder="Select Date"
+                                                                value={extra.effectiveFrom}
+                                                                onChange={(date) => handleSectionChange(setExtraTaxes)(idx, 'effectiveFrom', date[0])}
+                                                                options={{ dateFormat: "d-M-Y" }}
+                                                            />
+                                                            <CalendarIcon className="position-absolute end-0 top-50 translate-middle-y me-3" style={{ pointerEvents: "none" }} />
+                                                        </div>
+                                                        <div className="col-md-6 mb-4 position-relative">
+                                                            <label className="projectform d-block">Effective To</label>
+                                                            <Flatpickr
+                                                                className="form-input w-100"
+                                                                placeholder="Select Date"
+                                                                value={extra.effectiveTo}
+                                                                onChange={(date) => handleSectionChange(setExtraTaxes)(idx, 'effectiveTo', date[0])}
+                                                                options={{ dateFormat: "d-M-Y" }}
+                                                            />
+                                                            <CalendarIcon className="position-absolute end-0 top-50 translate-middle-y me-3" style={{ pointerEvents: "none" }} />
+                                                        </div>
+                                                        <div className="col-md-6 mb-4 position-relative">
+                                                            <label className="projectform d-block">Address 1</label>
+                                                            <input
+                                                                type="text"
+                                                                value={extra.address1}
+                                                                onChange={(e) => handleSectionChange(setExtraTaxes)(idx, 'address1', e.target.value)}
+                                                                className="form-input w-100"
+                                                                placeholder="Enter Address 1"
+                                                            />
+                                                        </div>
+                                                        <div className="col-md-6 mb-4 position-relative">
+                                                            <label className="projectform d-block">Address 2</label>
+                                                            <input
+                                                                type="text"
+                                                                value={extra.address2}
+                                                                onChange={(e) => handleSectionChange(setExtraTaxes)(idx, 'address2', e.target.value)}
+                                                                className="form-input w-100"
+                                                                placeholder="Enter Address 2"
+                                                            />
+                                                        </div>
                                                     </>
                                                 )}
-                                                <div className={`${extra.territoryTypeId === 'CITY' ? 'col-md-4' : 'col-md-6'} mb-4 position-relative`}>
-                                                    <label className="projectform-select d-block">Territory <span style={{ color: "red" }}>*</span></label>
-                                                    <Select
-                                                        classNamePrefix="select"
-                                                        placeholder="Select Territory"
-                                                        value={getSelectedOption(extra.territory, extra.territoryOptions || [])}
-                                                        onChange={(opt) => handleSectionChange(setExtraTaxes)(idx, 'territory', opt ? opt.value : null)}
-                                                        options={extra.territoryOptions || []}
-                                                        isDisabled={
-                                                            (extra.territoryTypeId === 'STATE' && !extra.taxFilterCountry) ||
-                                                            (extra.territoryTypeId === 'CITY' && !extra.taxFilterState)
-                                                        }
-                                                        isClearable
-                                                    />
-                                                </div>
-                                                <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform d-block">Tax Reg. No <span style={{ color: "red" }}>*</span></label>
-                                                    <input
-                                                        type="text"
-                                                        value={extra.taxRegNo}
-                                                        onChange={(e) => handleSectionChange(setExtraTaxes)(idx, 'taxRegNo', e.target.value)}
-                                                        className="form-input w-100"
-                                                        placeholder="Enter Tax Reg. No"
-                                                    />
-                                                </div>
-                                                <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform d-block">Tax Reg. Date <span style={{ color: "red" }}>*</span></label>
-                                                    <Flatpickr
-                                                        className="form-input w-100"
-                                                        placeholder="Select Date"
-                                                        value={extra.taxRegDate}
-                                                        onChange={(date) => handleSectionChange(setExtraTaxes)(idx, 'taxRegDate', date[0])}
-                                                        options={{ dateFormat: "d-M-Y" }}
-                                                    />
-                                                    <CalendarIcon className="position-absolute end-0 top-50 translate-middle-y me-3" style={{ pointerEvents: "none" }} />
-                                                </div>
-                                                <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform d-block">Effective From <span style={{ color: "red" }}>*</span></label>
-                                                    <Flatpickr
-                                                        className="form-input w-100"
-                                                        placeholder="Select Date"
-                                                        value={extra.effectiveFrom}
-                                                        onChange={(date) => handleSectionChange(setExtraTaxes)(idx, 'effectiveFrom', date[0])}
-                                                        options={{ dateFormat: "d-M-Y" }}
-                                                    />
-                                                    <CalendarIcon className="position-absolute end-0 top-50 translate-middle-y me-3" style={{ pointerEvents: "none" }} />
-                                                </div>
-                                                <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform d-block">Effective To</label>
-                                                    <Flatpickr
-                                                        className="form-input w-100"
-                                                        placeholder="Select Date"
-                                                        value={extra.effectiveTo}
-                                                        onChange={(date) => handleSectionChange(setExtraTaxes)(idx, 'effectiveTo', date[0])}
-                                                        options={{ dateFormat: "d-M-Y" }}
-                                                    />
-                                                    <CalendarIcon className="position-absolute end-0 top-50 translate-middle-y me-3" style={{ pointerEvents: "none" }} />
-                                                </div>
-                                                <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform d-block">Address 1</label>
-                                                    <input
-                                                        type="text"
-                                                        value={extra.address1}
-                                                        onChange={(e) => handleSectionChange(setExtraTaxes)(idx, 'address1', e.target.value)}
-                                                        className="form-input w-100"
-                                                        placeholder="Enter Address 1"
-                                                    />
-                                                </div>
-                                                <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform d-block">Address 2</label>
-                                                    <input
-                                                        type="text"
-                                                        value={extra.address2}
-                                                        onChange={(e) => handleSectionChange(setExtraTaxes)(idx, 'address2', e.target.value)}
-                                                        className="form-input w-100"
-                                                        placeholder="Enter Address 2"
-                                                    />
-                                                </div>
                                             </div>
                                         </div>
                                     ))}
@@ -2262,6 +2587,7 @@ function CompanyForm() {
                                                     onChange={(e) => setCompanyProfile(prev => ({ ...prev, description: e.target.value }))}
                                                     className="form-input w-100"
                                                     placeholder="Enter Description"
+                                                    style={{ height: 'auto', minHeight: '80px', resize: 'vertical', paddingTop: '15px' }}
                                                 />
                                             </div>
                                         </div>
@@ -2521,8 +2847,20 @@ function CompanyForm() {
                         Reset
                     </button>
                     {(!showDetails || activeTab === "local") ? (
-                        <button className="btn px-4 fw-bold text-white" style={{ backgroundColor: bluePrimary, borderRadius: '8px' }} onClick={handleSave}>
-                            Save Details
+                        <button
+                            className="btn px-4 fw-bold text-white d-flex align-items-center gap-2"
+                            style={{ backgroundColor: bluePrimary, borderRadius: '8px' }}
+                            onClick={handleSave}
+                            disabled={isSaving}
+                        >
+                            {isSaving ? (
+                                <>
+                                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    Saving...
+                                </>
+                            ) : (
+                                "Save Details"
+                            )}
                         </button>
                     ) : (
                         <button className="btn px-4 fw-bold text-white d-flex align-items-center gap-2" style={{ backgroundColor: bluePrimary, borderRadius: '8px' }} onClick={() => {

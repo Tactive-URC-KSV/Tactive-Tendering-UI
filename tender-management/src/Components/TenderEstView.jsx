@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback, Fragment } from "react";
 import axios from "axios";
 import { ArrowLeft, ArrowRight, IndianRupee, Plus } from 'lucide-react';
 import '../CSS/Styles.css';
@@ -8,7 +8,7 @@ import Indirectcost from '../assest/IndirectCost.svg?react';
 import Profit from '../assest/Profit.svg?react';
 import CollapseIcon from '../assest/Collapse.svg?react';
 import ExpandIcon from '../assest/Expand.svg?react';
-import { FolderTree, Eye, ChevronRight, ChevronDown } from "lucide-react";
+import { FolderTree, Eye, ChevronRight, ChevronDown, ChevronLeft, Search, Table, Edit, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useRef } from "react";
 import { useUom } from "../Context/UomContext";
@@ -18,7 +18,7 @@ import { toast } from "react-toastify";
 
 
 const handleUnauthorized = () => {
-  window.location.href = '/login';
+  // // window.location.href = '/login';
 }
 function Activity({ costCodeTypes, costCodeType, setCostCodeType, amounts, icon, activities, projectId }) {
   const navigate = useNavigate();
@@ -250,6 +250,11 @@ function BOQStructureView({ projectId }) {
   const [highlightedNodes, setHighlightedNodes] = useState(new Set());
   const debouncedSearchQuery = useDebounce(searchQuery, 3000);
   const uoms = useUom();
+  const [selectedBoqForModal, setSelectedBoqForModal] = useState(null);
+  const [boqCurrentPage, setBoqCurrentPage] = useState(0);
+  const [boqTotalPages, setBoqTotalPages] = useState(0);
+  const [boqTotalItems, setBoqTotalItems] = useState(0);
+  const pageSize = 15;
 
   const expandParents = async (searchResults) => {
     const parentsToExpand = new Set();
@@ -367,26 +372,33 @@ function BOQStructureView({ projectId }) {
   const handleResource = (boqId) => {
     navigate(`/tenderestimation/${projectId}/resourceadding/${boqId}`);
   }
-  const refreshParentBoqData = async () => {
+  const refreshParentBoqData = async (page = 0) => {
     try {
       const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getParentBoq/${projectId}`, {
+        params: { page, size: pageSize },
         headers: {
           Authorization: `Bearer ${sessionStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         }
       });
       if (res.status === 200) {
-        setParentBoq(res.data || []);
-        handleParentBoqTree(res.data || []);
+        const { data, currentPage, totalPages, totalItems } = res.data;
+        setParentBoq(data || []);
+        handleParentBoqTree(data || []);
+        setBoqCurrentPage(currentPage);
+        setBoqTotalPages(totalPages);
+        setBoqTotalItems(totalItems);
       } else {
         console.error('Failed to fetch BOQ data:', res.status);
         setParentBoq([]);
+        setBoqTotalPages(0);
       }
     } catch (err) {
       if (err?.response?.status === 401) {
-        navigate('/login');
+        // navigate('/login');
       }
       setParentBoq([]);
+      setBoqTotalPages(0);
     }
   };
   const handleParentBoqTree = (data = parentBoq) => {
@@ -455,7 +467,7 @@ function BOQStructureView({ projectId }) {
       }
     } catch (err) {
       if (err?.response?.status === 401) {
-        navigate('/login');
+        // navigate('/login');
       }
       console.error('Error fetching children BOQ data:', err);
       setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: [] }));
@@ -504,7 +516,7 @@ function BOQStructureView({ projectId }) {
       return (
         <tr className="boq-leaf-row bg-white" style={{ borderBottom: '1px solid #eee', backgroundColor: highlightedNodes.has(boq.id) ? '#EFF6FF' : 'white' }}>
           <td className="px-2">{boq.boqCode}</td>
-          <td className="px-2" title={boq.boqName}>{boqNameDisplay}</td>
+          <td className="px-2" title="Click to view full BOQ Name" onClick={(e) => { e.stopPropagation(); setSelectedBoqForModal(boq); }} style={{ cursor: 'pointer' }}>{boqNameDisplay}</td>
           <td className="px-2">{boq?.uom?.uomCode || '-'}</td>
           <td className="px-2">{boq.quantity?.toFixed(3) || 0}</td>
           <td className="px-2">
@@ -532,7 +544,7 @@ function BOQStructureView({ projectId }) {
             {canExpand ? <BoqIcon size={18} /> : <span style={{ width: 20, marginRight: 4 }}></span>}
 
             <span className="ms-2 fw-bold">{boq.boqCode}</span>
-            <span className="ms-3 text-dark" title={boq.boqName}>{boqNameDisplay}</span>
+            <span className="ms-3" title="Click to view full BOQ Name" onClick={(e) => { e.stopPropagation(); setSelectedBoqForModal(boq); }} style={{ cursor: 'pointer' }}>{boqNameDisplay}</span>
           </div>
 
           {isExpanded && canExpand && (
@@ -637,37 +649,31 @@ function BOQStructureView({ projectId }) {
   return (
 
     <>
-      <div className="bg-white rounded-3 ms-3 me-3 mt-5 p-2" style={{ border: '0.5px solid #0051973D' }}>
-        <div className="d-flex justify-content-between mb-3">
+      <div className="bg-white rounded-3 ms-3 me-3 mt-5 p-2 d-flex flex-column" style={{ border: '0.5px solid #0051973D', maxHeight: '80vh' }}>
+        <div className="d-flex justify-content-between mb-3 sticky-top bg-white p-2" style={{ top: 0, zIndex: 10, borderBottom: '1px solid #f0f0f0' }}>
           <div className="fw-bold text-start mt-2 ms-1 d-flex align-items-center gap-3">
             <span>BOQ Structure</span>
           </div>
           <div className="me-1 d-flex align-items-center gap-3">
             <div className="position-relative" style={{ width: '300px' }}>
+              <Search
+                className="position-absolute"
+                style={{ right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#6B7280', zIndex: 1 }}
+                size={18}
+              />
               <input
                 type="text"
-                className="form-control"
+                className="form-input"
                 placeholder="Search BOQ..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{ paddingRight: '30px' }}
               />
             </div>
-            {/* <button className="btn" style={{ cursor: 'pointer', color: '#005197' }} onClick={toggleAll}>
-              {isAllExpanded ? (
-              //   <>
-              //     <CollapseIcon /><span>Collapse All</span>
-              //   </>
-              // ) : (
-              //   <>
-              //     <ExpandIcon /><span>Expand All</span>
-              //   </>
-              // )}
-            </button> */}
           </div>
         </div>
 
-        <div className="boq-structure-list mt-3">
+        <div className="boq-structure-list mt-3 flex-grow-1 overflow-y-auto px-2" style={{ scrollbarWidth: 'thin' }}>
           {visibleTree.length > 0 ? (
             visibleTree.map((boq) => (
               <BOQNode key={boq.id} boq={boq} level={0} />
@@ -676,14 +682,333 @@ function BOQStructureView({ projectId }) {
             <div className="text-center p-5 text-muted">No Parent or Matching BOQ data available.</div>
           )}
         </div>
+        {parentBoq.length > 0 && (
+          <div className='d-flex justify-content-between align-items-center mt-3 p-3 border-top bg-white sticky-bottom' style={{ bottom: 0, zIndex: 10 }}>
+            <div className="d-flex align-items-center gap-3">
+              <span className="text-muted small">
+                Showing {(boqCurrentPage * pageSize) + 1} - {Math.min((boqCurrentPage + 1) * pageSize, boqTotalItems)} of {boqTotalItems} Items
+              </span>
+            </div>
+            <div className='d-flex align-items-center gap-2'>
+              <button
+                className="btn pagination-btn"
+                style={{ padding: '4px 12px', border: '1px solid #dee2e6', cursor: boqCurrentPage === 0 ? 'default' : 'pointer', backgroundColor: boqCurrentPage === 0 ? '#f8f9fa' : 'white' }}
+                onClick={() => refreshParentBoqData(boqCurrentPage - 1)}
+                disabled={boqCurrentPage === 0}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <div className="px-3 py-1 rounded bg-light border small fw-medium">
+                Page {boqCurrentPage + 1} of {boqTotalPages || 1}
+              </div>
+              <button
+                className="btn pagination-btn"
+                style={{ padding: '4px 12px', border: '1px solid #dee2e6', cursor: boqCurrentPage >= boqTotalPages - 1 ? 'default' : 'pointer', backgroundColor: boqCurrentPage >= boqTotalPages - 1 ? '#f8f9fa' : 'white' }}
+                onClick={() => refreshParentBoqData(boqCurrentPage + 1)}
+                disabled={boqCurrentPage >= boqTotalPages - 1}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
 }
+
+function InternalBoq({ projectId }) {
+  const [internalBoqList, setInternalBoqList] = useState([]);
+  const [expandedRows, setExpandedRows] = useState({});
+  const navigate = useNavigate();
+
+  const toggleRow = (id) => {
+    setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  useEffect(() => {
+    if (projectId) {
+      axios.get(`${import.meta.env.VITE_API_BASE_URL}/tender-estimation/complex/project/${projectId}`, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      }).then(res => {
+        if (res.status === 200) {
+          setInternalBoqList(Array.isArray(res.data) ? res.data : (res.data?.content || []));
+        }
+      }).catch(err => {
+        if (err?.response?.status === 401) {
+          // window.location.href = '/login';
+        } else {
+          toast.error(err?.response?.data?.message || 'Failed to fetch internal boq resources.');
+        }
+      });
+    }
+  }, [projectId]);
+
+  const handleViewResource = (item) => {
+    // The JSON payload uses "internalBoqId", but it logically represents the tenderEstimationId of the overarching complex resource.
+    const tenderEstimationId = item.internalBoqId || item.id;
+    if (!tenderEstimationId) {
+      toast.error("Tender Estimation ID is missing.");
+      return;
+    }
+    console.log("Calling Internal BOQ with:", tenderEstimationId);
+    navigate(`/tenderestimation/${projectId}/resourceadding/internal?isInternal=true&tenderEstimationId=${tenderEstimationId}`);
+  };
+
+  return (
+    <div className="bg-white ms-3 me-3 mt-4 rounded-3 p-4" style={{ border: '1px solid #0051973D' }}>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h5 className="fw-bold mb-0">Internal BOQ Resources</h5>
+      </div>
+      <div className="table-responsive">
+        <table className="table activity-table">
+          <thead>
+            <tr>
+              <th style={{ width: '40px' }}></th>
+              <th>S.No</th>
+              <th>Resource</th>
+              <th>UOM</th>
+              <th>Total Quantity</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {internalBoqList?.length > 0 ? (
+              internalBoqList.map((item, index) => {
+                const isShared = item.items && item.items.length > 1;
+                const rowId = item.internalBoqId || item.id || index;
+                const isExpanded = expandedRows[rowId];
+                
+                return (
+                  <Fragment key={rowId || index}>
+                    <tr>
+                      <td className="text-center align-middle">
+                        {item.items && item.items.length > 0 && (
+                          <button className="btn btn-sm btn-link p-0 text-dark" onClick={() => toggleRow(rowId)}>
+                            {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                          </button>
+                        )}
+                      </td>
+                      <td className="align-middle">{index + 1}</td>
+                      <td className="align-middle">
+                        {item.resourceName || 'N/A'}
+                        {isShared && (
+                          <span className="badge bg-warning text-dark ms-2">Shared BOQ</span>
+                        )}
+                      </td>
+                      <td className="align-middle">{item.uomCode || 'N/A'}</td>
+                      <td className="align-middle">{(item.totalQuantity || 0).toFixed(3)}</td>
+                      <td className="align-middle">
+                        <button className="btn btn-sm" style={{ background: "#DCFCE7", cursor: "pointer" }} onClick={() => handleViewResource(item)}>
+                          <Eye color="#15803D" size={20} /><span className="ms-1" style={{ color: '#15803D' }}>View</span>
+                        </button>
+                      </td>
+                    </tr>
+                    
+                    {isExpanded && item.items && item.items.map((child, cIndex) => (
+                      <tr key={child.tenderEstimationId || cIndex} style={{ backgroundColor: '#f9fafb' }}>
+                        <td></td>
+                        <td></td>
+                        <td colSpan={2} style={{ paddingLeft: '2.5rem' }} className="align-middle">
+                          <span className="text-muted d-inline-block small me-2">Tender Estimation ID:</span>
+                          <span className="fw-medium">{child.tenderEstimationId || 'N/A'}</span>
+                        </td>
+                        <td colSpan={2} className="align-middle">
+                          <span className="text-muted d-inline-block small me-2">Contribution:</span>
+                          <span className="fw-medium text-primary">{(child.quantity || 0).toFixed(3)}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
+                );
+              })
+            ) : (
+              <tr>
+                <td colSpan="6" className="text-center py-4 text-muted">No Content Available</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function GlobalValuesView({ projectId }) {
+  const [globalValues, setGlobalValues] = useState([]);
+  const [openModal, setOpenModal] = useState(false);
+  const [isEdit, setIsEdit] = useState(false);
+  const [currentValue, setCurrentValue] = useState({ id: null, name: '', value: 0 });
+
+  const fetchGlobalValues = useCallback(() => {
+    axios.get(`${import.meta.env.VITE_API_BASE_URL}/globalValue/${projectId}`, {
+      headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+    }).then(res => {
+      if (res.status === 200) {
+        setGlobalValues(res.data || []);
+      }
+    }).catch(err => {
+      console.error("Error fetching global values:", err);
+      toast.error("Failed to load global values");
+    });
+  }, [projectId]);
+
+  useEffect(() => {
+    fetchGlobalValues();
+  }, [fetchGlobalValues]);
+
+  const handleAdd = () => {
+    setIsEdit(false);
+    setCurrentValue({ id: null, name: '', value: 0, code: '' });
+    setOpenModal(true);
+  };
+
+  const handleEdit = (item) => {
+    setIsEdit(true);
+    setCurrentValue({ ...item });
+    setOpenModal(true);
+  };
+
+  const handleDelete = (id) => {
+    toast.info("Delete functionality is currently processed via backend");
+  };
+
+  const handleSave = () => {
+    if (!currentValue.name.trim()) {
+      toast.error("Please enter a name");
+      return;
+    }
+    
+    const url = isEdit 
+      ? `${import.meta.env.VITE_API_BASE_URL}/globalVaue/edit/${projectId}`
+      : `${import.meta.env.VITE_API_BASE_URL}/globalValue/${projectId}`;
+    
+    const method = isEdit ? 'put' : 'post';
+    
+    // Ensure we send what the backend expects
+    const payload = {
+      ...currentValue,
+      project: { id: projectId }
+    };
+    
+    // For new items, omit the ID entirely so backend can generate UUID
+    if (!isEdit) {
+      delete payload.id;
+    }
+
+    axios[method](url, payload, {
+      headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' }
+    }).then(res => {
+      if (res.status === 200) {
+        toast.success(isEdit ? "Global value updated" : "Global value added");
+        setOpenModal(false);
+        fetchGlobalValues();
+      }
+    }).catch(err => {
+      console.error("Error saving global value:", err);
+      toast.error(err.response?.data?.message || "Failed to save global value");
+    });
+  };
+
+  return (
+    <div className="bg-white ms-3 me-3 mt-4 rounded-3 p-4" style={{ border: '1px solid #0051973D' }}>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h5 className="fw-bold mb-0">Global Values</h5>
+        <button className="btn action-button" onClick={handleAdd}>
+          <Plus size={16} /> <span className="ms-2">Add Global Value</span>
+        </button>
+      </div>
+      <div className="table-responsive">
+        <table className="table activity-table text-start">
+          <thead>
+            <tr>
+              <th>S.No</th>
+              <th>Name</th>
+              <th>Code</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            {globalValues.length > 0 ? (
+              globalValues.map((item, index) => (
+                <tr key={item.id}>
+                  <td>{index + 1}</td>
+                  <td>{item.name}</td>
+                  <td>{item.code || '-'}</td>
+                  <td>{item.value}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="4" className="text-center py-4 text-muted">No Global Values Available</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {openModal && (
+        <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }} onClick={() => setOpenModal(false)}>
+          <div className="modal-dialog modal-md modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content rounded-3">
+              <div className="modal-header d-flex justify-content-between">
+                <p className="fw-bold mb-0">{isEdit ? "Edit Global Value" : "Add Global Value"}</p>
+                <button className="btn-close" onClick={() => setOpenModal(false)}></button>
+              </div>
+              <div className="modal-body text-start">
+                <div className="mb-3">
+                  <label className="form-label text-start w-100">Name <span className="text-danger">*</span></label>
+                  <input
+                    className="form-input w-100"
+                    placeholder="Enter name (e.g. Labor Rate)"
+                    value={currentValue.name}
+                    onChange={(e) => setCurrentValue({ ...currentValue, name: e.target.value })}
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label text-start w-100">Code</label>
+                  <input
+                    className="form-input w-100"
+                    placeholder="Enter code (optional)"
+                    value={currentValue.code || ''}
+                    onChange={(e) => setCurrentValue({ ...currentValue, code: e.target.value })}
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label text-start w-100">Value <span className="text-danger">*</span></label>
+                  <input
+                    type="number"
+                    className="form-input w-100"
+                    placeholder="Enter value"
+                    value={currentValue.value}
+                    onChange={(e) => setCurrentValue({ ...currentValue, value: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setOpenModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleSave}>Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AbstractView({ projectId }) {
 
   const [parentBoq, setParentBoq] = useState([]);
   const [parentTotals, setParentTotals] = useState({});
+  const [selectedBoqForModal, setSelectedBoqForModal] = useState(null);
+  const [boqCurrentPage, setBoqCurrentPage] = useState(0);
+  const [boqTotalPages, setBoqTotalPages] = useState(0);
+  const [boqTotalItems, setBoqTotalItems] = useState(0);
+  const pageSize = 15;
 
   useEffect(() => {
     if (projectId) {
@@ -693,11 +1018,12 @@ function AbstractView({ projectId }) {
   }, [projectId]);
 
   // 🔹 Fetch Parent BOQ list (Level 1)
-  const refreshParentBoqData = async () => {
+  const refreshParentBoqData = async (page = 0) => {
     try {
       const res = await axios.get(
         `${import.meta.env.VITE_API_BASE_URL}/project/getParentBoq/${projectId}`,
         {
+          params: { page, size: pageSize },
           headers: {
             Authorization: `Bearer ${sessionStorage.getItem('token')}`,
             'Content-Type': 'application/json'
@@ -706,13 +1032,19 @@ function AbstractView({ projectId }) {
       );
 
       if (res.status === 200) {
-        setParentBoq(res.data || []);
+        const { data, currentPage, totalPages, totalItems } = res.data;
+        setParentBoq(data || []);
+        setBoqCurrentPage(currentPage);
+        setBoqTotalPages(totalPages);
+        setBoqTotalItems(totalItems);
       } else {
         setParentBoq([]);
+        setBoqTotalPages(0);
       }
 
     } catch (err) {
       setParentBoq([]);
+      setBoqTotalPages(0);
     }
   };
 
@@ -788,7 +1120,9 @@ function AbstractView({ projectId }) {
 
                   <td
                     className="px-2 text-start"
-                    title={boq.boqName}
+                    title="Click to view full BOQ Name"
+                    onClick={(e) => { e.stopPropagation(); setSelectedBoqForModal(boq); }}
+                    style={{ cursor: 'pointer' }}
                   >
                     {boq.boqName
                       ? boqNameDisplay(boq.boqName)
@@ -806,8 +1140,74 @@ function AbstractView({ projectId }) {
             })}
           </tbody>
 
+          {parentBoq.length > 0 && (
+          <tfoot style={{ borderTop: '2px solid #0051973D' }}>
+            <tr className="bg-light">
+              <td colSpan="3" className="px-2 text-end fw-bold" style={{ color: '#005197', paddingTop: '12px', paddingBottom: '12px' }}>Project Total Value</td>
+              <td className="px-2 text-end fw-bold" style={{ color: '#005197', paddingTop: '12px', paddingBottom: '12px' }}>
+                <IndianRupee size={15} className="me-1" style={{ marginTop: '-2px' }}/>
+                {Object.values(parentTotals).reduce((sum, val) => sum + (val || 0), 0).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}
+              </td>
+            </tr>
+          </tfoot>
+          )}
+
         </table>
       </div>
+      {parentBoq.length > 0 && (
+        <div className='d-flex justify-content-between align-items-center mt-3 p-3 border-top'>
+          <div className="d-flex align-items-center gap-3">
+            <span className="text-muted small">
+              Showing {(boqCurrentPage * pageSize) + 1} - {Math.min((boqCurrentPage + 1) * pageSize, boqTotalItems)} of {boqTotalItems} Items
+            </span>
+          </div>
+          <div className='d-flex align-items-center gap-2'>
+            <button
+              className="btn pagination-btn"
+              style={{ padding: '4px 12px', border: '1px solid #dee2e6', cursor: boqCurrentPage === 0 ? 'default' : 'pointer', backgroundColor: boqCurrentPage === 0 ? '#f8f9fa' : 'white' }}
+              onClick={() => refreshParentBoqData(boqCurrentPage - 1)}
+              disabled={boqCurrentPage === 0}
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <div className="px-3 py-1 rounded bg-light border small fw-medium">
+              Page {boqCurrentPage + 1} of {boqTotalPages || 1}
+            </div>
+            <button
+              className="btn pagination-btn"
+              style={{ padding: '4px 12px', border: '1px solid #dee2e6', cursor: boqCurrentPage >= boqTotalPages - 1 ? 'default' : 'pointer', backgroundColor: boqCurrentPage >= boqTotalPages - 1 ? '#f8f9fa' : 'white' }}
+              onClick={() => refreshParentBoqData(boqCurrentPage + 1)}
+              disabled={boqCurrentPage >= boqTotalPages - 1}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {selectedBoqForModal && (
+        <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1050 }}>
+          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div className="modal-content">
+              <div className="modal-header" style={{ backgroundColor: '#005197' }}>
+                <h5 className="modal-title fw-medium text-white">BOQ Name : {selectedBoqForModal.boqCode}</h5>
+                <button type="button" className="btn-close text-white bg-white" onClick={() => setSelectedBoqForModal(null)}></button>
+              </div>
+              <div className="modal-body text-start" style={{ maxHeight: '60vh', overflowY: 'auto', wordWrap: 'break-word', borderBottom: 'none' }}>
+                <p className="fs-6 lh-lg" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{selectedBoqForModal.boqName}</p>
+              </div>
+              <div className="modal-footer" style={{ borderTop: 'none' }}>
+                <button type="button" className="btn btn-secondary px-4 mt-2 mb-2" onClick={() => setSelectedBoqForModal(null)}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -923,30 +1323,42 @@ function TenderEstView({ projectId }) {
           }
           <span className="ms-2 fs-6">Abstract View</span>
         </button>
-        <button className={`btn ${contentView === 'boq' ? 'activeView' : 'bg-white'} px-3 py-2 border border-start-0 rounded-end rounded-0`} onClick={() => { setContentView('boq'); }}>
-          {contentView === 'activity' ?
-            (<FolderTree color="#005197" size={24} />)
-            :
+        <button className={`btn ${contentView === 'boq' ? 'activeView' : 'bg-white'} px-3 py-2 border border-start-0 border-end-0 rounded-0`} onClick={() => { setContentView('boq'); }}>
+          {contentView === 'boq' ?
             (<FolderTree color="white" size={24} />)
+            :
+            (<FolderTree color="#005197" size={24} />)
           }
           <span className="ms-2 fs-6">BOQ View</span>
         </button>
+        <button className={`btn ${contentView === 'internalBoq' ? 'activeView' : 'bg-white'} px-3 py-2 border border-start-0 rounded-0`} onClick={() => { setContentView('internalBoq'); }}>
+          {contentView === 'internalBoq' ?
+            (<Table color="white" size={24} />)
+            :
+            (<Table color="#005197" size={24} />)
+          }
+          <span className="ms-2 fs-6">Internal BOQ</span>
+        </button>
+        <button className={`btn ${contentView === 'globalValues' ? 'activeView' : 'bg-white'} px-3 py-2 border border-start-0 rounded-end rounded-0`} onClick={() => { setContentView('globalValues'); }}>
+          {contentView === 'globalValues' ?
+            (<Plus color="white" size={24} />)
+            :
+            (<Plus color="#005197" size={24} />)
+          }
+          <span className="ms-2 fs-6">Global Values</span>
+        </button>
       </div>
       {contentView === 'activity' &&
-        // <Activity
-        //   costCodeTypes={costCodeTypes}
-        //   costCodeType={costCodeType}
-        //   setCostCodeType={setCostCodeType}
-        //   amounts={amounts}
-        //   icon={icon}
-        //   findActivity={findActivity}
-        //   activities={activities}
-        //   projectId={projectId}
-        // />
         <AbstractView projectId={projectId} />
       }
       {contentView === 'boq' &&
         <BOQStructureView projectId={projectId} />
+      }
+      {contentView === 'internalBoq' &&
+        <InternalBoq projectId={projectId} />
+      }
+      {contentView === 'globalValues' &&
+        <GlobalValuesView projectId={projectId} />
       }
     </div>
   );

@@ -25,3 +25,21 @@ export const searchBoq = async (projectId, searchQuery) => {
         throw error;
     }
 };
+
+export const updateBOQHierarchy = async (projectId, parentChildUpdateMap) => {
+    try {
+        const response = await axios.put(
+            `${import.meta.env.VITE_API_BASE_URL}/update-boq-hierarchy/${projectId}`,
+            parentChildUpdateMap,
+            {
+                headers: {
+                    Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};

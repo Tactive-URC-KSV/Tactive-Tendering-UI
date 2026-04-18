@@ -9,8 +9,8 @@ function MasterDataController({ children }) {
   const currentPath = location.pathname.split("/").pop();
 
   const [openSections, setOpenSections] = useState({
-    general_master: true,
-    process_master: false,
+    general_master: false,
+    process_master: true,
   });
 
   const toggleSection = (key) => {
@@ -26,9 +26,10 @@ function MasterDataController({ children }) {
   };
 
   const generalMasterData = [
+    { label: "Resource Type", path: "resourcetype" },
     { label: "Address Type", path: "addresstype" },
     // { label: "Company Level", path: "companylevel" },
-    { label: "Company Status", path: "companystatus" },
+    // { label: "Company Status", path: "companystatus" },
     { label: "Company Constitution", path: "companyconstitution" },
     // { label: "Comapny Nature", path: "companynature" },
     { label: "Nature Of Business", path: "companynatureofbusiness" },
@@ -36,29 +37,29 @@ function MasterDataController({ children }) {
     { label: "Entity Type", path: "contractortype" },
     { label: "Nature Of Business", path: "contractornatureofbusiness" },
     { label: "Contractor Grade", path: "contractorgrade" },
-    { label: "Tax Type", path: "taxtype" },
+    // { label: "Tax Type", path: "taxtype" },
     { label: "Identity Type", path: "identitytype" },
     { label: "Country", path: "country" },
     { label: "State", path: "state" },
     { label: "City", path: "city" },
     { label: "Currency", path: "currency" },
+    { label: "Designation", path: "designation" }
   ];
   const processMasterData = [
-    { label: "UOM", path: "uom" },
-    { label: "Cost Code Activity", path: "costcodeactivity" },
-    { label: "Resources", path: "resources" },
-    { label: "Attributes", path: "attributes" },
     { label: "Region", path: "region" },
     { label: "Sector", path: "sector" },
     { label: "Scope of Packages", path: "scopes" },
-    { label: "Approval Documents", path: "approvals" },
-    { label: "Resource Type", path: "resourcetype" },
+    { label: "UOM", path: "uom" },
+    // { label: "Approval Documents", path: "approvals" },
+    { label: "Attributes", path: "attributes" },
+    { label: "Resources", path: "resources" },
+    { label: "Cost Code Activity", path: "costcodeactivity" },
 
   ];
   const renderSection = (key, title, data) => (
     <>
       <li
-        className={`menu-heading mt-3 fw-medium d-flex align-items-center justify-content-between cursor-pointer ${openSections[key] ? "text-primary" : "text-dark"}`}
+        className={`menu-heading mt-3 fw-bold d-flex align-items-center justify-content-between cursor-pointer ${openSections[key] ? "text-primary" : ""}`}
         onClick={() => toggleSection(key)}
       >
         <span>{title}</span>
