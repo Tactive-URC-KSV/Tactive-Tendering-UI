@@ -748,14 +748,17 @@ function InternalBoq({ projectId }) {
   }, [projectId]);
 
   const handleViewResource = (item) => {
-    // The JSON payload uses "internalBoqId", but it logically represents the tenderEstimationId of the overarching complex resource.
-    const tenderEstimationId = item.internalBoqId || item.id;
-    if (!tenderEstimationId) {
-      toast.error("Tender Estimation ID is missing.");
+    // Standardize navigation: /tender-resource/${projectId}/${boqId}?isInternal=true&internalBoqId=${internalBoqId}
+    const firstParent = item.parentResource && item.parentResource[0];
+    const internalBoqId = item.id;
+    const parentBoqId = firstParent?.boq?.id || 'internal';
+
+    if (!internalBoqId) {
+      toast.error("Internal BOQ ID is missing.");
       return;
     }
-    console.log("Calling Internal BOQ with:", tenderEstimationId);
-    navigate(`/tenderestimation/${projectId}/resourceadding/internal?isInternal=true&tenderEstimationId=${tenderEstimationId}`);
+    
+    navigate(`/tender-resource/${projectId}/${parentBoqId}?isInternal=true&internalBoqId=${internalBoqId}`);
   };
 
   return (
@@ -778,15 +781,15 @@ function InternalBoq({ projectId }) {
           <tbody>
             {internalBoqList?.length > 0 ? (
               internalBoqList.map((item, index) => {
-                const isShared = item.items && item.items.length > 1;
-                const rowId = item.internalBoqId || item.id || index;
+                const isShared = item.parentResource && item.parentResource.length > 1;
+                const rowId = item.id || index;
                 const isExpanded = expandedRows[rowId];
                 
                 return (
                   <Fragment key={rowId || index}>
                     <tr>
                       <td className="text-center align-middle">
-                        {item.items && item.items.length > 0 && (
+                        {item.parentResource && item.parentResource.length > 0 && (
                           <button className="btn btn-sm btn-link p-0 text-dark" onClick={() => toggleRow(rowId)}>
                             {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                           </button>
@@ -794,12 +797,12 @@ function InternalBoq({ projectId }) {
                       </td>
                       <td className="align-middle">{index + 1}</td>
                       <td className="align-middle">
-                        {item.resourceName || 'N/A'}
+                        {item.resource?.resourceName || 'N/A'}
                         {isShared && (
-                          <span className="badge bg-warning text-dark ms-2">Shared BOQ</span>
+                          <span className="badge bg-warning text-dark ms-2">Shared Resource</span>
                         )}
                       </td>
-                      <td className="align-middle">{item.uomCode || 'N/A'}</td>
+                      <td className="align-middle">{item.uom?.uomCode || item.uom?.uomName || 'N/A'}</td>
                       <td className="align-middle">{(item.totalQuantity || 0).toFixed(3)}</td>
                       <td className="align-middle">
                         <button className="btn btn-sm" style={{ background: "#DCFCE7", cursor: "pointer" }} onClick={() => handleViewResource(item)}>
@@ -808,17 +811,27 @@ function InternalBoq({ projectId }) {
                       </td>
                     </tr>
                     
-                    {isExpanded && item.items && item.items.map((child, cIndex) => (
-                      <tr key={child.tenderEstimationId || cIndex} style={{ backgroundColor: '#f9fafb' }}>
+                    {isExpanded && item.parentResource && item.parentResource.map((child, cIndex) => (
+                      <tr key={child.id || cIndex} style={{ backgroundColor: '#f9fafb' }}>
                         <td></td>
                         <td></td>
                         <td colSpan={2} style={{ paddingLeft: '2.5rem' }} className="align-middle">
-                          <span className="text-muted d-inline-block small me-2">Tender Estimation ID:</span>
-                          <span className="fw-medium">{child.tenderEstimationId || 'N/A'}</span>
+                          <div className="d-flex flex-column text-start">
+                            <div className="fw-bold fs-6">{child.boq?.boqCode || 'N/A'}</div>
+                            <div className="small text-muted">{child.boq?.boqName || 'N/A'}</div>
+                          </div>
                         </td>
                         <td colSpan={2} className="align-middle">
-                          <span className="text-muted d-inline-block small me-2">Contribution:</span>
-                          <span className="fw-medium text-primary">{(child.quantity || 0).toFixed(3)}</span>
+                          <div className="d-flex align-items-center gap-4">
+                            <div>
+                              <span className="text-muted d-inline-block small me-2">Co-Efficient:</span>
+                              <span className="fw-medium text-primary">{(child.coEfficient || 0).toFixed(4)}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted d-inline-block small me-2">Quantity:</span>
+                              <span className="fw-medium">{(child.calculatedQuantity || 0).toFixed(3)}</span>
+                            </div>
+                          </div>
                         </td>
                       </tr>
                     ))}

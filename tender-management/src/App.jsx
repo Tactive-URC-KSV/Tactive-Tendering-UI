@@ -114,7 +114,16 @@ function App() {
                             <Route path="/costcodemapping/:projectId" element={<CCMOverview />} caseSensitive={false} />
                             <Route path="/tenderestimation" element={<TenderEstimation />} caseSensitive={false} />
                             <Route path="/tenderestimation/:projectId" element={<TenderEstimation />} caseSensitive={false} />
-                            <Route path="/tenderestimation/:projectId/resourceadding/:boqId" element={<TenderResource />} caseSensitive={false} />                            {/* <Route path="/tenderestimation/resourceadding/:activityGroupId" element={<ResourceAdding />} caseSensitive={false} /> */}
+                            <Route path="/tenderestimation/:projectId/resourceadding/:boqId" element={<TenderResource />} caseSensitive={false} />
+                            <Route
+                              path="/tenderestimation/:projectId/resourceadding/:boqId"
+                              element={<TenderResource />}
+                            />
+
+                            <Route
+                              path="/tender-resource/:projectId/:boqId"
+                              element={<TenderResource />}
+                            />                        {/* <Route path="/tenderestimation/resourceadding/:activityGroupId" element={<ResourceAdding />} caseSensitive={false} /> */}
                             <Route path="/tenderfloating" element={<TenderFloating />} caseSensitive={false} />
                             <Route path="/tenderfloating/:projectId" element={<TenderFloating />} caseSensitive={false} />
                             <Route path="/tenderfloating/:projectId/:tenderId" element={<TenderFloating />} caseSensitive={false} />
@@ -128,7 +137,7 @@ function App() {
                             <Route path="/contractor/:id" element={<ContractorInfo />} caseSensitive={false} />
                             <Route path="ContractorOnboarding/review-submissions" element={<ContractorReview />} caseSensitive={false} />
                             <Route path="/add-resource/:boqId/:projectId" element={<AddResource />} caseSensitive={false} />
-                            <Route path="/add-resource/:boqId/:projectId/:tenderEstimationId" element={<AddResource />} caseSensitive={false} />
+                            <Route path="/add-resource/:boqId/:projectId/:resourceId" element={<AddResource />} caseSensitive={false} />
                             <Route path="ContractorOnboarding/contractor-overview" element={<ContractorOverview />} caseSensitive={false} />
                           </Routes>
                         </Sidebar>
