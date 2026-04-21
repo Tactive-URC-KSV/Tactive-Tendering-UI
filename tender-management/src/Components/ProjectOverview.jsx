@@ -253,7 +253,7 @@ function ProjectOverview() {
             }, 100);
         } catch (error) {
             console.error("Error downloading document:", error);
-            alert(error.message || "Failed to download document");
+            toast.error(error.message || "Failed to download document");
         }
     };
 

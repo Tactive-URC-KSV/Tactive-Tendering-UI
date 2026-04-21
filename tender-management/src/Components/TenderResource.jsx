@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import axios from "axios";
-import { ArrowLeft, Plus, EditIcon, Trash2, IndianRupee, BadgeDollarSign, Table, Grid, EyeIcon } from "lucide-react";
+import { ArrowLeft, Plus, EditIcon, Trash2, IndianRupee, BadgeDollarSign, Table, Grid, EyeIcon, ChevronDown, ChevronRight, Eye, AlertTriangle, BookOpenText } from "lucide-react";
 import ActivityCode from '../assest/ActivityCode.svg?react';
 import ActivityView from "../assest/Activity.svg?react";
 import Area from '../assest/Area.svg?react';
@@ -18,6 +18,8 @@ function TenderResource() {
   const [boqName, setBoqName] = useState();
   const [viewType, setViewType] = useState('table');
   const [selectedBoqForModal, setSelectedBoqForModal] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [resourceToDelete, setResourceToDelete] = useState(null);
 
   const buildFormulaDisplay = (formulaElements) => {
     if (!formulaElements || !Array.isArray(formulaElements) || formulaElements.length === 0) return null;
@@ -34,182 +36,174 @@ function TenderResource() {
   
   const [searchParams] = useSearchParams();
   const isInternal = searchParams.get('isInternal') === 'true';
-  const parentTenderEstimationId = searchParams.get('tenderEstimationId');
-  const internalBoqId = parentTenderEstimationId; // Store it for reuse per instructions
+  const internalBoqId = searchParams.get('internalBoqId');
+
   
   const [expandedRows, setExpandedRows] = useState({});
+
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @keyframes highlight-fade {
+        0% { background-color: #fff3cd; }
+        100% { background-color: transparent; }
+      }
+      .table-warning {
+        animation: highlight-fade 4s ease-out forwards !important;
+      }
+      .tree-row-child {
+        background-color: #f8f9fa;
+      }
+      .tree-row-child:hover {
+        background-color: #f1f3f5 !important;
+      }
+      .activity-table tr {
+        transition: background-color 0.3s;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
+  const fetchBoqDetails = () => {
+    if (boqId) {
+      axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/BOQ/${boqId}`, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      }).then(res => {
+        if (res.status === 200) {
+          setBoq(res.data);
+          const bName = res.data.boqName;
+          setBoqName(bName && bName.length > 20 ? bName.substring(0, 20) + '...' : bName);
+        }
+      }).catch(err => {
+        console.error("Error fetching BOQ details:", err);
+      });
+    }
+  };
 
   useEffect(() => {
     if (projectId) {
       axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${projectId}`, {
         headers: {
           Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         }
       }).then(res => {
         if (res.status === 200) {
           setProject(res.data);
-          if (isInternal) {
-            fetchTenderEstimationDetails();
-          } else {
+          if (!isInternal) {
             fetchBoqDetails();
           }
           fetchEstimatedResources();
         }
-      }).catch(err => {
-        if (err.response?.status === 401) {
-          // navigate('/login');
-        } else {
-          console.error(err);
-          toast.error('Failed to fetch project information.');
+      })
+    }
+  }, [projectId, boqId, internalBoqId]);
+  const fetchEstimatedResources = () => {
+    if (isInternal) {
+      // 1. Fetch Header Info
+      axios.get(`${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/internal-boq/${internalBoqId}`, {
+        headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+      }).then(res => {
+        const internal = res.data;
+        if (internal) {
+          setBoq({
+            id: internal.id || internalBoqId,
+            boqCode: internal.resource?.resourceCode || "N/A",
+            boqName: internal.resource?.resourceName || "N/A",
+            uom: { uomCode: internal.uom?.uomCode || "N/A" },
+            quantity: internal.totalQuantity || 0
+          });
+          setBoqName(internal.resource?.resourceName || "N/A");
         }
       });
+
+      // 2. Fetch Breakup Resources (DTOs with internalBoqId)
+      axios.get(`${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/internal-boq-resources/${internalBoqId}`, {
+        headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+      }).then(res => {
+        setEstimatedResources(res.data || []);
+      });
     } else {
-      fetchEstimatedResources();
-    }
-  }, [projectId]);
-
-  const fetchTenderEstimationDetails = () => {
-    axios.get(`${import.meta.env.VITE_API_BASE_URL}/tender-estimation/complex/project/${projectId}`, {
-      headers: {
-        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-        'Content-Type': 'application/json',
-      }
-    }).then(res => {
-      if (res.status === 200) {
-        const tenderData = res.data || [];
-        const tender = tenderData.find(item => item.id === parentTenderEstimationId);
-        if (!tender) return;
-        
-        const cost = tender.costDetails || tender;
-        
-        let rType = tender.resource?.resourceType || tender.resourceType;
-        if (typeof rType === 'object') rType = rType?.resourceTypeName;
-
-        // Map fields to mock a BOQ object so the existing UI cards display the values without modification
-        const simulatedBoq = {
-           boqCode: tender.resource?.resourceCode || tender.resources?.resourceCode || rType || '',
-           totalRate: tender.rate || tender.costUnitRate || cost.costUnitRate || 0,
-           totalAmount: tender.totalCost || cost.resourceTotalCost || cost.totalCostCompanyCurrency || tender.totalCostCompanyCurrency || 0,
-           quantity: tender.totalQuantity || tender.calculatedQuantity || cost.calculatedQuantity || cost.netQuantity || tender.coEfficient || 1,
-           uom: tender.uom || { uomCode: 'N/A' },
-           boqName: tender.resource?.resourceName || tender.resources?.resourceName || 'Complex Resource'
-        };
-        
-        setBoq(simulatedBoq);
-        
-        const bName = simulatedBoq.boqName;
-        setBoqName(bName && bName.length > 20 ? bName.substring(0, 20) + '...' : bName);
-      }
-    }).catch(err => {
-      console.error(err);
-      toast.error('Failed to fetch tender estimation details.');
-    });
-  }
-
-  const fetchBoqDetails = () => {
-    axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/BOQ/${boqId}`, {
-      headers: {
-        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-        'Content-Type': 'application/json',
-      }
-    }).then(res => {
-      if (res.status === 200) {
-        setBoq(res.data);
-        const boqName = res?.data?.boqName;
-        setBoqName(boqName && boqName?.length > 20
-          ? boqName.substring(0, 20) + '...'
-          : boqName);
-      }
-    }).catch(err => {
-      if (err.response?.status === 401) {
-        // navigate('/login');
-      } else {
-        console.error(err);
-        toast.error('Failed to fetch BOQ information.');
-      }
-    });
-  }
-  const fetchEstimatedResources = () => {
-    const url = isInternal 
-      ? `${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/internal-boq/${parentTenderEstimationId}`
-      : `${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/estimatedResources/${boqId}`;
-
-    axios.get(url, {
-      headers: {
-        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
-      }
-    }).then(res => {
-      if (res.status === 200) {
-        const data = Array.isArray(res.data) ? res.data : (res.data?.content || (res.data ? [res.data] : []));
+      // Normal BOQ Flow
+      axios.get(`${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/estimatedResources/${boqId}`, {
+        headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+      }).then(res => {
+        const data = Array.isArray(res.data) ? res.data : (res.data?.content || []);
         setEstimatedResources(data);
-      }
-    }).catch(err => {
-      if (err?.response?.status === 401) {
-        // navigate('/login');
-      } else {
-        toast.error(err?.response?.data?.message || 'Failed to fetch resources.');
-      }
-    });
+      });
+    }
   };
 
   const handleAddResource = () => {
-    const qs = isInternal ? `?isInternal=true&tenderEstimationId=${parentTenderEstimationId}` : '';
-    navigate(isInternal ? `/add-resource/internal/${projectId}${qs}` : `/add-resource/${boqId}/${projectId}`);
+    navigate(`/add-resource/${boqId}/${projectId}?isInternal=${isInternal}${isInternal ? `&internalBoqId=${internalBoqId}` : ''}`);
   };
-  const handleViewResource = (tId) => {
-    const qs = isInternal ? `?isInternal=true&tenderEstimationId=${parentTenderEstimationId}` : '';
-    navigate(isInternal ? `/add-resource/internal/${projectId}/${tId}${qs}` : `/add-resource/${boqId}/${projectId}/${tId}`);
-  };
-  const handleEditResource = (tId) => {
-    const qs = isInternal ? `?isInternal=true&tenderEstimationId=${parentTenderEstimationId}&isEdit=true` : '?isEdit=true';
-    navigate(isInternal ? `/add-resource/internal/${projectId}/${tId}${qs}` : `/add-resource/${boqId}/${projectId}/${tId}?isEdit=true`);
+
+  const handleViewResource = (resourceId) => {
+    navigate(`/add-resource/${boqId}/${projectId}/${resourceId}?isInternal=${isInternal}&viewMode=true${isInternal ? `&internalBoqId=${internalBoqId}` : ''}`);
   };
 
   const handleDeleteResource = (resourceId) => {
-    const url = isInternal 
-      ? `${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/deleteInternalResource/${resourceId}/${parentTenderEstimationId}`
-      : `${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/deleteResourceFromBoq/${resourceId}/${boqId}`;
-    axios.delete(url, {
-      headers: {
-        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
-      }
-    }).then((res) => {
-      if (res.status === 200 || res.status === 201) {
-        toast.success(res.data);
-        fetchEstimatedResources();
-      }
-    }).catch((err) => {
-      if (err.response.status === 401) {
-        // navigate('/login');
-      } else {
-        toast.error(err.response.data.message);
-      }
-    })
+    setResourceToDelete(resourceId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    if (resourceToDelete) {
+      const targetBoqId = isInternal ? internalBoqId : boqId;
+      axios.delete(`${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/deleteResourceFromBoq/${resourceToDelete}/${targetBoqId}`, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      }).then(res => {
+        if (res.status === 200) {
+          toast.success("Resource deleted successfully");
+          setShowDeleteModal(false);
+          setResourceToDelete(null);
+          fetchEstimatedResources();
+        }
+      }).catch(err => {
+        console.error("Error deleting resource:", err);
+        toast.error("Failed to delete resource");
+        setShowDeleteModal(false);
+      });
+    }
+  };
+
+  if (isInternal && !internalBoqId) {
+    console.error("Missing internalBoqId");
+    return null;
   }
+
   return (
     <>
       <div className="container-fluid mt-4 p-4 min-vh-100">
         <div className="ms-3 d-flex justify-content-between align-items-center mb-4">
           <div className="fw-bold text-start">
-            <ArrowLeft size={20} onClick={() => window.history.back()} style={{ cursor: 'pointer' }} />
+            <ArrowLeft size={20} onClick={() => {
+              if (isInternal) {
+                navigate(`/tender-resource/${projectId}/${boqId}`);
+              } else {
+                navigate(`/tenderestimation/${projectId}`);
+              }
+            }} style={{ cursor: 'pointer' }} />
             <span className="ms-2">BOQ Details</span>
           </div>
         </div>
         <div className="bg-white rounded-3 ms-3 me-3 p-4" style={{ border: '1px solid #0051973D' }}>
-          <div className="text-start fw-bold ms-3 mb-2 d-flex align-items-center">
-            {project?.projectName}
-            {isInternal && (
-              <span className="badge bg-warning text-dark ms-3">Shared Internal BOQ</span>
-            )}
+          <div className="text-start fw-bold ms-3 mb-2 d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center">
+              {project?.projectName}
+            </div>
           </div>
           <div className="row g-2 mb-4 ms-3">
             <div className="col-lg-4 col-md-4">
               <div className="rounded-2 p-3" style={{ backgroundColor: '#EFF6FF', width: '90%', height: '100%' }}>
                 <div className="d-flex justify-content-between">
-                  <span className="text-muted">{isInternal ? 'Resource Code' : 'BOQ Code'}</span>
+                  <span className="text-muted">BOQ Code</span>
                   <ActivityCode />
                 </div>
                 <div className="fw-bold text-start mt-2">{boq?.boqCode}</div>
@@ -218,7 +212,7 @@ function TenderResource() {
             <div className="col-lg-4 col-md-4">
               <div className="rounded-2 p-3" style={{ backgroundColor: '#EFF6FF', width: '90%', height: '100%' }}>
                 <div className="d-flex justify-content-between">
-                  <span className="text-muted">{isInternal ? 'Resource Name' : 'BOQ Name'}</span>
+                  <span className="text-muted">BOQ Name</span>
                   <ActivityView size={16} style={{ filter: "brightness(0) saturate(100%) invert(25%) sepia(100%) saturate(6000%) hue-rotate(200deg) brightness(95%) contrast(90%)" }} />
                 </div>
                 <div className="fw-bold text-start mt-2" title="Click to view full BOQ Name" onClick={() => setSelectedBoqForModal(boq)} style={{ cursor: 'pointer' }}>{boqName}</div>
@@ -302,12 +296,12 @@ function TenderResource() {
         </div>
         <div className="bg-white ms-3 me-3 rounded-3 p-3">
           {(() => {
-            const displayedResources = estimatedResources?.filter(item => {
-              if (isInternal) {
-                return true; // Use the entire array as InternalBoq structures.
-              }
-              return !item.tenderEstimation?.parent;
-            }) || [];
+            const displayedResources = (estimatedResources || []).filter(item => {
+              if (isInternal) return true;
+              const tender = item.tenderEstimation || item;
+              return !tender.parent || tender.parent.length === 0;
+            });
+            const highlightId = searchParams.get('highlightId');
 
             const formatResourceType = (tender) => {
               let type = tender?.resource?.resourceType || tender?.resourceType;
@@ -320,227 +314,189 @@ function TenderResource() {
               setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
             };
 
-            if (isInternal) {
-              return displayedResources.length > 0 ? (
+            const renderResourceRow = (item, index, level = 0) => {
+              const tender = item.tenderEstimation || item;
+              const isComplex = tender.resourceNature?.toLowerCase() === 'complex' || tender.isInternal === true;
+              const rowId = tender.id || item.id || index;
+              const isExpanded = expandedRows[rowId];
+              const isHighlighted = highlightId === String(rowId);
+
+              return (
+                <React.Fragment key={rowId}>
+                  <tr className={isHighlighted ? 'table-warning' : ''} style={isHighlighted ? { animation: 'highlight-fade 3s forwards' } : {}}>
+                    <td style={{ paddingLeft: `${level * 20 + 8}px` }}>
+                      {isComplex && (
+                        <button className="btn btn-sm btn-link p-0 me-1" onClick={() => toggleRow(rowId)}>
+                          {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                        </button>
+                      )}
+                      {index + 1}
+                    </td>
+                    <td>{formatResourceType(tender)}</td>
+                    <td>{tender.refCode || tender.resource?.resourceCode || tender.resources?.refCode || '-'}</td>
+                    <td>
+                        {tender.resource?.resourceName || tender.resources?.resourceName}
+                        {item.merged && <span className="badge bg-info ms-2 small">Merged</span>}
+                    </td>
+                    <td>{tender.resourceNature ? tender.resourceNature.charAt(0).toUpperCase() + tender.resourceNature.slice(1).toLowerCase() : 'N/A'}</td>
+                    <td>{tender.uom?.uomCode}</td>
+                    <td>{tender.quantityType ? tender.quantityType.charAt(0).toUpperCase() + tender.quantityType.slice(1).toLowerCase() : 'N/A'}</td>
+                    <td style={{ maxWidth: '220px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={buildFormulaDisplay(tender.formulaElements) || ''}>
+                      {buildFormulaDisplay(tender.formulaElements) || '—'}
+                    </td>
+                    <td>{(tender.coEfficient || 0).toFixed(5)}</td>
+                    <td>{(item.netQuantity || 0).toFixed(3)}</td>
+                    <td>{(tender.costUnitRate || 0).toFixed(2)}</td>
+                    <td>{(item.totalCostCompanyCurrency || 0).toFixed(2)}</td>
+                    <td>
+                      <div className="d-flex align-items-center">
+                        <EyeIcon size={20} color="#005197" className="me-2" title="View Details" style={{ cursor: 'pointer' }} onClick={() => handleViewResource(tender.id)} />
+
+                        <Trash2 size={20} color="red" className="me-2" title="Delete" style={{ cursor: 'pointer' }} onClick={() => handleDeleteResource(tender.id)} />
+                      </div>
+                    </td>
+                  </tr>
+                  {isExpanded && item.items && item.items.map((child, cIdx) => renderResourceRow(child, cIdx, level + 1))}
+                </React.Fragment>
+              );
+            };
+
+            return displayedResources.length > 0 ? (
+              viewType === 'table' ? (
                 <div className="mt-4 table-responsive">
                   <table className="table activity-table">
                     <thead>
                       <tr>
-                        <th style={{ width: '40px' }}></th>
                         <th>S.No</th>
-                        <th>Resource</th>
+                        <th>Resource Type</th>
+                        <th>Reference Code</th>
+                        <th>Resource Name</th>
+                        <th>Resource Nature</th>
                         <th>UOM</th>
-                        <th>Total Quantity</th>
+                        <th>Quantity Type</th>
+                        <th>Formula</th>
+                        <th>Coefficient</th>
+                        <th>Quantity</th>
+                        <th>Rate</th>
+                        <th><IndianRupee size={16} /><span>Total Cost</span></th>
                         <th>Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {displayedResources.map((item, index) => {
-                        const isShared = item.items && item.items.length > 1;
-                        const tenderEstimationId = item.internalBoqId || item.id;
-                        const rowId = tenderEstimationId || index;
-                        const isExpanded = expandedRows[rowId];
-                        return (
-                          <React.Fragment key={rowId}>
-                            <tr>
-                              <td className="text-center align-middle">
-                                {item.items && item.items.length > 0 && (
-                                  <button className="btn btn-sm btn-link p-0 text-dark" onClick={() => toggleRow(rowId)}>
-                                    {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                                  </button>
-                                )}
-                              </td>
-                              <td className="align-middle">{index + 1}</td>
-                              <td className="align-middle">
-                                {item.resourceName || 'N/A'}
-                                {isShared && <span className="badge bg-warning text-dark ms-2">Shared BOQ</span>}
-                              </td>
-                              <td className="align-middle">{item.uomCode || 'N/A'}</td>
-                              <td className="align-middle">{(item.totalQuantity || 0).toFixed(3)}</td>
-                              <td className="align-middle">
-                                <button className="btn btn-sm" style={{ background: "#DCFCE7", cursor: "pointer" }} onClick={() => {
-                                  if (!tenderEstimationId) {
-                                    toast.error("Tender Estimation ID is missing.");
-                                    return;
-                                  }
-                                  console.log("Calling Internal BOQ with:", tenderEstimationId);
-                                  handleViewResource(tenderEstimationId);
-                                }}>
-                                  <Eye color="#15803D" size={20} /><span className="ms-1" style={{ color: '#15803D' }}>View</span>
-                                </button>
-                              </td>
-                            </tr>
-                            {isExpanded && item.items && item.items.map((child, cIndex) => (
-                              <tr key={child.tenderEstimationId || cIndex} style={{ backgroundColor: '#f9fafb' }}>
-                                <td></td>
-                                <td></td>
-                                <td colSpan={2} style={{ paddingLeft: '2.5rem' }} className="align-middle">
-                                  <span className="text-muted d-inline-block small me-2">Tender Estimation ID:</span>
-                                  <span className="fw-medium">{child.tenderEstimationId || 'N/A'}</span>
-                                </td>
-                                <td colSpan={2} className="align-middle">
-                                  <span className="text-muted d-inline-block small me-2">Contribution:</span>
-                                  <span className="fw-medium text-primary">{(child.quantity || 0).toFixed(3)}</span>
-                                </td>
-                              </tr>
-                            ))}
-                          </React.Fragment>
-                        );
-                      })}
+                      {displayedResources.map((item, index) => renderResourceRow(item, index))}
                     </tbody>
                   </table>
                 </div>
-              ) : <div className="text-center py-4 text-muted">No Content Available</div>;
-            }
-
-            return displayedResources.length > 0 ? (
-              viewType === 'table' ? (
+              ) : (
                 <div className="mt-4">
-                  <table className="table activity-table">
-                  <thead>
-                    <tr>
-                      <th>S.No</th>
-                      <th>Resource Type</th>
-                      <th>Reference Code</th>
-                      <th>Resource Name</th>
-                      <th>Resource Nature</th>
-                      <th>UOM</th>
-                      <th>Quantity Type</th>
-                      <th>Formula</th>
-                      <th>Coefficient</th>
-                      <th>Quantity</th>
-                      <th>Rate</th>
-                      <th><IndianRupee size={16} /><span>Total Cost</span></th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayedResources.map((item, index) => (
-                      <tr key={index}>
-                        <td>{index + 1}</td>
-                        <td>{formatResourceType(item.tenderEstimation)}</td>
-                        <td>{item.tenderEstimation?.refCode || item.tenderEstimation?.resource?.resourceCode || item.tenderEstimation?.resources?.refCode || '-'}</td>
-                        <td>{item.tenderEstimation?.resource?.resourceName || item.tenderEstimation?.resources?.resourceName}</td>
-                        <td>{item.tenderEstimation?.resourceNature ? item.tenderEstimation.resourceNature.charAt(0).toUpperCase() + item.tenderEstimation.resourceNature.slice(1).toLowerCase() : 'N/A'}</td>
-                        <td>{item.tenderEstimation?.uom?.uomCode}</td>
-                        <td>{item.tenderEstimation?.quantityType ? item.tenderEstimation.quantityType.charAt(0).toUpperCase() + item.tenderEstimation.quantityType.slice(1).toLowerCase() : 'N/A'}</td>
-                        <td style={{ maxWidth: '220px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={buildFormulaDisplay(item.tenderEstimation?.formulaElements) || ''}>
-                          {buildFormulaDisplay(item.tenderEstimation?.formulaElements) || '—'}
-                        </td>
-                        <td>{(item.tenderEstimation?.coEfficient || 0).toFixed(5)}</td>
-                        <td>{(item.netQuantity || 0).toFixed(3)}</td>
-                        <td>{(item.tenderEstimation?.costUnitRate || 0).toFixed(2)}</td>
-                        <td>{(item.totalCostCompanyCurrency || 0).toFixed(2)}</td>
-                        <td>
-                          <EyeIcon size={20} color="#005197" className="me-2" style={{ cursor: 'pointer' }} onClick={() => handleViewResource(item.tenderEstimation.id)} />
-                          <Trash2 size={20} color="red" className="me-2" style={{ cursor: 'pointer' }} onClick={() => handleDeleteResource(item.tenderEstimation.id)} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>) : (
-              <div className="mt-4">
-                <div className="row g-4">
-                  {displayedResources.map((tender, index) => (
-                    <div key={index} className="col-lg-4 col-md-6 col-sm-12">
-                      <div className="card resource-card h-100 shadow-sm border-0">
-                        <div className="card-body d-flex flex-column justify-content-between">
-                          <div className="d-flex justify-content-between align-items-center mb-2">
-                            <span className="project-code fw-bold text-primary">
-                              {formatResourceType(tender?.tenderEstimation)}
-                            </span>
-                          </div>
-                          <div className="mb-2 text-start">
-                            <p className="project-name fw-bold">
-                              {tender?.tenderEstimation?.resource?.resourceCode || tender?.tenderEstimation?.resources?.resourceCode}
-                            </p>
-                          </div>
-                          <div className="d-flex justify-content-between mt-2 small">
-                            <span>Reference Code</span>
-                            <span className="fw-medium">
-                              {tender?.tenderEstimation?.refCode || tender?.tenderEstimation?.resource?.refCode || tender?.tenderEstimation?.resources?.refCode || '-'}
-                            </span>
-                          </div>
-                          <div className="d-flex justify-content-between mt-1 small">
-                            <span>Resource Name</span>
-                            <span className="fw-medium">
-                              {tender?.tenderEstimation?.resource?.resourceName || tender?.tenderEstimation?.resources?.resourceName}
-                            </span>
-                          </div>
-                          <div className="d-flex justify-content-between mt-1 small">
-                            <span>Resource Nature</span>
-                            <span className="fw-medium">
-                              {tender?.tenderEstimation?.resourceNature ? tender.tenderEstimation.resourceNature.charAt(0).toUpperCase() + tender.tenderEstimation.resourceNature.slice(1).toLowerCase() : 'N/A'}
-                            </span>
-                          </div>
-                          <div className="d-flex justify-content-between mt-1 small">
-                            <span>Quantity Type</span>
-                            <span className="fw-medium">
-                              {tender?.tenderEstimation?.quantityType ? tender.tenderEstimation.quantityType.charAt(0).toUpperCase() + tender.tenderEstimation.quantityType.slice(1).toLowerCase() : 'N/A'}
-                            </span>
-                          </div>
-                          <div className="d-flex justify-content-between mt-1 small">
-                            <span>Coefficient</span>
-                            <span className="fw-medium">
-                              {(tender?.tenderEstimation?.coEfficient || 0).toFixed(3)}
-                            </span>
-                          </div>
-                          <div className="d-flex justify-content-between mt-1 small">
-                            <span>Calculated Quantity</span>
-                            <span className="fw-medium">
-                              {(tender?.calculatedQuantity || 0).toFixed(3)}
-                            </span>
-                          </div>
-                          <div className="d-flex justify-content-between mt-1 small">
-                            <span>Quantity (Net):</span>
-                            <span className="fw-medium">
-                              {(tender.netQuantity || 0).toFixed(3)}
-                            </span>
-                          </div>
-                          <div className="d-flex justify-content-between mt-1 small">
-                            <span>Rate:</span>
-                            <span className="fw-medium">
-                              <IndianRupee size={14} />{(tender.tenderEstimation?.costUnitRate || 0).toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="d-flex justify-content-between mt-1 small">
-                            <span>Total Cost:</span>
-                            <span className="fw-bold text-success">
-                              <IndianRupee size={14} />{(tender.totalCostCompanyCurrency || 0).toFixed(2)}
-                            </span>
-                          </div>
-                          <hr />
-                          <div className="d-flex justify-content-end mt-1">
-                            <EditIcon
-                              size={20}
-                              color="#005197"
-                              className="me-3"
-                              style={{ cursor: 'pointer' }}
-                              onClick={() => handleEditResource(tender.tenderEstimation.id)}
-                            />
-                            <Trash2
-                              size={20}
-                              color="red"
-                              style={{ cursor: 'pointer' }}
-                              onClick={() => handleDeleteResource(tender.tenderEstimation.id)}
-                            />
+                  <div className="row g-4">
+                    {displayedResources.map((tender, index) => (
+                      <div key={index} className="col-lg-4 col-md-6 col-sm-12">
+                        <div className={`card resource-card h-100 shadow-sm border-0 ${highlightId === String(tender.tenderEstimation?.id) ? 'border-primary border-2' : ''}`}>
+                          <div className="card-body d-flex flex-column justify-content-between">
+                            <div className="d-flex justify-content-between align-items-center mb-2">
+                              <span className="project-code fw-bold text-primary">
+                                {formatResourceType(tender?.tenderEstimation)}
+                              </span>
+                              {tender.merged && <span className="badge bg-info small">Merged</span>}
+                            </div>
+                            <div className="mb-2 text-start">
+                              <p className="project-name fw-bold">
+                                {tender?.tenderEstimation?.resource?.resourceCode || tender?.tenderEstimation?.resources?.resourceCode}
+                              </p>
+                            </div>
+                            <div className="d-flex justify-content-between mt-2 small">
+                              <span>Reference Code</span>
+                              <span className="fw-medium">
+                                {tender?.tenderEstimation?.refCode || tender?.tenderEstimation?.resource?.refCode || tender?.tenderEstimation?.resources?.refCode || '-'}
+                              </span>
+                            </div>
+                            <div className="d-flex justify-content-between mt-1 small">
+                              <span>Resource Name</span>
+                              <span className="fw-medium">
+                                {tender?.tenderEstimation?.resource?.resourceName || tender?.tenderEstimation?.resources?.resourceName}
+                              </span>
+                            </div>
+                            <div className="d-flex justify-content-between mt-1 small">
+                              <span>Resource Nature</span>
+                              <span className="fw-medium">
+                                {tender?.tenderEstimation?.resourceNature ? tender.tenderEstimation.resourceNature.charAt(0).toUpperCase() + tender.tenderEstimation.resourceNature.slice(1).toLowerCase() : 'N/A'}
+                              </span>
+                            </div>
+                            <div className="d-flex justify-content-between mt-1 small">
+                              <span>Quantity Type</span>
+                              <span className="fw-medium">
+                                {tender?.tenderEstimation?.quantityType ? tender.tenderEstimation.quantityType.charAt(0).toUpperCase() + tender.tenderEstimation.quantityType.slice(1).toLowerCase() : 'N/A'}
+                              </span>
+                            </div>
+                            <div className="d-flex justify-content-between mt-1 small">
+                              <span>Coefficient</span>
+                              <span className="fw-medium">
+                                {(tender?.tenderEstimation?.coEfficient || 0).toFixed(3)}
+                              </span>
+                            </div>
+                            {/* ... grid view continues ... */}
+                            <div className="d-flex justify-content-between mt-1 small">
+                              <span>Quantity (Net):</span>
+                              <span className="fw-medium">
+                                {(tender.netQuantity || 0).toFixed(3)}
+                              </span>
+                            </div>
+                            <div className="d-flex justify-content-between mt-1 small">
+                              <span>Total Cost:</span>
+                              <span className="fw-bold text-success">
+                                <IndianRupee size={14} />{(tender.totalCostCompanyCurrency || 0).toFixed(2)}
+                              </span>
+                            </div>
+                            <hr />
+                            <div className="d-flex justify-content-end mt-1">
+                              <EyeIcon
+                                size={20}
+                                color="#005197"
+                                className="me-3"
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => handleViewResource(tender.tenderEstimation?.id || tender.id)}
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
+              )
+            ) : (
+              <div className="text-center mt-4">
+                <p>No resources found for this BOQ.</p>
               </div>
-            )
-          ) : (
-            <div className="text-center mt-4">
-              <p>No resources found for this {isInternal ? 'complex resource' : 'BOQ'}.</p>
-            </div>
-          );
+            );
           })()}
         </div>
       </div>
+      {showDeleteModal && (
+        <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1060 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0">
+              <div className="modal-body text-center p-4">
+                <div className="mb-3">
+                  <AlertTriangle size={48} color="#ffc107" />
+                </div>
+                <h5 className="fw-bold mb-3">Delete Confirmation</h5>
+                <p className="text-muted">Are you sure you want to delete this resource? This action cannot be undone.</p>
+                <div className="d-flex justify-content-center gap-3 mt-4">
+                  <button type="button" className="btn btn-outline-secondary px-4" onClick={() => setShowDeleteModal(false)}>
+                    Cancel
+                  </button>
+                  <button type="button" className="btn btn-danger px-4" onClick={confirmDelete}>
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedBoqForModal && (
         <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1050 }}>
           <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Select from "react-select";
 import AsyncSelect from "react-select/async";
-import { ArrowLeft, BookOpenText, ChevronDown, Info, IndianRupee, X, Settings } from "lucide-react";
+import { ArrowLeft, BookOpenText, ChevronDown, Info, IndianRupee, X, Settings, Search, AlertTriangle } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -12,16 +12,14 @@ import { searchBoq } from "../Utills/projectApi";
 
 function AddResource() {
     const navigate = useNavigate();
-    const { boqId, projectId: projectIdParam, tenderEstimationId } = useParams();
+    const { boqId, projectId: projectIdParam, resourceId } = useParams();
     const [searchParams] = useSearchParams();
     const isInternal = searchParams.get('isInternal') === 'true';
-    const tenderEstimationIdFromQuery = searchParams.get('tenderEstimationId');
+    const internalBoqId = searchParams.get('internalBoqId');
     const isEditModeQuery = searchParams.get('isEdit') === 'true';
     const darkBlue = '#005197';
 
-    if (isInternal && !tenderEstimationIdFromQuery) {
-        console.error("Missing tenderEstimationId in internal mode");
-    }
+
     const vibrantBlue = '#007BFF';
 
     const [boq, setBoq] = useState(null);
@@ -51,8 +49,29 @@ function AddResource() {
         'Wastage & Net Quantity': false,
         'Pricing & Currency': false,
     });
+    const [isInternalBoqMode, setIsInternalBoqMode] = useState(isInternal);
+    const [showMergeModal, setShowMergeModal] = useState(false);
+    const [duplicateCandidate, setDuplicateCandidate] = useState(null);
+
+    const compareAttributes = (a1, a2) => {
+        // a1 is from estimatedResources item
+        // a2 is currently selected attributes (mapped to array)
+        if (!a1 && !a2) return true;
+        const list1 = Array.isArray(a1) ? a1 : [];
+        const list2 = Array.isArray(a2) ? a2 : [];
+        if (list1.length !== list2.length) return false;
+
+        return list1.every(attr1 => {
+            const g1 = attr1.attributeGroupId || attr1.attributeGroup?.id;
+            const i1 = attr1.attributeId || attr1.attribute?.id;
+            return list2.some(attr2 => 
+                (attr2.attributeGroupId === g1 || attr2.groupId === g1) && 
+                (attr2.attributeId === i1 || attr2.value === i1)
+            );
+        });
+    };
     const [showBoqModal, setShowBoqModal] = useState(false);
-    const [isEditMode, setIsEditMode] = useState(isEditModeQuery || !tenderEstimationId);
+    const [isEditMode, setIsEditMode] = useState(isEditModeQuery || !resourceId);
     const [isAttributeModalOpen, setIsAttributeModalOpen] = useState(false);
 
     const [resourceData, setResourceData] = useState({
@@ -83,35 +102,33 @@ function AddResource() {
 
 
     const fetchBOQ = useCallback(() => {
-        if (!boqId) return;
+        if (!boqId && !internalBoqId) return;
 
         if (isInternal) {
-            axios.get(`${import.meta.env.VITE_API_BASE_URL}/tender-estimation/complex/project/${projectId}`, {
+            axios.get(`${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/internal-boq/${internalBoqId}`, {
                 headers: {
                     Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                     'Content-Type': 'application/json'
                 }
             }).then(res => {
                 if (res.status === 200) {
-                    const dataArray = res.data || [];
-                    const tender = dataArray.find(item => item.id === boqId);
-                    if (!tender) return;
-
-                    const cost = tender.costDetails || tender;
-                    const simulatedBoq = {
-                        boqCode: tender.resource?.resourceCode || tender.resources?.resourceCode || (typeof tender.resourceType === 'string' ? tender.resourceType : tender.resourceType?.resourceTypeName) || '',
-                        boqName: tender.resource?.resourceName || tender.resources?.resourceName || 'Complex Resource',
-                        uom: tender.uom || { uomCode: 'N/A' },
-                        quantity: tender.totalQuantity || tender.calculatedQuantity || cost.calculatedQuantity || cost.netQuantity || tender.coEfficient || 1,
-                        tenderEstimationId: tender.id,
-                        projectId: tender.project?.id || projectId
+                    const internal = (Array.isArray(res.data) ? res.data[0] : res.data) || {};
+                    const boq = {
+                        id: internal.id || internal.internalBoqId || internalBoqId,
+                        boqCode: internal.resource?.resourceCode || internal.resourceCode || "N/A",
+                        boqName: internal.resource?.resourceName || internal.resourceName || "N/A",
+                        uom: {
+                            uomCode: internal.uom?.uomCode || internal.uomCode || "N/A"
+                        },
+                        quantity: internal.totalQuantity || 0,
+                        projectId: projectId
                     };
-                    setBoq(simulatedBoq);
-                    handleCalculations({ calculatedQuantity: simulatedBoq.quantity || 0 });
+                    setBoq(boq);
+                    handleCalculations({ calculatedQuantity: boq.quantity || 0 });
                 }
             }).catch(err => {
                 console.error(err);
-                toast.error('Failed to fetch parent resource information.');
+                toast.error('Failed to fetch internal BOQ information.');
             });
         } else {
             axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/BOQ/${boqId}`, {
@@ -133,13 +150,13 @@ function AddResource() {
                 }
             });
         }
-    }, [boqId, isInternal, navigate]);
+    }, [boqId, internalBoqId, isInternal, navigate, projectId]);
 
     const fetchTenderEstimationResource = useCallback(() => {
-        if (!tenderEstimationId || !boqId) return;
+        if (!resourceId) return;
 
         axios.get(
-            `${import.meta.env.VITE_API_BASE_URL}/tender/estimatedResource/${tenderEstimationId}?boqId=${boqId}`,
+            `${import.meta.env.VITE_API_BASE_URL}/tender/estimatedResource/${resourceId}${isInternal ? '' : `?boqId=${boqId}`}`,
             {
                 headers: {
                     Authorization: `Bearer ${sessionStorage.getItem('token')}`,
@@ -247,22 +264,44 @@ function AddResource() {
             console.error("Error fetching tender resource:", err);
             toast.error("Failed to load resource data");
         });
-    }, [tenderEstimationId, boqId]);
+    }, [resourceId, boqId, isInternal]);
 
     const fetchEstimatedResources = useCallback(() => {
-        const targetBoqId = boqId;
-        if (!targetBoqId) return;
+        if (!boqId && !internalBoqId) return;
         const url = isInternal 
-          ? `${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/internal-boq/${tenderEstimationIdFromQuery}`
-          : `${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/estimatedResources/${targetBoqId}`;
+          ? `${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/internal-boq/${internalBoqId}`
+          : `${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/estimatedResources/${boqId}`;
         axios.get(url, {
             headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json' }
         }).then(res => {
             if (res.status === 200) {
-                setEstimatedResources(Array.isArray(res.data) ? res.data : (res.data?.content || []));
+                if (isInternal) {
+                    const internal = res.data;
+                    const enrichedItems = (internal.items || [])
+                        .filter(item => item.id !== internal.internalBoqId)
+                        .map(item => ({
+                            ...item,
+                            tenderEstimation: {
+                                ...item,
+                                id: item.id,
+                                resource: {
+                                    resourceName: item.resourceName || item.resource?.resourceName,
+                                    resourceCode: item.resourceCode || item.resource?.resourceCode || item.refCode
+                                },
+                                uom: { uomCode: item.uomCode || item.uom?.uomCode },
+                                costUnitRate: item.rate || item.costUnitRate || 0,
+                                formulaElements: item.formulaElements || []
+                            },
+                            netQuantity: item.quantity || item.netQuantity || 0,
+                            totalCostCompanyCurrency: item.totalCost || item.amount || item.totalCostCompanyCurrency || 0
+                        }));
+                    setEstimatedResources(enrichedItems);
+                } else {
+                    setEstimatedResources(Array.isArray(res.data) ? res.data : (res.data?.content || []));
+                }
             }
         }).catch(err => console.error("Failed to fetch estimated resources", err));
-    }, [boqId, tenderEstimationIdFromQuery, isInternal]);
+    }, [boqId, internalBoqId, isInternal]);
 
     const fetchGlobalValues = useCallback(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/globalValue/${projectId}`, {
@@ -283,10 +322,10 @@ function AddResource() {
     }, [fetchBOQ, fetchEstimatedResources, fetchGlobalValues]);
 
     useEffect(() => {
-        if (tenderEstimationId && boqId) {
+        if (resourceId && (boqId || internalBoqId)) {
             fetchTenderEstimationResource();
         }
-    }, [fetchTenderEstimationResource]);
+    }, [fetchTenderEstimationResource, resourceId, boqId, internalBoqId]);
 
     const handleUnauthorized = useCallback(() => {
         toast.error("Session expired or unauthorized. Please log in again.");
@@ -491,7 +530,13 @@ function AddResource() {
         [currency]
     );
 
-    const handleBack = () => navigate(-1);
+    const handleBack = () => {
+        if (isInternal) {
+            navigate(`/tender-resource/${projectId}/${boqId}?isInternal=true&internalBoqId=${internalBoqId}`);
+        } else {
+            navigate(`/tenderestimation/${projectId}`);
+        }
+    };
 
     // State for dynamic attributes
     const [resourceAttributes, setResourceAttributes] = useState([]);
@@ -658,12 +703,57 @@ function AddResource() {
             return;
         }
 
+        // Duplicate Validation
+        const currentSelectionAttrs = Object.entries(selectedAttributes)
+            .filter(([_, opt]) => opt?.value)
+            .map(([groupId, opt]) => ({
+                attributeGroupId: groupId,
+                attributeId: opt.value
+            }));
+
+        const duplicate = estimatedResources.find(r => {
+            const tender = r.tenderEstimation || r;
+            const rId = tender.resource?.id || tender.resources?.id || tender.resourceId;
+            const uomId = tender.uom?.id || tender.uomId;
+            const attrs = tender.attributes || [];
+            
+            // For both, check resource and attributes first
+            const baseMatch = rId === selectedResource.value && compareAttributes(attrs, currentSelectionAttrs);
+            
+            if (isComplex) {
+                // For complex, also match UOM within the same breakup (estimatedResources is already scope-limited)
+                return baseMatch && uomId === selectedUom.value;
+            } else {
+                // For simple, if baseMatch is true, it might be a duplicate in this BOQ/Project 
+                // (Backend will catch the global BOQ+Project case, but we can catch same-level here)
+                return baseMatch;
+            }
+        });
+
+        if (duplicate && !resourceId) { 
+            if (isComplex) {
+                setDuplicateCandidate(duplicate);
+                setShowMergeModal(true);
+                return;
+            } else {
+                toast.error("This simple resource already exists with same attributes in this BOQ/Project");
+                return;
+            }
+        }
+
+        performSave();
+    }, [resourceData, selectedResourceType, selectedResource, selectedUom, selectedNature, selectedQuantityType, selectedCurrency, resourceId, navigate, handleUnauthorized, resourceAttributes, selectedAttributes, estimatedResources, isInternal, internalBoqId, boqId]);
+
+    const performSave = (isMerge = false) => {
+        const isComplex = selectedNature?.label?.toLowerCase() === 'complex';
         // Force send netQuantity directly for update scenarios to omit aggregation bugs
         const finalNetQty = resourceData.netQuantity;
         const finalRate = resourceData.rate;
 
         const payload = {
             ...resourceData,
+            boqId: boqId,
+            internalBoqId: isInternal ? internalBoqId : null,
             resourceTypeId: selectedResourceType?.value || resourceData.resourceTypeId,
             resourceId: selectedResource?.value || resourceData.resourceId,
             uomId: selectedUom?.value || resourceData.uomId,
@@ -671,11 +761,8 @@ function AddResource() {
             quantityTypeId: selectedQuantityType?.value || resourceData.quantityTypeId,
             currencyId: selectedCurrency?.value || resourceData.currencyId,
             refCode: resourceData.refCode ? parseInt(resourceData.refCode) : 0,
-            boqId: boqId,
+            isInternal: isInternal,
             projectId: projectId,
-            parentId: isInternal ? tenderEstimationIdFromQuery : undefined,
-            netQuantity: finalNetQty,
-            rate: finalRate,
             attributes: Object.entries(selectedAttributes)
                 .filter(([_, opt]) => opt?.value)
                 .map(([groupId, opt]) => ({
@@ -692,13 +779,12 @@ function AddResource() {
                 sequence: index
             }))
         };
-        if (payload.parentId === undefined) { delete payload.parentId; }
-        if (isInternal) { delete payload.boqId; }
         if (!payload.id) { delete payload.id; } // Prevent 500 API exception parsing UUID empty strings
+        if (!payload.internalBoqId) { delete payload.internalBoqId; }
 
         console.log("Final Payload:", payload);
 
-        const endpoint = tenderEstimationId
+        const endpoint = resourceId
             ? `${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/updateResources`
             : `${import.meta.env.VITE_API_BASE_URL}/tenderEstimation/addResources`;
 
@@ -709,26 +795,24 @@ function AddResource() {
             }
         }).then((res) => {
             if (res.status === 200 || res.status === 201) {
-              setEstimatedResources(prev => {
-                if (tenderEstimationId) {
-                  return prev.map(item => item.tenderEstimation?.id === res.data.tenderEstimation?.id ? res.data : item);
-                } else {
-                  return [...prev, res.data];
-                }
-              });
+              const savedResource = res.data.tenderEstimation || res.data;
+              toast.success(resourceId ? "Resource updated successfully" : "Resource added successfully");
+              // Go back to the resource list with highlightId
+              const backUrl = isInternal 
+                ? `/tender-resource/${projectId}/${boqId}?isInternal=true&internalBoqId=${internalBoqId}&highlightId=${savedResource.id}`
+                : `/tender-resource/${projectId}/${boqId}?highlightId=${savedResource.id}`;
+              navigate(backUrl);
             }
-            toast.success(tenderEstimationId ? "Resource updated successfully" : "Resource added successfully");
-            navigate(-1);
         }).catch((err) => {
             if (err?.response?.status === 401) {
                 handleUnauthorized();
             } else if (err?.response?.data?.message) {
                 toast.error(err.response.data.message);
             } else {
-                toast.error(tenderEstimationId ? "Failed to update resource" : "Failed to add resource");
+                toast.error(resourceId ? "Failed to update resource" : "Failed to add resource");
             }
         });
-    }, [resourceData, selectedResourceType, selectedResource, selectedUom, selectedNature, selectedQuantityType, selectedCurrency, tenderEstimationId, navigate, handleUnauthorized, resourceAttributes, selectedAttributes]);
+    }; // end performSave
 
     const toggleSelection = useCallback((sectionName) => {
         setExpandedSections(prev => ({
@@ -1023,10 +1107,10 @@ function AddResource() {
                     <div className="fw-bold text-start">
                         <ArrowLeft size={20} onClick={handleBack} style={{ cursor: 'pointer' }} />
                         <span className="ms-2 fs-5">
-                            {!tenderEstimationId ? 'Add New Resource' : isEditMode ? 'Edit Resource' : 'View Resource'}
+                            {!resourceId ? 'Add New Resource' : isEditMode ? 'Edit Resource' : 'View Resource'}
                         </span>
                     </div>
-                    {tenderEstimationId && !isEditMode && (
+                    {resourceId && !isEditMode && (
                         <button
                             className="btn btn-outline-primary d-flex align-items-center"
                             onClick={() => setIsEditMode(true)}
@@ -1456,15 +1540,34 @@ function AddResource() {
                     )}
 
                     <div className="d-flex justify-content-end pt-3 mb-5">
-                        {(!tenderEstimationId || isEditMode) && (
-                            <button
-                                className="btn action-button px-5"
-                                onClick={handleAddResource}
-                                disabled={!selectedResourceType || !selectedResource || (!isComplex && resourceData.rate === 0)}
-                            >
-                                {tenderEstimationId ? 'Update Resource' : 'Add Resource'}
-                            </button>
-                        )}
+                        {(() => {
+                            const currentSelectionAttrs = Object.entries(selectedAttributes)
+                                .filter(([_, opt]) => opt?.value)
+                                .map(([groupId, opt]) => ({
+                                    attributeGroupId: groupId,
+                                    attributeId: opt.value
+                                }));
+
+                            const isSimpleDuplicate = !isComplex && estimatedResources.some(r => {
+                                const tender = r.tenderEstimation || r;
+                                const rId = tender.resource?.id || tender.resources?.id || tender.resourceId;
+                                const uomId = tender.uom?.id || tender.uomId;
+                                const attrs = tender.attributes || [];
+                                return rId === selectedResource?.value && 
+                                       uomId === selectedUom?.value && 
+                                       compareAttributes(attrs, currentSelectionAttrs);
+                            });
+
+                            return (!resourceId || isEditMode) && (
+                                <button
+                                    className="btn action-button px-5"
+                                    onClick={handleAddResource}
+                                    disabled={!selectedResourceType || !selectedResource || (!isComplex && resourceData.rate === 0) || (isSimpleDuplicate && !resourceId)}
+                                >
+                                    {isSimpleDuplicate && !resourceId ? 'Resource Already Exists' : (resourceId ? 'Update Resource' : 'Add Resource')}
+                                </button>
+                            );
+                        })()}
                     </div>
                 </div>
 
@@ -1478,46 +1581,10 @@ function AddResource() {
                             if (isInternal) {
                                 displayedResources = estimatedResources || []; 
                             } else {
-                                displayedResources = estimatedResources?.filter(item => !item.tenderEstimation?.parent) || [];
+                                displayedResources = estimatedResources || [];
                             }
 
-                            if (isInternal) {
-                                return displayedResources.length > 0 ? (
-                                    <div className="d-flex flex-column gap-3">
-                                        {displayedResources.map((item, index) => {
-                                            const isShared = item.items && item.items.length > 1;
-                                            return (
-                                                <div key={item.internalBoqId || item.id || index} className="p-3 border rounded-3 bg-light shadow-sm">
-                                                    <div className="d-flex justify-content-between align-items-center mb-2">
-                                                        <span className="fw-bold text-primary" style={{ fontSize: '0.9rem' }}>
-                                                            {item.resourceName || 'N/A'}
-                                                        </span>
-                                                        {isShared && <span className="badge bg-warning text-dark">Shared BOQ</span>}
-                                                    </div>
-                                                    <div className="d-flex justify-content-between small text-muted mb-2">
-                                                        <span>UOM: {item.uomCode || 'N/A'}</span>
-                                                        <span className="fw-bold text-dark">Total Qty: {(item.totalQuantity || 0).toFixed(3)}</span>
-                                                    </div>
-                                                    {item.items && item.items.length > 0 && (
-                                                        <div className="border-top pt-2 mt-2">
-                                                            {item.items.map((child, cIndex) => (
-                                                                <div key={child.tenderEstimationId || cIndex} className="d-flex justify-content-between align-items-center mb-1 small" style={{ paddingLeft: '1rem' }}>
-                                                                    <span className="text-muted">TE: {child.tenderEstimationId || 'N/A'}</span>
-                                                                    <span className="fw-medium text-success">Qty: {(child.quantity || 0).toFixed(3)}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <div className="text-center p-4">
-                                        <p className="text-muted mb-0">No resources estimated yet.</p>
-                                    </div>
-                                );
-                            }
+
 
                             return displayedResources.length > 0 ? (
                                 <div className="d-flex flex-column gap-3">
@@ -1617,6 +1684,38 @@ function AddResource() {
                                 >
                                     Done
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Merge Confirmation Modal */}
+            {showMergeModal && (
+                <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 1100 }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow-lg">
+                            <div className="modal-header bg-warning justify-content-between">
+                                <h5 className="modal-title d-flex align-items-center">
+                                    <AlertTriangle className="me-2" /> Duplicate Detected
+                                </h5>
+                                <button type="button" className="btn-close" onClick={() => setShowMergeModal(false)}></button>
+                            </div>
+                            <div className="modal-body p-4 text-start">
+                                <p className="mb-3">
+                                    The resource <strong>{selectedResource?.label}</strong> already exists with the same UOM and attributes.
+                                </p>
+                                <div className="alert alert-info py-2 small">
+                                    <Info size={16} className="me-2" />
+                                    Since this is a <strong>Complex Resource</strong>, the quantity you specified will be <strong>merged</strong> into the existing entry.
+                                </div>
+                                <p className="text-muted small mb-0">Do you want to continue?</p>
+                            </div>
+                            <div className="modal-footer border-0">
+                                <button className="btn btn-light px-4 rounded-pill" onClick={() => setShowMergeModal(false)}>Cancel</button>
+                                <button className="btn btn-warning px-4 rounded-pill fw-bold" onClick={() => {
+                                    setShowMergeModal(false);
+                                    performSave(true);
+                                }}>Merge & Continue</button>
                             </div>
                         </div>
                     </div>
