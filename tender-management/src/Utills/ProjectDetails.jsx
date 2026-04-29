@@ -618,14 +618,14 @@ function ProjectInfo({ project, feasbilityStudy, handleSubmit, region, scopePack
                 <div className="d-flex me-4">
                     {activeTab === 'technical' ? (
                         <button type="button" className="btn action-button d-flex align-items-center" onClick={() => {
-                            const isFeasibilityConcluded = feasbilityStudy && (
+                            const isFeasibilityConcluded = project.needFeasibility === false || (feasbilityStudy && (
                                 feasbilityStudy.feasibilityApproved === true || 
                                 feasbilityStudy.feasibilityApproved === false || 
                                 feasbilityStudy.feasibilityStatus === 'APPROVED' || 
                                 feasbilityStudy.feasibilityStatus === 'REJECTED' || 
                                 feasbilityStudy.status === 'APPROVED' || 
                                 feasbilityStudy.status === 'REJECTED'
-                            );
+                            ));
                             if (isFeasibilityConcluded) {
                                 handleSubmit(project.needFeasibility);
                             } else {

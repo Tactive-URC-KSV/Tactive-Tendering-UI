@@ -20,7 +20,7 @@ function ProjectCreation() {
         shortName: "",
         startDate: "",
         endDate: "",
-        needFeasibility: false
+        needFeasibility: null
     });
     const [region, setRegion] = useState("");
     const [sector, setSector] = useState("");
@@ -47,14 +47,17 @@ function ProjectCreation() {
     };
 
     useEffect(() => {
-        if (projectId && feasbilityStudy.feasibilityApproved) {
-            setEnabledTabs(["info", "feasibility", "document"]);
-        } else if (projectId) {
-            setEnabledTabs(["info", "feasibility"]);
+        if (projectId) {
+            // Enable document tab if feasibility is approved OR if feasibility study is not needed
+            if (project.needFeasibility === false || feasbilityStudy.feasibilityApproved) {
+                setEnabledTabs(["info", "feasibility", "document"]);
+            } else {
+                setEnabledTabs(["info", "feasibility"]);
+            }
         } else {
             setEnabledTabs(["info"]);
         }
-    }, [projectId, feasbilityStudy]);
+    }, [projectId, feasbilityStudy, project.needFeasibility]);
 
     useEffect(() => {
         const hash = window.location.hash.substring(1);
