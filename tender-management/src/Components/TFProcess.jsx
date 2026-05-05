@@ -176,7 +176,7 @@ function TFProcess({ projectId: propProjectId }) {
     const [highlightedNodes, setHighlightedNodes] = useState(new Set());
     const debouncedSearchQuery = useDebounce(searchQuery, 3000);
     const [searchTerm, setSearchTerm] = useState('');
-    const expandParents = async (searchResults) => {
+    const expandParents = async (searchResults, baseTree = null) => {
         const parentsToExpand = new Set();
         const parentsByLevel = new Map();
 
@@ -193,7 +193,7 @@ function TFProcess({ projectId: propProjectId }) {
         };
         searchResults.forEach(item => collectParents(item));
 
-        let currentTree = [...parentTree];
+        let currentTree = baseTree ? [...baseTree] : [...parentTree];
 
         const sortedLevels = Array.from(parentsByLevel.keys()).sort((a, b) => a - b);
 
@@ -361,19 +361,53 @@ function TFProcess({ projectId: propProjectId }) {
 
                     // 2. Fetch Dependent/Parallel Data
                     const promises = [
-                        fetchParentBoqData(),
                         fetchContractorDetails(),
                         fetchFilterOptions()
                     ];
 
                     if (!tenderId) {
+                        // Creating a new tender, clear any existing edit state
+                        setTenderDetail({
+                            tenderFloatingNo: generateTenderNumber(),
+                            tenderFloatingDate: getCurrentDate(),
+                            tenderName: '',
+                            projectId: projectId,
+                            offerSubmissionMode: '',
+                            submissionLastDate: '',
+                            bidOpeningDate: '',
+                            contactPerson: '',
+                            contactEmail: '',
+                            contactMobile: '',
+                            scopeOfPackage: [],
+                            preBidMeeting: false,
+                            preBidMeetingDate: '',
+                            preBidMeetingTime: '',
+                            siteInvestigation: false,
+                            siteInvestigationFromDate: '',
+                            siteInvestigationToDate: '',
+                            siteInvestigationFromTime: '',
+                            siteInvestigationToTime: '',
+                            boqIds: [],
+                            contractorIds: []
+                        });
+                        setSelectedBoq(new Set());
+                        setSelectedScopes([]);
+                        setSelectedContractor([]);
+                        
                         promises.push(getLoggedInUser());
+                        promises.push(fetchParentBoqData());
+                        await Promise.all(promises);
                     } else {
-                        // If tenderId exists, we also strictly need tender details
-                        promises.push(fetchTenderDetailsForEdit());
+                        // If tenderId exists, we strictly need tender details.
+                        // We must fetch parent BOQ data first so the tree structure exists 
+                        // before the edit logic attempts to fetch and map child BOQs.
+                        const [baseTree] = await Promise.all([
+                            fetchParentBoqData(),
+                            ...promises
+                        ]);
+                        
+                        await fetchTenderDetailsForEdit(baseTree);
                     }
-
-                    await Promise.all(promises);
                 }
             } catch (err) {
                 console.error("Initial data fetch error:", err);
@@ -419,7 +453,7 @@ function TFProcess({ projectId: propProjectId }) {
     //     }
     // }, [tenderId]);
 
-    const fetchTenderDetailsForEdit = async () => {
+    const fetchTenderDetailsForEdit = async (baseTree = null) => {
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/tenderDetails/${tenderId}`, {
                 headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
@@ -448,32 +482,37 @@ function TFProcess({ projectId: propProjectId }) {
                     siteInvestigationFromTime: data.siteInvestigationFromTime,
                     siteInvestigationToTime: data.siteInvestigationToTime,
                 }));
-                if (data.boq) {
+                if (data.boq && data.boq.length > 0) {
                     const boqIds = new Set(data.boq.map(b => b.id));
                     setSelectedBoq(boqIds);
-                    const parentsToExpand = new Set();
-                    const collectParents = (boqItem) => {
-                        const parent = boqItem.parentBOQ || boqItem.parentBoq || boqItem.parentId;
-                        if (parent) {
-                            if (typeof parent === 'object' && parent.id) {
-                                parentsToExpand.add(parent.id);
-                                collectParents(parent);
-                            } else if (typeof parent !== 'object') {
-                                parentsToExpand.add(parent);
-                            }
-                        }
-                    };
-
+                    
+                    let nodesToExpand = [];
+                    let searchPromises = [];
+                    
                     data.boq.forEach(b => {
-                        collectParents(b);
+                        if (b.parentBOQ || b.parentBoq) {
+                            nodesToExpand.push(b);
+                        } else if (b.level > 0) {
+                            // If deep nodes are not loaded with their parents, automatically load via the search bar API internally
+                            searchPromises.push(
+                                axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/searchProjectBoq/${projectId}?boqName=${encodeURIComponent(b.boqCode || b.boqName)}`, {
+                                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                                }).then(res => {
+                                    if (res.status === 200 && res.data) {
+                                        const match = res.data.find(item => item.id === b.id);
+                                        if (match) nodesToExpand.push(match);
+                                    }
+                                }).catch(e => console.error("Error searching BOQ internally for edit mapping:", e))
+                            );
+                        }
                     });
 
-                    if (parentsToExpand.size > 0) {
-                        setExpandedParentIds(prev => {
-                            const newSet = new Set([...prev, ...parentsToExpand]);
-                            return newSet;
-                        });
-                        parentsToExpand.forEach(id => fetchChildrenBoq(id));
+                    if (searchPromises.length > 0) {
+                        await Promise.all(searchPromises);
+                    }
+                    
+                    if (nodesToExpand.length > 0) {
+                        await expandParents(nodesToExpand, baseTree);
                     }
                 }
 
@@ -601,10 +640,11 @@ function TFProcess({ projectId: propProjectId }) {
             if (res.status === 200) {
                 const boqData = res.data?.data || res.data || [];
                 setParentBoq(boqData);
-                handleParentBoqTree(boqData);
+                return handleParentBoqTree(boqData);
             } else {
                 console.error('Failed to fetch BOQ data:', res.status);
                 setParentBoq([]);
+                return [];
             }
         } catch (err) {
             if (err?.response?.status === 401) {
@@ -733,8 +773,11 @@ function TFProcess({ projectId: propProjectId }) {
                     });
                 }
             })
-            setParentTree(Array.from(parentTree.values()))
+            const treeArray = Array.from(parentTree.values());
+            setParentTree(treeArray);
+            return treeArray;
         }
+        return [];
     }
 
     const toggleSelection = (boqId) => {
@@ -1133,30 +1176,46 @@ function TFProcess({ projectId: propProjectId }) {
                         </div>
                     </div>
                     <div className="boq-structure-list mt-3">
-                        {visibleTree.length > 0 && visibleTree.every(boq => boq.lastLevel === true) ? (
-                            <div className="table-responsive">
-                                <table className="table table-borderless">
-                                    <thead>
-                                        <tr style={{ borderBottom: '0.5px solid #0051973D', color: '#005197' }}>
-                                            <th className="px-2"></th>
-                                            <th className="px-2">BOQ Code</th>
-                                            <th className="px-2">BOQ Name</th>
-                                            <th className="px-2">UOM</th>
-                                            <th className="px-2">Quantity</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {visibleTree.map((boq) => (
-                                            <BOQNode key={boq.id} boq={boq} level={0} />
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ) : (
-                            visibleTree.map((boq) => (
-                                <BOQNode key={boq.id} boq={boq} level={0} />
-                            ))
-                        )}
+                        {(() => {
+                            const leafItems = visibleTree.filter(boq => boq.lastLevel === true);
+                            const nonLeafItems = visibleTree.filter(boq => boq.lastLevel !== true);
+
+                            return (
+                                <>
+                                    {leafItems.length > 0 && (
+                                        <div className="table-responsive">
+                                            <table className="table table-borderless">
+                                                <thead>
+                                                    <tr style={{ borderBottom: '0.5px solid #0051973D', color: '#005197' }}>
+                                                        <th className="px-2">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="form-check-input"
+                                                                style={{ borderColor: '#005197', accentColor: '#005197' }}
+                                                                checked={leafItems.length > 0 && leafItems.every(item => selectedBoq.has(item.id))}
+                                                                onChange={(e) => toggleAllChildrenSelection(leafItems, e.target.checked)}
+                                                            />
+                                                        </th>
+                                                        <th className="px-2">BOQ Code</th>
+                                                        <th className="px-2">BOQ Name</th>
+                                                        <th className="px-2">UOM</th>
+                                                        <th className="px-2">Quantity</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {leafItems.map((boq) => (
+                                                        <BOQNode key={boq.id} boq={boq} level={0} />
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                    {nonLeafItems.map((boq) => (
+                                        <BOQNode key={boq.id} boq={boq} level={0} />
+                                    ))}
+                                </>
+                            );
+                        })()}
                     </div>
                 </div>
                 <div className="d-flex justify-content-end mt-4 me-3">
@@ -1590,34 +1649,6 @@ function TFProcess({ projectId: propProjectId }) {
         const renderParentSections = (nodes, depth = 0) => {
             return nodes.map(node => {
                 if (node.lastLevel) {
-                    // Render top-level leaves in their own table if they are roots
-                    if (depth === 0) {
-                        return (
-                            <div key={node.id} className="table table-responsive mt-2 ms-0">
-                                <table className="table table-borderless">
-                                    <tbody>
-                                        <tr key={node.id}>
-                                            <td style={{ width: '40px' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    className="form-check-input"
-                                                    style={{ borderColor: '#005197' }}
-                                                    checked={boqForRemoval.has(node.id)}
-                                                    onChange={() => toggleRemovalSelection(node.id)}
-                                                />
-                                            </td>
-                                            <td style={{ width: '150px' }}>{node.boqCode}</td>
-                                            <td title={node.boqName}>
-                                                {boqNameDisplay(node.boqName)}
-                                            </td>
-                                            <td style={{ width: '80px' }}>{node.uom?.uomCode || '-'}</td>
-                                            <td style={{ width: '100px' }}>{node.quantity?.toFixed(3) || 0}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        );
-                    }
                     return null;
                 }
                 const isOpen = openNodes.has(node.id);
@@ -1726,7 +1757,69 @@ function TFProcess({ projectId: propProjectId }) {
                 </div>
                 {selectedBoqArray.length > 0 && (
                     <div className="mt-3">
-                        {renderParentSections(boqStructure)}
+                        {(() => {
+                            const rootLeaves = boqStructure.filter(n => n.lastLevel);
+                            const rootFolders = boqStructure.filter(n => !n.lastLevel);
+                            return (
+                                <>
+                                    {rootLeaves.length > 0 && (
+                                        <div className="table table-responsive mt-2 ms-0">
+                                            <table className="table table-borderless">
+                                                <thead>
+                                                    <tr style={{ borderBottom: '0.5px solid #0051973D', color: '#005197' }}>
+                                                        <th style={{ width: '40px' }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                className="form-check-input"
+                                                                style={{ borderColor: '#005197' }}
+                                                                checked={rootLeaves.length > 0 && rootLeaves.every(item => boqForRemoval.has(item.id))}
+                                                                onChange={(e) => {
+                                                                    const selectAll = e.target.checked;
+                                                                    setBoqForRemoval(prev => {
+                                                                        const updated = new Set(prev);
+                                                                        rootLeaves.forEach(item => {
+                                                                            if (selectAll) updated.add(item.id);
+                                                                            else updated.delete(item.id);
+                                                                        });
+                                                                        return updated;
+                                                                    });
+                                                                }}
+                                                            />
+                                                        </th>
+                                                        <th style={{ width: '150px' }}>BOQ Code</th>
+                                                        <th>BOQ Name</th>
+                                                        <th style={{ width: '80px' }}>UOM</th>
+                                                        <th style={{ width: '100px' }}>Quantity</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {rootLeaves.map(node => (
+                                                        <tr key={node.id}>
+                                                            <td style={{ width: '40px' }}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="form-check-input"
+                                                                    style={{ borderColor: '#005197' }}
+                                                                    checked={boqForRemoval.has(node.id)}
+                                                                    onChange={() => toggleRemovalSelection(node.id)}
+                                                                />
+                                                            </td>
+                                                            <td style={{ width: '150px' }}>{node.boqCode}</td>
+                                                            <td title={node.boqName}>
+                                                                {boqNameDisplay(node.boqName)}
+                                                            </td>
+                                                            <td style={{ width: '80px' }}>{node.uom?.uomCode || '-'}</td>
+                                                            <td style={{ width: '100px' }}>{node.quantity?.toFixed(3) || 0}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                    {renderParentSections(rootFolders)}
+                                </>
+                            );
+                        })()}
                     </div>
                 )}
             </div>
@@ -1753,7 +1846,7 @@ function TFProcess({ projectId: propProjectId }) {
                 </div>
                 <div className="row d-flex mt-4 justify-content-between ms-3 me-3">
                     <div className="col-md-4 mb-4">
-                        <label className="projectform text-start d-block"> Search </label>
+                        <label className="projectform text-start d-block" style={{ zIndex: 10 }}> Search </label>
                         <div className="position-relative" style={{ width: '100%' }}>
                             <Search
                                 className="position-absolute"

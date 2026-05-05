@@ -26,7 +26,7 @@ function MasterDataController({ children }) {
   };
 
   const generalMasterData = [
-    { label: "Resource Type", path: "resourcetype" },
+    // { label: "Resource Type", path: "resourcetype" },
     { label: "Address Type", path: "addresstype" },
     // { label: "Company Level", path: "companylevel" },
     // { label: "Company Status", path: "companystatus" },

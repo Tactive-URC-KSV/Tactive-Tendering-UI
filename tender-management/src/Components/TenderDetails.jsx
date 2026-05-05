@@ -19,6 +19,7 @@ function TenderDetails() {
   const [expandedNodes, setExpandedNodes] = useState({});
   const [attachmentData, setAttachmentData] = useState(null);
   const [editHistory, setEditHistory] = useState([]);
+  const [hydratedBoqItems, setHydratedBoqItems] = useState([]);
 
   useEffect(() => {
     const fetchProjectName = async () => {
@@ -116,6 +117,54 @@ function TenderDetails() {
   }, [selectedTenderId]);
 
   const selectedTenderData = tenderList.find(t => t.id === selectedTenderId);
+
+  useEffect(() => {
+    const hydrateBoqItems = async () => {
+        const boqItems = selectedTenderData?.boq || [];
+        if (boqItems.length === 0) {
+            setHydratedBoqItems([]);
+            return;
+        }
+
+        const hydrated = [];
+        const searchPromises = [];
+
+        boqItems.forEach(item => {
+            if (item.parentBOQ || item.parentBoq) {
+                hydrated.push(item);
+            } else if (item.level > 0) {
+                searchPromises.push(
+                    axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/searchProjectBoq/${projectId}?boqName=${encodeURIComponent(item.boqCode || item.boqName)}`, {
+                        headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                    }).then(res => {
+                        if (res.status === 200 && res.data) {
+                            const match = res.data.find(r => r.id === item.id);
+                            if (match) hydrated.push(match);
+                            else hydrated.push(item);
+                        } else {
+                            hydrated.push(item);
+                        }
+                    }).catch(e => {
+                        console.error("Error hydrating BOQ parents", e);
+                        hydrated.push(item);
+                    })
+                );
+            } else {
+                hydrated.push(item);
+            }
+        });
+
+        if (searchPromises.length > 0) {
+            await Promise.all(searchPromises);
+        }
+
+        setHydratedBoqItems(hydrated);
+    };
+
+    if (selectedTenderData) {
+        hydrateBoqItems();
+    }
+  }, [selectedTenderData, projectId]);
   
   const formatDate = (dateString) => {
     if (!dateString) return "-";
@@ -206,70 +255,72 @@ function TenderDetails() {
   };
 
   const renderBoqTree = (nodes, level = 0) => {
-    return nodes.map(node => {
-      if (node.isLeaf) return null;
+    const leaves = nodes.filter(n => n.isLeaf);
+    const folders = nodes.filter(n => !n.isLeaf);
 
-      const hasLeafChildren = node.children.some(c => c.isLeaf);
-      const isExpanded = expandedNodes[node.id];
-
-      return (
-        <div key={node.id} className="mb-3" style={{fontSize:"14px"}}>
-          <div 
-            className="d-flex align-items-center mb-2" 
-            style={{ cursor: 'pointer', paddingLeft: level === 0 ? '0' : `${level * 20}px` }}
-            onClick={() => toggleNode(node.id)}
-          >
-            <span className="me-2 text-muted">
-               {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-            </span>
-            {isExpanded ? (
-              <FolderOpen size={20} className="text-primary me-2" fill="#005197" style={{ fillOpacity: 0.1 }} />
-            ) : (
-              <Folder size={20} className="text-primary me-2" fill="#005197" style={{ fillOpacity: 0.1 }} />
-            )}
-            
-            <span className="text-dark fw-medium">{node.boqName}</span>
+    return (
+      <div className="boq-tree-level" style={{ paddingLeft: level === 0 ? '0' : '20px' }}>
+        {leaves.length > 0 && (
+          <div className="table-responsive bg-white rounded mb-3">
+            <table className="table table-borderless align-middle mb-0">
+              <thead>
+                <tr style={{ color: '#005197' }}>
+                  <th className="fw-medium pb-3 ps-4">BOQ Code</th>
+                  <th className="fw-medium pb-3">BOQ Name</th>
+                  <th className="fw-medium pb-3">Unit</th>
+                  <th className="fw-medium pb-3">Quantity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaves.map(child => (
+                  <tr key={child.id} className="border-bottom border-light">
+                    <td className="py-3 text-dark ps-4">{child.boqCode}</td>
+                    <td className="py-3 text-dark">{child.boqName}</td>
+                    <td className="py-3 text-dark">{child.uom?.uomCode || '-'}</td>
+                    <td className="py-3 text-dark">{child.quantity}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          
-          {level === 0 && (
-             <p className="text-muted text-start mb-2" style={{ fontSize: '12px', paddingLeft: '28px' }}>
-                BOQ Code: {node.boqCode || 'N/A'}
-             </p>
-          )}
+        )}
 
-          {isExpanded && (
-            <div className="" style={{ paddingLeft: level === 0 ? '0' : `${level * 20}px` }}>
-              {hasLeafChildren ? (
-                <div className="table-responsive bg-white rounded">
-                  <table className="table table-borderless align-middle mb-0">
-                    <thead>
-                      <tr style={{ color: '#005197' }}>
-                        <th className="fw-medium pb-3 ps-4">BOQ Code</th>
-                        <th className="fw-medium pb-3">BOQ Name</th>
-                        <th className="fw-medium pb-3">Unit</th>
-                        <th className="fw-medium pb-3">Quantity</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {node.children.map(child => (
-                        <tr key={child.id} className="border-bottom border-light">
-                          <td className="py-3 text-dark ps-4">{child.boqCode}</td>
-                          <td className="py-3 text-dark">{child.boqName}</td>
-                          <td className="py-3 text-dark">{child.uom?.uomCode || '-'}</td>
-                          <td className="py-3 text-dark">{child.quantity}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
+        {folders.map(node => {
+          const isExpanded = expandedNodes[node.id];
+
+          return (
+            <div key={node.id} className="mb-3" style={{ fontSize: "14px" }}>
+              <div 
+                className="d-flex align-items-center mb-2" 
+                style={{ cursor: 'pointer' }}
+                onClick={() => toggleNode(node.id)}
+              >
+                <span className="me-2 text-muted">
+                   {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                </span>
+                {isExpanded ? (
+                  <FolderOpen size={20} className="text-primary me-2" fill="#005197" style={{ fillOpacity: 0.1 }} />
+                ) : (
+                  <Folder size={20} className="text-primary me-2" fill="#005197" style={{ fillOpacity: 0.1 }} />
+                )}
+                
+                <span className="text-dark fw-medium text-start">{node.boqName}</span>
+              </div>
+              
+              {level === 0 && (
+                 <p className="text-muted text-start mb-2" style={{ fontSize: '12px', paddingLeft: '28px' }}>
+                    BOQ Code: {node.boqCode || 'N/A'}
+                 </p>
+              )}
+
+              {isExpanded && (
                 renderBoqTree(node.children, level + 1)
               )}
             </div>
-          )}
-        </div>
-      );
-    });
+          );
+        })}
+      </div>
+    );
   };
 
   const getFileNameFromUrl = (url) => {
@@ -502,9 +553,9 @@ function TenderDetails() {
                           <h6 className="mb-0 ms-2 fw-bold text-dark">Package Details</h6>
                         </div>
 
-                        {selectedTenderData.boq && selectedTenderData.boq.length > 0 ? (
+                        {hydratedBoqItems && hydratedBoqItems.length > 0 ? (
                           <div className="border-0 rounded">
-                            {renderBoqTree(buildBoqTree(selectedTenderData.boq))}
+                            {renderBoqTree(buildBoqTree(hydratedBoqItems))}
                           </div>
                         ) : (
                           <div className="text-center p-5 text-muted">No Package Details Available</div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Building2, MapPin, Mail, Landmark, Users, UploadCloud, FileText, X, Handshake, Info, Languages, Calendar, Building, Briefcase, Plus, Trash2, ArrowLeft, RotateCcw, ArrowRight } from 'lucide-react';
+import { Building2, MapPin, Mail, Landmark, Users, UploadCloud, FileText, X, Handshake, Info, Languages, Calendar, Building, Briefcase, Plus, Trash2, ArrowLeft, RotateCcw, ArrowRight, Save, ClipboardCheck } from 'lucide-react';
 import Select from 'react-select';
 import Flatpickr from "react-flatpickr";
 import '../CSS/custom-flatpickr.css';
@@ -26,6 +26,7 @@ function CompanyForm() {
         { id: "profile", label: "Profile", icon: <FileText size={16} /> },
         { id: "additional", label: "Additional Info", icon: <Info size={16} /> },
         { id: "local", label: "Local Name", icon: <Languages size={16} /> },
+        { id: "review", label: "Review", icon: <ClipboardCheck size={16} /> },
     ];
 
     const CalendarIcon = (props) => (
@@ -783,7 +784,7 @@ function CompanyForm() {
     const [parentCompanyOptions, setParentCompanyOptions] = useState([]);
     const [isGroup, setIsGroup] = useState(false);
     const selectedCompanyType = companyTypeOptions.find(opt => opt.value === basicInfo.companyTypeId);
-    const isCompany = selectedCompanyType?.value === 'COMPANY';
+    const isCompany = selectedCompanyType?.value === 'GROUP';
     const showDetails = isGroup;
 
     useEffect(() => {
@@ -794,8 +795,8 @@ function CompanyForm() {
 
     useEffect(() => {
         const selectedType = companyTypeOptions.find(opt => opt.value === basicInfo.companyTypeId);
-        const isGroupType = selectedType?.label?.toLowerCase() === 'group' || selectedType?.value === 'GROUP';
-        const isCompanyType = selectedType?.label?.toLowerCase() === 'company' || selectedType?.value === 'COMPANY';
+        const isGroupType = selectedType?.label?.toLowerCase() === 'company' || selectedType?.value === 'COMPANY';
+        const isCompanyType = selectedType?.label?.toLowerCase() === 'group' || selectedType?.value === 'GROUP';
         setIsGroup(isGroupType);
 
         if (isGroupType && companyLevelOptions.length > 0) {
@@ -1157,6 +1158,15 @@ function CompanyForm() {
                 if (!extra.languageId) missingFields.push(`Local Name ${idx + 2} Language`);
                 if (!extra.name) missingFields.push(`Local Name ${idx + 2} Name`);
             });
+        } else if (activeTab === "review") {
+            // Final comprehensive check for all mandatory fields
+            if (!basicInfo.companyTypeId) missingFields.push("Company Type");
+            if (!basicInfo.companyName) missingFields.push("Company Name");
+            if (!basicInfo.shortName) missingFields.push("Short Name");
+            if (showDetails) {
+                if (!addressDetails.addressTypeId || !addressDetails.countryId || !addressDetails.cityId) missingFields.push("Primary Address");
+                if (!contactDetails.name || !contactDetails.phoneNo) missingFields.push("Primary Contact");
+            }
         }
 
         if (missingFields.length > 0) {
@@ -1164,6 +1174,39 @@ function CompanyForm() {
             return false;
         }
         return true;
+    };
+
+    const handleSaveDraft = () => {
+        const draftData = {
+            basicInfo,
+            addressDetails,
+            contactDetails,
+            taxDetails,
+            isPrimaryAddress,
+            directorDetails,
+            jointVenture,
+            companyProfile,
+            additionalInfo,
+            localName,
+            addressList,
+            contactList,
+            taxList,
+            directorList,
+            jvList,
+            additionalInfoList,
+            localNameList,
+            extraAddresses,
+            extraContacts,
+            extraTaxes,
+            extraDirectors,
+            extraJvs,
+            extraAdditionalInfos,
+            extraLocalNames,
+            showDetails
+        };
+        localStorage.setItem('company_form_draft', JSON.stringify(draftData));
+        toast.success("Draft saved to cache successfully");
+        setActiveTab("review");
     };
 
     const handleSave = async () => {
@@ -1179,7 +1222,7 @@ function CompanyForm() {
             return;
         }
 
-        setIsSaving(true);
+        const toastId = toast.loading(editCompanyId ? "Updating company..." : "Saving company...");
         try {
             const formData = new FormData();
             const companyDTO = {
@@ -1197,16 +1240,16 @@ function CompanyForm() {
                 languageId: showDetails ? basicInfo.defaultLanguageId : null,
                 currencyId: showDetails ? basicInfo.defaultCurrency : null,
                 address: showDetails ? [
-                    { ...addressDetails, isPrimary: isPrimaryAddress },
+                    { ...addressDetails, isPrimary: isPrimaryAddress, stateOptions, cityOptions },
                     ...extraAddresses
                 ].filter(a => a.addressTypeId).map(a => ({
                     id: a.id || null,
                     addressTypeId: a.addressTypeId,
                     address1: (a.address1 || "").trim(),
                     address2: (a.address2 || "").trim(),
-                    countryId: a.countryId,
-                    stateId: a.stateId,
-                    cityId: a.cityId,
+                    country: getSelectedOption(a.countryId, countryOptions)?.label || null,
+                    state: getSelectedOption(a.stateId, a.stateOptions || stateOptions)?.label || null,
+                    city: getSelectedOption(a.cityId, a.cityOptions || cityOptions)?.label || null,
                     zipcode: (a.zipCode || "").trim(),
                     phone: (a.phoneNo || "").trim(),
                     faxNo: (a.faxNo || "").trim(),
@@ -1283,7 +1326,6 @@ function CompanyForm() {
             attachments.forEach((file) => {
                 formData.append("files", file);
             });
-            console.log(companyDTO);
             const token = sessionStorage.getItem("token");
             const response = await axios.post(
                 `${import.meta.env.VITE_API_BASE_URL}/company/add`,
@@ -1294,14 +1336,14 @@ function CompanyForm() {
                     }
                 }
             );
-            if (response.status === 200) {
-                toast.success("Company saved Successfully");
+            if (response.status === 200 || response.status === 201) {
+                toast.update(toastId, { render: editCompanyId ? "Company updated successfully" : "Company saved successfully", type: "success", isLoading: false, autoClose: 3000 });
                 handleReset();
             }
         } catch (error) {
             console.error("Error saving company:", error);
-            const msg = error.response?.data || error.message || "Failed to save company";
-            toast.error(msg);
+            const msg = error.response?.data?.message || error.response?.data || error.message || "Failed to save company";
+            toast.update(toastId, { render: msg, type: "error", isLoading: false, autoClose: 3000 });
         } finally {
             setIsSaving(false);
         }
@@ -1313,8 +1355,31 @@ function CompanyForm() {
                 <h2 className="mb-0 fs-5 fw-bold" style={{ color: bluePrimary }}>Company Details Form</h2>
             </div>
 
-            <div className="bg-white rounded-3 shadow-sm mb-4">
-                <div className={`d-flex justify-content-${showDetails ? "between" : "center"} border-bottom overflow-auto`}>
+            <div className="bg-white rounded-3 shadow-sm mb-4 overflow-hidden">
+                <div 
+                    className={`d-flex tabs-scroll-container ${showDetails ? "justify-content-start" : "justify-content-center"} border-bottom overflow-x-auto`} 
+                    style={{ 
+                        WebkitOverflowScrolling: 'touch'
+                    }}
+                >
+                    <style>
+                        {`
+                            .tabs-scroll-container::-webkit-scrollbar {
+                                height: 3px;
+                            }
+                            .tabs-scroll-container::-webkit-scrollbar-track {
+                                background: #f1f1f1;
+                                border-radius: 10px;
+                            }
+                            .tabs-scroll-container::-webkit-scrollbar-thumb {
+                                background: #005197;
+                                border-radius: 10px;
+                            }
+                            .tabs-scroll-container::-webkit-scrollbar-thumb:hover {
+                                background: #005197CC;
+                            }
+                        `}
+                    </style>
                     {tabs.filter(tab => showDetails || tab.id === "overview").map((tab) => (
                         <button
                             key={tab.id}
@@ -2762,48 +2827,50 @@ function CompanyForm() {
                                     </div>
 
                                     {/* Extra Local Name Sections */}
-                                    {extraLocalNames.map((extra, idx) => (
-                                        <div key={idx} className="card-body p-4 bg-white" style={{ borderTop: `2px solid ${bluePrimary}` }}>
-                                            <div className="d-flex justify-content-between align-items-center mb-3">
-                                                <h6 className="mb-0 fw-bold" style={{ color: bluePrimary }}>
-                                                    <Languages size={18} className="me-2" />
-                                                    Local Name {idx + 2}
-                                                </h6>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
-                                                    onClick={() => handleRemoveSection(setExtraLocalNames)(idx)}
-                                                    title="Remove this local name section"
-                                                >
-                                                    <Trash2 size={16} />
-                                                    Remove
-                                                </button>
-                                            </div>
-                                            <div className="row mt-2">
-                                                <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform-select d-block">Language <span style={{ color: "red" }}>*</span></label>
-                                                    <Select
-                                                        classNamePrefix="select"
-                                                        placeholder="Select Language"
-                                                        value={getSelectedOption(extra.languageId, languageOptions)}
-                                                        onChange={(opt) => handleSectionChange(setExtraLocalNames)(idx, 'languageId', opt ? opt.value : null)}
-                                                        options={languageOptions}
-                                                        isClearable
-                                                    />
+                                    {extraLocalNames.map((extra, idx) => {
+                                        return (
+                                            <div key={idx} className="card-body p-4 bg-white" style={{ borderTop: `2px solid ${bluePrimary}` }}>
+                                                <div className="d-flex justify-content-between align-items-center mb-3">
+                                                    <h6 className="mb-0 fw-bold" style={{ color: bluePrimary }}>
+                                                        <Languages size={18} className="me-2" />
+                                                        Local Name {idx + 2}
+                                                    </h6>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
+                                                        onClick={() => handleRemoveSection(setExtraLocalNames)(idx)}
+                                                        title="Remove this local name section"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                        Remove
+                                                    </button>
                                                 </div>
-                                                <div className="col-md-6 mb-4 position-relative">
-                                                    <label className="projectform d-block">Name <span style={{ color: "red" }}>*</span></label>
-                                                    <input
-                                                        type="text"
-                                                        value={extra.name}
-                                                        onChange={(e) => handleSectionChange(setExtraLocalNames)(idx, 'name', e.target.value)}
-                                                        className="form-input w-100"
-                                                        placeholder="Enter Local Name"
-                                                    />
+                                                <div className="row mt-2">
+                                                    <div className="col-md-6 mb-4 position-relative">
+                                                        <label className="projectform-select d-block">Language <span style={{ color: "red" }}>*</span></label>
+                                                        <Select
+                                                            classNamePrefix="select"
+                                                            placeholder="Select Language"
+                                                            value={getSelectedOption(extra.languageId, languageOptions)}
+                                                            onChange={(opt) => handleSectionChange(setExtraLocalNames)(idx, 'languageId', opt ? opt.value : null)}
+                                                            options={languageOptions}
+                                                            isClearable
+                                                        />
+                                                    </div>
+                                                    <div className="col-md-6 mb-4 position-relative">
+                                                        <label className="projectform d-block">Name <span style={{ color: "red" }}>*</span></label>
+                                                        <input
+                                                            type="text"
+                                                            value={extra.name}
+                                                            onChange={(e) => handleSectionChange(setExtraLocalNames)(idx, 'name', e.target.value)}
+                                                            className="form-input w-100"
+                                                            placeholder="Enter Local Name"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
 
                                     {/* Add One More Local Name Button */}
                                     <div className="card-body px-4 pb-4 pt-3 bg-white">
@@ -2821,6 +2888,101 @@ function CompanyForm() {
                                             <Plus size={18} />
                                             Add One More Local Name
                                         </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === "review" && (
+                                <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: "8px", }}>
+                                    <div className="card-body p-4 bg-white">
+                                        <h5 className="fw-bold mb-4" style={{ color: bluePrimary }}>Review All Details</h5>
+                                        
+                                        <div className="review-section mb-4">
+                                            <h6 className="fw-bold border-bottom pb-2 mb-3" style={{ color: bluePrimary }}>Basic Information</h6>
+                                            <div className="row g-3">
+                                                <div className="col-md-4"><strong>Company Name:</strong> {basicInfo.companyName}</div>
+                                                <div className="col-md-4"><strong>Short Name:</strong> {basicInfo.shortName}</div>
+                                                <div className="col-md-4"><strong>Type:</strong> {getSelectedOption(basicInfo.companyTypeId, companyTypeOptions)?.label}</div>
+                                                <div className="col-md-4"><strong>Level:</strong> {getSelectedOption(basicInfo.companyLevelId, companyLevelOptions)?.label}</div>
+                                                {isCompany && <div className="col-md-4"><strong>Parent Company:</strong> {getSelectedOption(basicInfo.parentCompanyId, parentCompanyOptions)?.label}</div>}
+                                                {showDetails && (
+                                                    <>
+                                                        <div className="col-md-4"><strong>Status:</strong> {getSelectedOption(basicInfo.companyStatusId, companyStatusOptions)?.label}</div>
+                                                        <div className="col-md-4"><strong>Fin. Start Month:</strong> {basicInfo.finStartMonth}</div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="review-section mb-4">
+                                            <h6 className="fw-bold border-bottom pb-2 mb-3" style={{ color: bluePrimary }}>Address Details</h6>
+                                            <div className="mb-3">
+                                                <div className="badge bg-primary mb-2">Primary Address</div>
+                                                <div className="ps-3 border-start">
+                                                    <div>{addressDetails.address1} {addressDetails.address2}</div>
+                                                    <div>{getSelectedOption(addressDetails.cityId, cityOptions)?.label}, {getSelectedOption(addressDetails.stateId, stateOptions)?.label}, {getSelectedOption(addressDetails.countryId, countryOptions)?.label}</div>
+                                                    <div>Zip: {addressDetails.zipCode} | Phone: {addressDetails.phoneNo}</div>
+                                                </div>
+                                            </div>
+                                            {extraAddresses.map((addr, idx) => {
+                                                return (
+                                                    <div key={idx} className="mb-3">
+                                                        <div className="badge bg-secondary mb-2">Additional Address {idx + 2}</div>
+                                                        <div className="ps-3 border-start">
+                                                            <div>{addr.address1} {addr.address2}</div>
+                                                            <div>{getSelectedOption(addr.cityId, cityOptions)?.label}, {getSelectedOption(addr.stateId, stateOptions)?.label}, {getSelectedOption(addr.countryId, countryOptions)?.label}</div>
+                                                            <div>Zip: {addr.zipCode} | Phone: {addr.phoneNo}</div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div className="review-section mb-4">
+                                            <h6 className="fw-bold border-bottom pb-2 mb-3" style={{ color: bluePrimary }}>Contacts</h6>
+                                            <div className="table-responsive">
+                                                <table className="table table-sm">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Name</th>
+                                                            <th>Position</th>
+                                                            <th>Phone</th>
+                                                            <th>Email</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td>{contactDetails.name}</td>
+                                                            <td>{getSelectedOption(contactDetails.position, designationOptions)?.label || contactDetails.position}</td>
+                                                            <td>{contactDetails.phoneNo}</td>
+                                                            <td>{contactDetails.email}</td>
+                                                        </tr>
+                                                        {extraContacts.map((c, idx) => {
+                                                            return (
+                                                                <tr key={idx}>
+                                                                    <td>{c.name}</td>
+                                                                    <td>{getSelectedOption(c.position, designationOptions)?.label || c.position}</td>
+                                                                    <td>{c.phoneNo}</td>
+                                                                    <td>{c.email}</td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        {/* Simplified summary for other sections to save space */}
+                                        <div className="row">
+                                            <div className="col-md-6 mb-3">
+                                                <h6 className="fw-bold border-bottom pb-2 mb-2" style={{ color: bluePrimary }}>Tax Details</h6>
+                                                <div>{taxList.length + 1 + extraTaxes.length} Records entered</div>
+                                            </div>
+                                            <div className="col-md-6 mb-3">
+                                                <h6 className="fw-bold border-bottom pb-2 mb-2" style={{ color: bluePrimary }}>Directors</h6>
+                                                <div>{directorList.length + 1 + extraDirectors.length} Records entered</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -2842,15 +3004,23 @@ function CompanyForm() {
                     )}
                 </div>
                 <div className="d-flex gap-3">
+                    <button className="btn px-4 fw-bold d-flex align-items-center gap-2" style={{ color: bluePrimary, border: `1px solid ${bluePrimary}`, borderRadius: '8px' }} onClick={handleSaveDraft}>
+                        <Save size={18} />
+                        Save as Draft
+                    </button>
                     <button className="btn px-4 fw-bold d-flex align-items-center gap-2" style={{ color: bluePrimary, border: `1px solid ${bluePrimary}`, borderRadius: '8px' }} onClick={handleReset}>
                         <RotateCcw size={18} />
                         Reset
                     </button>
-                    {(!showDetails || activeTab === "local") ? (
+                    {(activeTab === "review" || (!showDetails && activeTab === "overview")) ? (
                         <button
                             className="btn px-4 fw-bold text-white d-flex align-items-center gap-2"
                             style={{ backgroundColor: bluePrimary, borderRadius: '8px' }}
-                            onClick={handleSave}
+                            onClick={() => {
+                                if (validateCurrentTab()) {
+                                    handleSave();
+                                }
+                            }}
                             disabled={isSaving}
                         >
                             {isSaving ? (
@@ -2879,4 +3049,5 @@ function CompanyForm() {
         </div>
     );
 }
+
 export default CompanyForm;

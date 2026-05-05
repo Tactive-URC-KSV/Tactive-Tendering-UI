@@ -675,9 +675,37 @@ function BOQStructureView({ projectId }) {
 
         <div className="boq-structure-list mt-3 flex-grow-1 overflow-y-auto px-2" style={{ scrollbarWidth: 'thin' }}>
           {visibleTree.length > 0 ? (
-            visibleTree.map((boq) => (
-              <BOQNode key={boq.id} boq={boq} level={0} />
-            ))
+            (() => {
+              const leafItems = visibleTree.filter(boq => boq.lastLevel === true);
+              const nonLeafItems = visibleTree.filter(boq => boq.lastLevel !== true);
+              return (
+                <>
+                  {leafItems.length > 0 && (
+                    <div className="table-responsive">
+                      <table className="table table-borderless">
+                        <thead>
+                          <tr style={{ borderBottom: '0.5px solid #0051973D', color: '#005197' }}>
+                            <th className="px-2">BOQ Code</th>
+                            <th className="px-2">BOQ Name</th>
+                            <th className="px-2">UOM</th>
+                            <th className="px-2">Quantity</th>
+                            <th className="px-2">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {leafItems.map(boq => (
+                            <BOQNode key={boq.id} boq={boq} level={0} />
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {nonLeafItems.map((boq) => (
+                    <BOQNode key={boq.id} boq={boq} level={0} />
+                  ))}
+                </>
+              );
+            })()
           ) : (
             <div className="text-center p-5 text-muted">No Parent or Matching BOQ data available.</div>
           )}
