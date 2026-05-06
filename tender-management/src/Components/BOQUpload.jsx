@@ -156,8 +156,8 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             const response = res.data;
             switch (ext) {
                case 'pdf':
-                  setColumns(response);
-                  break;
+                   setSheetOption(response.map(name => ({ label: `Page ${name}`, value: name })));
+                   break;
                case 'xlsx':
                case 'xls':
                   setSheetOption(response.map(name => ({ label: name, value: name })));
@@ -182,7 +182,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       }).then(res => {
          if (res.status === 200) {
-            setColumns(res.data);
+            setColumns(Array.isArray(res.data) ? res.data : []);
          }
       }).catch(err => {
          if (err?.response?.status === 401) {
@@ -215,7 +215,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    };
    const loadTemplate = (templateId) => {
       if (columns.length === 0 && fileType !== 'pdf' && !selectedSheet) {
-         toast.error("Please select an Excel sheet first to load columns.");
+         toast.error(fileType === 'pdf' ? "Please select a start page first to load columns." : "Please select an Excel sheet first to load columns.");
          setSelectedTemplate(null);
          return;
       }
@@ -389,7 +389,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
 
          if (!selectedSheet) {
-            toast.error("Sheet name required");
+            toast.error(fileType === 'pdf' ? "Start page required" : "Sheet name required");
             return;
          }
          const formData = new FormData();
@@ -1023,13 +1023,13 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                   />
                </div>
             </div>
-            {(selectedSheet || columns) && (<div className='mt-5'>
+            {(selectedSheet || (Array.isArray(columns) && columns.length > 0)) && (<div className='mt-5'>
                <div className='mb-4 text-start fw-bold'>Map the Fields</div>
                <div className='row d-flex justify-content-between'>
                   <div className='col-lg-6 col-md-6 col-sm-12'>
                      <ColumnIcon /><span className='fw-bold fs-6 ms-2'>Excel Feilds</span>
                      <div className='mt-1 rounded-3 p-2'>
-                        {columns
+                        {(Array.isArray(columns) ? columns : [])
                            .filter(col => !internalFields.some(f => f.mappingFields === col))
                            .map((col, index) => (
                               <div className={`excel-column-container me-2 p-3 rounded-3 mt-3 mb-3 d-flex justify-content-between align-items-center`} key={index} draggable={true}
@@ -1158,9 +1158,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                   </div>
                   <div className='col-lg-6 col-md-6 col-sm-12'>
                      <label className="projectform-select text-start d-block">
-                        Excel Sheet
+                        {fileType === 'pdf' ? 'Start Page' : 'Excel Sheet'}
                      </label>
-                     <Select placeholder="Select Excel Sheet"
+                     <Select placeholder={fileType === 'pdf' ? 'Select Start Page' : 'Select Excel Sheet'}
                         options={sheetOption}
                         className="w-100"
                         classNamePrefix="select"
@@ -1174,7 +1174,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                               loadSheetColumn(sheetValue);
                            }
                         }}
-                        isDisabled={fileType === 'pdf'}
+                        isDisabled={false}
                      />
                   </div>
                </div>
