@@ -1070,3 +1070,17 @@ label {
   background-color: rgba(0, 0, 0, 0.6);
   z-index: 1060;
 }
+
+/* BOQ Configuration Table Styling */
+.boq-config-table {
+  border-collapse: collapse !important;
+}
+
+.boq-config-table thead th {
+  border: none !important;
+}
+
+.boq-config-table tbody td {
+  border: 1px solid #0051973D !important;
+  padding: 12px 15px !important;
+}
