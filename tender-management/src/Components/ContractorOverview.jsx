@@ -71,11 +71,11 @@ const ManualEntryForm = ({
     handleTaxStateFilterChange,
     taxFilterCountry,
     taxFilterState,
-    taxCountryOptions,
     taxStateOptions,
     activeTab,
     setActiveTab,
-    tabs
+    tabs,
+    handleTabClick
 }) => {
     const fileInputRef = useRef(null);
 
@@ -104,7 +104,7 @@ const ManualEntryForm = ({
                             key={tab.id}
                             type="button"
                             className={`custom-tab d-flex align-items-center px-4 py-3 text-nowrap ${activeTab === tab.id ? "active" : ""}`}
-                            onClick={() => setActiveTab(tab.id)}
+                            onClick={() => handleTabClick(tab.id)}
                         >
                             <span className="me-2 d-flex align-items-center">{tab.icon}</span>
                             {tab.label}
@@ -1024,7 +1024,7 @@ function ContractorOverview() {
     const [selectedView, setSelectedView] = useState('manual');
     const [viewMode, setViewMode] = useState('entry');
     const STORAGE_KEY = 'contractorFormData';
-    const [isLoading, setIsLoadnig] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [entityTypeOptions, setEntityTypeOptions] = useState([]);
     const [natureOfBusinessOptions, setNatureOfBusinessOptions] = useState([]);
     const [gradeOptions, setGradeOptions] = useState([]);
@@ -1053,7 +1053,7 @@ function ContractorOverview() {
             });
             return;
         }
-        axios.get(`${baseUrl}/states/byCountry/${countryId}`, { headers })
+        axios.get(`${baseUrl}/states/${countryId}`, { headers })
             .then(r => {
                 const list = r.data?.data ?? r.data ?? [];
                 const options = list.map(item => ({ value: item.id, label: item.state }));
@@ -1346,11 +1346,11 @@ function ContractorOverview() {
 
             if (formData.territoryType === 'STATE') {
                 // Fetch States by Country for Territory Options
-                const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/states/byCountry/${selectedOption.value}`, { headers });
+                const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/states/${selectedOption.value}`, { headers });
                 setTerritoryOptions(response.data.map(item => ({ value: item.id, label: item.state })));
             } else if (formData.territoryType === 'CITY') {
                 // Fetch States by Country for State Filter
-                const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/states/byCountry/${selectedOption.value}`, { headers });
+                const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/states/${selectedOption.value}`, { headers });
                 setTaxStateOptions(response.data.map(item => ({ value: item.id, label: item.state })));
             }
         } catch (error) {
@@ -1416,39 +1416,96 @@ function ContractorOverview() {
         }
         return defaultFormData;
     });
+
+    const validateCurrentTab = (tabId) => {
+        if (tabId === 'basic') {
+            if (!formData.entityName || !formData.effectiveDate || !formData.entityType) {
+                toast.error("Please fill in all mandatory basic details.");
+                return false;
+            }
+        } else if (tabId === 'address') {
+            const isValid = formData.addressList.every(addr =>
+                addr.addressType && addr.country && addr.addressState && addr.addresscity && addr.zipCode
+            );
+            if (!isValid) {
+                toast.error("Please fill in all mandatory address details.");
+                return false;
+            }
+        } else if (tabId === 'contact') {
+            const isValid = formData.contactList.every(contact =>
+                contact.name && contact.position && contact.emailId && contact.phoneNo
+            );
+            if (!isValid) {
+                toast.error("Please fill in all mandatory contact details.");
+                return false;
+            }
+        } else if (tabId === 'tax') {
+            if (!formData.taxType) {
+                toast.error("Please select a tax type.");
+                return false;
+            }
+            if (formData.taxType !== 'GST_UNREGISTER') {
+                if (!formData.territoryType || !formData.territory || !formData.taxRegNo || !formData.taxRegDate) {
+                    toast.error("Please fill in all mandatory tax details.");
+                    return false;
+                }
+            }
+        } else if (tabId === 'bank') {
+            if (!formData.accountHolderName || !formData.accountNo || !formData.bankName || !formData.branchName) {
+                toast.error("Please fill in all mandatory bank details.");
+                return false;
+            }
+        } else if (tabId === 'additional') {
+            if (!formData.additionalInfoType || !formData.registrationNo) {
+                toast.error("Please fill in all mandatory additional info details.");
+                return false;
+            }
+        }
+        return true;
+    };
+
+    const handleTabClick = (targetTabId) => {
+        const currentIndex = tabs.findIndex(t => t.id === activeTab);
+        const targetIndex = tabs.findIndex(t => t.id === targetTabId);
+        
+        if (targetIndex > currentIndex) {
+            for (let i = currentIndex; i < targetIndex; i++) {
+                if (!validateCurrentTab(tabs[i].id)) {
+                    setActiveTab(tabs[i].id);
+                    return;
+                }
+            }
+        }
+        setActiveTab(targetTabId);
+    };
+
+    const handleNextTab = () => {
+        if (!validateCurrentTab(activeTab)) return;
+        const currentIndex = tabs.findIndex(t => t.id === activeTab);
+        if (currentIndex < tabs.length - 1) {
+            setActiveTab(tabs[currentIndex + 1].id);
+            window.scrollTo(0, 0);
+        }
+    };
+
+    const handlePrevTab = () => {
+        const currentIndex = tabs.findIndex(t => t.id === activeTab);
+        if (currentIndex > 0) {
+            setActiveTab(tabs[currentIndex - 1].id);
+            window.scrollTo(0, 0);
+        }
+    };
     const handleSubmitFinal = async () => {
         setIsLoading(true);
 
-        const requiredFields = [
-            'entityCode', 'entityName', 'effectiveDate', 'entityType',
-            'taxType',
-            'accountHolderName', 'accountNo', 'bankName', 'branchName',
-            'additionalInfoType', 'registrationNo'
-        ];
-
-        const missingFields = requiredFields.filter(field => !formData[field]);
-
-        // Validate Addresses
-        const isAddressesValid = formData.addressList.every(addr =>
-            addr.addressType && addr.country && addr.addressState && addr.addresscity && addr.zipCode
-        );
-
-        // Validate Contacts
-        const isContactsValid = formData.contactList.every(contact =>
-            contact.name && contact.position && contact.emailId && contact.phoneNo
-        );
-
-        let isTaxValid = true;
-        if (formData.taxType !== 'GST_UNREGISTER') {
-            if (!formData.territoryType || !formData.territory || !formData.taxRegNo || !formData.taxRegDate) {
-                isTaxValid = false;
+        // Run the same validations as the tabs
+        for (let i = 0; i < tabs.length; i++) {
+            if (!validateCurrentTab(tabs[i].id)) {
+                setViewMode('entry');
+                setActiveTab(tabs[i].id);
+                setIsLoading(false);
+                return;
             }
-        }
-
-        if (missingFields.length > 0 || !isAddressesValid || !isContactsValid || !isTaxValid) {
-            toast.error("Please fill in all mandatory fields.");
-            setIsLoading(false);
-            return;
         }
 
         const contractorDTO = {
@@ -1531,7 +1588,7 @@ function ContractorOverview() {
             toast.error("Failed to submit contractor details.");
         }
         finally {
-            setIsLoadnig(false);
+            setIsLoading(false);
         }
     };
 
@@ -1553,6 +1610,14 @@ function ContractorOverview() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        
+        for (let i = 0; i < tabs.length; i++) {
+            if (!validateCurrentTab(tabs[i].id)) {
+                setActiveTab(tabs[i].id);
+                return;
+            }
+        }
+
         setViewMode('review');
         window.scrollTo(0, 0);
     };
@@ -1654,6 +1719,7 @@ function ContractorOverview() {
                                         activeTab={activeTab}
                                         setActiveTab={setActiveTab}
                                         tabs={tabs}
+                                        handleTabClick={handleTabClick}
                                     />
                                 )}
 
@@ -1680,24 +1746,48 @@ function ContractorOverview() {
                                 )}
                             </form>
                             {isManualActive && (
-                                <div className="d-flex justify-content-end mt-4">
+                                <div className="d-flex justify-content-between mt-4">
                                     <button
                                         type="button"
                                         onClick={() => navigate("/ContractorOnboarding")}
-                                        className="btn px-4 fw-bold me-3"
+                                        className="btn px-4 fw-bold"
                                         style={{ color: bluePrimary }}
                                     >
                                         Cancel
                                     </button>
 
-                                    <button
-                                        type="submit"
-                                        form="contractorForm"
-                                        className="btn px-4 fw-bold"
-                                        style={{ backgroundColor: bluePrimary, color: "white" }}
-                                    >
-                                        Review & Submit <ArrowRight size={20} className="ms-2" />
-                                    </button>
+                                    <div className="d-flex">
+                                        {activeTab !== tabs[0].id && (
+                                            <button
+                                                type="button"
+                                                onClick={handlePrevTab}
+                                                className="btn px-4 fw-bold me-3"
+                                                style={{ border: `1px solid ${bluePrimary}`, color: bluePrimary, backgroundColor: 'white' }}
+                                            >
+                                                Previous
+                                            </button>
+                                        )}
+                                        
+                                        {activeTab !== tabs[tabs.length - 1].id ? (
+                                            <button
+                                                type="button"
+                                                onClick={handleNextTab}
+                                                className="btn px-4 fw-bold"
+                                                style={{ backgroundColor: bluePrimary, color: "white" }}
+                                            >
+                                                Next <ArrowRight size={20} className="ms-2" />
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="submit"
+                                                form="contractorForm"
+                                                className="btn px-4 fw-bold"
+                                                style={{ backgroundColor: bluePrimary, color: "white" }}
+                                            >
+                                                Review & Submit <ArrowRight size={20} className="ms-2" />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </>

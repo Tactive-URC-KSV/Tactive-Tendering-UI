@@ -108,7 +108,7 @@ function BOQOverview({ projectId }) {
     const [boqCurrentPage, setBoqCurrentPage] = useState(0);
     const [boqTotalPages, setBoqTotalPages] = useState(0);
     const [boqTotalItems, setBoqTotalItems] = useState(0);
-    const pageSize = 15;
+    const [boqPageSize, setBoqPageSize] = useState(15);
 
     const handleExpandCollapseAll = async () => {
         if (isAllExpanded) {
@@ -287,7 +287,7 @@ function BOQOverview({ projectId }) {
     const refreshParentBoqData = async (page = 0) => {
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getParentBoq/${projectId}`, {
-                params: { page, size: pageSize },
+                params: { page, size: boqPageSize },
                 headers: {
                     Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                     'Content-Type': 'application/json'
@@ -489,9 +489,9 @@ function BOQOverview({ projectId }) {
         });
     }, [projectId, navigate]);
     useEffect(() => {
-        refreshParentBoqData();
+        refreshParentBoqData(0);
         fetchTotalBOQ();
-    }, [projectId, navigate]);
+    }, [projectId, navigate, boqPageSize]);
     const fetchTotalBOQ = async () => {
         await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getBOQCount/${projectId}`, {
             headers: {
@@ -1016,8 +1016,20 @@ function BOQOverview({ projectId }) {
                     {parentBoq.length > 0 && (
                         <div className='d-flex justify-content-between align-items-center mt-3 p-3 border-top bg-white sticky-bottom' style={{ bottom: 0, zIndex: 10 }}>
                             <div className="d-flex align-items-center gap-3">
+                                <select 
+                                    className="form-select form-select-sm" 
+                                    style={{ width: 'auto', fontSize: '12px' }}
+                                    value={boqPageSize}
+                                    onChange={(e) => setBoqPageSize(parseInt(e.target.value))}
+                                >
+                                    <option value={10}>10 per page</option>
+                                    <option value={15}>15 per page</option>
+                                    <option value={25}>25 per page</option>
+                                    <option value={50}>50 per page</option>
+                                    <option value={100}>100 per page</option>
+                                </select>
                                 <span className="text-muted small">
-                                    Showing {(boqCurrentPage * pageSize) + 1} - {Math.min((boqCurrentPage + 1) * pageSize, boqTotalItems)} of {boqTotalItems} Items
+                                    Showing {(boqCurrentPage * boqPageSize) + 1} - {Math.min((boqCurrentPage + 1) * boqPageSize, boqTotalItems)} of {boqTotalItems} Items
                                 </span>
                             </div>
                             <div className='d-flex align-items-center gap-2'>

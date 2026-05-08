@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import '../CSS/Styles.css'
-import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, FileSymlink, FileText, Folder, Link, Search, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, FileSymlink, FileText, Folder, Link, Search, SlidersHorizontal, X } from 'lucide-react';
 import { useEffect } from 'react';
 import axios from 'axios';
 import { FaCloudUploadAlt } from 'react-icons/fa';
@@ -29,15 +29,16 @@ const autoScrollWhileDragging = (e) => {
    }
 };
 
-const handleUnauthorized = () => {
-   const navigate = useNavigate();
+const handleUnauthorized = (navigate) => {
    navigate('/login');
 }
 
 const throttledAutoScroll = throttle(autoScrollWhileDragging, 50);
 
 function BOQUpload({ projectId, projectName, setUploadScreen }) {
+   const navigate = useNavigate();
    const [section, setSection] = useState('columnMapping');
+   const [confirmModal, setConfirmModal] = useState({ show: false, type: '', message: '' });
    const [loading, setLoading] = useState(false);
    const fileInputRef = useRef(null);
    const [BOQfile, setBOQfile] = useState(null);
@@ -60,21 +61,49 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       { fields: 'uom', mappingFields: '', importance: 'Required', label: 'UOM' },
       { fields: 'quantity', mappingFields: '', importance: 'Required', label: 'Quantity' },
    ]);
-   const [startRow, setStartRow] = useState(0);
-   const [endRow, setEndRow] = useState(0);
    const [excelData, setExcelData] = useState([]);
-   const [currentPage, setCurrentPage] = useState(0);
-   const [pageSize, setPageSize] = useState(50);
-   const [totalPages, setTotalPages] = useState(0);
-   const [totalItems, setTotalItems] = useState(0);
    const [searchTerm, setSearchTerm] = useState('');
    const debouncedSearch = useDebounce(searchTerm, 600);
    const [selectedRow, setSelectedRow] = useState(new Set());
    const [levelMap, setLevelMap] = useState({});
    const [lastLevelMap, setLastLevelMap] = useState({});
    const [parentMap, setParentMap] = useState({});
-   const [isParentSelecting, setIsParentSelecting] = useState(false);
-   const [selectedChildLevel, setSelectedChildLevel] = useState(null);
+   const [expandedRows, setExpandedRows] = useState(new Set());
+   const [selectedBoqForModal, setSelectedBoqForModal] = useState(null);
+   const [isAssigningParent, setIsAssigningParent] = useState(false);
+
+   const isLastLevelRow = (row) => {
+      return (
+         row.lastLevel ||
+         row.uom ||
+         (row.quantity && row.quantity !== 0)
+      );
+   };
+
+   const findParentSno = (currentIndex, level) => {
+      if (level <= 1) return 0;
+      // Look for the nearest previous row with level = level - 1
+      for (let i = currentIndex - 1; i >= 0; i--) {
+         if (excelData[i].level === level - 1) {
+            return excelData[i].sno;
+         }
+      }
+      return 0;
+   };
+
+   const isRowVisible = (row) => {
+      // Root rows (level 0 or 1) are always visible unless a level 0 item is nested (which shouldn't happen)
+      // Actually, any row whose parent is expanded is visible.
+      if (!row.parentSno) return true;
+
+      let currentParentSno = row.parentSno;
+      while (currentParentSno) {
+         if (!expandedRows.has(currentParentSno)) return false;
+         const parent = excelData.find(item => item.sno === currentParentSno);
+         currentParentSno = parent?.parentSno || 0;
+      }
+      return true;
+   };
 
    useEffect(() => {
       axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllTemplate`, {
@@ -89,7 +118,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       }).catch(err => {
          if (err?.response?.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(navigate);
          }
       })
    }, [])
@@ -120,11 +149,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       setSelectedTemplate(null);
       setFileType('');
       setSheetOption([]);
-      excelData([]);
-      setCurrentPage(0);
-      setPageSize(50);
-      setTotalPages(0);
-      setTotalItems(0);
+      setExcelData([]);
       setSearchTerm('');
       setLevelMap({});
       setLastLevelMap({});
@@ -156,7 +181,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             const response = res.data;
             switch (ext) {
                case 'pdf':
-                  setColumns(response);
+                  setSheetOption(response.map(name => ({ label: `Page ${name}`, value: name })));
                   break;
                case 'xlsx':
                case 'xls':
@@ -168,7 +193,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       }).catch(err => {
          if (err?.response?.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(navigate);
          }
       })
    }
@@ -182,11 +207,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       }).then(res => {
          if (res.status === 200) {
-            setColumns(res.data);
+            setColumns(Array.isArray(res.data) ? res.data : []);
          }
       }).catch(err => {
          if (err?.response?.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(navigate);
          }
       })
    }
@@ -215,7 +240,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    };
    const loadTemplate = (templateId) => {
       if (columns.length === 0 && fileType !== 'pdf' && !selectedSheet) {
-         toast.error("Please select an Excel sheet first to load columns.");
+         toast.error(fileType === 'pdf' ? "Please select a start page first to load columns." : "Please select an Excel sheet first to load columns.");
          setSelectedTemplate(null);
          return;
       }
@@ -258,17 +283,17 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       }).catch(err => {
          if (err?.response?.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(navigate);
          }
          toast.error("Error loading template.");
       });
    }
    useEffect(() => {
       if (BOQfile) {
-         fetchExcelData(0, pageSize);
+         fetchExcelData();
       }
    }, [debouncedSearch]);
-   const fetchExcelData = async (page = 0, size = 50) => {
+   const fetchExcelData = async () => {
       if (!BOQfile) {
          toast.error("Please upload a BOQ file");
          return;
@@ -293,11 +318,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             type: 'application/json'
          });
          formData.append('columnMapping', columnMappingBlob);
-         formData.append('startRow', startRow.toString());
-         formData.append('endRow', endRow.toString());
 
          const response = await axios.post(
-            `${import.meta.env.VITE_API_BASE_URL}/project/extractedBOQ?page=${page}&size=${size}&search=${debouncedSearch}`,
+            `${import.meta.env.VITE_API_BASE_URL}/project/extractedBOQ?search=${debouncedSearch}`,
             formData,
             {
                headers: {
@@ -305,17 +328,23 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                }
             }
          );
-         const merged = response.data.data.map(item => ({
+         const merged = response.data.map(item => ({
             ...item,
             level: levelMap[item.sno] ?? item.level,
-            lastLevel: lastLevelMap[item.sno] ?? item.lastLevel,
+            lastLevel: isLastLevelRow(item),
             parentSno: parentMap[item.sno] ?? item.parentSno,
          }));
          setExcelData(merged);
-         setCurrentPage(response.data.currentPage);
-         setTotalPages(response.data.totalPages);
-         setPageSize(response.data.pageSize);
-         setTotalItems(response.data.totalItems);
+
+         // Auto-expand Level 1 items
+         const level1Snos = merged.filter(item => item.level === 1).map(item => item.sno);
+         if (level1Snos.length > 0) {
+            setExpandedRows(prev => {
+               const updated = new Set(prev);
+               level1Snos.forEach(sno => updated.add(sno));
+               return updated;
+            });
+         }
       } catch (error) {
          console.error("Error fetching Excel data:", error);
          toast.error("Failed to load Excel data");
@@ -373,7 +402,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    //    }
    //    ).catch(err => {
    //       if (err?.response?.status === 401) {
-   //          handleUnauthorized();
+   //          handleUnauthorized(navigate);
    //       }
    //       toast.error("Something went wrong");
    //    }).finally(() => {
@@ -389,7 +418,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
 
          if (!selectedSheet) {
-            toast.error("Sheet name required");
+            toast.error(fileType === 'pdf' ? "Start page required" : "Sheet name required");
             return;
          }
          const formData = new FormData();
@@ -426,10 +455,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             );
             plate();
             setExcelData([]);
-            setCurrentPage(0);
-            setTotalPages(0);
-            setPageSize(50);
-            setTotalItems(0);
             setLastLevelMap({});
             setParentMap({});
             setLevelMap({});
@@ -500,57 +525,85 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       }).catch(err => {
          if (err?.response?.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(navigate);
          }
          toast.error("Error saving template");
       });
    }
 
    const buildTree = () => {
-      if (!excelData) return [];
+      if (!excelData || excelData.length === 0) return [];
       const nodeMap = new Map();
       const roots = [];
+
       excelData.forEach(item => {
          nodeMap.set(item.sno, {
             ...item,
-            children: item.lastLevel ? null : []
+            children: []
          });
       });
+
       excelData.forEach(item => {
          const node = nodeMap.get(item.sno);
-         const parentId = item.parentSno || parentMap[item.sno];
+         const parentId = item.parentSno;
          if (!parentId) {
             roots.push(node);
          } else {
             const parent = nodeMap.get(parentId);
             if (parent) {
-               if (!item.lastLevel) {
-                  parent.children.push(node);
-               } else {
-                  parent.children.push(node);
-               }
+               parent.children.push(node);
+            } else {
+               roots.push(node);
             }
          }
       });
       return roots;
    };
 
+   const toggleExpand = (sno) => {
+      setExpandedRows(prev => {
+         const updated = new Set(prev);
+         if (updated.has(sno)) {
+            updated.delete(sno);
+         } else {
+            updated.add(sno);
+         }
+         return updated;
+      });
+   };
+
+   const getLevelColor = (level) => {
+      const colors = ['#9333EA', '#2563EB', '#CA8A04', '#DC2626', '#059669', '#D97706'];
+      if (level > 0) {
+         return colors[(level - 1) % colors.length];
+      }
+      return '#6B7280';
+   };
+
    const renderNode = (node) => {
-      const icon = node.level === 1 ? <Folder size={15} color={'#9333EA'} strokeWidth={2.5} />
-         : node.level === 2 ? <Folder size={15} color={'#2563EB'} strokeWidth={2.5} />
-            : node.level === 3 ? <Folder size={15} color={'#CA8A04'} strokeWidth={2.5} />
-               : node.lastLevel ? <FileText size={15} color={'#2BA95A'} strokeWidth={2.5} />
-                  : null;
+      const isExpanded = expandedRows.has(node.sno);
+      const isLeaf = isLastLevelRow(node) || (node.children && node.children.length === 0);
+
+      const icon = isLeaf
+         ? <FileText size={15} color={'#2BA95A'} strokeWidth={2.5} />
+         : <Folder size={15} color={getLevelColor(node.level)} strokeWidth={2.5} />;
+
+      const chevron = !isLeaf && (
+         <span onClick={(e) => { e.stopPropagation(); toggleExpand(node.sno); }} style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', marginRight: '4px' }}>
+            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+         </span>
+      );
 
       return (
-         <div key={node.sno} className={node.parentSno || parentMap[node.sno] ? "tree-node" : "tree-root"}>
+         <div key={node.sno} className="tree-node-container" style={{ marginLeft: node.parentSno ? '15px' : '0' }}>
             <div className="d-flex align-items-center mb-1">
+               {chevron}
                {icon}
-               <span className='ms-2' style={{ fontSize: '13px', fontWeight: node.level === 1 ? '600' : '400' }}>
+               <span className='ms-1' style={{ fontSize: '13px', fontWeight: node.level === 1 ? '600' : '400', whiteSpace: 'nowrap' }}>
                   {boqNameDisplay(node.boqName || node.boqCode, 20)}
                </span>
             </div>
-            {Array.isArray(node.children) && node.children.length > 0 && (
+            {isExpanded && Array.isArray(node.children) && node.children.length > 0 && (
                <div className="tree-children">
                   {node.children.map(child => renderNode(child))}
                </div>
@@ -595,17 +648,88 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          ? boqName.substring(0, length) + '...'
          : boqName;
    }
+   function handleBulkClear() {
+      if (confirmModal.type === 'level') {
+         setLevelMap({});
+         setParentMap({});
+         setLastLevelMap({});
+         setExpandedRows(new Set());
+         setExcelData(prev =>
+            prev.map(item => ({
+               ...item,
+               level: 0,
+               parentSno: 0,
+               lastLevel: (item.uom || (item.quantity && item.quantity !== 0)) ? true : false
+            }))
+         );
+         toast.success("All levels and structure cleared successfully.");
+      } else if (confirmModal.type === 'parent') {
+         setParentMap({});
+         setExcelData(prev =>
+            prev.map(item => ({
+               ...item,
+               parentSno: 0
+            }))
+         );
+         toast.success("All parents removed successfully.");
+      }
+      setConfirmModal({ show: false, type: '', message: '' });
+   }
+
    const levelMapping = () => {
       const treeData = buildTree();
       console.log(treeData);
-      const goToPreviousPage = () => {
-         if (currentPage > 0) {
-            fetchExcelData(currentPage - 1);
+
+      const handleSingleLevelChange = (sno, level) => {
+         const itemIndex = excelData.findIndex(item => item.sno === sno);
+         if (itemIndex === -1) return;
+
+         const updatedLevelMap = { ...levelMap };
+         const updatedParentMap = { ...parentMap };
+
+         if (level === 0 || isNaN(level)) {
+            updatedLevelMap[sno] = 0;
+            delete updatedParentMap[sno];
+         } else {
+            // Level L for current row, L+1 for all subsequent rows
+            updatedLevelMap[sno] = level;
+            updatedParentMap[sno] = findParentSno(itemIndex, level);
+
+            const nextLevel = level + 1;
+            for (let i = itemIndex + 1; i < excelData.length; i++) {
+               const currentSno = excelData[i].sno;
+               updatedLevelMap[currentSno] = nextLevel;
+               updatedParentMap[currentSno] = sno; // Parent is the row that was just manually changed? 
+               // No, if they are all siblings at L+1, their parent is 'sno'.
+            }
          }
-      };
-      const goToNextPage = () => {
-         if (currentPage < totalPages - 1) {
-            fetchExcelData(currentPage + 1);
+
+         setLevelMap(updatedLevelMap);
+         setParentMap(updatedParentMap);
+
+         setExcelData(prev =>
+            prev.map(item => {
+               const newLevel = updatedLevelMap[item.sno] ?? item.level;
+               const newParent = updatedParentMap[item.sno] ?? item.parentSno;
+               return {
+                  ...item,
+                  level: newLevel,
+                  parentSno: newParent,
+                  lastLevel: isLastLevelRow({ ...item, level: newLevel })
+               };
+            })
+         );
+
+         // Expand all parents in the chain
+         if (level > 0) {
+            setExpandedRows(prev => {
+               const updated = new Set(prev);
+               // Expand the current one and all newly created parents in the chain
+               for (let i = itemIndex; i < excelData.length; i++) {
+                  updated.add(excelData[i].sno);
+               }
+               return updated;
+            });
          }
       };
 
@@ -620,38 +744,42 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             return updated;
          });
       };
+
       const assignLevel = (level) => {
-         if (level === 3) {
-            let violationExists = false;
-            violationExists = excelData.some(item => {
-               return item.level === 2 && !parentMap[item.sno];
-            });
-            if (!violationExists) {
-               violationExists = Object.keys(levelMap).some(sno => {
-                  return levelMap[sno] === 2 && !parentMap[sno];
-               });
-            }
-            if (violationExists) {
-               toast.error("Cannot assign level 3 without assigning parents to all level 2 items.");
-               return;
-            }
+         if (selectedRow.size === 0) {
+            toast.error("Please select at least one row.");
+            return;
          }
-         setLevelMap(prev => {
-            const updated = { ...prev };
-            selectedRow.forEach(sno => {
-               updated[sno] = level;
-            });
-            return updated;
+
+         const sortedSelected = [...selectedRow].sort((a, b) => {
+            const indexA = excelData.findIndex(item => item.sno === a);
+            const indexB = excelData.findIndex(item => item.sno === b);
+            return indexA - indexB;
          });
-         setExcelData(prev =>
-            prev.map(item =>
-               selectedRow.has(item.sno) ? { ...item, level: level } : item
-            )
-         );
+
+         sortedSelected.forEach(sno => {
+            handleSingleLevelChange(sno, level);
+         });
+
          setSelectedRow(new Set());
       };
+
       const clearLevel = () => {
+         if (selectedRow.size === 0) {
+            setConfirmModal({
+               show: true,
+               type: 'level',
+               message: "Are you sure you want to clear levels for all the BOQs?"
+            });
+            return;
+         }
+
          setLevelMap(prev => {
+            const updated = { ...prev };
+            selectedRow.forEach(sno => delete updated[sno]);
+            return updated;
+         });
+         setParentMap(prev => {
             const updated = { ...prev };
             selectedRow.forEach(sno => delete updated[sno]);
             return updated;
@@ -664,7 +792,12 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          setExcelData(prev =>
             prev.map(item =>
                selectedRow.has(item.sno)
-                  ? { ...item, level: 0, lastLevel: false }
+                  ? {
+                     ...item,
+                     level: 0,
+                     parentSno: 0,
+                     lastLevel: isLastLevelRow(item)
+                  }
                   : item
             )
          );
@@ -688,91 +821,68 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          );
          setSelectedRow(new Set());
       };
-      const levelDisplay = (level, lastLevel) => {
-         if (lastLevel) {
-            return (
-               <span
-                  className="badge px-2 py-1"
-                  style={{ backgroundColor: "#2BA95A", color: "#ffffff" }}
-               >
-                  Last Level
-               </span>
-            );
-         }
-         const levelStyles = {
-            1: "#9333EA",
-            2: "#2563EB",
-            3: "#CA8A04",
-         };
-         if (levelStyles[level]) {
-            return (
-               <span
-                  className="badge px-2 py-1"
-                  style={{ backgroundColor: levelStyles[level], color: "#ffffff" }}
-               >
-                  Level {level}
-               </span>
-            );
-         }
-         return <span>-</span>;
-      };
-      const startParentSelection = () => {
+
+      const assignParent = () => {
          if (selectedRow.size === 0) {
-            toast.error("Please select at least one BOQ item.");
+            toast.error("Please select the rows you want to assign to a parent first.");
             return;
          }
-         const isnoLevelItems = excelData.filter(item => item.level !== 0);
-         if (isnoLevelItems.length === 0) {
-            toast.error("Level 0 items cannot be assigned as parent. Assign a level first.");
-            return;
-         }
-         const selectedItems = [...selectedRow].map(sno =>
-            excelData.find(item => item.sno === sno)
-         );
-         const nonLastLevelItems = selectedItems.filter(item => !item?.lastLevel);
-         let childLevel;
-         if (nonLastLevelItems.length === 0) {
-            childLevel = 999;
-         } else {
-            const levels = nonLastLevelItems.map(item => item?.level || 0);
-            const uniqueLevels = [...new Set(levels)];
-
-            if (uniqueLevels.length > 1) {
-               toast.error("Please select BOQs with the SAME level (Last level items ignored).");
-               return;
-            }
-            childLevel = uniqueLevels[0];
-            if (childLevel === 0) {
-               toast.error("Level 0 items cannot have a parent. Assign a level first.");
-               return;
-            }
-         }
-         setSelectedChildLevel(childLevel);
-         setIsParentSelecting(true);
+         setIsAssigningParent(true);
+         toast.info("Click on a row in the table to set it as the parent.");
       };
 
-      const handleParentAssign = (parentSno) => {
-         const updated = { ...parentMap };
-         selectedRow.forEach(childSno => {
-            if (childSno !== parentSno) {
-               updated[childSno] = parentSno;
-            }
+      const handleParentSelect = (pSno) => {
+         if (!isAssigningParent) return;
+
+         const parentRow = excelData.find(item => item.sno === pSno);
+         if (!parentRow) return;
+
+         if (selectedRow.has(pSno)) {
+            toast.error("Cannot assign a row as its own parent.");
+            setIsAssigningParent(false);
+            return;
+         }
+
+         setParentMap(prev => {
+            const updated = { ...prev };
+            selectedRow.forEach(sno => {
+               updated[sno] = pSno;
+            });
+            return updated;
          });
-         setParentMap(updated);
-         setIsParentSelecting(false);
          setExcelData(prev =>
-            prev.map(item => ({
-               ...item,
-               parentSno: updated[item.sno] ?? item.parentSno
-            }))
+            prev.map(item =>
+               selectedRow.has(item.sno)
+                  ? { ...item, parentSno: pSno }
+                  : item
+            )
          );
-         setSelectedRow(new Set());
-      };
-      const clearParent = () => {
-         const updated = { ...parentMap };
-         selectedRow.forEach(sno => delete updated[sno]);
-         setParentMap(updated);
 
+         setExpandedRows(prev => {
+            const updated = new Set(prev);
+            updated.add(pSno);
+            return updated;
+         });
+
+         setSelectedRow(new Set());
+         setIsAssigningParent(false);
+         toast.success(`Assigned selected items to parent S.No: ${pSno}`);
+      };
+
+      const removeParent = () => {
+         if (selectedRow.size === 0) {
+            setConfirmModal({
+               show: true,
+               type: 'parent',
+               message: "Are you sure you want to remove parents for all the BOQs?"
+            });
+            return;
+         }
+         setParentMap(prev => {
+            const updated = { ...prev };
+            selectedRow.forEach(sno => delete updated[sno]);
+            return updated;
+         });
          setExcelData(prev =>
             prev.map(item =>
                selectedRow.has(item.sno)
@@ -781,17 +891,43 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             )
          );
          setSelectedRow(new Set());
+         toast.success("Removed parents from selected rows.");
+      };
+
+      const isRowVisible = (item) => {
+         if (!item.parentSno) return true;
+         let currentParent = item.parentSno;
+         while (currentParent) {
+            if (!expandedRows.has(currentParent)) return false;
+            const parent = excelData.find(i => i.sno === currentParent);
+            currentParent = parent?.parentSno || 0;
+         }
+         return true;
       };
 
       return (
-         <>
+                   <>
+             {isAssigningParent && (
+                <div className="alert alert-info alert-dismissible fade show mb-0 rounded-0 border-0" style={{ position: 'sticky', top: 0, zIndex: 1050, backgroundColor: '#f0f9ff', color: '#0369a1' }}>
+                   <div className="d-flex align-items-center justify-content-between px-3">
+                      <div className="d-flex align-items-center">
+                         <Link size={18} className="me-2" />
+                         <span><strong>Manual Parent Assignment:</strong> Click on a row in the table to set it as the parent for the selected items.</span>
+                      </div>
+                      <button type="button" className="btn btn-sm btn-outline-info" onClick={() => setIsAssigningParent(false)}>
+                         Cancel
+                      </button>
+                   </div>
+                </div>
+             )}
+
             <div className='row g-3 ms-1 me-2 mt-4'>
-               <div className='col-lg-9 col-md-8 col-sm-12 p-2'>
+               <div className='col-12 p-2'>
                   <div className='bg-white rounded-3 h-100' style={{ border: '1px solid #0051973D' }}>
-                     <div className='row g-2 p-3 align-items-end'>
-                        <div className='col-lg-8 col-md-8 col-sm-8'>
+                     <div className='row g-2 p-3 align-items-center justify-content-between'>
+                        <div className='col-lg-4 col-md-5 col-sm-12'>
                            <label className="text-start d-block">Search BOQ</label>
-                           <div className="position-relative" style={{ width: '400px' }}>
+                           <div className="position-relative" style={{ width: '100%' }}>
                               <Search
                                  className="position-absolute"
                                  style={{ right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#6B7280', zIndex: 1 }}
@@ -807,128 +943,86 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                               />
                            </div>
                         </div>
-                        {excelData.length > 0 && (
-                           <div className='col-lg-4 col-md-4 col-sm-4 text-end'>
-                              <div className='d-flex justify-content-around align-items-center'>
-                                 <span className="text-muted small">
-                                    {((currentPage) * pageSize) + 1} - {Math.min((currentPage + 1) * pageSize, totalItems)} of {totalItems.toLocaleString()} items
-                                 </span>
-                                 <div className='d-flex align-items-center'>
-                                    <button
-                                       className="btn pagination btn-sm border-none me-2"
-                                       onClick={goToPreviousPage}
-                                       disabled={currentPage === 0}
-                                    >
-                                       <ChevronLeft size={18} />
-                                    </button>
-                                    <button
-                                       className="btn pagination btn-sm border-none"
-                                       onClick={goToNextPage}
-                                       disabled={currentPage >= totalPages - 1}
-                                    >
-                                       <ChevronRight size={18} />
-                                    </button>
-                                 </div>
-                              </div>
-                           </div>
-                        )}
+                        <div className='col-lg-8 col-md-7 col-sm-12 d-flex justify-content-end align-items-end pt-4'>
+                           <button className='btn cancel rounded-2 p-2 me-2' style={{ fontSize: '13px' }} onClick={clearLevel}>
+                              <X size={16} /><span className='ms-1'>Clear Level</span>
+                           </button>
+                        </div>
                      </div>
                      <div className='p-3'>
                         {excelData.length > 0 ? (
-                           <div className="boq-data table-responsive">
-                              <table className="table align-middle">
+                           <div className="boq-data table-responsive" style={{ maxHeight: '140vh', overflowY: 'auto' }}>
+                              <table className="table align-middle boq-config-table">
                                  <thead className="text-white">
                                     <tr>
-                                       <th></th>
-                                       <th className="text-center text-nowrap" style={{ width: '80px' }}>S.No</th>
+                                       <th style={{ width: '30px' }}></th>
+                                       <th className="text-center text-nowrap" style={{ width: '80px' }}>Level</th>
                                        <th style={{ width: '100px' }} className='text-nowrap'>BOQ Code</th>
                                        <th className='text-nowrap'>BOQ Description</th>
                                        <th className="text-center text-nowrap" style={{ width: '100px' }}>Unit</th>
-                                       <th className="text-end text-nowrap" style={{ width: '80px' }}>Quantity</th>
-                                       <th className="text-center text-nowrap" style={{ width: '140px' }}>Level</th>
-                                       <th className="text-center text-nowrap" style={{ width: '100px' }}>Parent</th>
+                                       <th className="text-center text-nowrap" style={{ width: '140px' }}>Quantity</th>
                                     </tr>
                                  </thead>
                                  <tbody>
-                                    {excelData.map((item) => (
-                                       <tr
-                                          key={item.sno}
-                                          className={
-                                             `${item.lastLevel ? "last-level " : ""}` +
-                                             (isParentSelecting &&
-                                                (
-                                                   item.lastLevel || item.level === 0 ||
-                                                   (selectedChildLevel !== 999 &&
-                                                      item.level !== selectedChildLevel - 1) ||
-                                                   item.sno === [...selectedRow][0]
-                                                )
-                                                ? " disabled-parent-row"
-                                                : ""
-                                             ) +
-                                             (isParentSelecting &&
-                                                (
-                                                   !item.lastLevel &&
-                                                   (
-                                                      selectedChildLevel === 999
-                                                         ? (item.level > 0)
-                                                         : (item.level === selectedChildLevel - 1)
-                                                   )
-                                                )
-                                                ? " parent-selectable-row"
-                                                : ""
-                                             )
-                                          }
-                                          onClick={() => {
-                                             if (!isParentSelecting) return;
-                                             if (!item.lastLevel && item.level < selectedChildLevel) {
-                                                handleParentAssign(item.sno);
-                                             }
-                                          }}
+                                    {excelData.filter(isRowVisible).map((item, index) => (
+                                       <tr key={item.sno}
+                                                                                     className={`${selectedRow.has(item.sno) ? 'selected-row' : ''} ${isAssigningParent ? 'assign-parent-mode' : ''}`}
+
+                                                                                     onClick={() => {
+                                              if (isAssigningParent) {
+                                                 handleParentSelect(item.sno);
+                                              } else {
+                                                 toggleSelection(item.sno);
+                                              }
+                                           }}
+
+                                          style={{ cursor: 'pointer' }}
                                        >
-                                          <td>{(isParentSelecting && !item.lastLevel && item.level !== 0 && item.level < selectedChildLevel) || item.level === 1 ? (<span></span>) : (<input
-                                             type="checkbox"
-                                             className="form-check-input"
-                                             style={{ borderColor: '#005197' }}
-                                             checked={selectedRow.has(item.sno)}
-                                             onChange={() => toggleSelection(item.sno)}
-                                          />)}
+                                          <td className="text-center" style={{ width: '30px' }}>
+                                             {!isLastLevelRow(item) && item.level > 0 && (
+                                                <span
+                                                   onClick={(e) => { e.stopPropagation(); toggleExpand(item.sno); }}
+                                                   style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                >
+                                                   {expandedRows.has(item.sno) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                                </span>
+                                             )}
                                           </td>
-                                          <td className="text-center text-nowrap">{item.sno}</td>
+                                          <td className="text-center text-nowrap">
+                                             <input
+                                                type="number"
+                                                className="form-control form-control-sm mx-auto"
+                                                style={{
+                                                   width: '70px',
+                                                   fontSize: '12px',
+                                                   padding: '2px 4px',
+                                                   borderRadius: '4px',
+                                                   border: '1px solid #0051973D'
+                                                }}
+                                                min="0"
+                                                value={item.level || ''}
+                                                onClick={(e) => e.stopPropagation()}
+                                                onWheel={(e) => e.target.blur()}
+                                                onChange={(e) => handleSingleLevelChange(item.sno, parseInt(e.target.value))}
+                                             />
+                                          </td>
                                           <td className='text-nowrap' title={item.boqCode}>
                                              {boqNameDisplay(item.boqCode, 9)}
                                           </td>
-                                          <td className='text-nowrap' title={item.boqName}>
-                                             {boqNameDisplay(item.boqName, 15)}
+                                          <td title="Click to view the full description" onClick={(e) => { e.stopPropagation(); setSelectedBoqForModal(item); }} style={{ cursor: 'pointer', whiteSpace: 'normal', wordBreak: 'break-word', minWidth: '300px' }}>
+                                             <div>
+                                                {item.boqName}
+                                             </div>
                                           </td>
                                           <td className="text-center text-nowrap">{item.uom || '-'}</td>
-                                          <td className="text-end text-nowrap">
+                                          <td className="text-center text-nowrap">
                                              {item.quantity && item.quantity !== 0 ? item.quantity.toFixed(3) : "-"}
-                                          </td>
-                                          <td className="text-center text-nowrap">{levelDisplay(item.level, item.lastLevel)}</td>
-                                          <td className="text-center text-muted small text-nowrap">
-                                             {item.level === 1 ? "-" : (item.parentSno > 0 ? item.parentSno : 'Not Assigned')}
                                           </td>
                                        </tr>
                                     ))}
                                  </tbody>
                               </table>
-                              <div className='d-flex justify-content-between align-items-center mt-3'>
-                                 <button
-                                    className="btn pagination-bottom btn-sm border-none me-2"
-                                    onClick={goToPreviousPage}
-                                    disabled={currentPage === 0}
-                                 >
-                                    <ChevronLeft size={20} /> Previous
-                                 </button>
-                                 <span className='text-muted' style={{ fontSize: '13px' }}>{currentPage + 1 + " of " + totalPages + " Pages "}</span>
-                                 <button
-                                    className="btn pagination-bottom btn-sm border-none"
-                                    onClick={goToNextPage}
-                                    disabled={currentPage >= totalPages - 1}
-                                 >
-                                    Next <ChevronRight size={20} />
-                                 </button>
-                              </div>
+
                            </div>
                         ) : (
                            <div className="text-center py-5 text-muted">
@@ -939,57 +1033,40 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                      </div>
                   </div>
                </div>
-               <div className='col-lg-3 col-md-4 col-sm-12 p-2'>
-                  <div className='bg-white p-2 rounded-2 pt-3 h-100' style={{ border: '1px solid #0051973D' }}>
-                     <div className='ms-2' style={{ borderBottom: '1px solid #0051973D' }}>
-                        <div className='text-start fw-bold'>Assign Levels</div>
-                        <div className='text-start text-muted pb-1 pt-1' style={{ fontSize: '13px' }}>Assign selected rows to a level</div>
-                     </div>
-                     <div className='d-flex ms-2 flex-column mt-3 align-items-around' style={{ borderBottom: '1px solid #0051973D' }}>
-                        <button className='btn level1 rounded-2 p-2 mb-3' disabled={selectedRow.length < 0} onClick={() => assignLevel(1)}>
-                           <span className=''></span>Level 1
-                        </button>
-                        <button className='btn level2 rounded-2 p-2 mb-3' disabled={selectedRow.length < 0} onClick={() => assignLevel(2)}>
-                           Level 2
-                        </button>
-                        <button className='btn level3 rounded-2 p-2 mb-3' disabled={selectedRow.length < 0} onClick={() => assignLevel(3)}>
-                           Level 3
-                        </button>
-                        <button className='btn lastLevel rounded-2 p-2 mb-3' disabled={selectedRow.length < 0} onClick={() => assignLastLevel()}>
-                           Last Level
-                        </button>
-                        <button className='btn cancel rounded-2 p-2 mb-3' disabled={selectedRow.length < 0} onClick={clearLevel}>
-                           <X size={16} /><span className='ms-2'>Clear Level</span>
-                        </button>
 
-                     </div>
-                     <div className='ms-2 mt-3' style={{ borderBottom: '1px solid #0051973D' }}>
-                        <div className='text-start fw-bold mb-3'>Parent Mapping</div>
-                        <button className='btn parent rounded-2 p-2 mb-3 w-100' disabled={isParentSelecting} onClick={startParentSelection}>
-                           <Link size={16} /><span className='ms-2'>Assign Parent</span>
-                        </button>
-                        <button className='btn cancel rounded-2 p-2 mb-3 w-100' disabled={selectedRow.length < 0} onClick={clearParent}>
-                           <X size={16} /><span className='ms-2'>Remove Parent</span>
-                        </button>
-                     </div>
-                     <div className='ms-2 mt-3'>
-                        <div className='text-start fw-bold mb-3'>Live Structure Preview</div>
-                        <div className="structure-preview">
-                           {!excelData ? (
-                              <div className="text-muted small">No structure assigned.</div>
-                           ) : (
-                              <div className="text-start">{treeData.map(node => renderNode(node))}</div>
-                           )}
-                        </div>
-                     </div>
-                  </div>
-               </div>
             </div>
             <div className='d-flex justify-content-end mt-4'>
                <button className='btn cancel-button mt-2 me-4' onClick={removeFile}>Cancel</button>
                <button className='btn action-button mt-2 fs-6' onClick={saveMappedBOQ}>{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : (<span>Import BOQ Data</span>)}</button>
             </div>
+            {selectedBoqForModal && (
+               <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1070 }}>
+                  <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                     <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
+                        <div className="modal-header border-0 pb-0">
+                           <h5 className="modal-title fw-bold" style={{ color: '#005197' }}>BOQ Description : {selectedBoqForModal.boqCode}</h5>
+                           <button type="button" className="btn-close" onClick={() => setSelectedBoqForModal(null)}></button>
+                        </div>
+                        <div className="modal-body py-4 text-start">
+                           <p className="mb-0 text-muted" style={{ fontSize: '15px', whiteSpace: 'pre-wrap' }}>
+                              {selectedBoqForModal.boqName}
+                           </p>
+                        </div>
+                        <div className="modal-footer border-0 pt-0">
+                           <button
+                              type="button"
+                              className="btn action-button px-4"
+                              onClick={() => setSelectedBoqForModal(null)}
+                           >
+                              Close
+                           </button>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            )}
          </>
+
       );
 
    }
@@ -1023,13 +1100,13 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                   />
                </div>
             </div>
-            {(selectedSheet || columns) && (<div className='mt-5'>
+            {(selectedSheet || (Array.isArray(columns) && columns.length > 0)) && (<div className='mt-5'>
                <div className='mb-4 text-start fw-bold'>Map the Fields</div>
                <div className='row d-flex justify-content-between'>
                   <div className='col-lg-6 col-md-6 col-sm-12'>
                      <ColumnIcon /><span className='fw-bold fs-6 ms-2'>Excel Feilds</span>
                      <div className='mt-1 rounded-3 p-2'>
-                        {columns
+                        {(Array.isArray(columns) ? columns : [])
                            .filter(col => !internalFields.some(f => f.mappingFields === col))
                            .map((col, index) => (
                               <div className={`excel-column-container me-2 p-3 rounded-3 mt-3 mb-3 d-flex justify-content-between align-items-center`} key={index} draggable={true}
@@ -1127,7 +1204,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                </div>
             )}
             <div className='d-flex justify-content-end mt-4'>
-               <button className='btn action-button mt-2 fs-6' onClick={() => fetchExcelData(currentPage, pageSize)}><ArrowRight size={18} /> <span className='ms-1'>Next</span></button>
+               <button className='btn action-button mt-2 fs-6' onClick={() => fetchExcelData()}><ArrowRight size={18} /> <span className='ms-1'>Next</span></button>
             </div>
          </div>
       )
@@ -1158,9 +1235,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                   </div>
                   <div className='col-lg-6 col-md-6 col-sm-12'>
                      <label className="projectform-select text-start d-block">
-                        Excel Sheet
+                        {fileType === 'pdf' ? 'Start Page' : 'Excel Sheet'}
                      </label>
-                     <Select placeholder="Select Excel Sheet"
+                     <Select placeholder={fileType === 'pdf' ? 'Select Start Page' : 'Select Excel Sheet'}
                         options={sheetOption}
                         className="w-100"
                         classNamePrefix="select"
@@ -1174,7 +1251,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                               loadSheetColumn(sheetValue);
                            }
                         }}
-                        isDisabled={fileType === 'pdf'}
+                        isDisabled={false}
                      />
                   </div>
                </div>
@@ -1218,6 +1295,37 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             </div>
          )}
          {BOQfile && (renderContent('mappingConfig'))}
+         {confirmModal.show && (
+            <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+               <div className="modal-dialog modal-dialog-centered">
+                  <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
+                     <div className="modal-header border-0 pb-0">
+                        <h5 className="modal-title fw-bold" style={{ color: '#005197' }}>Confirm Action</h5>
+                        <button type="button" className="btn-close" onClick={() => setConfirmModal({ show: false, type: '', message: '' })}></button>
+                     </div>
+                     <div className="modal-body py-4">
+                        <p className="mb-0 text-muted" style={{ fontSize: '15px' }}>{confirmModal.message}</p>
+                     </div>
+                     <div className="modal-footer border-0 pt-0">
+                        <button
+                           type="button"
+                           className="btn cancel-button px-4"
+                           onClick={() => setConfirmModal({ show: false, type: '', message: '' })}
+                        >
+                           Cancel
+                        </button>
+                        <button
+                           type="button"
+                           className="btn action-button px-4"
+                           onClick={handleBulkClear}
+                        >
+                           Confirm
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
       </div>
    );
 }
