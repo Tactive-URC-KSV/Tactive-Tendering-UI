@@ -956,9 +956,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                  <thead className="text-white">
                                     <tr>
                                        <th style={{ width: '30px' }}></th>
-                                       <th className="text-center text-nowrap" style={{ width: '80px' }}>Level</th>
-                                       <th style={{ width: '100px' }} className='text-nowrap'>BOQ Code</th>
-                                       <th className='text-nowrap'>BOQ Description</th>
+                                        <th className="text-center text-nowrap" style={{ width: '60px' }}>Level</th>
+                                        <th style={{ width: '100px' }} className='text-nowrap'>BOQ Code</th>
+                                        <th className='text-nowrap text-start'>BOQ Description</th>
                                        <th className="text-center text-nowrap" style={{ width: '100px' }}>Unit</th>
                                        <th className="text-center text-nowrap" style={{ width: '140px' }}>Quantity</th>
                                     </tr>
@@ -966,9 +966,8 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                  <tbody>
                                     {excelData.filter(isRowVisible).map((item, index) => (
                                        <tr key={item.sno}
-                                                                                     className={`${selectedRow.has(item.sno) ? 'selected-row' : ''} ${isAssigningParent ? 'assign-parent-mode' : ''}`}
-
-                                                                                     onClick={() => {
+                                          className={`${item.level > 0 ? `level-bg-${((item.level - 1) % 10) + 1}` : ''} ${selectedRow.has(item.sno) ? 'selected-row' : ''} ${isAssigningParent ? 'assign-parent-mode' : ''}`}
+                                          onClick={() => {
                                               if (isAssigningParent) {
                                                  handleParentSelect(item.sno);
                                               } else {
@@ -992,13 +991,13 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                              <input
                                                 type="number"
                                                 className="form-control form-control-sm mx-auto"
-                                                style={{
-                                                   width: '70px',
-                                                   fontSize: '12px',
-                                                   padding: '2px 4px',
-                                                   borderRadius: '4px',
-                                                   border: '1px solid #0051973D'
-                                                }}
+                                                 style={{
+                                                    width: '50px',
+                                                    fontSize: '12px',
+                                                    padding: '2px 4px',
+                                                    borderRadius: '4px',
+                                                    border: '1px solid #0051973D'
+                                                 }}
                                                 min="0"
                                                 value={item.level || ''}
                                                 onClick={(e) => e.stopPropagation()}
@@ -1009,11 +1008,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                           <td className='text-nowrap' title={item.boqCode}>
                                              {boqNameDisplay(item.boqCode, 9)}
                                           </td>
-                                          <td title="Click to view the full description" onClick={(e) => { e.stopPropagation(); setSelectedBoqForModal(item); }} style={{ cursor: 'pointer', whiteSpace: 'normal', wordBreak: 'break-word', minWidth: '300px' }}>
-                                             <div>
-                                                {item.boqName}
-                                             </div>
-                                          </td>
+                                           <td className="text-start" title="Click to view the full description" onClick={(e) => { e.stopPropagation(); setSelectedBoqForModal(item); }} style={{ cursor: 'pointer', whiteSpace: 'normal', wordBreak: 'break-word', minWidth: '400px' }}>
+                                              <div>
+                                                 {item.boqName}
+                                              </div>
+                                           </td>
                                           <td className="text-center text-nowrap">{item.uom || '-'}</td>
                                           <td className="text-center text-nowrap">
                                              {item.quantity && item.quantity !== 0 ? item.quantity.toFixed(3) : "-"}
