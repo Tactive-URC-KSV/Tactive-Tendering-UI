@@ -1084,3 +1084,25 @@ label {
   border: 1px solid #0051973D !important;
   padding: 12px 15px !important;
 }
+
+.level-bg-1 td { background-color: #faf5ff !important; }
+.level-bg-2 td { background-color: #EFF6FF !important; }
+.level-bg-3 td { background-color: #FEFCE8 !important; }
+.level-bg-4 td { background-color: #F0FDF4 !important; }
+.level-bg-5 td { background-color: #FFF1F2 !important; }
+.level-bg-6 td { background-color: #F5F3FF !important; }
+.level-bg-7 td { background-color: #ECFEFF !important; }
+.level-bg-8 td { background-color: #FFF7ED !important; }
+.level-bg-9 td { background-color: #F9FAFB !important; }
+.level-bg-10 td { background-color: #FDF2F8 !important; }
+
+.selected-row td {
+  border-top: 1.5px solid #005197 !important;
+  border-bottom: 1.5px solid #005197 !important;
+}
+
+
+.assign-parent-mode:hover td {
+  background-color: #f0f9ff !important;
+  cursor: cell !important;
+}

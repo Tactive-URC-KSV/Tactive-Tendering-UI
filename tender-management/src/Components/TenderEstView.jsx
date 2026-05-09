@@ -254,7 +254,9 @@ function BOQStructureView({ projectId }) {
   const [boqCurrentPage, setBoqCurrentPage] = useState(0);
   const [boqTotalPages, setBoqTotalPages] = useState(0);
   const [boqTotalItems, setBoqTotalItems] = useState(0);
+  const [parentTotals, setParentTotals] = useState({});
   const pageSize = 15;
+
 
   const expandParents = async (searchResults) => {
     const parentsToExpand = new Set();
@@ -473,6 +475,25 @@ function BOQStructureView({ projectId }) {
       setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: [] }));
     }
   };
+  const fetchParentTotals = async () => {
+    try {
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/project/getParentBoqTotals/${projectId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      if (res.status === 200) {
+        setParentTotals(res.data || {});
+      }
+    } catch (err) {
+      setParentTotals({});
+    }
+  };
+
   const handleToggle = (parentId) => {
     setExpandedParentIds(prevSet => {
       const newSet = new Set(prevSet);
@@ -488,6 +509,7 @@ function BOQStructureView({ projectId }) {
   };
   useEffect(() => {
     refreshParentBoqData();
+    fetchParentTotals();
   }, [projectId, navigate]);
 
   const BOQNode = ({ boq, level = 0 }) => {
@@ -519,6 +541,8 @@ function BOQStructureView({ projectId }) {
           <td className="px-2" title="Click to view full BOQ Name" onClick={(e) => { e.stopPropagation(); setSelectedBoqForModal(boq); }} style={{ cursor: 'pointer' }}>{boqNameDisplay}</td>
           <td className="px-2">{boq?.uom?.uomCode || '-'}</td>
           <td className="px-2">{boq.quantity?.toFixed(3) || 0}</td>
+          <td className="px-2">{boq.totalRate?.toFixed(2) || 0}</td>
+          <td className="px-2">{boq.totalAmount?.toFixed(2) || 0}</td>
           <td className="px-2">
             <button className="btn btn-sm" style={{ background: "#DCFCE7", cursor: "pointer" }} onClick={() => handleResource(boq.id)}><Eye color="#15803D" size={20} /><span className="ms-1" style={{ color: '#15803D' }}>View</span></button>
           </td>
@@ -545,7 +569,14 @@ function BOQStructureView({ projectId }) {
 
             <span className="ms-2 fw-bold">{boq.boqCode}</span>
             <span className="ms-3" title="Click to view full BOQ Name" onClick={(e) => { e.stopPropagation(); setSelectedBoqForModal(boq); }} style={{ cursor: 'pointer' }}>{boqNameDisplay}</span>
+            {boq.level === 1 && (
+              <span className="ms-auto fw-bold" style={{ color: '#005197' }}>
+                <IndianRupee size={14} className="me-1" style={{ marginTop: '-2px' }} />
+                {parentTotals[boq.id]?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+              </span>
+            )}
           </div>
+
 
           {isExpanded && canExpand && (
             <div
@@ -566,6 +597,8 @@ function BOQStructureView({ projectId }) {
                             <th className="px-2">BOQ Name</th>
                             <th className="px-2">UOM</th>
                             <th className="px-2">Quantity</th>
+                            <th className="px-2">Rate</th>
+                            <th className="px-2">Amount</th>
                             <th className="px-2">Action</th>
                           </tr>
                         </thead>
@@ -689,6 +722,8 @@ function BOQStructureView({ projectId }) {
                             <th className="px-2">BOQ Name</th>
                             <th className="px-2">UOM</th>
                             <th className="px-2">Quantity</th>
+                            <th className="px-2">Rate</th>
+                            <th className="px-2">Amount</th>
                             <th className="px-2">Action</th>
                           </tr>
                         </thead>
