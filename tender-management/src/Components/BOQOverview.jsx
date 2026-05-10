@@ -671,7 +671,7 @@ function BOQOverview({ projectId }) {
                         {boqNameDisplay}
                         {hierarchyUpdates[boq.id] && <span className="badge bg-warning ms-2">Moved</span>}
                     </td>
-                    <td className="px-2">{boq?.uom?.uomCode || '-'}</td>
+                    <td className="px-2">{boq?.uom?.uomCode || boq.uomCode || '-'}</td>
                     <td className="px-2">{boq.quantity?.toFixed(3) || 0}</td>
                     {isHierarchyMode && (
                         <td className="px-2">
