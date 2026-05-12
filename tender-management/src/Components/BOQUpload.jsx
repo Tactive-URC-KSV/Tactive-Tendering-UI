@@ -56,10 +56,10 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [fileType, setFileType] = useState('')
 
    const [internalFields, setInternalFields] = useState([
-      { fields: 'boqCode', mappingFields: '', importance: 'Required', label: 'BOQ Code' },
-      { fields: 'boqName', mappingFields: '', importance: 'Required', label: 'BOQ Name' },
-      { fields: 'uom', mappingFields: '', importance: 'Required', label: 'UOM' },
-      { fields: 'quantity', mappingFields: '', importance: 'Required', label: 'Quantity' },
+      { fields: 'boqCode', mappingFields: [], importance: 'Required', label: 'BOQ Code' },
+      { fields: 'boqName', mappingFields: [], importance: 'Required', label: 'BOQ Name' },
+      { fields: 'uom', mappingFields: [], importance: 'Required', label: 'UOM' },
+      { fields: 'quantity', mappingFields: [], importance: 'Required', label: 'Quantity' },
    ]);
    const [excelData, setExcelData] = useState([]);
    const [searchTerm, setSearchTerm] = useState('');
@@ -158,7 +158,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       setUploadScreen(false);
       setSelectedRow(new Set());
       setInternalFields(prev =>
-         prev.map(f => ({ ...f, mappingFields: '' }))
+         prev.map(f => ({ ...f, mappingFields: [] }))
       );
    };
    const getExcelSheets = (event) => {
@@ -256,24 +256,25 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             const response = res.data;
             const templateMapping = response.templateMapping;
             const availableColumns = new Set(columns);
-            const mappedColumnNames = Object.values(templateMapping);
-            const allColumnsPresent = mappedColumnNames.every(mappedName =>
+            // Flatten all mapped column names from the template (now arrays)
+            const allMappedNames = Object.values(templateMapping).flat();
+            const allColumnsPresent = allMappedNames.every(mappedName =>
                availableColumns.has(mappedName)
             );
             if (!allColumnsPresent) {
                toast.error("Template mapping failed: The uploaded file is missing one or more columns required by this template.");
                setSelectedTemplate(null);
                setInternalFields(prev =>
-                  prev.map(f => ({ ...f, mappingFields: '' }))
+                  prev.map(f => ({ ...f, mappingFields: [] }))
                );
                return;
             }
             const updatedInternalFields = internalFields.map(field => {
-               const mappedColumnName = templateMapping[field.fields];
+               const mappedColumns = templateMapping[field.fields];
 
                return {
                   ...field,
-                  mappingFields: mappedColumnName || ''
+                  mappingFields: Array.isArray(mappedColumns) ? mappedColumns : (mappedColumns ? [mappedColumns] : [])
                };
             });
 
@@ -299,7 +300,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          return;
       }
       const columnMapping = internalFields.reduce((acc, item) => {
-         if (item.mappingFields && item.mappingFields !== "") {
+         if (item.mappingFields && item.mappingFields.length > 0) {
             acc[item.fields] = item.mappingFields;
          }
          return acc;
@@ -469,7 +470,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
 
                const updatedInternalFields = internalFields.map(field => ({
                   ...field,
-                  mappingFields: ''
+                  mappingFields: []
                }));
                setInternalFields(updatedInternalFields);
                setSelectedTemplate(null);
@@ -497,7 +498,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       const formData = new FormData();
       formData.append('file', BOQfile);
       internalFields.forEach(field => {
-         if (field.mappingFields) {
+         if (field.mappingFields && field.mappingFields.length > 0) {
             mapping[field.fields] = field.mappingFields;
          }
       })
@@ -1092,7 +1093,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                            loadTemplate(templateValue);
                         } else {
                            setInternalFields(prev =>
-                              prev.map(f => ({ ...f, mappingFields: '' }))
+                              prev.map(f => ({ ...f, mappingFields: [] }))
                            );
                         }
                      }}
@@ -1106,7 +1107,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                      <ColumnIcon /><span className='fw-bold fs-6 ms-2'>Excel Feilds</span>
                      <div className='mt-1 rounded-3 p-2'>
                         {(Array.isArray(columns) ? columns : [])
-                           .filter(col => !internalFields.some(f => f.mappingFields === col))
+                           .filter(col => !internalFields.some(f => Array.isArray(f.mappingFields) && f.mappingFields.includes(col)))
                            .map((col, index) => (
                               <div className={`excel-column-container me-2 p-3 rounded-3 mt-3 mb-3 d-flex justify-content-between align-items-center`} key={index} draggable={true}
                                  onDragStart={(e) =>
@@ -1124,36 +1125,43 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                      <div className='mt-1 rounded-3 p-2'>
                         {internalFields.map((col, index) => (
                            <div key={index}>
-                              <div className={`internal-column-container ${col.mappingFields ? 'mapped ' : ' '} me-2 p-3 rounded-3 mt-3 mb-3 d-flex flex-column justify-content-between text-start`}
+                              <div className={`internal-column-container ${col.mappingFields.length > 0 ? 'mapped ' : ' '} me-2 p-3 rounded-3 mt-3 mb-3 d-flex flex-column justify-content-between text-start`}
                                  onDragOver={(e) => e.preventDefault()}
                                  onDrop={() => {
                                     if (draggedColumn) {
                                        const updated = [...internalFields];
-                                       updated[index].mappingFields = draggedColumn;
-                                       setInternalFields(updated);
+                                       const currentMappings = [...updated[index].mappingFields];
+                                       if (!currentMappings.includes(draggedColumn)) {
+                                          currentMappings.push(draggedColumn);
+                                          updated[index].mappingFields = currentMappings;
+                                          setInternalFields(updated);
+                                       }
                                        setDraggedColumn(null);
                                     }
                                  }}>
                                  <div className='d-flex justify-content-between'>
                                     <span className='mb-1'>{col.label}</span>
-                                    <span className={`mapping-condition ${!col.mappingFields ? (col.importance === 'Required' ? 'required' : 'optional') : 'mapped'}`}>
-                                       {col.mappingFields ? 'Mapped' : col.importance}
+                                    <span className={`mapping-condition ${col.mappingFields.length === 0 ? (col.importance === 'Required' ? 'required' : 'optional') : 'mapped'}`}>
+                                       {col.mappingFields.length > 0 ? 'Mapped' : col.importance}
                                     </span>
                                  </div>
-                                 {col?.mappingFields &&
-                                    <div className='d-flex justify-content-between bg-white w-100 rounded'>
-                                       <div>
-                                          <span className='ms-2'><Mapping /></span>
-                                          <span className='ms-2'>{col.mappingFields}</span>
+                                 {col.mappingFields.length > 0 &&
+                                    col.mappingFields.map((mappedCol, chipIndex) => (
+                                       <div key={chipIndex} className='d-flex justify-content-between bg-white w-100 rounded mt-1'>
+                                          <div>
+                                             <span className='ms-2'><Mapping /></span>
+                                             <span className='ms-2'>{mappedCol}</span>
+                                          </div>
+                                          <span className='me-2' style={{ cursor: 'pointer' }}>
+                                             <X color='#C33D1B' size={14} onClick={() => {
+                                                const updated = [...internalFields];
+                                                updated[index].mappingFields = updated[index].mappingFields.filter((_, i) => i !== chipIndex);
+                                                setInternalFields(updated);
+                                             }} />
+                                          </span>
                                        </div>
-                                       <span className='me-2' style={{ cursor: 'pointer' }}>
-                                          <X color='#C33D1B' size={14} onClick={() => {
-                                             const updated = [...internalFields];
-                                             updated[index].mappingFields = '';
-                                             setInternalFields(updated);
-                                          }} />
-                                       </span>
-                                    </div>}
+                                    ))
+                                 }
                               </div>
                            </div>
                         ))}
