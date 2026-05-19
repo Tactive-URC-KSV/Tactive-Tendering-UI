@@ -12,6 +12,8 @@ import InternalIcon from '../assest/Internal_Fields.svg?react';
 import Drag from '../assest/Drag.svg?react';
 import Template from '../assest/Template.svg?react';
 import Mapping from '../assest/Mapping.svg?react';
+import ExpandIcon from '../assest/Expand.svg?react';
+import CollapseIcon from '../assest/Collapse.svg?react';
 import useDebounce from '../Utills/useDebounce.js'
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
@@ -71,6 +73,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [expandedRows, setExpandedRows] = useState(new Set());
    const [selectedBoqForModal, setSelectedBoqForModal] = useState(null);
    const [isAssigningParent, setIsAssigningParent] = useState(false);
+   const [autoIncreaseLevel, setAutoIncreaseLevel] = useState(true);
 
    const isLastLevelRow = (row) => {
       return (
@@ -696,12 +699,13 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             updatedLevelMap[sno] = level;
             updatedParentMap[sno] = findParentSno(itemIndex, level);
 
-            const nextLevel = level + 1;
+            const nextLevel = autoIncreaseLevel ? level + 1 : level;
+            const parentSnoForSubsequent = autoIncreaseLevel ? sno : updatedParentMap[sno];
+
             for (let i = itemIndex + 1; i < excelData.length; i++) {
                const currentSno = excelData[i].sno;
                updatedLevelMap[currentSno] = nextLevel;
-               updatedParentMap[currentSno] = sno; // Parent is the row that was just manually changed? 
-               // No, if they are all siblings at L+1, their parent is 'sno'.
+               updatedParentMap[currentSno] = parentSnoForSubsequent;
             }
          }
 
@@ -906,6 +910,15 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          return true;
       };
 
+      const expandAll = () => {
+         const allSnos = excelData.map(item => item.sno);
+         setExpandedRows(new Set(allSnos));
+      };
+
+      const collapseAll = () => {
+         setExpandedRows(new Set());
+      };
+
       return (
                    <>
              {isAssigningParent && (
@@ -945,8 +958,25 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                            </div>
                         </div>
                         <div className='col-lg-8 col-md-7 col-sm-12 d-flex justify-content-end align-items-end pt-4'>
+                           <div className="form-check d-flex align-items-center me-3 mb-2">
+                              <input 
+                                 type="checkbox" 
+                                 className="form-check-input me-2 mt-0" 
+                                 id="autoIncrease" 
+                                 checked={autoIncreaseLevel} 
+                                 onChange={(e) => setAutoIncreaseLevel(e.target.checked)} 
+                                 style={{ cursor: 'pointer' }}
+                              />
+                              <label className="form-check-label text-nowrap" htmlFor="autoIncrease" style={{fontSize: '13px', cursor: 'pointer', color: '#005197', fontWeight: '500'}}>Auto-increase levels</label>
+                           </div>
+                           <button className='btn cancel rounded-2 p-2 me-2' style={{ fontSize: '13px' }} onClick={expandAll}>
+                              <ExpandIcon width={20} height={20} /><span className='ms-1'>Expand All</span>
+                           </button>
+                           <button className='btn cancel rounded-2 p-2 me-2' style={{ fontSize: '13px' }} onClick={collapseAll}>
+                              <CollapseIcon width={20} height={20} /><span className='ms-1'>Collapse All</span>
+                           </button>
                            <button className='btn cancel rounded-2 p-2 me-2' style={{ fontSize: '13px' }} onClick={clearLevel}>
-                              <X size={16} /><span className='ms-1'>Clear Level</span>
+                              <X size={20} /><span className='ms-1'>Clear Level</span>
                            </button>
                         </div>
                      </div>

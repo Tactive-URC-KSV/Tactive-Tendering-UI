@@ -8,7 +8,7 @@ import Export from '../assest/Export.svg?react';
 import Import from '../assest/Import.svg?react';
 import BOQUpload from "./BOQUpload";
 import { toast } from 'react-toastify';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useUom } from "../Context/UomContext";
 import useDebounce from "../Utills/useDebounce";
 import { searchBoq, updateBOQHierarchy } from "../Utills/projectApi";
@@ -85,6 +85,8 @@ function HierarchySelectionNode({ boq, onSelect, selectedBoqForMove, level = 0 }
 
 function BOQOverview({ projectId }) {
     const navigate = useNavigate();
+    const location = useLocation();
+    const { token } = useParams();
     const [parentBoq, setParentBoq] = useState([]);
     const [parentTree, setParentTree] = useState([]);
     const [project, setProject] = useState();
@@ -869,7 +871,13 @@ function BOQOverview({ projectId }) {
                         <button className="btn export-button me-2" onClick={() => setShowExportModal(true)}>
                             <span className="me-2"><Export /></span>Export File
                         </button>
-                        <button className="btn import-button ms-2" onClick={() => setUploadScreen(true)}>
+                        <button className="btn import-button ms-2" onClick={() => {
+                            if (location.pathname.startsWith('/external')) {
+                                navigate(`/external/boq-upload/${projectId}/${token}`);
+                            } else {
+                                setUploadScreen(true);
+                            }
+                        }}>
                             <span className="me-2"><Import /></span>Import File
                         </button>
                         {showExportModal && (
