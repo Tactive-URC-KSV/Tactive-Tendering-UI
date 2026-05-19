@@ -45,8 +45,35 @@ import CompareOffers from './Components/CompareOffers';
 import TenderOffers from './Components/TenderOffers';
 import CompanyInfo from './Components/CompanyInfo';
 import ContractorInfo from './Components/ContractorInfo';
+import BOQOverview from './Components/BOQOverview';
+import BOQUpload from './Components/BOQUpload';
+import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
+const ExternalBOQOverview = () => {
+  const { projectId, token } = useParams();
+  if (token) {
+    sessionStorage.setItem('token', token);
+  }
+  return <BOQOverview projectId={projectId} />;
+};
 
+const ExternalBOQUpload = () => {
+  const { projectId, token } = useParams();
+  const navigate = useNavigate();
+
+  if (token) {
+    sessionStorage.setItem('token', token);
+  }
+
+  return (
+    <BOQUpload
+      projectId={projectId}
+      projectName=""
+      setUploadScreen={() => navigate(`/external/boq-overview/${projectId}/${token}`)}
+    />
+  );
+};
 
 function App() {
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 768);
@@ -92,6 +119,8 @@ function App() {
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/external/boq-overview/:projectId/:token" element={<ExternalBOQOverview />} />
+          <Route path="/external/boq-upload/:projectId/:token" element={<ExternalBOQUpload />} />
           <Route path='/*' element={
             <ProtectedRoute roles={["ADMIN", "USER"]}>
               <RegionsProvider>
