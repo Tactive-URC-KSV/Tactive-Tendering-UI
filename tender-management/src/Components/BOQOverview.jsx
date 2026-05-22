@@ -337,9 +337,7 @@ function BOQOverview({ projectId }) {
                 setBoqTotalPages(0);
             }
         } catch (err) {
-            if (err?.response?.status === 401) {
-                navigate('/login');
-            }
+            console.error('Error fetching parent BOQ:', err);
             setParentBoq([]);
             setBoqTotalPages(0);
         }
@@ -440,9 +438,6 @@ function BOQOverview({ projectId }) {
                 setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: [] }));
             }
         } catch (err) {
-            if (err?.response?.status === 401) {
-                navigate('/login');
-            }
             console.error('Error fetching children BOQ data:', err);
             setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: [] }));
         }
@@ -462,9 +457,6 @@ function BOQOverview({ projectId }) {
                     success = true;
                 }
             }).catch(err => {
-                if (err?.response?.status === 401) {
-                    navigate('/login');
-                }
                 if (err?.response?.status === 409) {
                     toast.warn(err?.response?.data);
                 } else {
@@ -514,9 +506,7 @@ function BOQOverview({ projectId }) {
                 console.error('Failed to fetch project info:', res.status);
             }
         }).catch(err => {
-            if (err?.response?.status === 401) {
-                navigate('/login');
-            }
+            console.error('Error fetching project info:', err);
         });
     }, [effectiveProjectId, navigate]);
     useEffect(() => {
@@ -536,9 +526,6 @@ function BOQOverview({ projectId }) {
                 console.error('Failed to fetch total BOQ:', res.status);
             }
         }).catch(err => {
-            if (err?.response?.status === 401) {
-                navigate('/login');
-            }
             console.error('Error fetching total BOQ:', err);
         });
     }
@@ -615,12 +602,8 @@ function BOQOverview({ projectId }) {
             window.URL.revokeObjectURL(url);
             toast.success("BOQ Excel file exported successfully.");
         } catch (err) {
-            if (err?.response?.status === 401) {
-                navigate('/login');
-            } else {
-                console.error("Export Excel Failed:", err);
-                toast.error("Failed to export Excel file.");
-            }
+            console.error("Export Excel Failed:", err);
+            toast.error("Failed to export Excel file.");
         }
     };
 
@@ -652,12 +635,8 @@ function BOQOverview({ projectId }) {
             window.URL.revokeObjectURL(url);
             toast.success("BOQ PDF file exported successfully.");
         } catch (err) {
-            if (err?.response?.status === 401) {
-                navigate('/login');
-            } else {
-                console.error("Export PDF Failed:", err);
-                toast.error("Failed to export PDF file.");
-            }
+            console.error("Export PDF Failed:", err);
+            toast.error("Failed to export PDF file.");
         }
     };
     const BOQNode = ({ boq, level = 0 }) => {
