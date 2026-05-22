@@ -31,10 +31,6 @@ const autoScrollWhileDragging = (e) => {
    }
 };
 
-const handleUnauthorized = (navigate) => {
-   navigate('/login');
-}
-
 const throttledAutoScroll = throttle(autoScrollWhileDragging, 50);
 
 function BOQUpload({ projectId, projectName, setUploadScreen }) {
