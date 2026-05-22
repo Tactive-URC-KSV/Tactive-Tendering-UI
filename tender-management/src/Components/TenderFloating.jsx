@@ -4,12 +4,12 @@ import ProjectSelection from './ProjectInfo';
 import TFProcess from "./TFProcess.jsx";
 import axios from "axios";
 
-function TenderFloating(){
+function TenderFloating() {
     const projectId = useParams().projectId;
     const [projects, setProjects] = useState([]);
 
-     useEffect(() => {
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllBoqUploadedProject`, {
+    useEffect(() => {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/approved/projects`, {
             headers: {
                 Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                 'Content-Type': 'application/json',
@@ -25,18 +25,18 @@ function TenderFloating(){
             });
     }, []);
 
-    return(
+    return (
         <div className="container-fluid p-4 mt-3">
             {!projectId && (
                 <>
                     <div className="text-start fw-bold ms-1 mt-1 mb-3">Tender Floating</div>
-                    <ProjectSelection 
-                        projects={projects} 
-                        continueRoute="/tenderfloating" 
+                    <ProjectSelection
+                        projects={projects}
+                        continueRoute="/tenderfloating"
                     />
                 </>
             )}
-            {projectId && <TFProcess projectId={projectId}/>}
+            {projectId && <TFProcess projectId={projectId} />}
         </div>
     )
 }

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import '../CSS/Styles.css'
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, FileSymlink, FileText, Folder, Link, Search, SlidersHorizontal, X } from 'lucide-react';
 import { useEffect } from 'react';
@@ -16,7 +16,7 @@ import ExpandIcon from '../assest/Expand.svg?react';
 import CollapseIcon from '../assest/Collapse.svg?react';
 import useDebounce from '../Utills/useDebounce.js'
 import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 
 const autoScrollWhileDragging = (e) => {
    const padding = 100;
@@ -39,9 +39,40 @@ const throttledAutoScroll = throttle(autoScrollWhileDragging, 50);
 
 function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const navigate = useNavigate();
+   const location = useLocation();
+   const { token } = useParams();
    const [section, setSection] = useState('columnMapping');
    const [confirmModal, setConfirmModal] = useState({ show: false, type: '', message: '' });
    const [loading, setLoading] = useState(false);
+   
+   const isExternalAccess = location.pathname.startsWith('/external');
+   
+   // Parse query parameters from URL
+   const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+   
+   const getQueryParam = (name) => {
+       if (queryParams.has(name)) return queryParams.get(name);
+       const normalizedName = name.toLowerCase().replace(/[\s\._-]/g, '');
+       for (const key of queryParams.keys()) {
+           const normalizedKey = key.toLowerCase().replace(/[\s\._-]/g, '');
+           if (normalizedKey === normalizedName) {
+               return queryParams.get(key);
+           }
+       }
+       return null;
+   };
+
+   const externalModuleRef = useMemo(() => isExternalAccess ? (getQueryParam("Module Reference") || getQueryParam("moduleReference") || getQueryParam("moduleRef") || getQueryParam("projectId")) : null, [isExternalAccess, queryParams]);
+   const externalEnqirySlno = useMemo(() => isExternalAccess ? (getQueryParam("EnqirySlno") || getQueryParam("enquirySlno") || getQueryParam("EnquirySlNo") || getQueryParam("enqirySlno")) : null, [isExternalAccess, queryParams]);
+   const externalTenderRevNo = useMemo(() => isExternalAccess ? (getQueryParam("Tender Rev. No") || getQueryParam("tenderRevNo") || getQueryParam("TenderRevNo") || getQueryParam("tenderRev")) : null, [isExternalAccess, queryParams]);
+   const externalTederCode = useMemo(() => isExternalAccess ? (getQueryParam("Teder Code") || getQueryParam("tenderCode") || getQueryParam("TederCode") || getQueryParam("tender_code") || getQueryParam("Tender Code")) : null, [isExternalAccess, queryParams]);
+   const externalTenderName = useMemo(() => isExternalAccess ? (getQueryParam("Tender Name") || getQueryParam("tenderName") || getQueryParam("TenderName") || getQueryParam("tender_name")) : null, [isExternalAccess, queryParams]);
+
+   const effectiveProjectId = (isExternalAccess && externalModuleRef) ? externalModuleRef : projectId;
+
+   const displayProjectName = (isExternalAccess && (externalTederCode || externalTenderName))
+      ? `${externalTederCode} - ${externalTenderName}`
+      : projectName;
    const fileInputRef = useRef(null);
    const [BOQfile, setBOQfile] = useState(null);
    const [sheetOption, setSheetOption] = useState([]);
@@ -439,7 +470,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          formData.append("lastLevelMapping", JSON.stringify(lastLevelMap));
          formData.append("levelMapping", JSON.stringify(levelMap));
 
-         const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/mapBOQ/${projectId}`,
+         const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/mapBOQ/${effectiveProjectId}`,
             formData,
             {
                headers: {
@@ -449,6 +480,23 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          );
          if (response.status === 200) {
             toast.success("BOQ mapping saved successfully!");
+            if (isExternalAccess) {
+               setTimeout(() => {
+                  navigate(`/external/boq-overview/${effectiveProjectId}/${token}${location.search}`);
+               }, 3000);
+               setSheetOption(prev =>
+                  prev.filter(option => option.value !== selectedSheet)
+               );
+               setExcelData([]);
+               setLastLevelMap({});
+               setParentMap({});
+               setLevelMap({});
+               setSelectedRow(new Set());
+               setSection('columnMapping');
+               setSearchTerm('');
+               toast.success("BOQ Data imported Successfully");
+               return;
+            }
             if (sheetOption.length === 1) {
                setTimeout(() => {
                   window.location.href = `/boqdefinition/${projectId}`;
@@ -488,7 +536,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       }
       finally {
          setLoading(false);
-         window.location.href = `/boqdefinition/${projectId}`;
+         if (!isExternalAccess) {
+            window.location.href = `/boqdefinition/${projectId}`;
+         }
       }
    };
 
@@ -1320,13 +1370,19 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    return (
       <div className='container-fluid p-2 min-vh-100'>
          <div className="text-start fw-bold ms-1 mt-2 mb-4">
-            <ArrowLeft size={20} onClick={() => setUploadScreen(false)} /><span className='ms-2'>BOQ Definition</span>
+            <ArrowLeft size={20} onClick={() => {
+               if (isExternalAccess) {
+                  navigate(`/external/boq-overview/${effectiveProjectId}/${token}${location.search}`);
+               } else {
+                  setUploadScreen(false);
+               }
+            }} /><span className='ms-2'>BOQ Definition</span>
          </div>
          {!BOQfile && (
             <div className='ms-2 mt-3 rounded-3 bg-white' style={{ border: '0.5px solid #0051973D' }}>
                <div className='tab-info col-12 h-100'>Upload BOQ File</div>
                <div className='text-start p-3 ms-4 mt-2 me-4'>
-                  <p className='fw-bold'>{projectName}</p>
+                  <p className='fw-bold'>{displayProjectName}</p>
                   {renderContent('fileUpload')}
                </div>
             </div>

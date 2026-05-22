@@ -88,8 +88,37 @@ function BOQOverview({ projectId }) {
     const location = useLocation();
     const { token } = useParams();
     const [parentBoq, setParentBoq] = useState([]);
+    
+    const isExternalAccess = location.pathname.startsWith('/external');
+    
+    // Parse query parameters from URL
+    const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+    
+    const getQueryParam = (name) => {
+        if (queryParams.has(name)) return queryParams.get(name);
+        const normalizedName = name.toLowerCase().replace(/[\s\._-]/g, '');
+        for (const key of queryParams.keys()) {
+            const normalizedKey = key.toLowerCase().replace(/[\s\._-]/g, '');
+            if (normalizedKey === normalizedName) {
+                return queryParams.get(key);
+            }
+        }
+        return null;
+    };
+
+    const externalModuleRef = useMemo(() => isExternalAccess ? (getQueryParam("Module Reference") || getQueryParam("moduleReference") || getQueryParam("moduleRef") || getQueryParam("projectId")) : null, [isExternalAccess, queryParams]);
+    const externalEnqirySlno = useMemo(() => isExternalAccess ? (getQueryParam("EnqirySlno") || getQueryParam("enquirySlno") || getQueryParam("EnquirySlNo") || getQueryParam("enqirySlno")) : null, [isExternalAccess, queryParams]);
+    const externalTenderRevNo = useMemo(() => isExternalAccess ? (getQueryParam("Tender Rev. No") || getQueryParam("tenderRevNo") || getQueryParam("TenderRevNo") || getQueryParam("tenderRev")) : null, [isExternalAccess, queryParams]);
+    const externalTederCode = useMemo(() => isExternalAccess ? (getQueryParam("Teder Code") || getQueryParam("tenderCode") || getQueryParam("TederCode") || getQueryParam("tender_code") || getQueryParam("Tender Code")) : null, [isExternalAccess, queryParams]);
+    const externalTenderName = useMemo(() => isExternalAccess ? (getQueryParam("Tender Name") || getQueryParam("tenderName") || getQueryParam("TenderName") || getQueryParam("tender_name")) : null, [isExternalAccess, queryParams]);
+
+    const effectiveProjectId = (isExternalAccess && externalModuleRef) ? externalModuleRef : projectId;
+
     const [parentTree, setParentTree] = useState([]);
     const [project, setProject] = useState();
+    const displayProjectName = (isExternalAccess && (externalTederCode || externalTenderName))
+        ? `${externalTederCode} - ${externalTenderName}`
+        : (project?.projectName ? `${project.projectName}(${project.projectCode})` : 'No Project');
     const [uploadScreen, setUploadScreen] = useState(false);
     const [expandedParentIds, setExpandedParentIds] = useState(new Set());
     const [isAllExpanded, setIsAllExpanded] = useState(false);
@@ -124,7 +153,7 @@ function BOQOverview({ projectId }) {
             const fetchChildren = async (parentId) => {
                 try {
                     const response = await axios.get(
-                        `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${projectId}/${parentId}`,
+                        `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${effectiveProjectId}/${parentId}`,
                         {
                             headers: {
                                 Authorization: `Bearer ${sessionStorage.getItem('token')}`,
@@ -226,7 +255,7 @@ function BOQOverview({ projectId }) {
 
                 try {
                     const response = await axios.get(
-                        `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${projectId}/${parentId}`,
+                        `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${effectiveProjectId}/${parentId}`,
                         {
                             headers: {
                                 Authorization: `Bearer ${sessionStorage.getItem('token')}`,
@@ -267,7 +296,7 @@ function BOQOverview({ projectId }) {
         const fetchSearchResults = async () => {
             if (debouncedSearchQuery.trim()) {
                 try {
-                    const data = await searchBoq(projectId, debouncedSearchQuery);
+                    const data = await searchBoq(effectiveProjectId, debouncedSearchQuery);
                     const matchingIds = new Set(data.map(item => item.id));
                     setHighlightedNodes(matchingIds);
                     await expandParents(data);
@@ -281,14 +310,14 @@ function BOQOverview({ projectId }) {
         };
 
         fetchSearchResults();
-    }, [debouncedSearchQuery, projectId]);
+    }, [debouncedSearchQuery, effectiveProjectId]);
     const findUom = (uomId) => {
         const uom = uoms.find((uom) => uom.id === uomId);
         return uom?.uomCode;
     }
     const refreshParentBoqData = async (page = 0) => {
         try {
-            const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getParentBoq/${projectId}`, {
+            const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getParentBoq/${effectiveProjectId}`, {
                 params: { page, size: boqPageSize },
                 headers: {
                     Authorization: `Bearer ${sessionStorage.getItem('token')}`,
@@ -392,7 +421,7 @@ function BOQOverview({ projectId }) {
         setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: 'pending' }));
         try {
             const response = await axios.get(
-                `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${projectId}/${parentId}`,
+                `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${effectiveProjectId}/${parentId}`,
                 {
                     headers: {
                         Authorization: `Bearer ${sessionStorage.getItem('token')}`,
@@ -422,7 +451,7 @@ function BOQOverview({ projectId }) {
         let success = false;
         try {
             await axios.delete(
-                `${import.meta.env.VITE_API_BASE_URL}/project/deleteBOQ/${projectId}`,
+                `${import.meta.env.VITE_API_BASE_URL}/project/deleteBOQ/${effectiveProjectId}`,
                 {
                     headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` },
                     data: selectedCodes
@@ -473,7 +502,7 @@ function BOQOverview({ projectId }) {
     //     { label: 'Level 1 BOQ', value: parentBoq.length, bgColor: '#EFF6FF', color: '#2563EB' },
     // ];
     useEffect(() => {
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${projectId}`, {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${effectiveProjectId}`, {
             headers: {
                 Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                 'Content-Type': 'application/json',
@@ -489,13 +518,13 @@ function BOQOverview({ projectId }) {
                 navigate('/login');
             }
         });
-    }, [projectId, navigate]);
+    }, [effectiveProjectId, navigate]);
     useEffect(() => {
         refreshParentBoqData(0);
         fetchTotalBOQ();
-    }, [projectId, navigate, boqPageSize]);
+    }, [effectiveProjectId, navigate, boqPageSize]);
     const fetchTotalBOQ = async () => {
-        await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getBOQCount/${projectId}`, {
+        await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getBOQCount/${effectiveProjectId}`, {
             headers: {
                 Authorization: `Bearer ${sessionStorage.getItem('token')}`,
                 'Content-Type': 'application/json'
@@ -521,7 +550,7 @@ function BOQOverview({ projectId }) {
         }
 
         try {
-            const response = await updateBOQHierarchy(projectId, hierarchyUpdates);
+            const response = await updateBOQHierarchy(effectiveProjectId, hierarchyUpdates);
             toast.success(response || "Hierarchy updated successfully");
             setHierarchyUpdates({});
             setIsHierarchyMode(false);
@@ -559,7 +588,7 @@ function BOQOverview({ projectId }) {
     const exportExcel = async () => {
         try {
             const response = await axios.get(
-                `${import.meta.env.VITE_API_BASE_URL}/project/Boq/excel/${projectId}`,
+                `${import.meta.env.VITE_API_BASE_URL}/project/Boq/excel/${effectiveProjectId}`,
                 {
                     headers: {
                         Authorization: `Bearer ${sessionStorage.getItem("token")}`,
@@ -598,7 +627,7 @@ function BOQOverview({ projectId }) {
     const exportPdf = async () => {
         try {
             const response = await axios.get(
-                `${import.meta.env.VITE_API_BASE_URL}/project/Boq/pdf/${projectId}`,
+                `${import.meta.env.VITE_API_BASE_URL}/project/Boq/pdf/${effectiveProjectId}`,
                 {
                     headers: {
                         Authorization: `Bearer ${sessionStorage.getItem("token")}`,
@@ -857,7 +886,7 @@ function BOQOverview({ projectId }) {
 
     return (
         uploadScreen ? (
-            <BOQUpload projectId={projectId} projectName={project?.projectName + '(' + project?.projectCode + ')'} setUploadScreen={setUploadScreen} />
+            <BOQUpload projectId={effectiveProjectId} projectName={displayProjectName} setUploadScreen={setUploadScreen} />
         ) : (
             <div className="container-fluid p-2 min-vh-100">
                 <div className="d-flex justify-content-between align-items-center text-start fw-bold ms-1 mt-1 mb-3">
@@ -865,7 +894,7 @@ function BOQOverview({ projectId }) {
                         <ArrowLeft size={20} onClick={() => window.history.back()} />
                         <span className='ms-2'>BOQ Definition</span>
                         <span>-</span>
-                        <span>{project?.projectName + '(' + project?.projectCode + ')' || 'No Project'}</span>
+                        <span>{displayProjectName}</span>
                     </div>
                     <div className="me-3">
                         <button className="btn export-button me-2" onClick={() => setShowExportModal(true)}>
@@ -873,7 +902,7 @@ function BOQOverview({ projectId }) {
                         </button>
                         <button className="btn import-button ms-2" onClick={() => {
                             if (location.pathname.startsWith('/external')) {
-                                navigate(`/external/boq-upload/${projectId}/${token}`);
+                                navigate(`/external/boq-upload/${effectiveProjectId}/${token}${location.search}`);
                             } else {
                                 setUploadScreen(true);
                             }
