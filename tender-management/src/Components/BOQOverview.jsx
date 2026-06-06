@@ -12,7 +12,8 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useUom } from "../Context/UomContext";
 import useDebounce from "../Utills/useDebounce";
 import { searchBoq, updateBOQHierarchy } from "../Utills/projectApi";
-import { Move, Save, X, ChevronLeft } from 'lucide-react';
+import { Move, Save, X, ChevronLeft, Edit, PlusCircle } from 'lucide-react';
+import Select from 'react-select';
 
 
 function ConfirmationDialog({ isOpen, onClose, onConfirm, message }) {
@@ -88,12 +89,12 @@ function BOQOverview({ projectId }) {
     const location = useLocation();
     const { token } = useParams();
     const [parentBoq, setParentBoq] = useState([]);
-    
+
     const isExternalAccess = location.pathname.startsWith('/external');
-    
+
     // Parse query parameters from URL
     const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
-    
+
     const getQueryParam = (name) => {
         if (queryParams.has(name)) return queryParams.get(name);
         const normalizedName = name.toLowerCase().replace(/[\s\._-]/g, '');
@@ -140,6 +141,222 @@ function BOQOverview({ projectId }) {
     const [boqTotalPages, setBoqTotalPages] = useState(0);
     const [boqTotalItems, setBoqTotalItems] = useState(0);
     const [boqPageSize, setBoqPageSize] = useState(15);
+    const [groupingMode, setGroupingMode] = useState('level');
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [newBoqData, setNewBoqData] = useState({
+        division: '',
+        level: '',
+        parentBoqId: '',
+        boqCode: '',
+        boqName: '',
+        uomCode: '',
+        quantity: '',
+        pageNo: '',
+        enqSlNo: '',
+        version: 1,
+        clientBoqCode: '',
+        boqShortName: '',
+        description: '',
+        rateOnly: false,
+        provisionalSum: false,
+        notQuotedBoq: false,
+        lastLevel: false
+    });
+    const [parentBoqOptions, setParentBoqOptions] = useState([]);
+    const [isCreatingBoq, setIsCreatingBoq] = useState(false);
+    const [editBoqId, setEditBoqId] = useState(null);
+    const [boqTotalsMap, setBoqTotalsMap] = useState({});
+
+    const handleAddChildClick = (e, boq) => {
+        e.stopPropagation();
+        setEditBoqId(null);
+        setNewBoqData({
+            division: boq.division || boq.divisionName || '',
+            level: boq.level + 1,
+            parentBoqId: boq.isDivision ? '' : boq.id,
+            boqCode: '',
+            boqName: '',
+            uomCode: '',
+            quantity: '',
+            pageNo: boq.pageNo || '',
+            enqSlNo: '',
+            version: 1,
+            clientBoqCode: '',
+            boqShortName: '',
+            description: '',
+            rateOnly: false,
+            provisionalSum: false,
+            notQuotedBoq: false,
+            lastLevel: false
+        });
+        if (!boq.isDivision) {
+            setParentBoqOptions([boq]);
+        } else {
+            setParentBoqOptions([]);
+        }
+        setShowCreateModal(true);
+    };
+
+    const handleAddRootBoqClick = () => {
+        setEditBoqId(null);
+        setNewBoqData({
+            division: '',
+            level: 1,
+            parentBoqId: '',
+            boqCode: '',
+            boqName: '',
+            uomCode: '',
+            quantity: '',
+            pageNo: '',
+            enqSlNo: '',
+            version: 1,
+            clientBoqCode: '',
+            boqShortName: '',
+            description: '',
+            rateOnly: false,
+            provisionalSum: false,
+            notQuotedBoq: false,
+            lastLevel: false
+        });
+        setParentBoqOptions([]);
+        setShowCreateModal(true);
+    };
+
+    const handleEditClick = (e, boq) => {
+        e.stopPropagation();
+        setEditBoqId(boq.id);
+        setNewBoqData({
+            division: boq.division || '',
+            level: boq.level || '',
+            parentBoqId: boq.parentBOQ ? boq.parentBOQ.id : (boq.parentBoqId || ''),
+            boqCode: boq.boqCode || '',
+            boqName: boq.boqName || '',
+            uomCode: boq.uomCode || boq?.uom?.uomCode || '',
+            quantity: boq.quantity || '',
+            pageNo: boq.pageNo || '',
+            enqSlNo: boq.enqSlNo || '',
+            version: boq.version || 1,
+            clientBoqCode: boq.clientBoqCode || '',
+            boqShortName: boq.boqShortName || '',
+            description: boq.description || '',
+            rateOnly: boq.rateOnly || false,
+            provisionalSum: boq.provisionalSum || false,
+            notQuotedBoq: boq.notQuotedBoq || false,
+            lastLevel: boq.lastLevel || false
+        });
+
+        if (boq.level && boq.level > 1) {
+            axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getBoqsByLevel/${effectiveProjectId}/${boq.level - 1}`, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+            }).then(res => {
+                if (res.status === 200) {
+                    setParentBoqOptions(res.data || []);
+                }
+            }).catch(err => {
+                console.error("Failed to load parent BOQs", err);
+            });
+        } else {
+            setParentBoqOptions([]);
+        }
+        setShowCreateModal(true);
+    };
+
+    const handleCreateBoqChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setNewBoqData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    };
+
+    const handleIntegerInput = (e) => {
+        if (['e', 'E', '+', '-', '.'].includes(e.key)) {
+            e.preventDefault();
+        }
+    };
+
+    const handleDecimalInput = (e) => {
+        if (['e', 'E', '+', '-'].includes(e.key)) {
+            e.preventDefault();
+        }
+    };
+
+    const handleLevelChange = async (e) => {
+        const val = e.target.value;
+        const newLevel = val === '' ? '' : parseInt(val);
+        setNewBoqData(prev => ({ ...prev, level: newLevel, parentBoqId: '', pageNo: '' }));
+        if (newLevel && newLevel > 1) {
+            try {
+                const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getBoqsByLevel/${effectiveProjectId}/${newLevel - 1}`, {
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                });
+                if (res.status === 200) {
+                    setParentBoqOptions(res.data || []);
+                }
+            } catch (err) {
+                console.error("Failed to fetch parent boqs by level", err);
+                toast.error("Failed to load parent BOQs");
+            }
+        } else {
+            setParentBoqOptions([]);
+        }
+    };
+
+    const handleParentChange = (selectedOption) => {
+        const parentId = selectedOption ? selectedOption.value : '';
+        const selectedParent = parentBoqOptions.find(p => p.id === parentId);
+        setNewBoqData(prev => ({
+            ...prev,
+            parentBoqId: parentId,
+            pageNo: selectedParent?.pageNo || ''
+        }));
+    };
+
+    const handleUomChange = (selectedOption) => {
+        setNewBoqData(prev => ({ ...prev, uomCode: selectedOption ? selectedOption.value : '' }));
+    };
+
+    const submitCreateBoq = async () => {
+        if (!newBoqData.boqCode || !newBoqData.boqName) {
+            toast.warn("BOQ Code and Name are required");
+            return;
+        }
+        if (newBoqData.level > 1 && !newBoqData.parentBoqId) {
+            toast.warn("Parent BOQ is required for level > 1");
+            return;
+        }
+        try {
+            setIsCreatingBoq(true);
+            let res;
+            if (editBoqId) {
+                res = await axios.put(`${import.meta.env.VITE_API_BASE_URL}/project/updateSingleBoq/${effectiveProjectId}/${editBoqId}`, newBoqData, {
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                });
+            } else {
+                res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/createSingleBoq/${effectiveProjectId}`, newBoqData, {
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                });
+            }
+            if (res.status === 201 || res.status === 200) {
+                toast.success(editBoqId ? "BOQ Updated Successfully" : "BOQ Created Successfully");
+                setShowCreateModal(false);
+                setEditBoqId(null);
+                setNewBoqData({
+                    division: '',
+                    level: '',
+                    parentBoqId: '',
+                    boqCode: '',
+                    boqName: '',
+                    uomCode: '',
+                    quantity: '',
+                    pageNo: ''
+                });
+                refreshParentBoqData();
+            }
+        } catch (err) {
+            console.error("Failed to create BOQ", err);
+            toast.error(err?.response?.data || "Failed to create BOQ");
+        } finally {
+            setIsCreatingBoq(false);
+        }
+    };
 
     const handleExpandCollapseAll = async () => {
         if (isAllExpanded) {
@@ -150,10 +367,21 @@ function BOQOverview({ projectId }) {
             const newExpandedIds = new Set();
             let tempTree = JSON.parse(JSON.stringify(parentTree)); // Deep copy to manage state locally
 
-            const fetchChildren = async (parentId) => {
+            const fetchChildren = async (node) => {
                 try {
+                    if (node.isDivision) {
+                        const response = await axios.get(
+                            `${import.meta.env.VITE_API_BASE_URL}/project/getParentBoqByDivision/${effectiveProjectId}/${encodeURIComponent(node.divisionName)}`,
+                            { params: { page: 0, size: 1000 }, headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } }
+                        );
+                        if (response.status === 200) {
+                            return (response.data.data || []).map(child => ({ ...child, lastLevel: true }));
+                        }
+                        return [];
+                    }
+
                     const response = await axios.get(
-                        `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${effectiveProjectId}/${parentId}`,
+                        `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${effectiveProjectId}/${node.id}`,
                         {
                             headers: {
                                 Authorization: `Bearer ${sessionStorage.getItem('token')}`,
@@ -178,9 +406,8 @@ function BOQOverview({ projectId }) {
 
                 newExpandedIds.add(node.id);
 
-                // Check if children need fetching (null, 'pending', or empty but not lastLevel)
                 if (!Array.isArray(node.children) || node.children === 'pending' || (node.children.length === 0 && node.lastLevel === false)) {
-                    const children = await fetchChildren(node.id);
+                    const children = await fetchChildren(node);
                     node.children = children;
                 }
 
@@ -204,6 +431,44 @@ function BOQOverview({ projectId }) {
 
     const expandParents = async (searchResults) => {
         const parentsToExpand = new Set();
+
+        if (groupingMode === 'division') {
+            searchResults.forEach(item => {
+                const divName = item.division || "Non-Categorized";
+                parentsToExpand.add(`div_${divName}`);
+            });
+            let currentTree = [...parentTree];
+            const promises = Array.from(parentsToExpand).map(async (divId) => {
+                const node = currentTree.find(n => n.id === divId);
+                if (!node || (Array.isArray(node.children) && node.children.length > 0)) return null;
+                try {
+                    const response = await axios.get(
+                        `${import.meta.env.VITE_API_BASE_URL}/project/getParentBoqByDivision/${effectiveProjectId}/${encodeURIComponent(node.divisionName)}`,
+                        { params: { page: 0, size: 1000 }, headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } }
+                    );
+                    if (response.status === 200) {
+                        const childrenData = (response.data.data || []).map(child => ({ ...child, lastLevel: true }));
+                        return { divId, childrenData };
+                    }
+                } catch (e) { }
+                return null;
+            });
+            const results = await Promise.all(promises);
+            results.forEach(res => {
+                if (res) {
+                    const idx = currentTree.findIndex(n => n.id === res.divId);
+                    if (idx !== -1) currentTree[idx] = { ...currentTree[idx], children: res.childrenData };
+                }
+            });
+            setParentTree(currentTree);
+            setExpandedParentIds(prev => {
+                const next = new Set(prev);
+                parentsToExpand.forEach(id => next.add(id));
+                return next;
+            });
+            return;
+        }
+
         const parentsByLevel = new Map();
 
         const collectParents = (boq) => {
@@ -315,8 +580,53 @@ function BOQOverview({ projectId }) {
         const uom = uoms.find((uom) => uom.id === uomId);
         return uom?.uomCode;
     }
-    const refreshParentBoqData = async (page = 0) => {
+    const fetchBoqTotals = async () => {
         try {
+            const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getParentBoqTotals/${effectiveProjectId}`, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+            });
+            if (res.status === 200) {
+                setBoqTotalsMap(res.data || {});
+            }
+        } catch (err) {
+            console.error('Error fetching BOQ totals:', err);
+        }
+    };
+
+    const refreshParentBoqData = async (page = 0) => {
+        fetchBoqTotals();
+        try {
+            if (groupingMode === 'division') {
+                const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getDivisions/${effectiveProjectId}`, {
+                    headers: {
+                        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (res.status === 200) {
+                    const divisions = res.data || [];
+                    if (!divisions.includes("Non-Categorized")) {
+                        divisions.push("Non-Categorized");
+                    }
+                    const divisionNodes = divisions.map((div) => ({
+                        id: `div_${div}`,
+                        isDivision: true,
+                        divisionName: div,
+                        boqCode: div,
+                        boqName: '',
+                        children: null,
+                        lastLevel: false,
+                        level: 0
+                    }));
+                    setParentBoq(divisionNodes);
+                    handleParentBoqTree(divisionNodes);
+                    setBoqCurrentPage(0);
+                    setBoqTotalPages(1);
+                    setBoqTotalItems(divisionNodes.length);
+                }
+                return;
+            }
+
             const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getParentBoq/${effectiveProjectId}`, {
                 params: { page, size: boqPageSize },
                 headers: {
@@ -418,6 +728,20 @@ function BOQOverview({ projectId }) {
         }
         setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: 'pending' }));
         try {
+            if (parentNode && parentNode.isDivision) {
+                const response = await axios.get(
+                    `${import.meta.env.VITE_API_BASE_URL}/project/getParentBoqByDivision/${effectiveProjectId}/${encodeURIComponent(parentNode.divisionName)}`,
+                    { params: { page: 0, size: 1000 }, headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } }
+                );
+                if (response.status === 200) {
+                    const childrenData = (response.data.data || []).map(child => ({ ...child, lastLevel: true }));
+                    setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: childrenData }));
+                } else {
+                    setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: [] }));
+                }
+                return;
+            }
+
             const response = await axios.get(
                 `${import.meta.env.VITE_API_BASE_URL}/project/getChildBoq/${effectiveProjectId}/${parentId}`,
                 {
@@ -430,6 +754,7 @@ function BOQOverview({ projectId }) {
             if (response.status === 200) {
                 const childrenData = (response.data || []).map(child => ({
                     ...child,
+                    parentBoqId: parentId,
                     children: (child.lastLevel === false) ? null : []
                 }));
                 setParentTree(prevTree => updateNodeInTree(prevTree, parentId, { children: childrenData }));
@@ -489,10 +814,6 @@ function BOQOverview({ projectId }) {
     const cancelDelete = () => {
         setShowConfirmDialog(false);
     };
-    // const BOQStats = [
-    //     { label: 'Total BOQ', value: totalBOQ, bgColor: '#F0FDF4', color: '#2BA95A' },
-    //     { label: 'Level 1 BOQ', value: parentBoq.length, bgColor: '#EFF6FF', color: '#2563EB' },
-    // ];
     useEffect(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/viewProjectInfo/${effectiveProjectId}`, {
             headers: {
@@ -512,7 +833,7 @@ function BOQOverview({ projectId }) {
     useEffect(() => {
         refreshParentBoqData(0);
         fetchTotalBOQ();
-    }, [effectiveProjectId, navigate, boqPageSize]);
+    }, [effectiveProjectId, navigate, boqPageSize, groupingMode]);
     const fetchTotalBOQ = async () => {
         await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getBOQCount/${effectiveProjectId}`, {
             headers: {
@@ -532,19 +853,28 @@ function BOQOverview({ projectId }) {
 
     const handleHierarchySave = async () => {
         if (Object.keys(hierarchyUpdates).length === 0) {
-            toast.warn("No hierarchy changes to save.");
+            toast.warn("No changes to save.");
             return;
         }
 
         try {
-            const response = await updateBOQHierarchy(effectiveProjectId, hierarchyUpdates);
-            toast.success(response || "Hierarchy updated successfully");
+            if (groupingMode === 'division') {
+                const response = await axios.put(
+                    `${import.meta.env.VITE_API_BASE_URL}/update-boq-division/${effectiveProjectId}`,
+                    hierarchyUpdates,
+                    { headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } }
+                );
+                toast.success(response.data || "Division updated successfully");
+            } else {
+                const response = await updateBOQHierarchy(effectiveProjectId, hierarchyUpdates);
+                toast.success(response || "Hierarchy updated successfully");
+            }
             setHierarchyUpdates({});
             setIsHierarchyMode(false);
             refreshParentBoqData();
         } catch (error) {
-            console.error("Error updating hierarchy:", error);
-            toast.error(error?.response?.data || "Failed to update hierarchy");
+            console.error("Error updating structure:", error);
+            toast.error(error?.response?.data || "Failed to update structure");
         }
     };
 
@@ -683,8 +1013,15 @@ function BOQOverview({ projectId }) {
                     </td>
                     <td className="px-2">{boq?.uom?.uomCode || boq.uomCode || '-'}</td>
                     <td className="px-2">{boq.quantity?.toFixed(3) || 0}</td>
-                    {isHierarchyMode && (
-                        <td className="px-2">
+                    <td className="px-2">{boq.pageNo || '-'}</td>
+                    <td className="px-2">
+                        <Edit
+                            size={16}
+                            style={{ cursor: 'pointer', color: '#005197', marginRight: '8px' }}
+                            onClick={(e) => handleEditClick(e, boq)}
+                            title="Edit BOQ"
+                        />
+                        {isHierarchyMode && (
                             <Move
                                 size={16}
                                 style={{ cursor: 'pointer', color: '#005197' }}
@@ -694,8 +1031,8 @@ function BOQOverview({ projectId }) {
                                     setShowHierarchyModal(true);
                                 }}
                             />
-                        </td>
-                    )}
+                        )}
+                    </td>
                 </tr>
             );
         }
@@ -723,7 +1060,27 @@ function BOQOverview({ projectId }) {
                             {hierarchyUpdates[boq.id] && <span className="badge bg-warning ms-2">Moved</span>}
                         </span>
 
-                        <div className="ms-auto d-flex align-items-center gap-2">
+                        <div className="ms-auto d-flex align-items-center gap-3">
+                            {boqTotalsMap[boq.id] !== undefined && (
+                                <span className="fw-bold me-3" style={{ color: '#005197' }}>
+                                    <IndianRupee size={14} className="me-1 mb-1" />
+                                    {boqTotalsMap[boq.id]?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                            )}
+                            <PlusCircle
+                                size={16}
+                                style={{ cursor: 'pointer', color: '#28a745' }}
+                                onClick={(e) => handleAddChildClick(e, boq)}
+                                title="Add Child BOQ"
+                            />
+                            {boq.level !== 0 && (
+                                <Edit
+                                    size={16}
+                                    style={{ cursor: 'pointer', color: '#005197' }}
+                                    onClick={(e) => handleEditClick(e, boq)}
+                                    title="Edit BOQ"
+                                />
+                            )}
                             {isHierarchyMode && (
                                 <Move
                                     size={16}
@@ -782,7 +1139,8 @@ function BOQOverview({ projectId }) {
                                                         <th className="px-2">BOQ Name</th>
                                                         <th className="px-2">UOM</th>
                                                         <th className="px-2">Quantity</th>
-                                                        {isHierarchyMode && <th className="px-2">Move</th>}
+                                                        <th className="px-2">Page No</th>
+                                                        <th className="px-2">Actions</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -888,6 +1246,9 @@ function BOQOverview({ projectId }) {
                         }}>
                             <span className="me-2"><Import /></span>Import File
                         </button>
+                        <button className="btn action-button ms-2" onClick={() => setShowCreateModal(true)}>
+                            <span className="me-2">+</span>Create BOQ
+                        </button>
                         {showExportModal && (
                             <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1050 }}>
                                 <div className="modal-dialog modal-md modal-dialog-centered">
@@ -902,6 +1263,121 @@ function BOQOverview({ projectId }) {
                                             </button>
                                             <button className="btn action-button py-2" onClick={() => { exportExcel(); setShowExportModal(false); }}>
                                                 Export as Excel
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {showCreateModal && (
+                            <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1050 }}>
+                                <div className="modal-dialog modal-xl modal-dialog-centered">
+                                    <div className="modal-content shadow">
+                                        <div className="modal-header border-bottom-0" style={{ backgroundColor: '#005197', color: 'white' }}>
+                                            <h5 className="modal-title fw-medium fs-6">{editBoqId ? "Edit BOQ" : "Create Single BOQ"}</h5>
+                                            <button type="button" className="btn-close btn-close-white" onClick={() => { setShowCreateModal(false); setEditBoqId(null); }}></button>
+                                        </div>
+                                        <div className="modal-body p-4">
+                                            <div className="d-flex justify-content-end gap-4 mb-3">
+                                                <div className="form-check form-switch">
+                                                    <input className="form-check-input" type="checkbox" id="rateOnly" name="rateOnly" checked={newBoqData.rateOnly} onChange={handleCreateBoqChange} />
+                                                    <label className="form-check-label" htmlFor="rateOnly">Rate Only</label>
+                                                </div>
+                                                <div className="form-check form-switch">
+                                                    <input className="form-check-input" type="checkbox" id="provisionalSum" name="provisionalSum" checked={newBoqData.provisionalSum} onChange={handleCreateBoqChange} />
+                                                    <label className="form-check-label" htmlFor="provisionalSum">Provisional Sum</label>
+                                                </div>
+                                                <div className="form-check form-switch">
+                                                    <input className="form-check-input" type="checkbox" id="notQuotedBoq" name="notQuotedBoq" checked={newBoqData.notQuotedBoq} onChange={handleCreateBoqChange} />
+                                                    <label className="form-check-label" htmlFor="notQuotedBoq">Not Quoted BOQ</label>
+                                                </div>
+                                                <div className="form-check form-switch">
+                                                    <input className="form-check-input" type="checkbox" id="lastLevel" name="lastLevel" checked={newBoqData.lastLevel} onChange={handleCreateBoqChange} />
+                                                    <label className="form-check-label" htmlFor="lastLevel">Last Level</label>
+                                                </div>
+                                            </div>
+                                            <div className="row g-3">
+                                                <div className="col-md-6">
+                                                    <label className="form-label text-start d-block">BOQ Name <span className="text-danger">*</span></label>
+                                                    <textarea className="form-input w-100" name="boqName" value={newBoqData.boqName} onChange={handleCreateBoqChange} placeholder="Enter BOQ Name" rows="3"></textarea>
+                                                </div>
+                                                <div className="col-md-6">
+                                                    <label className="form-label text-start d-block">Description</label>
+                                                    <textarea className="form-input w-100" name="description" value={newBoqData.description} onChange={handleCreateBoqChange} placeholder="Description" rows="3"></textarea>
+                                                </div>
+                                                <div className="col-md-4">
+                                                    <label className="form-label text-start d-block">BOQ Code <span className="text-danger">*</span></label>
+                                                    <input type="text" className="form-input w-100" name="boqCode" value={newBoqData.boqCode} onChange={handleCreateBoqChange} placeholder="Enter BOQ Code" />
+                                                </div>
+                                                <div className="col-md-4">
+                                                    <label className="form-label text-start d-block">Quantity</label>
+                                                    <input type="number" step="0.001" className="form-input w-100" name="quantity" value={newBoqData.quantity} onChange={handleCreateBoqChange} onKeyDown={handleDecimalInput} placeholder="Enter Quantity" />
+                                                </div>
+                                                <div className="col-md-4">
+                                                    <label className="form-label text-start d-block">UOM</label>
+                                                    <Select
+                                                        classNamePrefix="select"
+                                                        options={uoms.map((uom) => ({ value: uom.uomCode, label: `${uom.uomCode} - ${uom.uomName}` }))}
+                                                        value={uoms.map(u => ({ value: u.uomCode, label: `${u.uomCode} - ${u.uomName}` })).find(o => o.value === newBoqData.uomCode) || null}
+                                                        onChange={handleUomChange}
+                                                        placeholder="Select UOM"
+                                                        isClearable
+                                                    />
+                                                </div>
+                                                <div className="col-md-4">
+                                                    <label className="form-label text-start d-block">Level <span className="text-danger">*</span></label>
+                                                    <input type="number" min="1" className="form-input w-100" name="level" value={newBoqData.level} onChange={handleLevelChange} onKeyDown={handleIntegerInput} placeholder="Enter Level" />
+                                                </div>
+                                                <div className="col-md-4">
+                                                    <label className="form-label text-start d-block">Parent BOQ {newBoqData.level > 1 && <span className="text-danger">*</span>}</label>
+                                                    <Select
+                                                        classNamePrefix="select"
+                                                        options={parentBoqOptions.map(p => ({ value: p.id, label: `${p.boqCode} - ${p.boqName}` }))}
+                                                        value={parentBoqOptions.map(p => ({ value: p.id, label: `${p.boqCode} - ${p.boqName}` })).find(o => o.value === newBoqData.parentBoqId) || null}
+                                                        onChange={handleParentChange}
+                                                        isDisabled={!newBoqData.level || newBoqData.level <= 1}
+                                                        placeholder={(!newBoqData.level || newBoqData.level <= 1) ? "No Parent Needed" : "Select Parent BOQ"}
+                                                        isClearable
+                                                    />
+                                                </div>
+                                                <div className="col-md-4">
+                                                    <label className="form-label text-start d-block">Division</label>
+                                                    <input type="text" className="form-input w-100" name="division" value={newBoqData.division} onChange={handleCreateBoqChange} placeholder="e.g. Civil, Mechanical" />
+                                                </div>
+
+
+
+                                                <div className="col-md-4">
+                                                    <label className="form-label text-start d-block">Page No</label>
+                                                    <input type="number" className="form-input w-100" name="pageNo" value={newBoqData.pageNo} onChange={handleCreateBoqChange} placeholder="Inherits from parent or enter manually" />
+                                                </div>
+                                                <div className="col-md-4">
+                                                    <label className="form-label text-start d-block">Enq Sl No</label>
+                                                    <input type="number" step="0.01" className="form-input w-100" name="enqSlNo" value={newBoqData.enqSlNo} onChange={handleCreateBoqChange} placeholder="Enter Enq Sl No" />
+                                                </div>
+                                                <div className="col-md-4">
+                                                    <label className="form-label text-start d-block">Version</label>
+                                                    <input type="number" className="form-input w-100" name="version" value={newBoqData.version} readOnly placeholder="Version" style={{ backgroundColor: '#f8f9fa' }} />
+                                                </div>
+                                                <div className="col-md-4">
+                                                    <label className="form-label text-start d-block">Client BOQ Code</label>
+                                                    <input type="text" className="form-input w-100" name="clientBoqCode" value={newBoqData.clientBoqCode} onChange={handleCreateBoqChange} placeholder="Client BOQ Code" />
+                                                </div>
+                                                <div className="col-md-4">
+                                                    <label className="form-label text-start d-block">BOQ Short Name</label>
+                                                    <input type="text" className="form-input w-100" name="boqShortName" value={newBoqData.boqShortName} onChange={handleCreateBoqChange} placeholder="BOQ Short Name" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="modal-footer border-top-0 pt-0">
+                                            <button type="button" className="btn btn-secondary px-4" onClick={() => { setShowCreateModal(false); setEditBoqId(null); }}>Cancel</button>
+                                            <button type="button" className="btn action-button px-4" onClick={submitCreateBoq} disabled={isCreatingBoq}>
+                                                {isCreatingBoq ? (
+                                                    <>
+                                                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                        Saving...
+                                                    </>
+                                                ) : "Save BOQ"}
                                             </button>
                                         </div>
                                     </div>
@@ -930,38 +1406,48 @@ function BOQOverview({ projectId }) {
                             <span>BOQ Structure</span>
                         </div>
                         <div className="me-3 d-flex align-items-center gap-3">
+                            <div className="btn-group me-2" role="group">
+                                <input type="radio" className="btn-check" name="groupingOptions" id="groupLevel" autoComplete="off" checked={groupingMode === 'level'} onChange={() => { setGroupingMode('level'); setExpandedParentIds(new Set()); }} />
+                                <label className="btn btn-outline-primary d-flex align-items-center justify-content-center px-3" style={{ height: '38px' }} htmlFor="groupLevel">Level Wise</label>
+
+                                <input type="radio" className="btn-check" name="groupingOptions" id="groupDivision" autoComplete="off" checked={groupingMode === 'division'} onChange={() => { setGroupingMode('division'); setExpandedParentIds(new Set()); }} />
+                                <label className="btn btn-outline-primary d-flex align-items-center justify-content-center px-3" style={{ height: '38px' }} htmlFor="groupDivision">Division Wise</label>
+                            </div>
                             <div className="position-relative" style={{ width: '300px' }}>
                                 <input
                                     type="text"
-                                    className="form-input"
+                                    className="form-control"
                                     placeholder="Search BOQ..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    style={{ paddingRight: '30px' }}
+                                    style={{ height: '38px', paddingRight: '30px' }}
                                 />
                             </div>
+
                             <button
-                                className={`btn ${isHierarchyMode ? 'btn-warning' : ''} me-2 d-flex align-items-center gap-2`}
-                                style={!isHierarchyMode ? { borderColor: '#005197', color: '#005197' } : {}}
+                                className={`btn ${isHierarchyMode ? 'btn-warning' : ''} me-2 d-flex align-items-center justify-content-center gap-2`}
+                                style={Object.assign({ height: '38px' }, !isHierarchyMode ? { borderColor: '#005197', color: '#005197' } : {})}
                                 onClick={() => setIsHierarchyMode(!isHierarchyMode)}
                                 title={isHierarchyMode ? "Exit Hierarchy Mode" : "Edit BOQ Hierarchy"}
                             >
                                 <Move size={18} />
-                                <span className="d-none d-lg-inline">Edit BOQ Hierarchy</span>
+                                <span className="d-none d-lg-inline">Edit Hierarchy</span>
                             </button>
                             {isHierarchyMode && Object.keys(hierarchyUpdates).length > 0 && (
                                 <button
-                                    className="btn btn-success me-2 d-flex align-items-center gap-2"
+                                    className="btn btn-success me-2 d-flex align-items-center justify-content-center gap-2"
                                     onClick={handleHierarchySave}
                                     title="Save hierarchy changes"
+                                    style={{ height: '38px' }}
                                 >
                                     <Save size={18} />
                                     <span className="d-none d-lg-inline">Save Changes</span>
                                 </button>
                             )}
                             <button
-                                className="btn p-0 me-2"
+                                className="btn p-0 me-2 d-flex align-items-center justify-content-center"
                                 style={{
+                                    height: '38px',
                                     cursor: isExpanding ? 'wait' : 'pointer',
                                     color: '#005197',
                                     opacity: isExpanding ? 0.6 : 1
@@ -978,11 +1464,13 @@ function BOQOverview({ projectId }) {
                                     isAllExpanded ? <CollapseIcon /> : <ExpandIcon />
                                 )}
                             </button>
-                            <DeleteIcon
-                                style={{ cursor: 'pointer' }}
-                                onClick={handleDeleteClick}
-                                title="Delete selected items"
-                            />
+                            <div className="d-flex align-items-center justify-content-center" style={{ height: '38px' }}>
+                                <DeleteIcon
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={handleDeleteClick}
+                                    title="Delete selected items"
+                                />
+                            </div>
                         </div>
                     </div>
 
@@ -1011,6 +1499,7 @@ function BOQOverview({ projectId }) {
                                                         <th className="px-2">BOQ Name</th>
                                                         <th className="px-2">UOM</th>
                                                         <th className="px-2">Quantity</th>
+                                                        <th className="px-2">Page No</th>
                                                         {isHierarchyMode && <th className="px-2">Move</th>}
                                                     </tr>
                                                 </thead>
@@ -1032,8 +1521,8 @@ function BOQOverview({ projectId }) {
                     {parentBoq.length > 0 && (
                         <div className='d-flex justify-content-between align-items-center mt-3 p-3 border-top bg-white sticky-bottom' style={{ bottom: 0, zIndex: 10 }}>
                             <div className="d-flex align-items-center gap-3">
-                                <select 
-                                    className="form-select form-select-sm" 
+                                <select
+                                    className="form-select form-select-sm"
                                     style={{ width: 'auto', fontSize: '12px' }}
                                     value={boqPageSize}
                                     onChange={(e) => setBoqPageSize(parseInt(e.target.value))}

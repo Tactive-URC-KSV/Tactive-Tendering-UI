@@ -40,22 +40,22 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [section, setSection] = useState('columnMapping');
    const [confirmModal, setConfirmModal] = useState({ show: false, type: '', message: '' });
    const [loading, setLoading] = useState(false);
-   
+
    const isExternalAccess = location.pathname.startsWith('/external');
-   
+
    // Parse query parameters from URL
    const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
-   
+
    const getQueryParam = (name) => {
-       if (queryParams.has(name)) return queryParams.get(name);
-       const normalizedName = name.toLowerCase().replace(/[\s\._-]/g, '');
-       for (const key of queryParams.keys()) {
-           const normalizedKey = key.toLowerCase().replace(/[\s\._-]/g, '');
-           if (normalizedKey === normalizedName) {
-               return queryParams.get(key);
-           }
-       }
-       return null;
+      if (queryParams.has(name)) return queryParams.get(name);
+      const normalizedName = name.toLowerCase().replace(/[\s\._-]/g, '');
+      for (const key of queryParams.keys()) {
+         const normalizedKey = key.toLowerCase().replace(/[\s\._-]/g, '');
+         if (normalizedKey === normalizedName) {
+            return queryParams.get(key);
+         }
+      }
+      return null;
    };
 
    const externalModuleRef = useMemo(() => isExternalAccess ? (getQueryParam("Module Reference") || getQueryParam("moduleReference") || getQueryParam("moduleRef") || getQueryParam("projectId")) : null, [isExternalAccess, queryParams]);
@@ -89,6 +89,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       { fields: 'boqName', mappingFields: [], importance: 'Required', label: 'BOQ Name' },
       { fields: 'uom', mappingFields: [], importance: 'Required', label: 'UOM' },
       { fields: 'quantity', mappingFields: [], importance: 'Required', label: 'Quantity' },
+      { fields: 'division', mappingFields: [], importance: 'Optional', label: 'Division' },
    ]);
    const [excelData, setExcelData] = useState([]);
    const [searchTerm, setSearchTerm] = useState('');
@@ -101,6 +102,8 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [selectedBoqForModal, setSelectedBoqForModal] = useState(null);
    const [isAssigningParent, setIsAssigningParent] = useState(false);
    const [autoIncreaseLevel, setAutoIncreaseLevel] = useState(true);
+   const [pageBreakWord, setPageBreakWord] = useState('');
+   const [pageBreakModal, setPageBreakModal] = useState(false);
 
    const isLastLevelRow = (row) => {
       return (
@@ -190,6 +193,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       setInternalFields(prev =>
          prev.map(f => ({ ...f, mappingFields: [] }))
       );
+      setPageBreakWord('');
    };
    const getExcelSheets = (event) => {
       const file = event.target.files[0];
@@ -349,6 +353,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             type: 'application/json'
          });
          formData.append('columnMapping', columnMappingBlob);
+         formData.append('pageBreakWord', pageBreakWord);
 
          const response = await axios.post(
             `${import.meta.env.VITE_API_BASE_URL}/project/extractedBOQ?search=${debouncedSearch}`,
@@ -461,6 +466,8 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                return acc;
             }, {})
          ));
+
+         formData.append("pageBreakWord", pageBreakWord);
 
          formData.append("parentChildMapping", JSON.stringify(parentMap));
          formData.append("lastLevelMapping", JSON.stringify(lastLevelMap));
@@ -748,10 +755,22 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             const nextLevel = autoIncreaseLevel ? level + 1 : level;
             const parentSnoForSubsequent = autoIncreaseLevel ? sno : updatedParentMap[sno];
 
+            let hasFoundLastLevel = false;
             for (let i = itemIndex + 1; i < excelData.length; i++) {
-               const currentSno = excelData[i].sno;
+               const currentRow = excelData[i];
+               const currentSno = currentRow.sno;
+               const isLast = isLastLevelRow(currentRow);
+
+               if (hasFoundLastLevel && !isLast) {
+                  break;
+               }
+
                updatedLevelMap[currentSno] = nextLevel;
                updatedParentMap[currentSno] = parentSnoForSubsequent;
+
+               if (isLast) {
+                  hasFoundLastLevel = true;
+               }
             }
          }
 
@@ -966,20 +985,20 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       };
 
       return (
-                   <>
-             {isAssigningParent && (
-                <div className="alert alert-info alert-dismissible fade show mb-0 rounded-0 border-0" style={{ position: 'sticky', top: 0, zIndex: 1050, backgroundColor: '#f0f9ff', color: '#0369a1' }}>
-                   <div className="d-flex align-items-center justify-content-between px-3">
-                      <div className="d-flex align-items-center">
-                         <Link size={18} className="me-2" />
-                         <span><strong>Manual Parent Assignment:</strong> Click on a row in the table to set it as the parent for the selected items.</span>
-                      </div>
-                      <button type="button" className="btn btn-sm btn-outline-info" onClick={() => setIsAssigningParent(false)}>
-                         Cancel
-                      </button>
-                   </div>
-                </div>
-             )}
+         <>
+            {isAssigningParent && (
+               <div className="alert alert-info alert-dismissible fade show mb-0 rounded-0 border-0" style={{ position: 'sticky', top: 0, zIndex: 1050, backgroundColor: '#f0f9ff', color: '#0369a1' }}>
+                  <div className="d-flex align-items-center justify-content-between px-3">
+                     <div className="d-flex align-items-center">
+                        <Link size={18} className="me-2" />
+                        <span><strong>Manual Parent Assignment:</strong> Click on a row in the table to set it as the parent for the selected items.</span>
+                     </div>
+                     <button type="button" className="btn btn-sm btn-outline-info" onClick={() => setIsAssigningParent(false)}>
+                        Cancel
+                     </button>
+                  </div>
+               </div>
+            )}
 
             <div className='row g-3 ms-1 me-2 mt-4'>
                <div className='col-12 p-2'>
@@ -1005,15 +1024,15 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                         </div>
                         <div className='col-lg-8 col-md-7 col-sm-12 d-flex justify-content-end align-items-end pt-4'>
                            <div className="form-check d-flex align-items-center me-3 mb-2">
-                              <input 
-                                 type="checkbox" 
-                                 className="form-check-input me-2 mt-0" 
-                                 id="autoIncrease" 
-                                 checked={autoIncreaseLevel} 
-                                 onChange={(e) => setAutoIncreaseLevel(e.target.checked)} 
+                              <input
+                                 type="checkbox"
+                                 className="form-check-input me-2 mt-0"
+                                 id="autoIncrease"
+                                 checked={autoIncreaseLevel}
+                                 onChange={(e) => setAutoIncreaseLevel(e.target.checked)}
                                  style={{ cursor: 'pointer' }}
                               />
-                              <label className="form-check-label text-nowrap" htmlFor="autoIncrease" style={{fontSize: '13px', cursor: 'pointer', color: '#005197', fontWeight: '500'}}>Auto-increase levels</label>
+                              <label className="form-check-label text-nowrap" htmlFor="autoIncrease" style={{ fontSize: '13px', cursor: 'pointer', color: '#005197', fontWeight: '500' }}>Auto-increase levels</label>
                            </div>
                            <button className='btn cancel rounded-2 p-2 me-2' style={{ fontSize: '13px' }} onClick={expandAll}>
                               <ExpandIcon width={20} height={20} /><span className='ms-1'>Expand All</span>
@@ -1033,9 +1052,10 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                  <thead className="text-white">
                                     <tr>
                                        <th style={{ width: '30px' }}></th>
-                                        <th className="text-center text-nowrap" style={{ width: '60px' }}>Level</th>
-                                        <th style={{ width: '100px' }} className='text-nowrap'>BOQ Code</th>
-                                        <th className='text-nowrap text-start'>BOQ Description</th>
+                                       <th className="text-center text-nowrap" style={{ width: '60px' }}>Level</th>
+                                       <th style={{ width: '100px' }} className='text-nowrap'>BOQ Code</th>
+                                       <th className='text-nowrap text-start'>BOQ Description</th>
+                                       <th className="text-center text-nowrap" style={{ width: '100px' }}>Division</th>
                                        <th className="text-center text-nowrap" style={{ width: '100px' }}>Unit</th>
                                        <th className="text-center text-nowrap" style={{ width: '140px' }}>Quantity</th>
                                     </tr>
@@ -1045,12 +1065,12 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                        <tr key={item.sno}
                                           className={`${item.level > 0 ? `level-bg-${((item.level - 1) % 10) + 1}` : ''} ${selectedRow.has(item.sno) ? 'selected-row' : ''} ${isAssigningParent ? 'assign-parent-mode' : ''}`}
                                           onClick={() => {
-                                              if (isAssigningParent) {
-                                                 handleParentSelect(item.sno);
-                                              } else {
-                                                 toggleSelection(item.sno);
-                                              }
-                                           }}
+                                             if (isAssigningParent) {
+                                                handleParentSelect(item.sno);
+                                             } else {
+                                                toggleSelection(item.sno);
+                                             }
+                                          }}
 
                                           style={{ cursor: 'pointer' }}
                                        >
@@ -1068,13 +1088,13 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                              <input
                                                 type="number"
                                                 className="form-control form-control-sm mx-auto"
-                                                 style={{
-                                                    width: '50px',
-                                                    fontSize: '12px',
-                                                    padding: '2px 4px',
-                                                    borderRadius: '4px',
-                                                    border: '1px solid #0051973D'
-                                                 }}
+                                                style={{
+                                                   width: '50px',
+                                                   fontSize: '12px',
+                                                   padding: '2px 4px',
+                                                   borderRadius: '4px',
+                                                   border: '1px solid #0051973D'
+                                                }}
                                                 min="0"
                                                 value={item.level || ''}
                                                 onClick={(e) => e.stopPropagation()}
@@ -1085,11 +1105,12 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                           <td className='text-nowrap' title={item.boqCode}>
                                              {boqNameDisplay(item.boqCode, 9)}
                                           </td>
-                                           <td className="text-start" title="Click to view the full description" onClick={(e) => { e.stopPropagation(); setSelectedBoqForModal(item); }} style={{ cursor: 'pointer', whiteSpace: 'normal', wordBreak: 'break-word', minWidth: '400px' }}>
-                                              <div>
-                                                 {item.boqName}
-                                              </div>
-                                           </td>
+                                          <td className="text-start" title="Click to view the full description" onClick={(e) => { e.stopPropagation(); setSelectedBoqForModal(item); }} style={{ cursor: 'pointer', whiteSpace: 'normal', wordBreak: 'break-word', minWidth: '400px' }}>
+                                             <div>
+                                                {item.boqName}
+                                             </div>
+                                          </td>
+                                          <td className="text-center text-nowrap">{item.division || '-'}</td>
                                           <td className="text-center text-nowrap">{item.uom || '-'}</td>
                                           <td className="text-center text-nowrap">
                                              {item.quantity && item.quantity !== 0 ? item.quantity.toFixed(3) : "-"}
@@ -1287,7 +1308,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                </div>
             )}
             <div className='d-flex justify-content-end mt-4'>
-               <button className='btn action-button mt-2 fs-6' onClick={() => fetchExcelData()}><ArrowRight size={18} /> <span className='ms-1'>Next</span></button>
+               <button className='btn action-button mt-2 fs-6' onClick={() => setPageBreakModal(true)}><ArrowRight size={18} /> <span className='ms-1'>Next</span></button>
             </div>
          </div>
       )
@@ -1306,7 +1327,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       return (
          <>
             <div className='rounded-3 bg-white p-3 ms-3 me-3' style={{ border: '0.5px solid #0051973D' }}>
-               <div className='d-flex justify-content-between mt-1'>
+               <div className='d-flex justify-content-between mt-1 gap-2'>
                   <div className='col-lg-6 col-md-6 col-sm-12'>
                      <div className='file-preview d-flex align-items-center justify-content-between mb-2'>
                         <div>
@@ -1409,6 +1430,48 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                            onClick={handleBulkClear}
                         >
                            Confirm
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
+         {pageBreakModal && (
+            <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+               <div className="modal-dialog modal-dialog-centered">
+                  <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
+                     <div className="modal-header border-0 pb-0">
+                        <h5 className="modal-title fw-bold" style={{ color: '#005197' }}>Page Break Configuration</h5>
+                        <button type="button" className="btn-close" onClick={() => setPageBreakModal(false)}></button>
+                     </div>
+                     <div className="modal-body py-4">
+                        <label className="projectform-select text-start d-block mb-2">
+                           Page Break Word
+                        </label>
+                        <input type="text" className="form-input w-100" placeholder="e.g. PTO, carried to summary" value={pageBreakWord} onChange={(e) => setPageBreakWord(e.target.value)} />
+                     </div>
+                     <div className="modal-footer border-0 pt-0">
+                        <button
+                           type="button"
+                           className="btn cancel-button px-4"
+                           onClick={() => {
+                              setPageBreakWord('');
+                              setPageBreakModal(false);
+                              fetchExcelData();
+                           }}
+                        >
+                           Continue without page
+                        </button>
+                        <button
+                           type="button"
+                           className="btn action-button px-4"
+                           onClick={() => {
+                              setPageBreakModal(false);
+                              fetchExcelData();
+                           }}
+                           disabled={!pageBreakWord.trim()}
+                        >
+                           Proceed
                         </button>
                      </div>
                   </div>
