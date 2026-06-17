@@ -67,7 +67,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const effectiveProjectId = (isExternalAccess && externalEnqirySlno) ? externalEnqirySlno : projectId;
 
    const displayProjectName = (isExternalAccess && (externalTederCode || externalTenderName))
-      ? `${externalTederCode ? externalTederCode.replace(/_/g, ' ') : ''} - ${externalTenderName ? externalTenderName.replace(/_/g, ' ') : ''}`
+      ? `${externalTederCode ? externalTederCode.replace(/_/g, '/') : ''} - ${externalTenderName ? externalTenderName.replace(/_/g, ' ') : ''}`
       : projectName;
    const fileInputRef = useRef(null);
    const [BOQfile, setBOQfile] = useState(null);

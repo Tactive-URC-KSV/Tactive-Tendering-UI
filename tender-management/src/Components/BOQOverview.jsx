@@ -118,7 +118,7 @@ function BOQOverview({ projectId }) {
     const [parentTree, setParentTree] = useState([]);
     const [project, setProject] = useState();
     const displayProjectName = (isExternalAccess && (externalTederCode || externalTenderName))
-        ? `${externalTederCode ? externalTederCode.replace(/_/g, ' ') : ''} - ${externalTenderName ? externalTenderName.replace(/_/g, ' ') : ''}`
+        ? `${externalTederCode ? externalTederCode.replace(/_/g, '/') : ''} - ${externalTenderName ? externalTenderName.replace(/_/g, ' ') : ''}`
         : (project?.projectName ? `${project.projectName}(${project.projectCode})` : 'No Project');
     const [uploadScreen, setUploadScreen] = useState(false);
     const [expandedParentIds, setExpandedParentIds] = useState(new Set());
