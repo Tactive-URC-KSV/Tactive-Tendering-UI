@@ -58,16 +58,16 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       return null;
    };
 
-   const externalModuleRef = useMemo(() => isExternalAccess ? (getQueryParam("Module Reference") || getQueryParam("moduleReference") || getQueryParam("moduleRef") || getQueryParam("projectId")) : null, [isExternalAccess, queryParams]);
+   const externalModuleRef = useMemo(() => isExternalAccess ? (getQueryParam("Module_Reference") || getQueryParam("moduleReference") || getQueryParam("moduleRef") || getQueryParam("projectId")) : null, [isExternalAccess, queryParams]);
    const externalEnqirySlno = useMemo(() => isExternalAccess ? (getQueryParam("EnqirySlno") || getQueryParam("enquirySlno") || getQueryParam("EnquirySlNo") || getQueryParam("enqirySlno")) : null, [isExternalAccess, queryParams]);
-   const externalTenderRevNo = useMemo(() => isExternalAccess ? (getQueryParam("Tender Rev. No") || getQueryParam("tenderRevNo") || getQueryParam("TenderRevNo") || getQueryParam("tenderRev")) : null, [isExternalAccess, queryParams]);
-   const externalTederCode = useMemo(() => isExternalAccess ? (getQueryParam("Teder Code") || getQueryParam("tenderCode") || getQueryParam("TederCode") || getQueryParam("tender_code") || getQueryParam("Tender Code")) : null, [isExternalAccess, queryParams]);
-   const externalTenderName = useMemo(() => isExternalAccess ? (getQueryParam("Tender Name") || getQueryParam("tenderName") || getQueryParam("TenderName") || getQueryParam("tender_name")) : null, [isExternalAccess, queryParams]);
+   const externalTenderRevNo = useMemo(() => isExternalAccess ? (getQueryParam("Tender_Rev_No") || getQueryParam("tenderRevNo") || getQueryParam("TenderRevNo") || getQueryParam("tenderRev")) : null, [isExternalAccess, queryParams]);
+   const externalTederCode = useMemo(() => isExternalAccess ? (getQueryParam("Teder_Code") || getQueryParam("tenderCode") || getQueryParam("TederCode") || getQueryParam("tender_code") || getQueryParam("Tender_Code")) : null, [isExternalAccess, queryParams]);
+   const externalTenderName = useMemo(() => isExternalAccess ? (getQueryParam("Tender_Name") || getQueryParam("tenderName") || getQueryParam("TenderName") || getQueryParam("tender_name")) : null, [isExternalAccess, queryParams]);
 
-   const effectiveProjectId = (isExternalAccess && externalModuleRef) ? externalModuleRef : projectId;
+   const effectiveProjectId = (isExternalAccess && externalEnqirySlno) ? externalEnqirySlno : projectId;
 
    const displayProjectName = (isExternalAccess && (externalTederCode || externalTenderName))
-      ? `${externalTederCode} - ${externalTenderName}`
+      ? `${externalTederCode ? externalTederCode.replace(/_/g, ' ') : ''} - ${externalTenderName ? externalTenderName.replace(/_/g, ' ') : ''}`
       : projectName;
    const fileInputRef = useRef(null);
    const [BOQfile, setBOQfile] = useState(null);
