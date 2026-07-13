@@ -484,6 +484,18 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          if (response.status === 200) {
             toast.success("BOQ mapping saved successfully!");
             if (isExternalAccess) {
+               window.parent.postMessage(
+                  {
+                     type: "FORM_SAVE_COMPLETED",
+                     status: "SUCCESS",
+                     message: "Data saved successfully",
+                     data: {
+                        projectId: effectiveProjectId,
+                        boqCode: externalTederCode
+                     },
+                  },
+                  "*"
+               );
                setTimeout(() => {
                   navigate(`/external/boq-overview/${effectiveProjectId}/${token}${location.search}`);
                }, 3000);
@@ -536,6 +548,16 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       }
       catch (error) {
          // toast.error("Error saving BOQ mapping");
+         if (isExternalAccess) {
+            window.parent.postMessage(
+               {
+                  type: "FORM_SAVE_COMPLETED",
+                  status: "FAILED",
+                  message: error.response?.data?.message || "Save failed",
+               },
+               "*"
+            );
+         }
       }
       finally {
          setLoading(false);
