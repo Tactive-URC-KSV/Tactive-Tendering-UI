@@ -336,6 +336,20 @@ function BOQOverview({ projectId }) {
             }
             if (res.status === 201 || res.status === 200) {
                 toast.success(editBoqId ? "BOQ Updated Successfully" : "BOQ Created Successfully");
+                if (isExternalAccess) {
+                    window.parent.postMessage(
+                        {
+                            type: "FORM_SAVE_COMPLETED",
+                            status: "SUCCESS",
+                            message: "Data saved successfully",
+                            data: {
+                                projectId: effectiveProjectId,
+                                boqCode: newBoqData.boqCode
+                            },
+                        },
+                        "*"
+                    );
+                }
                 setShowCreateModal(false);
                 setEditBoqId(null);
                 setNewBoqData({
@@ -353,6 +367,16 @@ function BOQOverview({ projectId }) {
         } catch (err) {
             console.error("Failed to create BOQ", err);
             toast.error(err?.response?.data || "Failed to create BOQ");
+            if (isExternalAccess) {
+                window.parent.postMessage(
+                    {
+                        type: "FORM_SAVE_COMPLETED",
+                        status: "FAILED",
+                        message: err.response?.data?.message || "Save failed",
+                    },
+                    "*"
+                );
+            }
         } finally {
             setIsCreatingBoq(false);
         }
