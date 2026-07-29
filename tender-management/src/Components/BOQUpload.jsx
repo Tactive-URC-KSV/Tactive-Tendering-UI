@@ -104,6 +104,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [autoIncreaseLevel, setAutoIncreaseLevel] = useState(true);
    const [pageBreakWord, setPageBreakWord] = useState('');
    const [pageBreakModal, setPageBreakModal] = useState(false);
+   const [emptyBoqModal, setEmptyBoqModal] = useState({ show: false, count: 0, emptySnos: [] });
 
    const isLastLevelRow = (row) => {
       return (
@@ -445,18 +446,40 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    //       setLoading(false);
    //    })
    // }
-   const saveMappedBOQ = async () => {
+   const saveMappedBOQ = async (ignoreEmptyChoiceParam = null) => {
+      const isEvent = ignoreEmptyChoiceParam && typeof ignoreEmptyChoiceParam === 'object' && ignoreEmptyChoiceParam.nativeEvent;
+      const finalIgnoreChoice = isEvent ? null : (typeof ignoreEmptyChoiceParam === 'boolean' ? ignoreEmptyChoiceParam : null);
+
+      if (!BOQfile) {
+         toast.error("Please upload a BOQ file");
+         return;
+      }
+
+      if (!selectedSheet) {
+         toast.error(fileType === 'pdf' ? "Start page required" : "Sheet name required");
+         return;
+      }
+
+      if (finalIgnoreChoice === null) {
+         const emptyLastLevelItems = excelData.filter(item => {
+            const isLast = isLastLevelRow(item);
+            const boqNameStr = item.boqName ? item.boqName.toString().trim() : '';
+            const boqCodeStr = item.boqCode ? item.boqCode.toString().trim() : '';
+            return isLast && (!boqNameStr || !boqCodeStr);
+         });
+
+         if (emptyLastLevelItems.length > 0) {
+            setEmptyBoqModal({
+               show: true,
+               count: emptyLastLevelItems.length,
+               emptySnos: emptyLastLevelItems.map(item => item.sno)
+            });
+            return;
+         }
+      }
+
       setLoading(true)
       try {
-         if (!BOQfile) {
-            toast.error("Please upload a BOQ file");
-            return;
-         }
-
-         if (!selectedSheet) {
-            toast.error(fileType === 'pdf' ? "Start page required" : "Sheet name required");
-            return;
-         }
          const formData = new FormData();
          formData.append("file", BOQfile);
          formData.append("sheetName", selectedSheet);
@@ -472,6 +495,17 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          formData.append("parentChildMapping", JSON.stringify(parentMap));
          formData.append("lastLevelMapping", JSON.stringify(lastLevelMap));
          formData.append("levelMapping", JSON.stringify(levelMap));
+         
+         let ignoredSnos = [];
+         if (finalIgnoreChoice === true) {
+            ignoredSnos = excelData.filter(item => {
+               const isLast = isLastLevelRow(item);
+               const boqNameStr = item.boqName ? item.boqName.toString().trim() : '';
+               const boqCodeStr = item.boqCode ? item.boqCode.toString().trim() : '';
+               return isLast && (!boqNameStr || !boqCodeStr);
+            }).map(item => item.sno);
+         }
+         formData.append("ignoredSnos", JSON.stringify(ignoredSnos));
 
          const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/mapBOQ/${effectiveProjectId}`,
             formData,
@@ -1494,6 +1528,45 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                            disabled={!pageBreakWord.trim()}
                         >
                            Proceed
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
+         {emptyBoqModal.show && (
+            <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+               <div className="modal-dialog modal-dialog-centered">
+                  <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
+                     <div className="modal-header border-0 pb-0">
+                        <h5 className="modal-title fw-bold" style={{ color: '#005197' }}>Missing BOQ Data</h5>
+                        <button type="button" className="btn-close" onClick={() => setEmptyBoqModal({ ...emptyBoqModal, show: false })}></button>
+                     </div>
+                     <div className="modal-body py-4">
+                        <p className="mb-0 text-muted" style={{ fontSize: '15px' }}>
+                           Found <strong>{emptyBoqModal.count}</strong> last-level BOQ item(s) missing a BOQ Name or BOQ Code. How would you like to proceed?
+                        </p>
+                     </div>
+                     <div className="modal-footer border-0 pt-0">
+                        <button
+                           type="button"
+                           className="btn cancel-button px-4"
+                           onClick={() => {
+                              setEmptyBoqModal({ ...emptyBoqModal, show: false });
+                              saveMappedBOQ(true);
+                           }}
+                        >
+                           Ignore
+                        </button>
+                        <button
+                           type="button"
+                           className="btn action-button px-4"
+                           onClick={() => {
+                              setEmptyBoqModal({ ...emptyBoqModal, show: false });
+                              saveMappedBOQ(false);
+                           }}
+                        >
+                           Import
                         </button>
                      </div>
                   </div>
