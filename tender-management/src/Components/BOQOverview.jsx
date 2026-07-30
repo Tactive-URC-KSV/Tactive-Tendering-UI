@@ -1116,7 +1116,7 @@ function BOQOverview({ projectId }) {
                                     }}
                                 />
                             )}
-                            {hasNoChildren && (
+                            {(boq.childCount === 0 || hasNoChildren) && (
                                 <DeleteIcon
                                     style={{
                                         cursor: 'pointer',
