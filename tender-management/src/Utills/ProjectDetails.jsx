@@ -150,7 +150,19 @@ function ProjectInfo({ project, feasbilityStudy, handleSubmit, region, scopePack
     }, [addresses]);
 
     const handleAddressChange = (index, key, value) => {
-        setAddresses(prev => prev.map((addr, i) => i === index ? { ...addr, [key]: value } : addr));
+        let finalValue = value;
+        if (key === 'phoneNo') {
+            let sanitized = value.replace(/\D/g, '');
+            if (sanitized.length > 0 && !/^[6789]/.test(sanitized)) {
+                sanitized = '';
+            }
+            finalValue = sanitized.substring(0, 10);
+        } else if (key === 'address') {
+            finalValue = value.substring(0, 100);
+        } else if (key === 'email') {
+            finalValue = value.replace(/[^a-zA-Z0-9@\._-]/g, '').substring(0, 100);
+        }
+        setAddresses(prev => prev.map((addr, i) => i === index ? { ...addr, [key]: finalValue } : addr));
     };
 
     const addAddress = () => setAddresses(prev => [...prev, { ...emptyAddress }]);
@@ -257,9 +269,11 @@ function ProjectInfo({ project, feasbilityStudy, handleSubmit, region, scopePack
                             </label>
                             <input type="text" className="form-input w-100" placeholder="Enter Project Name"
                                 value={project.projectName}
-                                onChange={(e) => setProject({ ...project, projectName: e.target.value })}
-
+                                onChange={(e) => setProject({ ...project, projectName: e.target.value.replace(/[^A-Za-z ]/g, '').substring(0, 100) })}
                             />
+                            <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                {(project.projectName || "").length}/100
+                            </div>
                         </div>
                         <div className="col-md-6 mt-3 mb-4">
                             <label className="projectform  text-start d-block">
@@ -267,9 +281,11 @@ function ProjectInfo({ project, feasbilityStudy, handleSubmit, region, scopePack
                             </label>
                             <input type="text" className="form-input w-100" placeholder="Enter Short Name"
                                 value={project.shortName}
-                                onChange={(e) => setProject({ ...project, shortName: e.target.value })}
-
+                                onChange={(e) => setProject({ ...project, shortName: e.target.value.replace(/[^A-Za-z ]/g, '').substring(0, 50) })}
                             />
+                            <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                {(project.shortName || "").length}/50
+                            </div>
                         </div>
                     </div>
                     {/* <div className="row align-items-center ms-4 me-4 ">
@@ -510,6 +526,9 @@ function ProjectInfo({ project, feasbilityStudy, handleSubmit, region, scopePack
                                         value={addr.address}
                                         onChange={(e) => handleAddressChange(idx, 'address', e.target.value)}
                                     />
+                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                        {(addr.address || "").length}/100
+                                    </div>
                                 </div>
                                 <div className="col-md-6 mb-3">
                                     <label className="projectform text-start d-block">Phone No</label>
@@ -517,6 +536,9 @@ function ProjectInfo({ project, feasbilityStudy, handleSubmit, region, scopePack
                                         value={addr.phoneNo}
                                         onChange={(e) => handleAddressChange(idx, 'phoneNo', e.target.value)}
                                     />
+                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                        {(addr.phoneNo || "").length}/10
+                                    </div>
                                 </div>
                                 <div className="col-md-6 mb-3">
                                     <label className="projectform text-start d-block">Email</label>
@@ -524,6 +546,9 @@ function ProjectInfo({ project, feasbilityStudy, handleSubmit, region, scopePack
                                         value={addr.email}
                                         onChange={(e) => handleAddressChange(idx, 'email', e.target.value)}
                                     />
+                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                        {(addr.email || "").length}/100
+                                    </div>
                                 </div>
                             </div>
                         </div>

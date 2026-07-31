@@ -330,15 +330,18 @@ function FeasibilityStudy({ project, sectorId, setActiveTab }) {
                     </div>
                 ))}
                 <div className="row align-items-center ms-4 me-4">
-                    <div className="col-12 mt-3 mb-3">
+                    <div className="col-12 mt-3 mb-3 position-relative">
                         <label className="projectform text-start d-block">Execution Capabilities</label>
                         <input
                             type="text"
                             className="form-input w-100"
                             placeholder="Enter Execution capabilities"
-                            value={Array.isArray(technicalData.executionCapabilities) ? technicalData.executionCapabilities.join(', ') : technicalData.executionCapabilities}
-                            onChange={(e) => setTechnicalData({ ...technicalData, executionCapabilities: e.target.value })}
+                            value={Array.isArray(technicalData.executionCapabilities) ? technicalData.executionCapabilities.join(', ') : (technicalData.executionCapabilities || '')}
+                            onChange={(e) => setTechnicalData({ ...technicalData, executionCapabilities: e.target.value.replace(/[^A-Za-z0-9 ,-\/]/g, '').substring(0, 100) })}
                         />
+                        <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(Array.isArray(technicalData.executionCapabilities) ? technicalData.executionCapabilities.join(', ') : (technicalData.executionCapabilities || '')).length}/100
+                        </div>
                     </div>
                 </div>
             </div>
@@ -347,27 +350,33 @@ function FeasibilityStudy({ project, sectorId, setActiveTab }) {
                     <div className="tab-info col-12 h-100 pt-1">Financial Feasibility</div>
                 </div>
                 <div className="row align-items-center ms-4 me-4">
-                    <div className="col-12 mt-3 mb-4">
+                    <div className="col-12 mt-3 mb-4 position-relative">
                         <label className="projectform-select text-start d-block">Market Availability<span className='ms-1 text-danger'>*</span></label>
                         <input
                             type="text"
                             className="form-input w-100"
                             placeholder="Enter Market Availability"
-                            value={Array.isArray(financialData.marketAvailability) ? financialData.marketAvailability.join(', ') : financialData.marketAvailability}
-                            onChange={(e) => setFinancialData({ ...financialData, marketAvailability: e.target.value })}
+                            value={Array.isArray(financialData.marketAvailability) ? financialData.marketAvailability.join(', ') : (financialData.marketAvailability || '')}
+                            onChange={(e) => setFinancialData({ ...financialData, marketAvailability: e.target.value.replace(/[^A-Za-z0-9 ,-\/]/g, '').substring(0, 100) })}
                         />
+                        <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(Array.isArray(financialData.marketAvailability) ? financialData.marketAvailability.join(', ') : (financialData.marketAvailability || '')).length}/100
+                        </div>
                     </div>
                 </div>
                 <div className="row align-items-center ms-4 me-4">
-                    <div className="col-12 mt-3 mb-4">
+                    <div className="col-12 mt-3 mb-4 position-relative">
                         <label className="projectform-select text-start d-block">Financial Backup<span className='ms-1 text-danger'>*</span></label>
                         <input
                             type="text"
                             className="form-input w-100"
                             placeholder="Enter Financial Backup"
-                            value={financialData.financialBackup}
-                            onChange={(e) => setFinancialData({ ...financialData, financialBackup: e.target.value })}
+                            value={Array.isArray(financialData.financialBackup) ? financialData.financialBackup.join(', ') : (financialData.financialBackup || '')}
+                            onChange={(e) => setFinancialData({ ...financialData, financialBackup: e.target.value.replace(/[^A-Za-z0-9 ,-\/]/g, '').substring(0, 100) })}
                         />
+                        <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(Array.isArray(financialData.financialBackup) ? financialData.financialBackup.join(', ') : (financialData.financialBackup || '')).length}/100
+                        </div>
                     </div>
                 </div>
                 <div className="row">

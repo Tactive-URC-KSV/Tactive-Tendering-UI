@@ -595,9 +595,21 @@ function CompanyForm() {
     };
 
     const handleExtraAddressChange = (index, field, value) => {
+        let finalValue = value;
+        if (field === 'phoneNo') {
+            finalValue = value.replace(/\D/g, '').substring(0, 10);
+        } else if (field === 'zipCode') {
+            finalValue = value.replace(/\D/g, '').substring(0, 6);
+        } else if (field === 'faxNo') {
+            finalValue = value.replace(/\D/g, '').substring(0, 15);
+        } else if (field === 'website') {
+            finalValue = value.substring(0, 200);
+        } else if (field === 'address1' || field === 'address2') {
+            finalValue = value.substring(0, 100);
+        }
         setExtraAddresses(prev => prev.map((addr, i) => {
             if (i !== index) return addr;
-            return { ...addr, [field]: value };
+            return { ...addr, [field]: finalValue };
         }));
     };
 
@@ -655,7 +667,34 @@ function CompanyForm() {
         setter(prev => prev.filter((_, i) => i !== index));
     };
     const handleSectionChange = (setter) => (index, field, value) => {
-        setter(prev => prev.map((item, i) => i !== index ? item : { ...item, [field]: value }));
+        let finalValue = value;
+        if (field === 'phoneNo') {
+            let sanitized = value.replace(/\D/g, '');
+            if (sanitized.length > 0 && !/^[6789]/.test(sanitized)) {
+                sanitized = '';
+            }
+            finalValue = sanitized.substring(0, 10);
+        } else if (field === 'directorName' || field === 'name' || field === 'partnerId') {
+            finalValue = value.replace(/[^A-Za-z ]/g, '').substring(0, 50);
+        } else if (field === 'sharePercentage') {
+            let sanitized = value.replace(/[^0-9.]/g, '');
+            const parts = sanitized.split('.');
+            if (parts.length > 2) {
+                sanitized = parts[0] + '.' + parts.slice(1).join('');
+            }
+            finalValue = sanitized;
+        } else if (field === 'noOfShares') {
+            finalValue = value.replace(/\D/g, '');
+        } else if (field === 'taxRegNo' || field === 'registrationNo') {
+            finalValue = value.replace(/[^A-Za-z0-9]/g, '').substring(0, 50);
+        } else if (field === 'address1' || field === 'address2') {
+            finalValue = value.substring(0, 100);
+        } else if (field === 'pinCode') {
+            finalValue = value.replace(/\D/g, '').substring(0, 6);
+        } else if (field === 'email') {
+            finalValue = value.replace(/[^a-zA-Z0-9@\._-]/g, '').substring(0, 100);
+        }
+        setter(prev => prev.map((item, i) => i !== index ? item : { ...item, [field]: finalValue }));
     };
 
     const fetchExtraTaxTerritory = async (index, territoryTypeId) => {
@@ -764,7 +803,43 @@ function CompanyForm() {
     }
 
     const handleInputChange = (setter) => (e) => {
-        const { name, value, type, checked } = e.target;
+        let { name, value, type, checked } = e.target;
+        if (type !== 'checkbox') {
+            if (name === 'companyName') {
+                value = value.replace(/[^A-Za-z ]/g, '').substring(0, 100);
+            } else if (name === 'shortName') {
+                value = value.replace(/[^A-Za-z ]/g, '').substring(0, 50);
+            } else if (name === 'phoneNo') {
+                let sanitized = value.replace(/\D/g, '');
+                if (sanitized.length > 0 && !/^[6789]/.test(sanitized)) {
+                    sanitized = '';
+                }
+                value = sanitized.substring(0, 10);
+            } else if (name === 'zipCode' || name === 'pinCode') {
+                value = value.replace(/\D/g, '').substring(0, 6);
+            } else if (name === 'faxNo') {
+                value = value.replace(/\D/g, '').substring(0, 15);
+            } else if (name === 'website') {
+                value = value.substring(0, 200);
+            } else if (name === 'address1' || name === 'address2') {
+                value = value.substring(0, 100);
+            } else if (name === 'directorName' || name === 'name' || name === 'partnerId') {
+                value = value.replace(/[^A-Za-z ]/g, '').substring(0, 50);
+            } else if (name === 'sharePercentage') {
+                let sanitized = value.replace(/[^0-9.]/g, '');
+                const parts = sanitized.split('.');
+                if (parts.length > 2) {
+                    sanitized = parts[0] + '.' + parts.slice(1).join('');
+                }
+                value = sanitized;
+            } else if (name === 'noOfShares') {
+                value = value.replace(/\D/g, '');
+            } else if (name === 'taxRegNo' || name === 'registrationNo') {
+                value = value.replace(/[^A-Za-z0-9]/g, '').substring(0, 50);
+            } else if (name === 'email') {
+                value = value.replace(/[^a-zA-Z0-9@\._-]/g, '').substring(0, 100);
+            }
+        }
         setter(prev => ({
             ...prev,
             [name]: type === 'checkbox' ? checked : value
@@ -1173,6 +1248,89 @@ function CompanyForm() {
             toast.warn(`Please enter required details (${missingFields.join(", ")})`);
             return false;
         }
+
+        // Validate Email & Phone Formats
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const phoneRegex = /^[6789]\d{9}$/;
+        const zipRegex = /^\d{6}$/;
+
+        const invalidEmails = [];
+        const invalidPhones = [];
+        const invalidZips = [];
+        const invalidShares = [];
+
+        // Check primary address phone, email, zip
+        if (addressDetails.email && !emailRegex.test(addressDetails.email)) invalidEmails.push("Primary Address Email");
+        if (addressDetails.phoneNo && !phoneRegex.test(addressDetails.phoneNo)) invalidPhones.push("Primary Address Phone No (must be exactly 10 digits and start with 6, 7, 8, or 9)");
+        if (addressDetails.zipCode && !zipRegex.test(addressDetails.zipCode)) invalidZips.push("Primary Address Zip Code (must be exactly 6 digits)");
+
+        // Check extra addresses phone, email, zip
+        extraAddresses.forEach((addr, idx) => {
+            if (addr.email && !emailRegex.test(addr.email)) invalidEmails.push(`Address ${idx + 2} Email`);
+            if (addr.phoneNo && !phoneRegex.test(addr.phoneNo)) invalidPhones.push(`Address ${idx + 2} Phone No (must be exactly 10 digits and start with 6, 7, 8, or 9)`);
+            if (addr.zipCode && !zipRegex.test(addr.zipCode)) invalidZips.push(`Address ${idx + 2} Zip Code (must be exactly 6 digits)`);
+        });
+
+        // Check primary contact phone & email
+        if (contactDetails.email && !emailRegex.test(contactDetails.email)) invalidEmails.push("Primary Contact Email");
+        if (contactDetails.phoneNo && !phoneRegex.test(contactDetails.phoneNo)) invalidPhones.push("Primary Contact Phone No (must be exactly 10 digits and start with 6, 7, 8, or 9)");
+
+        // Check extra contacts phone & email
+        extraContacts.forEach((contact, idx) => {
+            if (contact.email && !emailRegex.test(contact.email)) invalidEmails.push(`Contact ${idx + 2} Email`);
+            if (contact.phoneNo && !phoneRegex.test(contact.phoneNo)) invalidPhones.push(`Contact ${idx + 2} Phone No (must be exactly 10 digits and start with 6, 7, 8, or 9)`);
+        });
+
+        // Check tax details email, pinCode
+        if (taxDetails.email && !emailRegex.test(taxDetails.email)) invalidEmails.push("Tax Details Email");
+        if (taxDetails.pinCode && !zipRegex.test(taxDetails.pinCode)) invalidZips.push("Tax Details Pin Code (must be exactly 6 digits)");
+        extraTaxes.forEach((tax, idx) => {
+            if (tax.email && !emailRegex.test(tax.email)) invalidEmails.push(`Tax ${idx + 2} Email`);
+            if (tax.pinCode && !zipRegex.test(tax.pinCode)) invalidZips.push(`Tax ${idx + 2} Pin Code (must be exactly 6 digits)`);
+        });
+
+        // Validate Share Percentages (0 to 100)
+        if (directorDetails.sharePercentage !== "" && directorDetails.sharePercentage !== null) {
+            const val = parseFloat(directorDetails.sharePercentage);
+            if (isNaN(val) || val < 0 || val > 100) invalidShares.push("Director Share %");
+        }
+        extraDirectors.forEach((dir, idx) => {
+            if (dir.sharePercentage !== "" && dir.sharePercentage !== null && dir.sharePercentage !== undefined) {
+                const val = parseFloat(dir.sharePercentage);
+                if (isNaN(val) || val < 0 || val > 100) invalidShares.push(`Director ${idx + 2} Share %`);
+            }
+        });
+        if (jointVenture.sharePercentage !== "" && jointVenture.sharePercentage !== null) {
+            const val = parseFloat(jointVenture.sharePercentage);
+            if (isNaN(val) || val < 0 || val > 100) invalidShares.push("JV Partner Share %");
+        }
+        extraJvs.forEach((jv, idx) => {
+            if (jv.sharePercentage !== "" && jv.sharePercentage !== null && jv.sharePercentage !== undefined) {
+                const val = parseFloat(jv.sharePercentage);
+                if (isNaN(val) || val < 0 || val > 100) invalidShares.push(`JV ${idx + 2} Partner Share %`);
+            }
+        });
+
+        if (invalidEmails.length > 0) {
+            toast.warn(`Please enter valid Email ID format for: ${invalidEmails.join(", ")}`);
+            return false;
+        }
+
+        if (invalidPhones.length > 0) {
+            toast.warn(`Invalid Phone No: ${invalidPhones[0]}`);
+            return false;
+        }
+
+        if (invalidZips.length > 0) {
+            toast.warn(`Invalid Zip/Pin Code: ${invalidZips[0]}`);
+            return false;
+        }
+
+        if (invalidShares.length > 0) {
+            toast.warn(`Share percentage must be between 0 and 100 for: ${invalidShares.join(", ")}`);
+            return false;
+        }
+
         return true;
     };
 
@@ -1453,6 +1611,9 @@ function CompanyForm() {
                                             className="form-input w-100"
                                             placeholder="Enter Company Name"
                                         />
+                                        <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                            {(basicInfo.companyName || "").length}/100
+                                        </div>
                                     </div>
 
                                     <div className="col-md-6 mb-4 position-relative">
@@ -1465,6 +1626,9 @@ function CompanyForm() {
                                             className="form-input w-100"
                                             placeholder="Enter Short Name"
                                         />
+                                        <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                            {(basicInfo.shortName || "").length}/50
+                                        </div>
                                     </div>
                                     {showDetails && (
                                         <>
@@ -1575,6 +1739,9 @@ function CompanyForm() {
                                                 className="form-input w-100"
                                                 placeholder="Enter Address 1"
                                             />
+                                            <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                {(addressDetails.address1 || "").length}/100
+                                            </div>
                                         </div>
                                         <div className="col-md-6 mb-4 position-relative">
                                             <label className="projectform d-block">Address 2</label>
@@ -1586,6 +1753,9 @@ function CompanyForm() {
                                                 className="form-input w-100"
                                                 placeholder="Enter Address 2"
                                             />
+                                            <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                {(addressDetails.address2 || "").length}/100
+                                            </div>
                                         </div>
                                         <div className="col-md-6 mb-4 position-relative">
                                             <label className="projectform-select d-block">Country <span style={{ color: "red" }}>*</span></label>
@@ -1656,6 +1826,9 @@ function CompanyForm() {
                                                 className="form-input w-100"
                                                 placeholder="Enter Zip Code"
                                             />
+                                            <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                {(addressDetails.zipCode || "").length}/6
+                                            </div>
                                         </div>
                                         <div className="col-md-6 mb-4 position-relative">
                                             <label className="projectform d-block">Phone No</label>
@@ -1667,6 +1840,9 @@ function CompanyForm() {
                                                 className="form-input w-100"
                                                 placeholder="Enter Phone No"
                                             />
+                                            <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                {(addressDetails.phoneNo || "").length}/10
+                                            </div>
                                         </div>
                                         <div className="col-md-6 mb-4 position-relative">
                                             <label className="projectform d-block">Fax No</label>
@@ -1678,6 +1854,9 @@ function CompanyForm() {
                                                 className="form-input w-100"
                                                 placeholder="Enter Fax No"
                                             />
+                                            <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                {(addressDetails.faxNo || "").length}/15
+                                            </div>
                                         </div>
                                         <div className="col-md-6 mb-4 position-relative">
                                             <label className="projectform d-block">Email ID</label>
@@ -1689,6 +1868,9 @@ function CompanyForm() {
                                                 className="form-input w-100"
                                                 placeholder="Enter Email ID"
                                             />
+                                            <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                {(addressDetails.email || "").length}/100
+                                            </div>
                                         </div>
                                         <div className="col-md-6 mb-4 position-relative">
                                             <label className="projectform d-block">Website</label>
@@ -1700,6 +1882,9 @@ function CompanyForm() {
                                                 className="form-input w-100"
                                                 placeholder="Enter Website"
                                             />
+                                            <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                {(addressDetails.website || "").length}/200
+                                            </div>
                                         </div>
                                         <div className="col-md-12 mb-4">
                                             <div className="form-check form-switch custom-switch d-flex justify-content-end align-items-center w-100">
@@ -1757,6 +1942,9 @@ function CompanyForm() {
                                                         className="form-input w-100"
                                                         placeholder="Enter Address 1"
                                                     />
+                                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                        {(extra.address1 || "").length}/100
+                                                    </div>
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
                                                     <label className="projectform d-block">Address 2</label>
@@ -1767,6 +1955,9 @@ function CompanyForm() {
                                                         className="form-input w-100"
                                                         placeholder="Enter Address 2"
                                                     />
+                                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                        {(extra.address2 || "").length}/100
+                                                    </div>
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
                                                     <label className="projectform-select d-block">Country <span style={{ color: "red" }}>*</span></label>
@@ -1830,6 +2021,9 @@ function CompanyForm() {
                                                         className="form-input w-100"
                                                         placeholder="Enter Zip Code"
                                                     />
+                                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                        {(extra.zipCode || "").length}/6
+                                                    </div>
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
                                                     <label className="projectform d-block">Phone No</label>
@@ -1840,6 +2034,9 @@ function CompanyForm() {
                                                         className="form-input w-100"
                                                         placeholder="Enter Phone No"
                                                     />
+                                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                        {(extra.phoneNo || "").length}/10
+                                                    </div>
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
                                                     <label className="projectform d-block">Fax No</label>
@@ -1850,6 +2047,9 @@ function CompanyForm() {
                                                         className="form-input w-100"
                                                         placeholder="Enter Fax No"
                                                     />
+                                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                        {(extra.faxNo || "").length}/15
+                                                    </div>
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
                                                     <label className="projectform d-block">Email ID</label>
@@ -1860,16 +2060,22 @@ function CompanyForm() {
                                                         className="form-input w-100"
                                                         placeholder="Enter Email ID"
                                                     />
+                                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                        {(extra.email || "").length}/100
+                                                    </div>
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
                                                     <label className="projectform d-block">Website</label>
                                                     <input
                                                         type="text"
                                                         value={extra.website}
-                                                        onChange={(e) => handleExtraAddressChange(idx, 'website', e.target.value)}
+                                                        onChange={(e) => handleExtraAddressChange(idx, 'website', e.target.value.slice(0, 200))}
                                                         className="form-input w-100"
                                                         placeholder="Enter Website"
                                                     />
+                                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                        {(extra.website || "").length}/200
+                                                    </div>
                                                 </div>
                                                 <div className="col-md-12 mb-4">
                                                     <div className="form-check form-switch custom-switch d-flex justify-content-end align-items-center w-100">
@@ -1934,6 +2140,9 @@ function CompanyForm() {
                                                     className="form-input w-100"
                                                     placeholder="Enter Name"
                                                 />
+                                                <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                    {(contactDetails.name || "").length}/50
+                                                </div>
                                             </div>
                                             <div className="col-md-6 mb-4 position-relative">
                                                 <label className="projectform d-block">Phone No <span style={{ color: "red" }}>*</span></label>
@@ -1945,6 +2154,9 @@ function CompanyForm() {
                                                     className="form-input w-100"
                                                     placeholder="Enter Phone No"
                                                 />
+                                                <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                    {(contactDetails.phoneNo || "").length}/10
+                                                </div>
                                             </div>
                                             <div className="col-md-6 mb-4 position-relative">
                                                 <label className="projectform d-block">Email ID <span style={{ color: "red" }}>*</span></label>
@@ -1956,6 +2168,9 @@ function CompanyForm() {
                                                     className="form-input w-100"
                                                     placeholder="Enter Email ID"
                                                 />
+                                                <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                    {(contactDetails.email || "").length}/100
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -2000,6 +2215,9 @@ function CompanyForm() {
                                                         className="form-input w-100"
                                                         placeholder="Enter Name"
                                                     />
+                                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                        {(extra.name || "").length}/50
+                                                    </div>
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
                                                     <label className="projectform d-block">Phone No <span style={{ color: "red" }}>*</span></label>
@@ -2010,6 +2228,9 @@ function CompanyForm() {
                                                         className="form-input w-100"
                                                         placeholder="Enter Phone No"
                                                     />
+                                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                        {(extra.phoneNo || "").length}/10
+                                                    </div>
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
                                                     <label className="projectform d-block">Email ID <span style={{ color: "red" }}>*</span></label>
@@ -2020,6 +2241,9 @@ function CompanyForm() {
                                                         className="form-input w-100"
                                                         placeholder="Enter Email ID"
                                                     />
+                                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                        {(extra.email || "").length}/100
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -2138,6 +2362,9 @@ function CompanyForm() {
                                                             className="form-input w-100"
                                                             placeholder="Enter Tax Reg. No"
                                                         />
+                                                        <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                            {(taxDetails.taxRegNo || "").length}/50
+                                                        </div>
                                                     </div>
                                                     <div className="col-md-6 mb-4 position-relative">
                                                         <label className="projectform d-block">Tax Reg. Date <span style={{ color: "red" }}>*</span></label>
@@ -2188,6 +2415,9 @@ function CompanyForm() {
                                                             className="form-input w-100"
                                                             placeholder="Enter Address 1"
                                                         />
+                                                        <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                            {(taxDetails.address1 || "").length}/100
+                                                        </div>
                                                     </div>
                                                     <div className="col-md-6 mb-4 position-relative">
                                                         <label className="projectform d-block">Address 2</label>
@@ -2199,6 +2429,9 @@ function CompanyForm() {
                                                             className="form-input w-100"
                                                             placeholder="Enter Address 2"
                                                         />
+                                                        <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                            {(taxDetails.address2 || "").length}/100
+                                                        </div>
                                                     </div>
                                                 </>
                                             )}
@@ -2314,6 +2547,9 @@ function CompanyForm() {
                                                                 className="form-input w-100"
                                                                 placeholder="Enter Tax Reg. No"
                                                             />
+                                                            <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                                {(extra.taxRegNo || "").length}/50
+                                                            </div>
                                                         </div>
                                                         <div className="col-md-6 mb-4 position-relative">
                                                             <label className="projectform d-block">Tax Reg. Date <span style={{ color: "red" }}>*</span></label>
@@ -2357,6 +2593,9 @@ function CompanyForm() {
                                                                 className="form-input w-100"
                                                                 placeholder="Enter Address 1"
                                                             />
+                                                            <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                                {(extra.address1 || "").length}/100
+                                                            </div>
                                                         </div>
                                                         <div className="col-md-6 mb-4 position-relative">
                                                             <label className="projectform d-block">Address 2</label>
@@ -2367,6 +2606,9 @@ function CompanyForm() {
                                                                 className="form-input w-100"
                                                                 placeholder="Enter Address 2"
                                                             />
+                                                            <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                                {(extra.address2 || "").length}/100
+                                                            </div>
                                                         </div>
                                                     </>
                                                 )}
@@ -2418,6 +2660,9 @@ function CompanyForm() {
                                                     className="form-input w-100"
                                                     placeholder="Enter Director Name"
                                                 />
+                                                <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                    {(directorDetails.directorName || "").length}/50
+                                                </div>
                                             </div>
                                             <div className="col-md-6 mb-4 position-relative">
                                                 <label className="projectform d-block">Share %</label>
@@ -2483,6 +2728,9 @@ function CompanyForm() {
                                                         className="form-input w-100"
                                                         placeholder="Enter Director Name"
                                                     />
+                                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                        {(extra.directorName || "").length}/50
+                                                    </div>
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
                                                     <label className="projectform d-block">Share %</label>
@@ -2541,6 +2789,9 @@ function CompanyForm() {
                                                     className="form-input w-100"
                                                     placeholder="Enter Partner Name"
                                                 />
+                                                <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                    {(jointVenture.partnerId || "").length}/50
+                                                </div>
                                             </div>
                                             <div className="col-md-6 mb-4 position-relative">
                                                 <label className="projectform d-block">Share % <span style={{ color: "red" }}>*</span></label>
@@ -2584,6 +2835,9 @@ function CompanyForm() {
                                                         className="form-input w-100"
                                                         placeholder="Enter Partner Name"
                                                     />
+                                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                        {(extra.partnerId || "").length}/50
+                                                    </div>
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
                                                     <label className="projectform d-block">Share % <span style={{ color: "red" }}>*</span></label>
@@ -2627,9 +2881,17 @@ function CompanyForm() {
                                                 <input
                                                     type="number"
                                                     value={companyProfile.orderNo}
-                                                    onChange={(e) => setCompanyProfile(prev => ({ ...prev, orderNo: e.target.value }))}
+                                                    min={1}
+                                                    max={2147483647}
+                                                    onChange={(e) => {
+                                                        const raw = e.target.value.replace(/\D/g, '');
+                                                        const num = parseInt(raw, 10);
+                                                        if (raw === '' || (!isNaN(num) && num >= 1 && num <= 2147483647)) {
+                                                            setCompanyProfile(prev => ({ ...prev, orderNo: raw === '' ? '' : num }));
+                                                        }
+                                                    }}
                                                     className="form-input w-100"
-                                                    placeholder="Enter Order No"
+                                                    placeholder="Enter Order No (1 - 2147483647)"
                                                 />
                                             </div>
                                             <div className="col-md-6 position-relative">
@@ -2637,10 +2899,13 @@ function CompanyForm() {
                                                 <input
                                                     type="text"
                                                     value={companyProfile.remarks}
-                                                    onChange={(e) => setCompanyProfile(prev => ({ ...prev, remarks: e.target.value }))}
+                                                    onChange={(e) => setCompanyProfile(prev => ({ ...prev, remarks: e.target.value.substring(0, 100) }))}
                                                     className="form-input w-100"
                                                     placeholder="Enter Remarks"
                                                 />
+                                                <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                    {(companyProfile.remarks || "").length}/100
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="row mb-4">
@@ -2649,11 +2914,14 @@ function CompanyForm() {
                                                 <textarea
                                                     rows="4"
                                                     value={companyProfile.description}
-                                                    onChange={(e) => setCompanyProfile(prev => ({ ...prev, description: e.target.value }))}
+                                                    onChange={(e) => setCompanyProfile(prev => ({ ...prev, description: e.target.value.substring(0, 255) }))}
                                                     className="form-input w-100"
                                                     placeholder="Enter Description"
                                                     style={{ height: 'auto', minHeight: '80px', resize: 'vertical', paddingTop: '15px' }}
                                                 />
+                                                <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                    {(companyProfile.description || "").length}/255
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="row">
@@ -2731,6 +2999,9 @@ function CompanyForm() {
                                                     className="form-input w-100"
                                                     placeholder="Enter Registration No"
                                                 />
+                                                <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                    {(additionalInfo.registrationNo || "").length}/50
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -2774,6 +3045,9 @@ function CompanyForm() {
                                                         className="form-input w-100"
                                                         placeholder="Enter Registration No"
                                                     />
+                                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                        {(extra.registrationNo || "").length}/50
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -2822,6 +3096,9 @@ function CompanyForm() {
                                                     className="form-input w-100"
                                                     placeholder="Enter Local Name"
                                                 />
+                                                <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                    {(localName.name || "").length}/50
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -2866,6 +3143,9 @@ function CompanyForm() {
                                                             className="form-input w-100"
                                                             placeholder="Enter Local Name"
                                                         />
+                                                        <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                            {(extra.name || "").length}/50
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
