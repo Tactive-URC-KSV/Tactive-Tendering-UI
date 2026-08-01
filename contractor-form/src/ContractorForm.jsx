@@ -243,14 +243,30 @@ function ContractorForm() {
     }
   };
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   const handleBasicInfoChange = (e) => {
     const { name, value } = e.target;
-    setBasicInfo(prev => ({ ...prev, [name]: value }));
+    let sanitizedValue = value;
+    if (name === 'entityName') {
+      sanitizedValue = value.replace(/[^a-zA-Z\s]/g, '').slice(0, 50);
+    }
+    setBasicInfo(prev => ({ ...prev, [name]: sanitizedValue }));
   };
 
   const handleAddressChange = (index, e) => {
     const { name, value } = e.target;
-    setAddressList(prev => prev.map((item, i) => i === index ? { ...item, [name]: value } : item));
+    let sanitizedValue = value;
+    if (name === 'phoneNo') {
+      sanitizedValue = value.replace(/[^0-9+\-\s]/g, '').slice(0, 15);
+    } else if (name === 'emailId') {
+      sanitizedValue = value.slice(0, 100);
+    } else if (name === 'zipCode') {
+      sanitizedValue = value.replace(/[^0-9]/g, '').slice(0, 6);
+    } else if (name === 'address1' || name === 'address2') {
+      sanitizedValue = value.slice(0, 100);
+    }
+    setAddressList(prev => prev.map((item, i) => i === index ? { ...item, [name]: sanitizedValue } : item));
   };
 
   const addAddress = () => {
@@ -269,7 +285,17 @@ function ContractorForm() {
 
   const handleContactChange = (index, e) => {
     const { name, value } = e.target;
-    setContactList(prev => prev.map((item, i) => i === index ? { ...item, [name]: value } : item));
+    let sanitizedValue = value;
+    if (name === 'name') {
+      sanitizedValue = value.replace(/[^a-zA-Z\s]/g, '').slice(0, 100);
+    } else if (name === 'position') {
+      sanitizedValue = value.slice(0, 100);
+    } else if (name === 'phoneNo') {
+      sanitizedValue = value.replace(/[^0-9+\-\s]/g, '').slice(0, 15);
+    } else if (name === 'emailId') {
+      sanitizedValue = value.slice(0, 100);
+    }
+    setContactList(prev => prev.map((item, i) => i === index ? { ...item, [name]: sanitizedValue } : item));
   };
 
   const addContact = () => {
@@ -284,12 +310,30 @@ function ContractorForm() {
 
   const handleTaxChange = (e) => {
     const { name, value } = e.target;
-    setTaxDetails(prev => ({ ...prev, [name]: value }));
+    let sanitizedValue = value;
+    if (name === 'taxRegNo') {
+      sanitizedValue = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 20);
+    } else if (name === 'zipCode') {
+      sanitizedValue = value.replace(/[^0-9]/g, '').slice(0, 6);
+    } else if (name === 'address1' || name === 'address2') {
+      sanitizedValue = value.slice(0, 100);
+    } else if (name === 'emailId') {
+      sanitizedValue = value.slice(0, 100);
+    }
+    setTaxDetails(prev => ({ ...prev, [name]: sanitizedValue }));
   };
 
   const handleBankChange = (index, e) => {
     const { name, value } = e.target;
-    setBankDetailsList(prev => prev.map((item, i) => i === index ? { ...item, [name]: value } : item));
+    let sanitizedValue = value;
+    if (name === 'accountHolderName' || name === 'bankName' || name === 'branchName') {
+      sanitizedValue = value.replace(/[^a-zA-Z\s]/g, '').slice(0, 50);
+    } else if (name === 'accountNo') {
+      sanitizedValue = value.replace(/[^0-9]/g, '').slice(0, 12);
+    } else if (name === 'bankAddress') {
+      sanitizedValue = value.slice(0, 100);
+    }
+    setBankDetailsList(prev => prev.map((item, i) => i === index ? { ...item, [name]: sanitizedValue } : item));
   };
   const addBankDetails = () => {
     setBankDetailsList(prev => [...prev, { accountHolderName: "", accountNo: "", bankName: "", branchName: "", bankAddress: "" }]);
@@ -302,7 +346,11 @@ function ContractorForm() {
 
   const handleAdditionalInfoChange = (index, e) => {
     const { name, value } = e.target;
-    setAdditionalInfoList(prev => prev.map((item, i) => i === index ? { ...item, [name]: value } : item));
+    let sanitizedValue = value;
+    if (name === 'registrationNo') {
+      sanitizedValue = value.slice(0, 50);
+    }
+    setAdditionalInfoList(prev => prev.map((item, i) => i === index ? { ...item, [name]: sanitizedValue } : item));
   };
   const addAdditionalInfo = () => {
     setAdditionalInfoList(prev => [...prev, { type: "", registrationNo: "" }]);
@@ -316,6 +364,8 @@ function ContractorForm() {
   const handleSubmitFinal = async () => {
     // Validation
     const requiredErrors = [];
+    const formatErrors = [];
+
     if (!basicInfo.entityCode) requiredErrors.push("Entity Code");
     if (!basicInfo.entityName) requiredErrors.push("Entity Name");
     if (!basicInfo.effectiveDate && !effectiveDate) requiredErrors.push("Effective Date");
@@ -326,7 +376,12 @@ function ContractorForm() {
       if (!addr.addressType) requiredErrors.push(`${prefix} Type`);
       if (!addr.country) requiredErrors.push(`${prefix} Country`);
       if (!addr.city) requiredErrors.push(`${prefix} City`);
-      if (!addr.zipCode) requiredErrors.push(`${prefix} Zip/Postal Code`);
+      if (!addr.zipCode) {
+        requiredErrors.push(`${prefix} Zip/Postal Code`);
+      } else if (addr.zipCode.length !== 6) {
+        formatErrors.push(`${prefix} Zip Code must be exactly 6 digits`);
+      }
+      if (addr.emailId && !emailRegex.test(addr.emailId)) formatErrors.push(`${prefix} Invalid Email`);
     });
 
     contactList.forEach((contact, idx) => {
@@ -335,6 +390,7 @@ function ContractorForm() {
       if (!contact.position) requiredErrors.push(`${prefix} Position`);
       if (!contact.phoneNo) requiredErrors.push(`${prefix} Phone No`);
       if (!contact.emailId) requiredErrors.push(`${prefix} Email ID`);
+      if (contact.emailId && !emailRegex.test(contact.emailId)) formatErrors.push(`${prefix} Invalid Email`);
     });
 
     if (!taxDetails.taxType) {
@@ -344,6 +400,8 @@ function ContractorForm() {
       if (!taxDetails.territory) requiredErrors.push("Tax Territory");
       if (!taxDetails.taxRegNo) requiredErrors.push("Tax Reg No");
       if (!taxDetails.taxRegDate) requiredErrors.push("Tax Reg Date");
+      if (taxDetails.zipCode && taxDetails.zipCode.length !== 6) formatErrors.push("Tax Details Zip Code must be exactly 6 digits");
+      if (taxDetails.emailId && !emailRegex.test(taxDetails.emailId)) formatErrors.push("Tax Details Invalid Email");
     }
 
     bankDetailsList.forEach((bank, idx) => {
@@ -352,6 +410,7 @@ function ContractorForm() {
       if (!bank.accountNo) requiredErrors.push(`${prefix} Account No`);
       if (!bank.bankName) requiredErrors.push(`${prefix} Bank Name`);
       if (!bank.branchName) requiredErrors.push(`${prefix} Branch Name`);
+      if (bank.accountNo && bank.accountNo.length !== 12) formatErrors.push(`${prefix} Account No must be exactly 12 digits`);
     });
 
     additionalInfoList.forEach((info, idx) => {
@@ -362,6 +421,11 @@ function ContractorForm() {
 
     if (requiredErrors.length > 0) {
       alert(`Please fill in the following mandatory fields:\n${requiredErrors.join(", ")}`);
+      return;
+    }
+
+    if (formatErrors.length > 0) {
+      alert(`Please correct the following field format errors:\n${formatErrors.join("\n")}`);
       return;
     }
 
@@ -859,7 +923,10 @@ function ContractorForm() {
                   </div>
                   <div className="col-md-6 mb-3">
                     <label className="projectform">Entity Name <span className="text-danger">*</span></label>
-                    <input name="entityName" value={basicInfo.entityName} onChange={handleBasicInfoChange} className="form-control form-input" placeholder="Enter entity name" />
+                    <input name="entityName" value={basicInfo.entityName} onChange={handleBasicInfoChange} maxLength={50} className="form-control form-input" placeholder="Enter entity name" />
+                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                      {(basicInfo.entityName || "").length}/50
+                    </div>
                   </div>
                   <div className="col-md-6 mb-3">
                     <label className="projectform">Effective Date <span className="text-danger">*</span></label>
@@ -962,11 +1029,17 @@ function ContractorForm() {
                       <div className="row g-3">
                         <div className="col-md-6 mb-3">
                           <label className="projectform">Phone No</label>
-                          <input name="phoneNo" value={address.phoneNo} onChange={(e) => handleAddressChange(index, e)} className="form-control form-input" placeholder="Enter phone no" />
+                          <input name="phoneNo" value={address.phoneNo} onChange={(e) => handleAddressChange(index, e)} maxLength={15} className="form-control form-input" placeholder="Enter phone no" />
+                          <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(address.phoneNo || "").length}/15
+                          </div>
                         </div>
                         <div className="col-md-6 mb-3">
                           <label className="projectform">Email ID</label>
-                          <input type="email" name="emailId" value={address.emailId} onChange={(e) => handleAddressChange(index, e)} className="form-control form-input" placeholder="Enter email id" />
+                          <input type="email" name="emailId" value={address.emailId} onChange={(e) => handleAddressChange(index, e)} maxLength={100} className="form-control form-input" placeholder="Enter email id" />
+                          <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(address.emailId || "").length}/100
+                          </div>
                         </div>
                         <div className="col-md-6 mb-3">
                           <label className="projectform">Address Type <span className="text-danger">*</span></label>
@@ -981,15 +1054,24 @@ function ContractorForm() {
                         </div>
                         <div className="col-md-6 mb-3">
                           <label className="projectform">Zip/Postal Code <span className="text-danger">*</span></label>
-                          <input name="zipCode" value={address.zipCode} onChange={(e) => handleAddressChange(index, e)} className="form-control form-input" placeholder="Enter zip code" />
+                          <input name="zipCode" value={address.zipCode} onChange={(e) => handleAddressChange(index, e)} maxLength={6} className="form-control form-input" placeholder="Enter zip code" />
+                          <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(address.zipCode || "").length}/6
+                          </div>
                         </div>
                         <div className="col-md-6 mb-3">
                           <label className="projectform">Address 1</label>
-                          <textarea name="address1" value={address.address1} onChange={(e) => handleAddressChange(index, e)} className="form-control form-input" placeholder="Enter address 1" rows={2} />
+                          <textarea name="address1" value={address.address1} onChange={(e) => handleAddressChange(index, e)} maxLength={100} className="form-control form-input" placeholder="Enter address 1" rows={2} />
+                          <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(address.address1 || "").length}/100
+                          </div>
                         </div>
                         <div className="col-md-6 mb-3">
                           <label className="projectform">Address 2</label>
-                          <textarea name="address2" value={address.address2} onChange={(e) => handleAddressChange(index, e)} className="form-control form-input" placeholder="Enter address 2" rows={2} />
+                          <textarea name="address2" value={address.address2} onChange={(e) => handleAddressChange(index, e)} maxLength={100} className="form-control form-input" placeholder="Enter address 2" rows={2} />
+                          <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(address.address2 || "").length}/100
+                          </div>
                         </div>
                         <div className="col-md-4 mb-3">
                           <label className="projectform">Country <span className="text-danger">*</span></label>
@@ -1059,19 +1141,31 @@ function ContractorForm() {
                       <div className="row g-3">
                         <div className="col-md-6 mb-3">
                           <label className="projectform">Name <span className="text-danger">*</span></label>
-                          <input name="name" value={contact.name} onChange={(e) => handleContactChange(index, e)} className="form-control form-input" placeholder="Enter contact name" />
+                          <input name="name" value={contact.name} onChange={(e) => handleContactChange(index, e)} maxLength={100} className="form-control form-input" placeholder="Enter contact name" />
+                          <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(contact.name || "").length}/100
+                          </div>
                         </div>
                         <div className="col-md-6 mb-3">
                           <label className="projectform">Position <span className="text-danger">*</span></label>
-                          <input name="position" value={contact.position} onChange={(e) => handleContactChange(index, e)} className="form-control form-input" placeholder="Enter position" />
+                          <input name="position" value={contact.position} onChange={(e) => handleContactChange(index, e)} maxLength={100} className="form-control form-input" placeholder="Enter position" />
+                          <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(contact.position || "").length}/100
+                          </div>
                         </div>
                         <div className="col-md-6 mb-3">
                           <label className="projectform">Phone No <span className="text-danger">*</span></label>
-                          <input name="phoneNo" value={contact.phoneNo} onChange={(e) => handleContactChange(index, e)} className="form-control form-input" placeholder="Enter phone no" />
+                          <input name="phoneNo" value={contact.phoneNo} onChange={(e) => handleContactChange(index, e)} maxLength={15} className="form-control form-input" placeholder="Enter phone no" />
+                          <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(contact.phoneNo || "").length}/15
+                          </div>
                         </div>
                         <div className="col-md-6 mb-3">
                           <label className="projectform">Email ID <span className="text-danger">*</span></label>
-                          <input type="email" name="emailId" value={contact.emailId} onChange={(e) => handleContactChange(index, e)} className="form-control form-input" placeholder="Enter email id" />
+                          <input type="email" name="emailId" value={contact.emailId} onChange={(e) => handleContactChange(index, e)} maxLength={100} className="form-control form-input" placeholder="Enter email id" />
+                          <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(contact.emailId || "").length}/100
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1176,9 +1270,13 @@ function ContractorForm() {
                           name="taxRegNo" 
                           value={taxDetails.taxRegNo} 
                           onChange={handleTaxChange} 
+                          maxLength={20}
                           className="form-control form-input" 
                           placeholder="Enter tax registration no" 
                         />
+                        <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                          {(taxDetails.taxRegNo || "").length}/20
+                        </div>
                       </div>
                       <div className="col-md-6 mb-3">
                         <label className="projectform">Tax Reg. Date <span className="text-danger">*</span></label>
@@ -1204,10 +1302,14 @@ function ContractorForm() {
                           name="address1" 
                           value={taxDetails.address1} 
                           onChange={handleTaxChange} 
+                          maxLength={100}
                           className="form-control form-input" 
                           placeholder="Enter address 1" 
                           rows={1} 
                         />
+                        <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                          {(taxDetails.address1 || "").length}/100
+                        </div>
                       </div>
                       <div className="col-md-6 mb-3">
                         <label className="projectform">Address 2</label>
@@ -1215,10 +1317,14 @@ function ContractorForm() {
                           name="address2" 
                           value={taxDetails.address2} 
                           onChange={handleTaxChange} 
+                          maxLength={100}
                           className="form-control form-input" 
                           placeholder="Enter address 2" 
                           rows={1} 
                         />
+                        <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                          {(taxDetails.address2 || "").length}/100
+                        </div>
                       </div>
                       <div className="col-md-6 mb-3">
                         <label className="projectform">Zip/Postal Code</label>
@@ -1226,9 +1332,13 @@ function ContractorForm() {
                           name="zipCode" 
                           value={taxDetails.zipCode} 
                           onChange={handleTaxChange} 
+                          maxLength={6}
                           className="form-control form-input" 
                           placeholder="Enter zip code" 
                         />
+                        <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                          {(taxDetails.zipCode || "").length}/6
+                        </div>
                       </div>
                       <div className="col-md-6 mb-3">
                         <label className="projectform">Email ID</label>
@@ -1237,9 +1347,13 @@ function ContractorForm() {
                           name="emailId" 
                           value={taxDetails.emailId} 
                           onChange={handleTaxChange} 
+                          maxLength={100}
                           className="form-control form-input" 
                           placeholder="Enter email id" 
                         />
+                        <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                          {(taxDetails.emailId || "").length}/100
+                        </div>
                       </div>
                     </>
                   )}
@@ -1268,23 +1382,38 @@ function ContractorForm() {
                       <div className="row g-3">
                         <div className="col-md-6 mb-3">
                           <label className="projectform">Account Holder Name <span className="text-danger">*</span></label>
-                          <input name="accountHolderName" value={bank.accountHolderName} onChange={(e) => handleBankChange(index, e)} className="form-control form-input" placeholder="Enter account holder name" />
+                          <input name="accountHolderName" value={bank.accountHolderName} onChange={(e) => handleBankChange(index, e)} maxLength={50} className="form-control form-input" placeholder="Enter account holder name" />
+                          <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(bank.accountHolderName || "").length}/50
+                          </div>
                         </div>
                         <div className="col-md-6 mb-3">
                           <label className="projectform">Account No <span className="text-danger">*</span></label>
-                          <input name="accountNo" value={bank.accountNo} onChange={(e) => handleBankChange(index, e)} className="form-control form-input" placeholder="Enter account no" />
+                          <input name="accountNo" value={bank.accountNo} onChange={(e) => handleBankChange(index, e)} maxLength={12} className="form-control form-input" placeholder="Enter account no" />
+                          <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(bank.accountNo || "").length}/12
+                          </div>
                         </div>
                         <div className="col-md-6 mb-3">
                           <label className="projectform">Bank Name <span className="text-danger">*</span></label>
-                          <input name="bankName" value={bank.bankName} onChange={(e) => handleBankChange(index, e)} className="form-control form-input" placeholder="Enter bank name" />
+                          <input name="bankName" value={bank.bankName} onChange={(e) => handleBankChange(index, e)} maxLength={50} className="form-control form-input" placeholder="Enter bank name" />
+                          <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(bank.bankName || "").length}/50
+                          </div>
                         </div>
                         <div className="col-md-6 mb-3">
                           <label className="projectform">Branch Name <span className="text-danger">*</span></label>
-                          <input name="branchName" value={bank.branchName} onChange={(e) => handleBankChange(index, e)} className="form-control form-input" placeholder="Enter branch name" />
+                          <input name="branchName" value={bank.branchName} onChange={(e) => handleBankChange(index, e)} maxLength={50} className="form-control form-input" placeholder="Enter branch name" />
+                          <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(bank.branchName || "").length}/50
+                          </div>
                         </div>
                         <div className="col-12 mb-3">
                           <label className="projectform">Bank Address</label>
-                          <textarea name="bankAddress" value={bank.bankAddress} onChange={(e) => handleBankChange(index, e)} className="form-control form-input" placeholder="Enter bank address" rows={3} />
+                          <textarea name="bankAddress" value={bank.bankAddress} onChange={(e) => handleBankChange(index, e)} maxLength={100} className="form-control form-input" placeholder="Enter bank address" rows={3} />
+                          <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(bank.bankAddress || "").length}/100
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1328,7 +1457,10 @@ function ContractorForm() {
                         </div>
                         <div className="col-md-6 mb-3">
                           <label className="projectform">Registration No <span className="text-danger">*</span></label>
-                          <input name="registrationNo" value={info.registrationNo} onChange={(e) => handleAdditionalInfoChange(index, e)} className="form-control form-input" placeholder="Enter registration no" />
+                          <input name="registrationNo" value={info.registrationNo} onChange={(e) => handleAdditionalInfoChange(index, e)} maxLength={50} className="form-control form-input" placeholder="Enter registration no" />
+                          <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
+                            {(info.registrationNo || "").length}/50
+                          </div>
                         </div>
                       </div>
                     </div>

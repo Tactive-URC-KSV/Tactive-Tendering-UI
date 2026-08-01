@@ -193,6 +193,12 @@
   margin: 0;
 }
 
+/* PhoneInput number field placeholder — matches .form-input::placeholder */
+.phone-num-input::placeholder {
+  color: #00519780;
+  font-size: 13px;
+}
+
 label {
   font-size: 15px;
 }
@@ -207,6 +213,7 @@ label {
   font-size: 13px;
   color: #005197;
   font-weight: 600;
+  z-index: 1;
 }
 
 .projectform-select {

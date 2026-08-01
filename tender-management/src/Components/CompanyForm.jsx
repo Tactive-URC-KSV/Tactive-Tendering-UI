@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import PhoneInput from '../Utills/PhoneInput';
 import { useLocation } from 'react-router-dom';
 import { Building2, MapPin, Mail, Landmark, Users, UploadCloud, FileText, X, Handshake, Info, Languages, Calendar, Building, Briefcase, Plus, Trash2, ArrowLeft, RotateCcw, ArrowRight, Save, ClipboardCheck } from 'lucide-react';
 import Select from 'react-select';
@@ -597,7 +598,7 @@ function CompanyForm() {
     const handleExtraAddressChange = (index, field, value) => {
         let finalValue = value;
         if (field === 'phoneNo') {
-            finalValue = value.replace(/\D/g, '').substring(0, 10);
+            finalValue = value; // managed by PhoneInput component
         } else if (field === 'zipCode') {
             finalValue = value.replace(/\D/g, '').substring(0, 6);
         } else if (field === 'faxNo') {
@@ -669,11 +670,7 @@ function CompanyForm() {
     const handleSectionChange = (setter) => (index, field, value) => {
         let finalValue = value;
         if (field === 'phoneNo') {
-            let sanitized = value.replace(/\D/g, '');
-            if (sanitized.length > 0 && !/^[6789]/.test(sanitized)) {
-                sanitized = '';
-            }
-            finalValue = sanitized.substring(0, 10);
+            finalValue = value; // managed by PhoneInput component
         } else if (field === 'directorName' || field === 'name' || field === 'partnerId') {
             finalValue = value.replace(/[^A-Za-z ]/g, '').substring(0, 50);
         } else if (field === 'sharePercentage') {
@@ -810,11 +807,7 @@ function CompanyForm() {
             } else if (name === 'shortName') {
                 value = value.replace(/[^A-Za-z ]/g, '').substring(0, 50);
             } else if (name === 'phoneNo') {
-                let sanitized = value.replace(/\D/g, '');
-                if (sanitized.length > 0 && !/^[6789]/.test(sanitized)) {
-                    sanitized = '';
-                }
-                value = sanitized.substring(0, 10);
+                // phone value is now managed by PhoneInput component; pass through
             } else if (name === 'zipCode' || name === 'pinCode') {
                 value = value.replace(/\D/g, '').substring(0, 6);
             } else if (name === 'faxNo') {
@@ -1832,17 +1825,10 @@ function CompanyForm() {
                                         </div>
                                         <div className="col-md-6 mb-4 position-relative">
                                             <label className="projectform d-block">Phone No</label>
-                                            <input
-                                                type="text"
-                                                name="phoneNo"
+                                            <PhoneInput
                                                 value={addressDetails.phoneNo}
-                                                onChange={handleInputChange(setAddressDetails)}
-                                                className="form-input w-100"
-                                                placeholder="Enter Phone No"
+                                                onChange={(full) => setAddressDetails(prev => ({ ...prev, phoneNo: full }))}
                                             />
-                                            <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
-                                                {(addressDetails.phoneNo || "").length}/10
-                                            </div>
                                         </div>
                                         <div className="col-md-6 mb-4 position-relative">
                                             <label className="projectform d-block">Fax No</label>
@@ -2027,16 +2013,10 @@ function CompanyForm() {
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
                                                     <label className="projectform d-block">Phone No</label>
-                                                    <input
-                                                        type="text"
+                                                    <PhoneInput
                                                         value={extra.phoneNo}
-                                                        onChange={(e) => handleExtraAddressChange(idx, 'phoneNo', e.target.value)}
-                                                        className="form-input w-100"
-                                                        placeholder="Enter Phone No"
+                                                        onChange={(full) => handleExtraAddressChange(idx, 'phoneNo', full)}
                                                     />
-                                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
-                                                        {(extra.phoneNo || "").length}/10
-                                                    </div>
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
                                                     <label className="projectform d-block">Fax No</label>
@@ -2146,17 +2126,11 @@ function CompanyForm() {
                                             </div>
                                             <div className="col-md-6 mb-4 position-relative">
                                                 <label className="projectform d-block">Phone No <span style={{ color: "red" }}>*</span></label>
-                                                <input
-                                                    type="text"
-                                                    name="phoneNo"
+                                                <PhoneInput
                                                     value={contactDetails.phoneNo}
-                                                    onChange={handleInputChange(setContactDetails)}
-                                                    className="form-input w-100"
-                                                    placeholder="Enter Phone No"
+                                                    onChange={(full) => setContactDetails(prev => ({ ...prev, phoneNo: full }))}
+                                                    required
                                                 />
-                                                <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
-                                                    {(contactDetails.phoneNo || "").length}/10
-                                                </div>
                                             </div>
                                             <div className="col-md-6 mb-4 position-relative">
                                                 <label className="projectform d-block">Email ID <span style={{ color: "red" }}>*</span></label>
@@ -2221,16 +2195,11 @@ function CompanyForm() {
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
                                                     <label className="projectform d-block">Phone No <span style={{ color: "red" }}>*</span></label>
-                                                    <input
-                                                        type="text"
+                                                    <PhoneInput
                                                         value={extra.phoneNo}
-                                                        onChange={(e) => handleSectionChange(setExtraContacts)(idx, 'phoneNo', e.target.value)}
-                                                        className="form-input w-100"
-                                                        placeholder="Enter Phone No"
+                                                        onChange={(full) => handleSectionChange(setExtraContacts)(idx, 'phoneNo', full)}
+                                                        required
                                                     />
-                                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
-                                                        {(extra.phoneNo || "").length}/10
-                                                    </div>
                                                 </div>
                                                 <div className="col-md-6 mb-4 position-relative">
                                                     <label className="projectform d-block">Email ID <span style={{ color: "red" }}>*</span></label>

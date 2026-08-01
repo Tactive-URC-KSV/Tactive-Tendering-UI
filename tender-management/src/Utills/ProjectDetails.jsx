@@ -1,6 +1,7 @@
 import "flatpickr/dist/flatpickr.min.css";
 import { useEffect, useRef, useState } from 'react';
 import Flatpickr from "react-flatpickr";
+import PhoneInput from './PhoneInput';
 import { FaCalendarAlt, FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
 import { FileText, Wrench, ArrowLeft, ArrowRight, Save, Edit2, XCircle, MapPin, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -152,11 +153,7 @@ function ProjectInfo({ project, feasbilityStudy, handleSubmit, region, scopePack
     const handleAddressChange = (index, key, value) => {
         let finalValue = value;
         if (key === 'phoneNo') {
-            let sanitized = value.replace(/\D/g, '');
-            if (sanitized.length > 0 && !/^[6789]/.test(sanitized)) {
-                sanitized = '';
-            }
-            finalValue = sanitized.substring(0, 10);
+            finalValue = value; // managed by PhoneInput component
         } else if (key === 'address') {
             finalValue = value.substring(0, 100);
         } else if (key === 'email') {
@@ -532,13 +529,10 @@ function ProjectInfo({ project, feasbilityStudy, handleSubmit, region, scopePack
                                 </div>
                                 <div className="col-md-6 mb-3">
                                     <label className="projectform text-start d-block">Phone No</label>
-                                    <input type="text" className="form-input w-100" placeholder="Enter Phone Number"
+                                    <PhoneInput
                                         value={addr.phoneNo}
-                                        onChange={(e) => handleAddressChange(idx, 'phoneNo', e.target.value)}
+                                        onChange={(full) => handleAddressChange(idx, 'phoneNo', full)}
                                     />
-                                    <div className="text-end text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
-                                        {(addr.phoneNo || "").length}/10
-                                    </div>
                                 </div>
                                 <div className="col-md-6 mb-3">
                                     <label className="projectform text-start d-block">Email</label>
