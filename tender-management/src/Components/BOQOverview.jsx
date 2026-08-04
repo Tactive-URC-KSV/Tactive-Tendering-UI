@@ -161,7 +161,7 @@ function BOQOverview({ projectId }) {
         rateOnly: false,
         provisionalSum: false,
         notQuotedBoq: false,
-        pricedBoq: false,
+        priceBoq: false,
         lastLevel: false
     });
     const [parentBoqOptions, setParentBoqOptions] = useState([]);
@@ -244,7 +244,7 @@ function BOQOverview({ projectId }) {
             rateOnly: boq.rateOnly || false,
             provisionalSum: boq.provisionalSum || false,
             notQuotedBoq: boq.notQuotedBoq || false,
-            pricedBoq: boq.pricedBoq || false,
+            priceBoq: boq.priceBoq || false,
             lastLevel: boq.lastLevel || false
         });
 
@@ -860,7 +860,7 @@ function BOQOverview({ projectId }) {
     useEffect(() => {
         refreshParentBoqData(0);
         fetchTotalBOQ();
-        
+
         const fetchInvalidBoqs = async () => {
             try {
                 const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllBoqDetails?projectId=${effectiveProjectId}`, {
@@ -1081,11 +1081,11 @@ function BOQOverview({ projectId }) {
                         />
                     </td>
                     <td className="px-2">
-                        {(!boq.boqCode || !String(boq.boqCode).trim()) ? 
+                        {(!boq.boqCode || !String(boq.boqCode).trim()) ?
                             <span className="text-danger fw-bold bg-white px-1 rounded border border-danger">Missing</span> : boq.boqCode}
                     </td>
                     <td className="px-2" title="Click to view full BOQ Name" onClick={(e) => { e.stopPropagation(); setSelectedBoqForModal(boq); }} style={{ cursor: 'pointer' }}>
-                        {(!boq.boqName || !String(boq.boqName).trim()) ? 
+                        {(!boq.boqName || !String(boq.boqName).trim()) ?
                             <span className="text-danger fw-bold bg-white px-1 rounded border border-danger">Missing Name</span> : boqNameDisplay}
                         {hierarchyUpdates[boq.id] && <span className="badge bg-warning ms-2">Moved</span>}
                     </td>
@@ -1124,10 +1124,10 @@ function BOQOverview({ projectId }) {
             >
                 <div
                     className="parent-boq text-start p-3 rounded-2 d-flex flex-column mb-4"
-                    style={{ 
-                        cursor: canExpand ? 'pointer' : 'default', 
-                        backgroundColor: highlightedNodes.has(boq.id) ? '#EFF6FF' : (isInvalidHierarchy ? '#FFEBEB' : (boq.level === 2 && 'white')), 
-                        borderLeft: `${isExpanded ? '0.5px solid #0051973D' : (isInvalidHierarchy ? '3px solid #dc3545' : 'none')}` 
+                    style={{
+                        cursor: canExpand ? 'pointer' : 'default',
+                        backgroundColor: highlightedNodes.has(boq.id) ? '#EFF6FF' : (isInvalidHierarchy ? '#FFEBEB' : (boq.level === 2 && 'white')),
+                        borderLeft: `${isExpanded ? '0.5px solid #0051973D' : (isInvalidHierarchy ? '3px solid #dc3545' : 'none')}`
                     }}
                 >
                     <div className="d-flex"
@@ -1375,8 +1375,8 @@ function BOQOverview({ projectId }) {
                                                     <label className="form-check-label" htmlFor="notQuotedBoq">Not Quoted BOQ</label>
                                                 </div>
                                                 <div className="form-check form-switch">
-                                                    <input className="form-check-input" type="checkbox" id="pricedBoq" name="pricedBoq" checked={newBoqData.pricedBoq} onChange={handleCreateBoqChange} />
-                                                    <label className="form-check-label" htmlFor="pricedBoq">Priced BOQ</label>
+                                                    <input className="form-check-input" type="checkbox" id="priceBoq" name="priceBoq" checked={newBoqData.priceBoq} onChange={handleCreateBoqChange} />
+                                                    <label className="form-check-label" htmlFor="priceBoq">Priced BOQ</label>
                                                 </div>
                                                 <div className="form-check form-switch">
                                                     <input className="form-check-input" type="checkbox" id="lastLevel" name="lastLevel" checked={newBoqData.lastLevel} onChange={handleCreateBoqChange} />
