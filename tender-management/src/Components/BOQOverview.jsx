@@ -161,6 +161,7 @@ function BOQOverview({ projectId }) {
         rateOnly: false,
         provisionalSum: false,
         notQuotedBoq: false,
+        pricedBoq: false,
         lastLevel: false
     });
     const [parentBoqOptions, setParentBoqOptions] = useState([]);
@@ -243,6 +244,7 @@ function BOQOverview({ projectId }) {
             rateOnly: boq.rateOnly || false,
             provisionalSum: boq.provisionalSum || false,
             notQuotedBoq: boq.notQuotedBoq || false,
+            pricedBoq: boq.pricedBoq || false,
             lastLevel: boq.lastLevel || false
         });
 
@@ -1371,6 +1373,10 @@ function BOQOverview({ projectId }) {
                                                 <div className="form-check form-switch">
                                                     <input className="form-check-input" type="checkbox" id="notQuotedBoq" name="notQuotedBoq" checked={newBoqData.notQuotedBoq} onChange={handleCreateBoqChange} />
                                                     <label className="form-check-label" htmlFor="notQuotedBoq">Not Quoted BOQ</label>
+                                                </div>
+                                                <div className="form-check form-switch">
+                                                    <input className="form-check-input" type="checkbox" id="pricedBoq" name="pricedBoq" checked={newBoqData.pricedBoq} onChange={handleCreateBoqChange} />
+                                                    <label className="form-check-label" htmlFor="pricedBoq">Priced BOQ</label>
                                                 </div>
                                                 <div className="form-check form-switch">
                                                     <input className="form-check-input" type="checkbox" id="lastLevel" name="lastLevel" checked={newBoqData.lastLevel} onChange={handleCreateBoqChange} />
