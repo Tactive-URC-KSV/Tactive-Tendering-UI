@@ -1105,4 +1105,8 @@ label {
 .assign-parent-mode:hover td {
   background-color: #f0f9ff !important;
   cursor: cell !important;
+}
+
+.invalid-boq-row td {
+  background-color: #FFEBEB !important;
 }

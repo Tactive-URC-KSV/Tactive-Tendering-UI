@@ -129,6 +129,7 @@ function BOQOverview({ projectId }) {
     const [totalBOQ, setTotalBOQ] = useState(0);
     const [searchQuery, setSearchQuery] = useState("");
     const [highlightedNodes, setHighlightedNodes] = useState(new Set());
+    const [initialInvalidNodes, setInitialInvalidNodes] = useState(new Set());
     const [isExpanding, setIsExpanding] = useState(false);
     const debouncedSearchQuery = useDebounce(searchQuery, 3000);
     const uoms = useUom();
@@ -857,6 +858,38 @@ function BOQOverview({ projectId }) {
     useEffect(() => {
         refreshParentBoqData(0);
         fetchTotalBOQ();
+        
+        const fetchInvalidBoqs = async () => {
+            try {
+                const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllBoqDetails?projectId=${effectiveProjectId}`, {
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                });
+                if (res.status === 200 && Array.isArray(res.data)) {
+                    const allBoqs = res.data;
+                    const invalidIds = new Set();
+                    const parentMap = new Map();
+                    allBoqs.forEach(b => {
+                        parentMap.set(b.id, b.parentBoqId || (b.parentBOQ ? b.parentBOQ.id : null));
+                        if (b.lastLevel === true && (!b.boqCode || !String(b.boqCode).trim() || !b.boqName || !String(b.boqName).trim())) {
+                            invalidIds.add(b.id);
+                        }
+                    });
+                    const invalidHierarchyIds = new Set(invalidIds);
+                    const markParents = (id) => {
+                        const pid = parentMap.get(id);
+                        if (pid && !invalidHierarchyIds.has(pid)) {
+                            invalidHierarchyIds.add(pid);
+                            markParents(pid);
+                        }
+                    };
+                    invalidIds.forEach(id => markParents(id));
+                    setInitialInvalidNodes(invalidHierarchyIds);
+                }
+            } catch (e) {
+                console.error("Error fetching all boqs for invalid check", e);
+            }
+        };
+        fetchInvalidBoqs();
     }, [effectiveProjectId, navigate, boqPageSize, groupingMode]);
     const fetchTotalBOQ = async () => {
         await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getBOQCount/${effectiveProjectId}`, {
@@ -993,6 +1026,17 @@ function BOQOverview({ projectId }) {
             toast.error("Failed to export PDF file.");
         }
     };
+
+    const checkInvalidity = (node) => {
+        if (node.lastLevel === true) {
+            return !node.boqCode || !String(node.boqCode).trim() || !node.boqName || !String(node.boqName).trim();
+        }
+        if (Array.isArray(node.children)) {
+            return node.children.some(child => checkInvalidity(child));
+        }
+        return false;
+    };
+
     const BOQNode = ({ boq, level = 0 }) => {
         const canExpand = boq.lastLevel === false;
         const isExpanded = expandedParentIds.has(boq.id);
@@ -1019,9 +1063,13 @@ function BOQOverview({ projectId }) {
             : boq.boqName;
         const indentation = level * 10;
         if (boq.lastLevel === true) {
+            const isInvalid = !boq.boqCode || !String(boq.boqCode).trim() || !boq.boqName || !String(boq.boqName).trim();
+            const rowBgColor = highlightedNodes.has(boq.id) ? '#EFF6FF' : 'white';
+            const leafBgColor = highlightedNodes.has(boq.id) ? '#EFF6FF' : 'inherit';
+
             return (
-                <tr className="boq-leaf-row bg-white" style={{ borderBottom: '1px solid #eee', backgroundColor: highlightedNodes.has(boq.id) ? '#EFF6FF' : 'white' }}>
-                    <td className="px-2" style={{ paddingLeft: `${indentation + 8}px`, backgroundColor: highlightedNodes.has(boq.id) ? '#EFF6FF' : 'inherit' }}>
+                <tr className="boq-leaf-row" style={{ borderBottom: '1px solid #eee', backgroundColor: rowBgColor }}>
+                    <td className="px-2" style={{ paddingLeft: `${indentation + 8}px`, backgroundColor: leafBgColor }}>
                         <input
                             type="checkbox"
                             className="form-check-input"
@@ -1030,9 +1078,13 @@ function BOQOverview({ projectId }) {
                             onChange={() => toggleSelection(boq.id)}
                         />
                     </td>
-                    <td className="px-2">{boq.boqCode}</td>
+                    <td className="px-2">
+                        {(!boq.boqCode || !String(boq.boqCode).trim()) ? 
+                            <span className="text-danger fw-bold bg-white px-1 rounded border border-danger">Missing</span> : boq.boqCode}
+                    </td>
                     <td className="px-2" title="Click to view full BOQ Name" onClick={(e) => { e.stopPropagation(); setSelectedBoqForModal(boq); }} style={{ cursor: 'pointer' }}>
-                        {boqNameDisplay}
+                        {(!boq.boqName || !String(boq.boqName).trim()) ? 
+                            <span className="text-danger fw-bold bg-white px-1 rounded border border-danger">Missing Name</span> : boqNameDisplay}
                         {hierarchyUpdates[boq.id] && <span className="badge bg-warning ms-2">Moved</span>}
                     </td>
                     <td className="px-2">{boq?.uom?.uomCode || boq.uomCode || '-'}</td>
@@ -1061,6 +1113,7 @@ function BOQOverview({ projectId }) {
             );
         }
 
+        const isInvalidHierarchy = initialInvalidNodes.has(boq.id) || checkInvalidity(boq);
         return (
             <div
                 className="boq-non-leaf-container rounded-3 ms-3 me-3"
@@ -1069,7 +1122,11 @@ function BOQOverview({ projectId }) {
             >
                 <div
                     className="parent-boq text-start p-3 rounded-2 d-flex flex-column mb-4"
-                    style={{ cursor: canExpand ? 'pointer' : 'default', backgroundColor: highlightedNodes.has(boq.id) ? '#EFF6FF' : (boq.level === 2 && 'white'), borderLeft: `${isExpanded ? '0.5px solid #0051973D' : 'none'}` }}
+                    style={{ 
+                        cursor: canExpand ? 'pointer' : 'default', 
+                        backgroundColor: highlightedNodes.has(boq.id) ? '#EFF6FF' : (isInvalidHierarchy ? '#FFEBEB' : (boq.level === 2 && 'white')), 
+                        borderLeft: `${isExpanded ? '0.5px solid #0051973D' : (isInvalidHierarchy ? '3px solid #dc3545' : 'none')}` 
+                    }}
                 >
                     <div className="d-flex"
                         onClick={(e) => {
