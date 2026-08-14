@@ -90,6 +90,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       { fields: 'uom', mappingFields: [], importance: 'Required', label: 'UOM' },
       { fields: 'quantity', mappingFields: [], importance: 'Required', label: 'Quantity' },
       { fields: 'division', mappingFields: [], importance: 'Optional', label: 'Division' },
+      { fields: 'pageNo', mappingFields: [], importance: 'Optional', label: 'Page No' },
    ]);
    const [excelData, setExcelData] = useState([]);
    const [searchTerm, setSearchTerm] = useState('');
@@ -104,7 +105,8 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [autoIncreaseLevel, setAutoIncreaseLevel] = useState(true);
    const [pageBreakWord, setPageBreakWord] = useState('');
    const [pageBreakModal, setPageBreakModal] = useState(false);
-   const [emptyBoqModal, setEmptyBoqModal] = useState({ show: false, count: 0, emptySnos: [] });
+   const [emptyBoqModal, setEmptyBoqModal] = useState({ show: false, count: 0, emptySnos: [], items: [] });
+   const [duplicateModal, setDuplicateModal] = useState({ show: false, duplicates: [] });
 
    const isLastLevelRow = (row) => {
       return (
@@ -446,9 +448,10 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    //       setLoading(false);
    //    })
    // }
-   const saveMappedBOQ = async (ignoreEmptyChoiceParam = null) => {
-      const isEvent = ignoreEmptyChoiceParam && typeof ignoreEmptyChoiceParam === 'object' && ignoreEmptyChoiceParam.nativeEvent;
-      const finalIgnoreChoice = isEvent ? null : (typeof ignoreEmptyChoiceParam === 'boolean' ? ignoreEmptyChoiceParam : null);
+   const saveMappedBOQ = async (options = {}) => {
+      const isEvent = options && typeof options === 'object' && options.nativeEvent;
+      const opts = isEvent ? {} : (typeof options === 'boolean' ? { ignoreEmpty: options } : options);
+      const { ignoreEmpty = null, duplicateHandled = false, saveAsNewList = [] } = opts;
 
       if (!BOQfile) {
          toast.error("Please upload a BOQ file");
@@ -460,7 +463,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          return;
       }
 
-      if (finalIgnoreChoice === null) {
+      if (ignoreEmpty === null) {
          const emptyLastLevelItems = excelData.filter(item => {
             const isLast = isLastLevelRow(item);
             const boqNameStr = item.boqName ? item.boqName.toString().trim() : '';
@@ -472,9 +475,75 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             setEmptyBoqModal({
                show: true,
                count: emptyLastLevelItems.length,
-               emptySnos: emptyLastLevelItems.map(item => item.sno)
+               emptySnos: emptyLastLevelItems.map(item => item.sno),
+               items: emptyLastLevelItems
             });
             return;
+         }
+      }
+
+      if (!duplicateHandled) {
+         try {
+            setLoading(true);
+            const fileExistsRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/checkFileExists/${effectiveProjectId}?fileName=${BOQfile.name}`, { headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } });
+
+            if (fileExistsRes.data) {
+               const existingBoqsRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllBoqDetails?projectId=${effectiveProjectId}`, { headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } });
+               const existingBoqs = existingBoqsRes.data || [];
+
+               const duplicates = [];
+               excelData.forEach(item => {
+                  const safeName = item.boqName ? item.boqName.toString().trim().toLowerCase() : '';
+                  const safeCode = item.boqCode ? item.boqCode.toString().trim().toLowerCase() : '';
+                  const existing = existingBoqs.find(eb => {
+                      if (eb.sourceFile && eb.excelSno) {
+                          return eb.sourceFile === BOQfile.name && eb.excelSno === item.sno;
+                      }
+                      return (eb.boqCode ? eb.boqCode.trim().toLowerCase() : '') === safeCode && 
+                             (eb.boqName ? eb.boqName.trim().toLowerCase() : '') === safeName;
+                  });
+
+                  if (existing) {
+                     const existingCode = existing.boqCode || '';
+                     const newCode = item.boqCode || '';
+                     const existingName = existing.boqName || '';
+                     const newName = item.boqName || '';
+                     const existingQty = existing.quantity || 0;
+                     const newQty = item.quantity || 0;
+                     const existingUom = existing.uom?.uomCode || '';
+                     const newUom = item.uom || '';
+                     const existingDiv = existing.division || '';
+                     const newDiv = item.division || '';
+                     const existingPage = existing.pageNo || 0;
+                     const newPage = item.pageNo || 0;
+
+                     const changesObj = {};
+                     if (existingCode !== newCode) changesObj.boqCode = existingCode;
+                     if (existingName !== newName) changesObj.boqName = existingName;
+                     if (existingQty !== newQty) changesObj.quantity = existingQty;
+                     if (existingUom !== newUom) changesObj.uom = existingUom;
+                     if (existingDiv !== newDiv) changesObj.division = existingDiv;
+                     if (existingPage !== newPage) changesObj.pageNo = existingPage;
+
+                     if (Object.keys(changesObj).length > 0) {
+                        duplicates.push({
+                           ...item,
+                           oldData: changesObj
+                        });
+                     }
+                  }
+               });
+
+               if (duplicates.length > 0) {
+                  setDuplicateModal({ show: true, duplicates });
+                  setLoading(false);
+                  return;
+               }
+            }
+         } catch (error) {
+            console.error("Error checking duplicates", error);
+         } finally {
+            setLoading(false);
          }
       }
 
@@ -495,9 +564,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          formData.append("parentChildMapping", JSON.stringify(parentMap));
          formData.append("lastLevelMapping", JSON.stringify(lastLevelMap));
          formData.append("levelMapping", JSON.stringify(levelMap));
-         
+
          let ignoredSnos = [];
-         if (finalIgnoreChoice === true) {
+         if (ignoreEmpty === true) {
             ignoredSnos = excelData.filter(item => {
                const isLast = isLastLevelRow(item);
                const boqNameStr = item.boqName ? item.boqName.toString().trim() : '';
@@ -506,6 +575,10 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             }).map(item => item.sno);
          }
          formData.append("ignoredSnos", JSON.stringify(ignoredSnos));
+
+         if (saveAsNewList && saveAsNewList.length > 0) {
+            formData.append("saveAsNewSnos", JSON.stringify(saveAsNewList));
+         }
 
          const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/mapBOQ/${effectiveProjectId}`,
             formData,
@@ -1079,7 +1152,8 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                            </div>
                         </div>
                         <div className='col-lg-8 col-md-7 col-sm-12 d-flex justify-content-end align-items-end pt-4'>
-                           <div className="form-check d-flex align-items-center me-3 mb-2">
+                           {excelData.length > 0 && (excelData.every(row => row.lastLevel) || excelData.every(row => !row.lastLevel)) && (
+                              <div className="form-check d-flex align-items-center me-3 mb-2">
                               <input
                                  type="checkbox"
                                  className="form-check-input me-2 mt-0"
@@ -1090,6 +1164,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                               />
                               <label className="form-check-label text-nowrap" htmlFor="autoIncrease" style={{ fontSize: '13px', cursor: 'pointer', color: '#005197', fontWeight: '500' }}>Auto-increase levels</label>
                            </div>
+                           )}
                            <button className='btn cancel rounded-2 p-2 me-2' style={{ fontSize: '13px' }} onClick={expandAll}>
                               <ExpandIcon width={20} height={20} /><span className='ms-1'>Expand All</span>
                            </button>
@@ -1257,7 +1332,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                <div className='mb-4 text-start fw-bold'>Map the Fields</div>
                <div className='row d-flex justify-content-between'>
                   <div className='col-lg-6 col-md-6 col-sm-12'>
-                     <ColumnIcon /><span className='fw-bold fs-6 ms-2'>Excel Feilds</span>
+                     <ColumnIcon /><span className='fw-bold fs-6 ms-2'>Excel Fields</span>
                      <div className='mt-1 rounded-3 p-2'>
                         {(Array.isArray(columns) ? columns : [])
                            .filter(col => !internalFields.some(f => Array.isArray(f.mappingFields) && f.mappingFields.includes(col)))
@@ -1274,7 +1349,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                      </div>
                   </div>
                   <div className='col-lg-6 col-md-6 col-sm-12'>
-                     <InternalIcon /><span className='fw-bold fs-6 ms-2'>Internal Feilds</span>
+                     <InternalIcon /><span className='fw-bold fs-6 ms-2'>Internal Fields</span>
                      <div className='mt-1 rounded-3 p-2'>
                         {internalFields.map((col, index) => (
                            <div key={index}>
@@ -1423,7 +1498,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                </button>
                <button className={`btn ${section === 'levelMapping' ? 'activeView' : 'bg-white'} px-3 py-2 border border-start-0 rounded-end rounded-0`} onClick={() => { setSection('levelMapping'); }}>
                   <SlidersHorizontal size={20} color={`${section === 'levelMapping' ? '#FFFFFF' : '#005197'}`} />
-                  <span className="ms-2 fs-6">Level Configuraton</span>
+                  <span className="ms-2 fs-6">Level Configuration</span>
                </button>
             </div>
             {renderSection(section)}
@@ -1536,16 +1611,40 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          )}
          {emptyBoqModal.show && (
             <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
-               <div className="modal-dialog modal-dialog-centered">
+               <div className="modal-dialog modal-dialog-centered modal-xl">
                   <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
                      <div className="modal-header border-0 pb-0">
                         <h5 className="modal-title fw-bold" style={{ color: '#005197' }}>Missing BOQ Data</h5>
                         <button type="button" className="btn-close" onClick={() => setEmptyBoqModal({ ...emptyBoqModal, show: false })}></button>
                      </div>
                      <div className="modal-body py-4">
-                        <p className="mb-0 text-muted" style={{ fontSize: '15px' }}>
-                           Found <strong>{emptyBoqModal.count}</strong> last-level BOQ item(s) missing a BOQ Name or BOQ Code. How would you like to proceed?
+                        <p className="mb-2 text-muted" style={{ fontSize: '15px' }}>
+                           Found <strong>{emptyBoqModal.count}</strong> last-level BOQ item(s) missing a BOQ Name or BOQ Code.
                         </p>
+                        <div className="table-responsive" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                           <table className="table table-bordered table-sm text-center">
+                              <thead className="table-light sticky-top">
+                                 <tr>
+                                    <th>Sno</th>
+                                    <th>BOQ Code</th>
+                                    <th>BOQ Name</th>
+                                    <th>UOM</th>
+                                    <th>Quantity</th>
+                                 </tr>
+                              </thead>
+                              <tbody>
+                                 {emptyBoqModal.items?.map(item => (
+                                    <tr key={item.sno}>
+                                       <td>{item.sno}</td>
+                                       <td>{item.boqCode ? item.boqCode : <span className="text-danger">Missing</span>}</td>
+                                       <td>{item.boqName ? item.boqName : <span className="text-danger">Missing</span>}</td>
+                                       <td>{item.uom || '-'}</td>
+                                       <td>{item.quantity || 0}</td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
                      </div>
                      <div className="modal-footer border-0 pt-0">
                         <button
@@ -1553,7 +1652,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                            className="btn cancel-button px-4"
                            onClick={() => {
                               setEmptyBoqModal({ ...emptyBoqModal, show: false });
-                              saveMappedBOQ(true);
+                              saveMappedBOQ({ ignoreEmpty: true });
                            }}
                         >
                            Ignore
@@ -1563,10 +1662,96 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                            className="btn action-button px-4"
                            onClick={() => {
                               setEmptyBoqModal({ ...emptyBoqModal, show: false });
-                              saveMappedBOQ(false);
+                              saveMappedBOQ({ ignoreEmpty: false });
                            }}
                         >
                            Import
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
+
+         {duplicateModal.show && (
+            <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+               <div className="modal-dialog modal-dialog-centered modal-lg">
+                  <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
+                     <div className="modal-header border-0 pb-0">
+                        <h5 className="modal-title fw-bold" style={{ color: '#005197' }}>Duplicate BOQs Found</h5>
+                        <button type="button" className="btn-close" onClick={() => setDuplicateModal({ show: false, duplicates: [] })}></button>
+                     </div>
+                     <div className="modal-body py-4">
+                        <p className="mb-2 text-muted" style={{ fontSize: '15px' }}>
+                           The following BOQs already exist with different values. Please choose how to proceed for these duplicates.
+                        </p>
+                        <div className="table-responsive" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                           <table className="table table-bordered table-sm text-center">
+                              <thead className="table-light sticky-top">
+                                 <tr>
+                                    <th>BOQ Code</th>
+                                    <th>BOQ Name</th>
+                                    <th>Field</th>
+                                    <th>Existing Value</th>
+                                    <th>New Value</th>
+                                 </tr>
+                              </thead>
+                              <tbody>
+                                 {duplicateModal.duplicates?.map((item, idx) => {
+                                    const changes = [];
+                                    if (item.oldData?.boqCode !== undefined) changes.push({ field: 'BOQ Code', old: item.oldData.boqCode, new: item.boqCode || '' });
+                                    if (item.oldData?.boqName !== undefined) changes.push({ field: 'BOQ Name', old: item.oldData.boqName, new: item.boqName || '' });
+                                    if (item.oldData?.quantity !== undefined) changes.push({ field: 'Quantity', old: item.oldData.quantity, new: item.quantity || 0 });
+                                    if (item.oldData?.uom !== undefined) changes.push({ field: 'UOM', old: item.oldData.uom, new: item.uom || '' });
+                                    if (item.oldData?.division !== undefined) changes.push({ field: 'Division', old: item.oldData.division, new: item.division || '' });
+                                    if (item.oldData?.pageNo !== undefined) changes.push({ field: 'Page No', old: item.oldData.pageNo, new: item.pageNo || 0 });
+
+                                    return changes.map((change, cIdx) => (
+                                       <tr key={`${idx}-${cIdx}`}>
+                                          {cIdx === 0 && <td rowSpan={changes.length} className="align-middle">{item.boqCode || 'Missing'}</td>}
+                                          {cIdx === 0 && <td rowSpan={changes.length} className="align-middle text-truncate" style={{ maxWidth: '150px' }} title={item.boqName}>{item.boqName || 'Missing'}</td>}
+                                          <td>{change.field}</td>
+                                          <td className="text-danger">{change.old}</td>
+                                          <td className="text-success">{change.new}</td>
+                                       </tr>
+                                    ));
+                                 })}
+                              </tbody>
+                           </table>
+                        </div>
+                     </div>
+                     <div className="modal-footer border-0 pt-0">
+                        <button
+                           type="button"
+                           className="btn cancel-button px-4"
+                           onClick={() => {
+                              setDuplicateModal({ show: false, duplicates: [] });
+                           }}
+                        >
+                           Cancel
+                        </button>
+                        <button
+                           type="button"
+                           className="btn action-button px-4 me-2"
+                           onClick={() => {
+                              // Save as New
+                              const saveAsNewList = duplicateModal.duplicates.map(d => d.sno);
+                              setDuplicateModal({ show: false, duplicates: [] });
+                              saveMappedBOQ({ duplicateHandled: true, saveAsNewList });
+                           }}
+                        >
+                           Save as New
+                        </button>
+                        <button
+                           type="button"
+                           className="btn action-button px-4"
+                           onClick={() => {
+                              // Overwrite
+                              setDuplicateModal({ show: false, duplicates: [] });
+                              saveMappedBOQ({ duplicateHandled: true, saveAsNewList: [] });
+                           }}
+                        >
+                           Overwrite
                         </button>
                      </div>
                   </div>
