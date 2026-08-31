@@ -1039,7 +1039,7 @@ function BOQOverview({ projectId }) {
         return false;
     };
 
-    const BOQNode = ({ boq, level = 0 }) => {
+    const renderBOQNode = (boq, level = 0) => {
         const canExpand = boq.lastLevel === false;
         const isExpanded = expandedParentIds.has(boq.id);
         const childrenStatus = boq.children;
@@ -1070,7 +1070,7 @@ function BOQOverview({ projectId }) {
             const leafBgColor = highlightedNodes.has(boq.id) ? '#EFF6FF' : 'inherit';
 
             return (
-                <tr className="boq-leaf-row" style={{ borderBottom: '1px solid #eee', backgroundColor: rowBgColor }}>
+                <tr key={boq.id} className="boq-leaf-row" style={{ borderBottom: '1px solid #eee', backgroundColor: rowBgColor }}>
                     <td className="px-2" style={{ paddingLeft: `${indentation + 8}px`, backgroundColor: leafBgColor }}>
                         <input
                             type="checkbox"
@@ -1228,7 +1228,7 @@ function BOQOverview({ projectId }) {
                                                 </thead>
                                                 <tbody>
                                                     {leafChildren.map(child => (
-                                                        <BOQNode key={child.id} boq={child} level={level + 1} />
+                                                        renderBOQNode(child, level + 1)
                                                     ))}
                                                 </tbody>
                                             </table>
@@ -1237,7 +1237,7 @@ function BOQOverview({ projectId }) {
                                     {hasNonLeafChildren && (
                                         <div className="p-0">
                                             {nonLeafChildren.map(child => (
-                                                <BOQNode key={child.id} boq={child} level={level + 1} />
+                                                renderBOQNode(child, level + 1)
                                             ))}
                                         </div>
                                     )}
@@ -1592,14 +1592,14 @@ function BOQOverview({ projectId }) {
                                                 </thead>
                                                 <tbody>
                                                     {leafItems.map((boq) => (
-                                                        <BOQNode key={boq.id} boq={boq} level={0} />
+                                                        renderBOQNode(boq, 0)
                                                     ))}
                                                 </tbody>
                                             </table>
                                         </div>
                                     )}
                                     {nonLeafItems.map((boq) => (
-                                        <BOQNode key={boq.id} boq={boq} level={0} />
+                                        renderBOQNode(boq, 0)
                                     ))}
                                 </>
                             );

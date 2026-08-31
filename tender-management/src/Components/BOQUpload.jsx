@@ -482,70 +482,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       }
 
-      if (!duplicateHandled) {
-         try {
-            setLoading(true);
-            const fileExistsRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/checkFileExists/${effectiveProjectId}?fileName=${BOQfile.name}`, { headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } });
 
-            if (fileExistsRes.data) {
-               const existingBoqsRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllBoqDetails?projectId=${effectiveProjectId}`, { headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } });
-               const existingBoqs = existingBoqsRes.data || [];
-
-               const duplicates = [];
-               excelData.forEach(item => {
-                  const safeName = item.boqName ? item.boqName.toString().trim().toLowerCase() : '';
-                  const safeCode = item.boqCode ? item.boqCode.toString().trim().toLowerCase() : '';
-                  const existing = existingBoqs.find(eb => {
-                      if (eb.sourceFile && eb.excelSno) {
-                          return eb.sourceFile === BOQfile.name && eb.excelSno === item.sno;
-                      }
-                      return (eb.boqCode ? eb.boqCode.trim().toLowerCase() : '') === safeCode && 
-                             (eb.boqName ? eb.boqName.trim().toLowerCase() : '') === safeName;
-                  });
-
-                  if (existing) {
-                     const existingCode = existing.boqCode || '';
-                     const newCode = item.boqCode || '';
-                     const existingName = existing.boqName || '';
-                     const newName = item.boqName || '';
-                     const existingQty = existing.quantity || 0;
-                     const newQty = item.quantity || 0;
-                     const existingUom = existing.uom?.uomCode || '';
-                     const newUom = item.uom || '';
-                     const existingDiv = existing.division || '';
-                     const newDiv = item.division || '';
-                     const existingPage = existing.pageNo || 0;
-                     const newPage = item.pageNo || 0;
-
-                     const changesObj = {};
-                     if (existingCode !== newCode) changesObj.boqCode = existingCode;
-                     if (existingName !== newName) changesObj.boqName = existingName;
-                     if (existingQty !== newQty) changesObj.quantity = existingQty;
-                     if (existingUom !== newUom) changesObj.uom = existingUom;
-                     if (existingDiv !== newDiv) changesObj.division = existingDiv;
-                     if (existingPage !== newPage) changesObj.pageNo = existingPage;
-
-                     if (Object.keys(changesObj).length > 0) {
-                        duplicates.push({
-                           ...item,
-                           oldData: changesObj
-                        });
-                     }
-                  }
-               });
-
-               if (duplicates.length > 0) {
-                  setDuplicateModal({ show: true, duplicates });
-                  setLoading(false);
-                  return;
-               }
-            }
-         } catch (error) {
-            console.error("Error checking duplicates", error);
-         } finally {
-            setLoading(false);
-         }
-      }
 
       setLoading(true)
       try {
@@ -575,6 +512,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             }).map(item => item.sno);
          }
          formData.append("ignoredSnos", JSON.stringify(ignoredSnos));
+         formData.append("duplicateHandled", duplicateHandled);
 
          if (saveAsNewList && saveAsNewList.length > 0) {
             formData.append("saveAsNewSnos", JSON.stringify(saveAsNewList));
@@ -654,6 +592,10 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       }
       catch (error) {
+         if (error.response && error.response.status === 409) {
+             setDuplicateModal({ show: true, duplicates: error.response.data });
+             return;
+         }
          // toast.error("Error saving BOQ mapping");
          if (isExternalAccess) {
             window.parent.postMessage(
@@ -668,9 +610,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       }
       finally {
          setLoading(false);
-         if (!isExternalAccess) {
-            window.location.href = `/boqdefinition/${projectId}`;
-         }
       }
    };
 
