@@ -17,7 +17,7 @@ import CollapseIcon from '../assest/Collapse.svg?react';
 import useDebounce from '../Utills/useDebounce.js'
 import { toast } from 'react-toastify';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { useUom } from '../context/UomContext';
+import { useUom } from '../Context/UomContext';
 
 const autoScrollWhileDragging = (e) => {
    const padding = 100;
@@ -75,6 +75,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [sheetOption, setSheetOption] = useState([]);
    const [selectedSheet, setSelectedSheet] = useState('');
    const [columns, setColumns] = useState([]);
+   const [columnLoading, setColumnLoading] = useState(false);
    const [draggedColumn, setDraggedColumn] = useState(null);
    const [template, setTemplate] = useState({
       templateName: '',
@@ -239,11 +240,14 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       }).catch(err => {
          if (err?.response?.status === 401) {
             handleUnauthorized(navigate);
+         } else if (err?.response?.data?.message) {
+            toast.error(err.response.data.message);
          }
       })
    }
 
    const loadSheetColumn = (sheetValue) => {
+      setColumnLoading(true);
       const formData = new FormData();
       formData.append('file', BOQfile);
       axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/excel/getColumns/${sheetValue}`, formData, {
@@ -257,8 +261,12 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       }).catch(err => {
          if (err?.response?.status === 401) {
             handleUnauthorized(navigate);
+         } else if (err?.response?.data?.message) {
+            toast.error(err.response.data.message);
          }
-      })
+      }).finally(() => {
+         setColumnLoading(false);
+      });
    }
    const handleDragStart = (e, column) => {
       setDraggedColumn(column);
@@ -394,7 +402,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       } catch (error) {
          console.error("Error fetching Excel data:", error);
-         toast.error("Failed to load Excel data");
+         if (error?.response?.data?.message) {
+            toast.error(error.response.data.message);
+         } else {
+            toast.error("Failed to load Excel data");
+         }
       } finally {
          setLoading(false);
          setSection('levelMapping');
@@ -631,7 +643,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
              setDuplicateModal({ show: true, duplicates: error.response.data });
              return;
          }
-         // toast.error("Error saving BOQ mapping");
+         if (error?.response?.data?.message) {
+            toast.error(error.response.data.message);
+         } else {
+            toast.error("Error saving BOQ mapping");
+         }
          if (isExternalAccess) {
             window.parent.postMessage(
                {
@@ -1126,7 +1142,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                            </div>
                         </div>
                         <div className='col-lg-8 col-md-7 col-sm-12 d-flex justify-content-end align-items-end pt-4'>
-                           {excelData.length > 0 && (excelData.every(row => row.lastLevel) || excelData.every(row => !row.lastLevel)) && (
+                           {excelData.length > 0 && (!BOQfile || !BOQfile.name.toLowerCase().endsWith('.pdf')) && (excelData.every(row => row.lastLevel) || excelData.every(row => !row.lastLevel)) && (
                               <div className="form-check d-flex align-items-center me-3 mb-2">
                               <input
                                  type="checkbox"
@@ -1308,7 +1324,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                   <div className='col-lg-6 col-md-6 col-sm-12'>
                      <ColumnIcon /><span className='fw-bold fs-6 ms-2'>Excel Fields</span>
                      <div className='mt-1 rounded-3 p-2'>
-                        {(Array.isArray(columns) ? columns : [])
+                        {columnLoading ? (
+                           [...Array(5)].map((_, index) => (
+                              <div key={index} className="excel-column-container me-2 p-3 rounded-3 mt-3 mb-3 skeleton-loader" style={{ height: '54px', border: 'none' }}></div>
+                           ))
+                        ) : (Array.isArray(columns) ? columns : [])
                            .filter(col => !internalFields.some(f => Array.isArray(f.mappingFields) && f.mappingFields.includes(col)))
                            .map((col, index) => (
                               <div className={`excel-column-container me-2 p-3 rounded-3 mt-3 mb-3 d-flex justify-content-between align-items-center`} key={index} draggable={true}
@@ -1413,7 +1433,18 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                </div>
             )}
             <div className='d-flex justify-content-end mt-4'>
-               <button className='btn action-button mt-2 fs-6' onClick={() => setPageBreakModal(true)}><ArrowRight size={18} /> <span className='ms-1'>Next</span></button>
+               <button 
+                   className='btn action-button mt-2 fs-6' 
+                   onClick={() => setPageBreakModal(true)}
+                   disabled={loading}
+                >
+                   {loading ? (
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                   ) : (
+                      <ArrowRight size={18} />
+                   )}
+                   <span className='ms-1'>{loading ? 'Loading...' : 'Next'}</span>
+                </button>
             </div>
          </div>
       )
