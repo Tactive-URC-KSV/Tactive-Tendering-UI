@@ -17,6 +17,7 @@ import CollapseIcon from '../assest/Collapse.svg?react';
 import useDebounce from '../Utills/useDebounce.js'
 import { toast } from 'react-toastify';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { useUom } from '../context/UomContext';
 
 const autoScrollWhileDragging = (e) => {
    const padding = 100;
@@ -107,6 +108,13 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [pageBreakModal, setPageBreakModal] = useState(false);
    const [emptyBoqModal, setEmptyBoqModal] = useState({ show: false, count: 0, emptySnos: [], items: [] });
    const [duplicateModal, setDuplicateModal] = useState({ show: false, duplicates: [] });
+   const [uomModal, setUomModal] = useState({ show: false, unmatched: [], mapping: {}, pendingSaveOptions: null });
+   
+   const contextUoms = useUom() || [];
+   const [localAddedUoms, setLocalAddedUoms] = useState([]);
+   const masterUoms = [...contextUoms, ...localAddedUoms];
+   
+   const [newUomForm, setNewUomForm] = useState({ show: false, code: '', name: '', forClientUom: '' });
 
    const isLastLevelRow = (row) => {
       return (
@@ -156,7 +164,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          if (err?.response?.status === 401) {
             handleUnauthorized(navigate);
          }
-      })
+      });
    }, [])
    const templateOption = templateList.map(temp => ({
       value: temp.id,
@@ -451,7 +459,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const saveMappedBOQ = async (options = {}) => {
       const isEvent = options && typeof options === 'object' && options.nativeEvent;
       const opts = isEvent ? {} : (typeof options === 'boolean' ? { ignoreEmpty: options } : options);
-      const { ignoreEmpty = null, duplicateHandled = false, saveAsNewList = [] } = opts;
+      const { ignoreEmpty = null, duplicateHandled = false, saveAsNewList = [], uomMapResolved = false } = opts;
 
       if (!BOQfile) {
          toast.error("Please upload a BOQ file");
@@ -482,7 +490,30 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       }
 
+      if (!uomMapResolved) {
+         const uniqueUoms = [...new Set(excelData.filter(row => row.uom && row.uom.trim() !== '').map(row => row.uom.trim()))];
+         const unmatched = [];
+         uniqueUoms.forEach(uomStr => {
+            const sanitized = uomStr.toLowerCase().replace(/[., \/]/g, '');
+            const isMatch = masterUoms.some(m => 
+               (m.uomCode && m.uomCode.toLowerCase().replace(/[., \/]/g, '') === sanitized) || 
+               (m.uomName && m.uomName.toLowerCase().replace(/[., \/]/g, '') === sanitized)
+            );
+            if (!isMatch) {
+               unmatched.push(uomStr);
+            }
+         });
 
+         if (unmatched.length > 0) {
+            setUomModal({
+               show: true,
+               unmatched: unmatched,
+               mapping: {},
+               pendingSaveOptions: opts
+            });
+            return;
+         }
+      }
 
       setLoading(true)
       try {
@@ -501,6 +532,10 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          formData.append("parentChildMapping", JSON.stringify(parentMap));
          formData.append("lastLevelMapping", JSON.stringify(lastLevelMap));
          formData.append("levelMapping", JSON.stringify(levelMap));
+         
+         if (uomModal.mapping && Object.keys(uomModal.mapping).length > 0) {
+            formData.append("uomMapping", JSON.stringify(uomModal.mapping));
+         }
 
          let ignoredSnos = [];
          if (ignoreEmpty === true) {
@@ -1676,7 +1711,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                               // Save as New
                               const saveAsNewList = duplicateModal.duplicates.map(d => d.sno);
                               setDuplicateModal({ show: false, duplicates: [] });
-                              saveMappedBOQ({ duplicateHandled: true, saveAsNewList });
+                              saveMappedBOQ({ duplicateHandled: true, saveAsNewList, uomMapResolved: true });
                            }}
                         >
                            Save as New
@@ -1687,10 +1722,143 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                            onClick={() => {
                               // Overwrite
                               setDuplicateModal({ show: false, duplicates: [] });
-                              saveMappedBOQ({ duplicateHandled: true, saveAsNewList: [] });
+                              saveMappedBOQ({ duplicateHandled: true, saveAsNewList: [], uomMapResolved: true });
                            }}
                         >
                            Overwrite
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
+
+         {uomModal.show && (
+            <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+               <div className="modal-dialog modal-dialog-centered modal-lg">
+                  <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
+                     <div className="modal-header border-0 pb-0">
+                        <h5 className="modal-title fw-bold" style={{ color: '#005197' }}>UOM Mapping Required</h5>
+                        <button type="button" className="btn-close" onClick={() => setUomModal({ show: false, unmatched: [], mapping: {}, pendingSaveOptions: null })}></button>
+                     </div>
+                     <div className="modal-body py-4">
+                        <p className="mb-2 text-muted" style={{ fontSize: '15px' }}>
+                           The following UOMs from the uploaded file were not found in the Master UOM list. Please map them or add them as new Master UOMs.
+                        </p>
+                        <div className="table-responsive" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                           <table className="table table-bordered table-sm text-center align-middle">
+                              <thead className="table-light sticky-top">
+                                 <tr>
+                                    <th style={{ width: '30%' }}>Client UOM (from file)</th>
+                                    <th style={{ width: '40%' }}>Master UOM Mapping</th>
+                                    <th style={{ width: '30%' }}>Action</th>
+                                 </tr>
+                              </thead>
+                              <tbody>
+                                 {uomModal.unmatched.map((unmatchedUom, idx) => (
+                                    <tr key={idx}>
+                                       <td className="fw-bold">{unmatchedUom}</td>
+                                       <td>
+                                          <Select
+                                             options={masterUoms.map(m => ({ value: m.uomCode, label: `${m.uomCode} - ${m.uomName}` }))}
+                                             value={uomModal.mapping[unmatchedUom] ? { value: uomModal.mapping[unmatchedUom], label: masterUoms.find(m => m.uomCode === uomModal.mapping[unmatchedUom])?.uomCode + ' - ' + masterUoms.find(m => m.uomCode === uomModal.mapping[unmatchedUom])?.uomName } : null}
+                                             onChange={(selected) => setUomModal(prev => ({ ...prev, mapping: { ...prev.mapping, [unmatchedUom]: selected.value } }))}
+                                             placeholder="Select Master UOM..."
+                                             menuPortalTarget={document.body}
+                                             styles={{ menuPortal: base => ({ ...base, zIndex: 9999 }) }}
+                                          />
+                                       </td>
+                                       <td>
+                                          <button className="btn btn-sm action-button" onClick={() => setNewUomForm({ show: true, code: '', name: '', forClientUom: unmatchedUom })}>
+                                             + Add New
+                                          </button>
+                                       </td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     </div>
+                     <div className="modal-footer border-0 pt-0">
+                        <button
+                           type="button"
+                           className="btn cancel-button px-4"
+                           onClick={() => setUomModal({ show: false, unmatched: [], mapping: {}, pendingSaveOptions: null })}
+                        >
+                           Cancel
+                        </button>
+                        <button
+                           type="button"
+                           className="btn action-button px-4"
+                           disabled={uomModal.unmatched.length !== Object.keys(uomModal.mapping).length}
+                           onClick={() => {
+                              const pending = uomModal.pendingSaveOptions;
+                              setUomModal(prev => ({ ...prev, show: false }));
+                              saveMappedBOQ({ ...pending, uomMapResolved: true });
+                           }}
+                        >
+                           Confirm Mapping & Import
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
+
+         {newUomForm.show && (
+            <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1070 }}>
+               <div className="modal-dialog modal-dialog-centered modal-sm">
+                  <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
+                     <div className="modal-header border-0 pb-0">
+                        <h6 className="modal-title fw-bold" style={{ color: '#005197' }}>Add New UOM</h6>
+                        <button type="button" className="btn-close" onClick={() => setNewUomForm({ show: false, code: '', name: '', forClientUom: '' })}></button>
+                     </div>
+                     <div className="modal-body py-3">
+                        <div className="mb-2">
+                           <label className="form-label" style={{ fontSize: '13px' }}>UOM Code <span className="text-danger">*</span></label>
+                           <input type="text" className="form-control form-control-sm" value={newUomForm.code} onChange={(e) => setNewUomForm(prev => ({ ...prev, code: e.target.value }))} />
+                        </div>
+                        <div className="mb-2">
+                           <label className="form-label" style={{ fontSize: '13px' }}>UOM Name <span className="text-danger">*</span></label>
+                           <input type="text" className="form-control form-control-sm" value={newUomForm.name} onChange={(e) => setNewUomForm(prev => ({ ...prev, name: e.target.value }))} />
+                        </div>
+                     </div>
+                     <div className="modal-footer border-0 pt-0">
+                        <button
+                           type="button"
+                           className="btn cancel-button btn-sm px-3"
+                           onClick={() => setNewUomForm({ show: false, code: '', name: '', forClientUom: '' })}
+                        >
+                           Cancel
+                        </button>
+                        <button
+                           type="button"
+                           className="btn action-button btn-sm px-3"
+                           onClick={async () => {
+                              if (!newUomForm.code.trim() || !newUomForm.name.trim()) {
+                                 toast.error("Code and Name are required");
+                                 return;
+                              }
+                              try {
+                                 const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/tactive/addUom`, {
+                                    uomCode: newUomForm.code,
+                                    uomName: newUomForm.name
+                                 }, {
+                                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                                 });
+                                 if (res.status === 200) {
+                                    toast.success("UOM added successfully");
+                                    const newUomObj = { uomCode: newUomForm.code, uomName: newUomForm.name };
+                                    setLocalAddedUoms(prev => [...prev, newUomObj]);
+                                    setUomModal(prev => ({ ...prev, mapping: { ...prev.mapping, [newUomForm.forClientUom]: newUomForm.code } }));
+                                    setNewUomForm({ show: false, code: '', name: '', forClientUom: '' });
+                                 }
+                              } catch (err) {
+                                 toast.error(typeof err.response?.data === 'string' ? err.response?.data : (err.response?.data?.message || "Error adding UOM"));
+                              }
+                           }}
+                        >
+                           Add
                         </button>
                      </div>
                   </div>
