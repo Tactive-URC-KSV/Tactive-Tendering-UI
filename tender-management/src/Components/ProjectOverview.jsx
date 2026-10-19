@@ -1,4 +1,5 @@
 import axios from "axios";
+import Select from "react-select";
 import { ArrowLeft, Check, Eye, IndianRupee, X, MapPin } from "lucide-react";
 import { use, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -45,6 +46,32 @@ function ProjectOverview() {
     const handleAddFeasibility = () => {
         navigate(`/projectmanagement/project/${project.id}#feasibility`);
     };
+
+    const [isEditingStatus, setIsEditingStatus] = useState(false);
+    const [selectedStatusId, setSelectedStatusId] = useState('');
+
+    const handleStatusUpdate = () => {
+        if (!selectedStatusId) {
+            setIsEditingStatus(false);
+            return;
+        }
+        axios.put(`${import.meta.env.VITE_API_BASE_URL}/project/updateStatus/${projectId}/${selectedStatusId}`, {}, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`
+            }
+        }).then(res => {
+            if (res.status === 200) {
+                toast.success("Project status updated successfully");
+                setIsEditingStatus(false);
+                const updatedStatus = projectStatus.find(s => s.id === selectedStatusId);
+                setProject({ ...project, projectStatus: updatedStatus });
+            }
+        }).catch(err => {
+            console.error(err);
+            toast.error("Failed to update project status");
+        });
+    };
+
 
     useEffect(() => {
         if (projectId) {
@@ -279,13 +306,50 @@ function ProjectOverview() {
                         <p>Project Code - {project.projectCode}</p>
                     </div>
                     <div className="text-end me-2">
-                        {projectStatus
-                            .filter((state) => (state.status === project.projectStatus?.status))
-                            .map((state, index) => (
-                                <span key={index} className="badge rounded-pill mb-1"
-                                    style={{ backgroundColor: state.bgColor, color: state.textColor, fontSize: '14px' }}
-                                >{state.status}</span>
-                            ))}
+                        {isEditingStatus ? (
+                            <div className="d-flex align-items-center justify-content-end mb-1">
+                                <div style={{ minWidth: '200px', textAlign: 'left' }} className="me-2">
+                                    <Select 
+                                        options={projectStatus.map(s => ({ value: s.id, label: s.status }))}
+                                        value={
+                                            projectStatus
+                                                .filter(s => s.id === (selectedStatusId || project.projectStatus?.id))
+                                                .map(s => ({ value: s.id, label: s.status }))[0] || null
+                                        }
+                                        onChange={(selectedOption) => setSelectedStatusId(selectedOption.value)}
+                                        placeholder="Select Status"
+                                        menuPosition="fixed"
+                                        menuPlacement="auto"
+                                        styles={{
+                                            option: (provided, state) => ({
+                                                ...provided,
+                                                color: state.isSelected ? 'white' : 'black',
+                                                backgroundColor: state.isSelected ? '#005197' : state.isFocused ? '#e9ecef' : 'white',
+                                            }),
+                                            singleValue: (provided) => ({
+                                                ...provided,
+                                                color: 'black',
+                                            })
+                                        }}
+                                    />
+                                </div>
+                                <div className="d-flex bg-white rounded-pill px-2 py-1 shadow-sm">
+                                    <Check size={20} className="text-success cursor-pointer me-2" onClick={handleStatusUpdate} title="Save Status" />
+                                    <X size={20} className="text-danger cursor-pointer" onClick={() => setIsEditingStatus(false)} title="Cancel" />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="d-flex align-items-center justify-content-end mb-1">
+                                {projectStatus
+                                    .filter((state) => (state.status === project.projectStatus?.status))
+                                    .map((state, index) => (
+                                        <span key={index} className="badge rounded-pill me-2"
+                                            style={{ backgroundColor: state.bgColor, color: state.textColor, fontSize: '14px' }}
+                                        >{state.status}</span>
+                                    ))}
+                                <Edit width={14} height={14} className="cursor-pointer" style={{ color: '#005197' }} onClick={() => { setSelectedStatusId(project.projectStatus?.id); setIsEditingStatus(true); }} />
+                            </div>
+                        )}
                         <p className="me-1">created by - {user.name}</p>
                     </div>
                 </div>
@@ -330,7 +394,7 @@ function ProjectOverview() {
                     <div className="text-start d-flex align-items-center p-2 mt-3" style={{ borderTop: '1px solid #0051973D' }}>
                         <div className="mt-2 ms-3">
                             <p className="fw-bold" style={{ fontSize: '16px' }}>
-                                <MapPin size={22} className="me-2 mb-1" style={{ color: '#005197' }} /> 
+                                <MapPin size={22} className="me-2 mb-1" style={{ color: '#005197' }} />
                                 Project Addresses
                             </p>
                         </div>
@@ -446,12 +510,16 @@ function ProjectOverview() {
                     : (
                         <div className="d-flex justify-content-between align-items-center p-3">
                             <span className="fw-bold ms-2 " style={{ fontSize: '17px' }}>Feasibility Study</span>
-                            <button
-                                onClick={handleAddFeasibility}
-                                className="btn action-button me-1"
-                            >
-                                Add Feasibility
-                            </button>
+                            {project.needFeasibility === false ? (
+                                <span className="text-muted fw-bold me-3">Feasibility Study is not needed</span>
+                            ) : (
+                                <button
+                                    onClick={handleAddFeasibility}
+                                    className="btn action-button me-1"
+                                >
+                                    Add Feasibility
+                                </button>
+                            )}
                         </div>)}
             </div>
         </div >

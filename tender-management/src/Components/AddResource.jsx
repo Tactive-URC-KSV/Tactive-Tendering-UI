@@ -257,7 +257,7 @@ function AddResource() {
                     fetchResources(rTypeId);
                 }
                 if (resource?.id) {
-                    fetchResourceAttributes(resource.id, tender.attributes || []);
+                    fetchResourceAttributes(resource.id, tender.attributes || tender.estimationAttributes || []);
                 }
             }
         }).catch(err => {
@@ -715,7 +715,7 @@ function AddResource() {
             const tender = r.tenderEstimation || r;
             const rId = tender.resource?.id || tender.resources?.id || tender.resourceId;
             const uomId = tender.uom?.id || tender.uomId;
-            const attrs = tender.attributes || [];
+            const attrs = tender.attributes || tender.estimationAttributes || [];
             
             // For both, check resource and attributes first
             const baseMatch = rId === selectedResource.value && compareAttributes(attrs, currentSelectionAttrs);

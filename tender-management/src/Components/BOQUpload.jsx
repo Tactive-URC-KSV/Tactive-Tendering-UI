@@ -110,11 +110,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [emptyBoqModal, setEmptyBoqModal] = useState({ show: false, count: 0, emptySnos: [], items: [] });
    const [duplicateModal, setDuplicateModal] = useState({ show: false, duplicates: [] });
    const [uomModal, setUomModal] = useState({ show: false, unmatched: [], mapping: {}, pendingSaveOptions: null });
-   
+
    const contextUoms = useUom() || [];
    const [localAddedUoms, setLocalAddedUoms] = useState([]);
    const masterUoms = [...contextUoms, ...localAddedUoms];
-   
+
    const [newUomForm, setNewUomForm] = useState({ show: false, code: '', name: '', forClientUom: '' });
 
    const isLastLevelRow = (row) => {
@@ -507,8 +507,8 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          const unmatched = [];
          uniqueUoms.forEach(uomStr => {
             const sanitized = uomStr.toLowerCase().replace(/[., \/]/g, '');
-            const isMatch = masterUoms.some(m => 
-               (m.uomCode && m.uomCode.toLowerCase().replace(/[., \/]/g, '') === sanitized) || 
+            const isMatch = masterUoms.some(m =>
+               (m.uomCode && m.uomCode.toLowerCase().replace(/[., \/]/g, '') === sanitized) ||
                (m.uomName && m.uomName.toLowerCase().replace(/[., \/]/g, '') === sanitized)
             );
             if (!isMatch) {
@@ -544,7 +544,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          formData.append("parentChildMapping", JSON.stringify(parentMap));
          formData.append("lastLevelMapping", JSON.stringify(lastLevelMap));
          formData.append("levelMapping", JSON.stringify(levelMap));
-         
+
          if (uomModal.mapping && Object.keys(uomModal.mapping).length > 0) {
             formData.append("uomMapping", JSON.stringify(uomModal.mapping));
          }
@@ -601,7 +601,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                setSelectedRow(new Set());
                setSection('columnMapping');
                setSearchTerm('');
-               toast.success("BOQ Data imported Successfully");
                return;
             }
             if (sheetOption.length === 1) {
@@ -612,7 +611,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             setSheetOption(prev =>
                prev.filter(option => option.value !== selectedSheet)
             );
-            plate();
             setExcelData([]);
             setLastLevelMap({});
             setParentMap({});
@@ -620,7 +618,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             setSelectedRow(new Set());
             setSection('columnMapping');
             setSearchTerm('');
-            toast.success("BOQ Data imported Successfully");
             if (fileType === 'pdf') {
                setSelectedSheet(null);
                setColumns([]);
@@ -640,8 +637,8 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       }
       catch (error) {
          if (error.response && error.response.status === 409) {
-             setDuplicateModal({ show: true, duplicates: error.response.data });
-             return;
+            setDuplicateModal({ show: true, duplicates: error.response.data });
+            return;
          }
          if (error?.response?.data?.message) {
             toast.error(error.response.data.message);
@@ -1144,16 +1141,16 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                         <div className='col-lg-8 col-md-7 col-sm-12 d-flex justify-content-end align-items-end pt-4'>
                            {excelData.length > 0 && (!BOQfile || !BOQfile.name.toLowerCase().endsWith('.pdf')) && (excelData.every(row => row.lastLevel) || excelData.every(row => !row.lastLevel)) && (
                               <div className="form-check d-flex align-items-center me-3 mb-2">
-                              <input
-                                 type="checkbox"
-                                 className="form-check-input me-2 mt-0"
-                                 id="autoIncrease"
-                                 checked={autoIncreaseLevel}
-                                 onChange={(e) => setAutoIncreaseLevel(e.target.checked)}
-                                 style={{ cursor: 'pointer' }}
-                              />
-                              <label className="form-check-label text-nowrap" htmlFor="autoIncrease" style={{ fontSize: '13px', cursor: 'pointer', color: '#005197', fontWeight: '500' }}>Auto-increase levels</label>
-                           </div>
+                                 <input
+                                    type="checkbox"
+                                    className="form-check-input me-2 mt-0"
+                                    id="autoIncrease"
+                                    checked={autoIncreaseLevel}
+                                    onChange={(e) => setAutoIncreaseLevel(e.target.checked)}
+                                    style={{ cursor: 'pointer' }}
+                                 />
+                                 <label className="form-check-label text-nowrap" htmlFor="autoIncrease" style={{ fontSize: '13px', cursor: 'pointer', color: '#005197', fontWeight: '500' }}>Auto-increase levels</label>
+                              </div>
                            )}
                            <button className='btn cancel rounded-2 p-2 me-2' style={{ fontSize: '13px' }} onClick={expandAll}>
                               <ExpandIcon width={20} height={20} /><span className='ms-1'>Expand All</span>
@@ -1433,18 +1430,18 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                </div>
             )}
             <div className='d-flex justify-content-end mt-4'>
-               <button 
-                   className='btn action-button mt-2 fs-6' 
-                   onClick={() => setPageBreakModal(true)}
-                   disabled={loading}
-                >
-                   {loading ? (
-                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                   ) : (
-                      <ArrowRight size={18} />
-                   )}
-                   <span className='ms-1'>{loading ? 'Loading...' : 'Next'}</span>
-                </button>
+               <button
+                  className='btn action-button mt-2 fs-6'
+                  onClick={() => setPageBreakModal(true)}
+                  disabled={loading}
+               >
+                  {loading ? (
+                     <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  ) : (
+                     <ArrowRight size={18} />
+                  )}
+                  <span className='ms-1'>{loading ? 'Loading...' : 'Next'}</span>
+               </button>
             </div>
          </div>
       )
