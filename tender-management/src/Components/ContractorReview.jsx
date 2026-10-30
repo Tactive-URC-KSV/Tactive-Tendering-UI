@@ -174,7 +174,8 @@ function ContractorReviewMinimal() {
   };
 
   const getFileName = (path) => {
-    return path.split('/').pop();
+    if (!path) return "Unknown File";
+    return path.split(/[/\\]/).pop() || path;
   };
 
   return (

@@ -427,7 +427,7 @@ function TFProcess({ projectId: propProjectId }) {
     const getFileNameFromUrl = (url) => {
         if (!url) return "file";
         try {
-            return url.substring(url.lastIndexOf('/') + 1);
+            return url.split(/[/\\]/).pop() || "file";
         } catch (e) {
             return "file";
         }
@@ -495,7 +495,7 @@ function TFProcess({ projectId: propProjectId }) {
                         } else if (b.level > 0) {
                             // If deep nodes are not loaded with their parents, automatically load via the search bar API internally
                             searchPromises.push(
-                                axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/searchProjectBoq/${projectId}?boqName=${encodeURIComponent(b.boqCode || b.boqName)}`, {
+                                axios.get(`${import.meta.env.VITE_API_BASE_URL}/searchBoq/${projectId}?searchQuery=${encodeURIComponent(b.boqCode || b.boqName)}`, {
                                     headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
                                 }).then(res => {
                                     if (res.status === 200 && res.data) {
@@ -1480,17 +1480,25 @@ function TFProcess({ projectId: propProjectId }) {
                                         </div>
                                         <div className="col-md-6">
                                             <label className="projectform text-start d-block">Time <span className="text-danger">*</span></label>
-                                            <Flatpickr
-                                                className="form-input w-100"
-                                                placeholder="00:00"
-                                                options={{
-                                                    enableTime: true,
-                                                    noCalendar: true,
-                                                    dateFormat: "H:i",
-                                                    time_24hr: true
+                                            <input
+                                                type="time"
+                                                className="form-input w-100 form-control"
+                                                value={
+                                                    tenderDetail.preBidMeetingTime instanceof Date 
+                                                        ? tenderDetail.preBidMeetingTime.toTimeString().substring(0, 5) 
+                                                        : (typeof tenderDetail.preBidMeetingTime === 'string' ? tenderDetail.preBidMeetingTime.substring(0, 5) : "")
+                                                }
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (val) {
+                                                        const [hours, minutes] = val.split(':');
+                                                        const d = new Date();
+                                                        d.setHours(hours, minutes, 0, 0);
+                                                        setTenderDetail({ ...tenderDetail, preBidMeetingTime: d });
+                                                    } else {
+                                                        setTenderDetail({ ...tenderDetail, preBidMeetingTime: null });
+                                                    }
                                                 }}
-                                                value={tenderDetail.preBidMeetingTime}
-                                                onChange={([time]) => setTenderDetail({ ...tenderDetail, preBidMeetingTime: time })}
                                             />
                                         </div>
                                     </div>
@@ -1555,32 +1563,48 @@ function TFProcess({ projectId: propProjectId }) {
                                     <div className="row">
                                         <div className="col-md-6">
                                             <label className="projectform text-start d-block">From Time <span className="text-danger">*</span></label>
-                                            <Flatpickr
-                                                className="form-input w-100"
-                                                placeholder="00:00"
-                                                options={{
-                                                    enableTime: true,
-                                                    noCalendar: true,
-                                                    dateFormat: "H:i",
-                                                    time_24hr: true
+                                            <input
+                                                type="time"
+                                                className="form-input w-100 form-control"
+                                                value={
+                                                    tenderDetail.siteInvestigationFromTime instanceof Date 
+                                                        ? tenderDetail.siteInvestigationFromTime.toTimeString().substring(0, 5) 
+                                                        : (typeof tenderDetail.siteInvestigationFromTime === 'string' ? tenderDetail.siteInvestigationFromTime.substring(0, 5) : "")
+                                                }
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (val) {
+                                                        const [hours, minutes] = val.split(':');
+                                                        const d = new Date();
+                                                        d.setHours(hours, minutes, 0, 0);
+                                                        setTenderDetail({ ...tenderDetail, siteInvestigationFromTime: d });
+                                                    } else {
+                                                        setTenderDetail({ ...tenderDetail, siteInvestigationFromTime: null });
+                                                    }
                                                 }}
-                                                value={tenderDetail.siteInvestigationFromTime}
-                                                onChange={([time]) => setTenderDetail({ ...tenderDetail, siteInvestigationFromTime: time })}
                                             />
                                         </div>
                                         <div className="col-md-6">
                                             <label className="projectform text-start d-block">To Time <span className="text-danger">*</span></label>
-                                            <Flatpickr
-                                                className="form-input w-100"
-                                                placeholder="00:00"
-                                                options={{
-                                                    enableTime: true,
-                                                    noCalendar: true,
-                                                    dateFormat: "H:i",
-                                                    time_24hr: true
+                                            <input
+                                                type="time"
+                                                className="form-input w-100 form-control"
+                                                value={
+                                                    tenderDetail.siteInvestigationToTime instanceof Date 
+                                                        ? tenderDetail.siteInvestigationToTime.toTimeString().substring(0, 5) 
+                                                        : (typeof tenderDetail.siteInvestigationToTime === 'string' ? tenderDetail.siteInvestigationToTime.substring(0, 5) : "")
+                                                }
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (val) {
+                                                        const [hours, minutes] = val.split(':');
+                                                        const d = new Date();
+                                                        d.setHours(hours, minutes, 0, 0);
+                                                        setTenderDetail({ ...tenderDetail, siteInvestigationToTime: d });
+                                                    } else {
+                                                        setTenderDetail({ ...tenderDetail, siteInvestigationToTime: null });
+                                                    }
                                                 }}
-                                                value={tenderDetail.siteInvestigationToTime}
-                                                onChange={([time]) => setTenderDetail({ ...tenderDetail, siteInvestigationToTime: time })}
                                             />
                                         </div>
                                     </div>

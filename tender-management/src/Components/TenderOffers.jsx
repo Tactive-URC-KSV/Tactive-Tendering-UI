@@ -133,11 +133,15 @@ function TenderOffers() {
                 "Content-Type": "application/json",
             };
 
+            const currentContractorOffers = (offersMap[selectedOffer.tender?.id] || []).filter(
+                o => (o.contractor?.id || 'unknown') === (selectedOffer.contractor?.id || 'unknown')
+            );
+            const calculatedVersion = getOfferVersion(selectedOffer, currentContractorOffers);
             const payload = {
                 offerId: selectedOffer.id,
                 contractorId: selectedOffer.contractor?.id,
                 tenderId: selectedOffer.tender?.id,
-                offerVersion: selectedOffer.offerQuotations?.[0]?.offerVersion || 0,
+                offerVersion: typeof calculatedVersion === 'number' ? calculatedVersion : (parseInt(calculatedVersion) || 1),
                 comments: negotiateComments
             };
 
@@ -204,6 +208,26 @@ function TenderOffers() {
         }
     };
 
+    const getOfferVersion = (offer, offersList = []) => {
+        if (!offer) return "—";
+        const rawVersion = offer.offerQuotations?.[0]?.offerVersion;
+        if (offersList && offersList.length > 1) {
+            const versions = offersList.map(o => o.offerQuotations?.[0]?.offerVersion);
+            const hasDuplicates = new Set(versions).size !== versions.length;
+            if (hasDuplicates || !rawVersion) {
+                const sorted = [...offersList].sort((a, b) => {
+                    const dateA = new Date(a.submittedOn || 0).getTime();
+                    const dateB = new Date(b.submittedOn || 0).getTime();
+                    if (dateA !== dateB) return dateA - dateB;
+                    return (a.id || "").localeCompare(b.id || "");
+                });
+                const idx = sorted.findIndex(o => o.id === offer.id);
+                return idx !== -1 ? idx + 1 : (rawVersion || 1);
+            }
+        }
+        return rawVersion || 1;
+    };
+
     const calculateTotalAmount = (quotations) => {
         if (!quotations) return 0;
         return quotations.reduce((acc, item) => acc + (item.amount || 0), 0);
@@ -221,7 +245,7 @@ function TenderOffers() {
     const getFileNameFromUrl = (url) => {
         if (!url) return "Unknown File";
         try {
-            return url.substring(url.lastIndexOf('/') + 1);
+            return url.split(/[/\\]/).pop() || url;
         } catch (e) {
             return url;
         }
@@ -373,7 +397,7 @@ function TenderOffers() {
                                                                 const isSelected = selectedOffer?.id === offer.id;
                                                                 const amount = calculateTotalAmount(offer.offerQuotations);
                                                                 const badgeStyle = getStatusBadgeStyle(offer.offerStatus);
-                                                                const version = offer.offerQuotations?.[0]?.offerVersion;
+                                                                const version = getOfferVersion(offer, group.offers);
 
                                                                 return (
                                                                     <div key={offer.id}
@@ -455,26 +479,42 @@ function TenderOffers() {
                                                 <Scale size={18} /> Compare
                                             </button>
 
-                                            <button className="btn d-flex align-items-center gap-2 fw-bold px-3 py-2 border-0 text-nowrap"
-                                                style={{ backgroundColor: "#EFF6FF", color: "#2563EB", borderRadius: "8px", fontSize: "14px", cursor: "pointer" }}
-                                                onClick={() => setShowNegotiateModal(true)}>
-                                                <Handshake size={18} /> Negotiate
-                                            </button>
+                                            {(() => {
+                                                const isTenderAwarded = selectedOffer.tender?.tenderStatus === "AWARD" || selectedOffer.offerStatus === "AWARDED";
+                                                return (
+                                                    <>
+                                                        <button 
+                                                            className="btn d-flex align-items-center gap-2 fw-bold px-3 py-2 border-0 text-nowrap"
+                                                            style={{ 
+                                                                backgroundColor: isTenderAwarded ? "#F3F4F6" : "#EFF6FF", 
+                                                                color: isTenderAwarded ? "#9CA3AF" : "#2563EB", 
+                                                                borderRadius: "8px", 
+                                                                fontSize: "14px", 
+                                                                cursor: isTenderAwarded ? "not-allowed" : "pointer" 
+                                                            }}
+                                                            disabled={isTenderAwarded}
+                                                            onClick={() => !isTenderAwarded && setShowNegotiateModal(true)}
+                                                        >
+                                                            <Handshake size={18} /> Negotiate
+                                                        </button>
 
-                                            <button
-                                                className="btn text-white d-flex align-items-center gap-2 fw-bold px-4 py-2 border-0 text-nowrap"
-                                                style={{
-                                                    backgroundColor: selectedOffer.tender?.tenderStatus === "AWARD" ? "#9CA3AF" : "#10B981",
-                                                    borderRadius: "8px",
-                                                    fontSize: "14px",
-                                                    cursor: (awardLoading || selectedOffer.tender?.tenderStatus === "AWARD") ? "not-allowed" : "pointer"
-                                                }}
-                                                onClick={handleAward}
-                                                disabled={awardLoading || selectedOffer.tender?.tenderStatus === "AWARD"}
-                                            >
-                                                <Gavel size={18} />
-                                                {selectedOffer.tender?.tenderStatus === "AWARD" ? "Awarded" : (awardLoading ? "Awarding..." : "Award")}
-                                            </button>
+                                                        <button
+                                                            className="btn text-white d-flex align-items-center gap-2 fw-bold px-4 py-2 border-0 text-nowrap"
+                                                            style={{
+                                                                backgroundColor: isTenderAwarded ? "#9CA3AF" : "#10B981",
+                                                                borderRadius: "8px",
+                                                                fontSize: "14px",
+                                                                cursor: (awardLoading || isTenderAwarded) ? "not-allowed" : "pointer"
+                                                            }}
+                                                            onClick={handleAward}
+                                                            disabled={awardLoading || isTenderAwarded}
+                                                        >
+                                                            <Gavel size={18} />
+                                                            {isTenderAwarded ? "Awarded" : (awardLoading ? "Awarding..." : "Award")}
+                                                        </button>
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
 
@@ -535,7 +575,14 @@ function TenderOffers() {
                                                     </div>
                                                     <div className="mb-4">
                                                         <div className="text-muted small mb-1">Offer Version</div>
-                                                        <div className="fw-bold text-dark text-break">{selectedOffer.offerQuotations?.[0]?.offerVersion || "—"}</div>
+                                                        <div className="fw-bold text-dark text-break">
+                                                            {selectedOffer ? getOfferVersion(
+                                                                selectedOffer,
+                                                                (offersMap[selectedOffer.tender?.id] || []).filter(
+                                                                    o => (o.contractor?.id || 'unknown') === (selectedOffer.contractor?.id || 'unknown')
+                                                                )
+                                                            ) : "—"}
+                                                        </div>
                                                     </div>
                                                     <div>
                                                         <div className="text-muted small mb-1">Contact Email ID</div>

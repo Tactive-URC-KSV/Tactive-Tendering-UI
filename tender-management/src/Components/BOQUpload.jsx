@@ -17,6 +17,7 @@ import CollapseIcon from '../assest/Collapse.svg?react';
 import useDebounce from '../Utills/useDebounce.js'
 import { toast } from 'react-toastify';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { useUom } from '../Context/UomContext';
 
 const autoScrollWhileDragging = (e) => {
    const padding = 100;
@@ -32,6 +33,8 @@ const autoScrollWhileDragging = (e) => {
 };
 
 const throttledAutoScroll = throttle(autoScrollWhileDragging, 50);
+
+const normalizeUomMappingKey = (value) => value.trim().replace(/[., \/]/g, '').toLowerCase();
 
 function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const navigate = useNavigate();
@@ -74,6 +77,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [sheetOption, setSheetOption] = useState([]);
    const [selectedSheet, setSelectedSheet] = useState('');
    const [columns, setColumns] = useState([]);
+   const [columnLoading, setColumnLoading] = useState(false);
    const [draggedColumn, setDraggedColumn] = useState(null);
    const [template, setTemplate] = useState({
       templateName: '',
@@ -107,6 +111,44 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [pageBreakModal, setPageBreakModal] = useState(false);
    const [emptyBoqModal, setEmptyBoqModal] = useState({ show: false, count: 0, emptySnos: [], items: [] });
    const [duplicateModal, setDuplicateModal] = useState({ show: false, duplicates: [] });
+   const [uomModal, setUomModal] = useState({ show: false, unmatched: [], mapping: {}, pendingSaveOptions: null });
+   const [activeClientUom, setActiveClientUom] = useState('');
+   const [savedUomMappings, setSavedUomMappings] = useState([]);
+
+   const contextUoms = useUom() || [];
+   const [localAddedUoms, setLocalAddedUoms] = useState([]);
+   const masterUoms = [...contextUoms, ...localAddedUoms];
+
+   const [newUomForm, setNewUomForm] = useState({ show: false, code: '', name: '', forClientUom: '' });
+
+   useEffect(() => {
+      if (!effectiveProjectId) {
+         setSavedUomMappings([]);
+         return;
+      }
+      const sessionToken = sessionStorage.getItem('token');
+      if (!sessionToken) {
+         navigate('/login');
+         return;
+      }
+      const authorization = sessionToken.startsWith('Bearer ')
+         ? sessionToken
+         : `Bearer ${sessionToken}`;
+
+      axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/uom-mappings/${effectiveProjectId}`, {
+         headers: {
+            Authorization: authorization,
+         }
+      }).then(response => {
+         setSavedUomMappings(Array.isArray(response.data) ? response.data : []);
+      }).catch(error => {
+         if (error?.response?.status === 401) {
+            navigate('/login');
+         } else {
+            toast.error(error?.response?.data?.message || 'Unable to load saved UOM mappings');
+         }
+      });
+   }, [effectiveProjectId, navigate]);
 
    const isLastLevelRow = (row) => {
       return (
@@ -156,7 +198,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          if (err?.response?.status === 401) {
             handleUnauthorized(navigate);
          }
-      })
+      });
    }, [])
    const templateOption = templateList.map(temp => ({
       value: temp.id,
@@ -231,11 +273,14 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       }).catch(err => {
          if (err?.response?.status === 401) {
             handleUnauthorized(navigate);
+         } else if (err?.response?.data?.message) {
+            toast.error(err.response.data.message);
          }
       })
    }
 
    const loadSheetColumn = (sheetValue) => {
+      setColumnLoading(true);
       const formData = new FormData();
       formData.append('file', BOQfile);
       axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/excel/getColumns/${sheetValue}`, formData, {
@@ -249,8 +294,12 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       }).catch(err => {
          if (err?.response?.status === 401) {
             handleUnauthorized(navigate);
+         } else if (err?.response?.data?.message) {
+            toast.error(err.response.data.message);
          }
-      })
+      }).finally(() => {
+         setColumnLoading(false);
+      });
    }
    const handleDragStart = (e, column) => {
       setDraggedColumn(column);
@@ -386,7 +435,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       } catch (error) {
          console.error("Error fetching Excel data:", error);
-         toast.error("Failed to load Excel data");
+         if (error?.response?.data?.message) {
+            toast.error(error.response.data.message);
+         } else {
+            toast.error("Failed to load Excel data");
+         }
       } finally {
          setLoading(false);
          setSection('levelMapping');
@@ -451,7 +504,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const saveMappedBOQ = async (options = {}) => {
       const isEvent = options && typeof options === 'object' && options.nativeEvent;
       const opts = isEvent ? {} : (typeof options === 'boolean' ? { ignoreEmpty: options } : options);
-      const { ignoreEmpty = null, duplicateHandled = false, saveAsNewList = [] } = opts;
+      const { ignoreEmpty = null, duplicateHandled = false, saveAsNewList = [], uomMapResolved = false } = opts;
 
       if (!BOQfile) {
          toast.error("Please upload a BOQ file");
@@ -482,7 +535,32 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       }
 
+      if (!uomMapResolved) {
+         const uniqueUoms = [...new Set(excelData.filter(row => row.uom && row.uom.trim() !== '').map(row => row.uom.trim()))];
+         const unmatched = [];
+         const savedUomKeys = new Set(savedUomMappings.map(mapping => normalizeUomMappingKey(mapping.clientUom || '')));
+         uniqueUoms.forEach(uomStr => {
+            const sanitized = normalizeUomMappingKey(uomStr);
+            const isMatch = masterUoms.some(m =>
+               (m.uomCode && m.uomCode.toLowerCase().replace(/[., \/]/g, '') === sanitized) ||
+               (m.uomName && m.uomName.toLowerCase().replace(/[., \/]/g, '') === sanitized)
+            );
+            if (!isMatch && !savedUomKeys.has(sanitized)) {
+               unmatched.push(uomStr);
+            }
+         });
 
+         if (unmatched.length > 0) {
+            setActiveClientUom(unmatched[0]);
+            setUomModal({
+               show: true,
+               unmatched: unmatched,
+               mapping: {},
+               pendingSaveOptions: opts
+            });
+            return;
+         }
+      }
 
       setLoading(true)
       try {
@@ -501,6 +579,10 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          formData.append("parentChildMapping", JSON.stringify(parentMap));
          formData.append("lastLevelMapping", JSON.stringify(lastLevelMap));
          formData.append("levelMapping", JSON.stringify(levelMap));
+
+         if (uomModal.mapping && Object.keys(uomModal.mapping).length > 0) {
+            formData.append("uomMapping", JSON.stringify(uomModal.mapping));
+         }
 
          let ignoredSnos = [];
          if (ignoreEmpty === true) {
@@ -527,6 +609,21 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             }
          );
          if (response.status === 200) {
+            if (Object.keys(uomModal.mapping).length > 0) {
+               setSavedUomMappings(previousMappings => {
+                  const mappingsByClientUom = new Map(
+                     previousMappings.map(mapping => [normalizeUomMappingKey(mapping.clientUom || ''), mapping])
+                  );
+                  Object.entries(uomModal.mapping).forEach(([clientUom, masterUomCode]) => {
+                     mappingsByClientUom.set(normalizeUomMappingKey(clientUom), {
+                        projectId: effectiveProjectId,
+                        clientUom,
+                        masterUomCode
+                     });
+                  });
+                  return [...mappingsByClientUom.values()].sort((a, b) => a.clientUom.localeCompare(b.clientUom));
+               });
+            }
             toast.success("BOQ mapping saved successfully!");
             if (isExternalAccess) {
                window.parent.postMessage(
@@ -554,7 +651,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                setSelectedRow(new Set());
                setSection('columnMapping');
                setSearchTerm('');
-               toast.success("BOQ Data imported Successfully");
                return;
             }
             if (sheetOption.length === 1) {
@@ -565,7 +661,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             setSheetOption(prev =>
                prev.filter(option => option.value !== selectedSheet)
             );
-            plate();
             setExcelData([]);
             setLastLevelMap({});
             setParentMap({});
@@ -573,7 +668,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             setSelectedRow(new Set());
             setSection('columnMapping');
             setSearchTerm('');
-            toast.success("BOQ Data imported Successfully");
             if (fileType === 'pdf') {
                setSelectedSheet(null);
                setColumns([]);
@@ -593,10 +687,14 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       }
       catch (error) {
          if (error.response && error.response.status === 409) {
-             setDuplicateModal({ show: true, duplicates: error.response.data });
-             return;
+            setDuplicateModal({ show: true, duplicates: error.response.data });
+            return;
          }
-         // toast.error("Error saving BOQ mapping");
+         if (error?.response?.data?.message) {
+            toast.error(error.response.data.message);
+         } else {
+            toast.error("Error saving BOQ mapping");
+         }
          if (isExternalAccess) {
             window.parent.postMessage(
                {
@@ -1091,18 +1189,18 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                            </div>
                         </div>
                         <div className='col-lg-8 col-md-7 col-sm-12 d-flex justify-content-end align-items-end pt-4'>
-                           {excelData.length > 0 && (excelData.every(row => row.lastLevel) || excelData.every(row => !row.lastLevel)) && (
+                           {excelData.length > 0 && (!BOQfile || !BOQfile.name.toLowerCase().endsWith('.pdf')) && (excelData.every(row => row.lastLevel) || excelData.every(row => !row.lastLevel)) && (
                               <div className="form-check d-flex align-items-center me-3 mb-2">
-                              <input
-                                 type="checkbox"
-                                 className="form-check-input me-2 mt-0"
-                                 id="autoIncrease"
-                                 checked={autoIncreaseLevel}
-                                 onChange={(e) => setAutoIncreaseLevel(e.target.checked)}
-                                 style={{ cursor: 'pointer' }}
-                              />
-                              <label className="form-check-label text-nowrap" htmlFor="autoIncrease" style={{ fontSize: '13px', cursor: 'pointer', color: '#005197', fontWeight: '500' }}>Auto-increase levels</label>
-                           </div>
+                                 <input
+                                    type="checkbox"
+                                    className="form-check-input me-2 mt-0"
+                                    id="autoIncrease"
+                                    checked={autoIncreaseLevel}
+                                    onChange={(e) => setAutoIncreaseLevel(e.target.checked)}
+                                    style={{ cursor: 'pointer' }}
+                                 />
+                                 <label className="form-check-label text-nowrap" htmlFor="autoIncrease" style={{ fontSize: '13px', cursor: 'pointer', color: '#005197', fontWeight: '500' }}>Auto-increase levels</label>
+                              </div>
                            )}
                            <button className='btn cancel rounded-2 p-2 me-2' style={{ fontSize: '13px' }} onClick={expandAll}>
                               <ExpandIcon width={20} height={20} /><span className='ms-1'>Expand All</span>
@@ -1273,7 +1371,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                   <div className='col-lg-6 col-md-6 col-sm-12'>
                      <ColumnIcon /><span className='fw-bold fs-6 ms-2'>Excel Fields</span>
                      <div className='mt-1 rounded-3 p-2'>
-                        {(Array.isArray(columns) ? columns : [])
+                        {columnLoading ? (
+                           [...Array(5)].map((_, index) => (
+                              <div key={index} className="excel-column-container me-2 p-3 rounded-3 mt-3 mb-3 skeleton-loader" style={{ height: '54px', border: 'none' }}></div>
+                           ))
+                        ) : (Array.isArray(columns) ? columns : [])
                            .filter(col => !internalFields.some(f => Array.isArray(f.mappingFields) && f.mappingFields.includes(col)))
                            .map((col, index) => (
                               <div className={`excel-column-container me-2 p-3 rounded-3 mt-3 mb-3 d-flex justify-content-between align-items-center`} key={index} draggable={true}
@@ -1378,7 +1480,18 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                </div>
             )}
             <div className='d-flex justify-content-end mt-4'>
-               <button className='btn action-button mt-2 fs-6' onClick={() => setPageBreakModal(true)}><ArrowRight size={18} /> <span className='ms-1'>Next</span></button>
+               <button
+                  className='btn action-button mt-2 fs-6'
+                  onClick={() => setPageBreakModal(true)}
+                  disabled={loading}
+               >
+                  {loading ? (
+                     <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  ) : (
+                     <ArrowRight size={18} />
+                  )}
+                  <span className='ms-1'>{loading ? 'Loading...' : 'Next'}</span>
+               </button>
             </div>
          </div>
       )
@@ -1676,7 +1789,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                               // Save as New
                               const saveAsNewList = duplicateModal.duplicates.map(d => d.sno);
                               setDuplicateModal({ show: false, duplicates: [] });
-                              saveMappedBOQ({ duplicateHandled: true, saveAsNewList });
+                              saveMappedBOQ({ duplicateHandled: true, saveAsNewList, uomMapResolved: true });
                            }}
                         >
                            Save as New
@@ -1687,10 +1800,161 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                            onClick={() => {
                               // Overwrite
                               setDuplicateModal({ show: false, duplicates: [] });
-                              saveMappedBOQ({ duplicateHandled: true, saveAsNewList: [] });
+                              saveMappedBOQ({ duplicateHandled: true, saveAsNewList: [], uomMapResolved: true });
                            }}
                         >
                            Overwrite
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
+
+         {uomModal.show && (
+            <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+               <div className="modal-dialog modal-dialog-centered modal-lg">
+                  <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
+                     <div className="modal-header border-0 pb-0">
+                        <h5 className="modal-title fw-bold" style={{ color: '#005197' }}>UOM Mapping Required</h5>
+                        <button
+                           className="btn btn-sm action-button position-absolute" style={{ right: '50px' }}
+                           title={`Add a master UOM for ${activeClientUom || uomModal.unmatched[0] || 'the selected client UOM'}`}
+                           onClick={() => setNewUomForm({
+                              show: true,
+                              code: '',
+                              name: '',
+                              forClientUom: uomModal.unmatched.includes(activeClientUom) ? activeClientUom : (uomModal.unmatched[0] || '')
+                           })}
+                        >
+                           + Add New
+                        </button>
+                        <button type="button" className="btn-close" onClick={() => setUomModal({ show: false, unmatched: [], mapping: {}, pendingSaveOptions: null })}></button>
+                     </div>
+                     <div className="modal-body py-4">
+                        <p className="mb-2 text-muted" style={{ fontSize: '15px' }}>
+                           The following UOMs from the uploaded file were not found in the Master UOM list. Please map them or add them as new Master UOMs.
+                        </p>
+                        <div className="table-responsive" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                           <table className="table table-bordered table-sm text-center align-middle">
+                              <thead className="table-light sticky-top">
+                                 <tr>
+                                    <th style={{ width: '30%' }}>Client UOM (from file)</th>
+                                    <th style={{ width: '40%' }}>Master UOM Mapping</th>
+                                    <th style={{ width: '30%' }}>Action</th>
+                                 </tr>
+                              </thead>
+                              <tbody>
+                                 {uomModal.unmatched.map((unmatchedUom, idx) => (
+                                    <tr key={idx}>
+                                       <td className="fw-bold">{unmatchedUom}</td>
+                                       <td>
+                                          <Select
+                                             options={masterUoms.map(m => ({ value: m.uomCode, label: `${m.uomCode} - ${m.uomName}` }))}
+                                             value={uomModal.mapping[unmatchedUom] ? { value: uomModal.mapping[unmatchedUom], label: masterUoms.find(m => m.uomCode === uomModal.mapping[unmatchedUom])?.uomCode + ' - ' + masterUoms.find(m => m.uomCode === uomModal.mapping[unmatchedUom])?.uomName } : null}
+                                             onFocus={() => setActiveClientUom(unmatchedUom)}
+                                             onChange={(selected) => setUomModal(prev => ({
+                                                ...prev,
+                                                mapping: selected
+                                                   ? { ...prev.mapping, [unmatchedUom]: selected.value }
+                                                   : Object.fromEntries(Object.entries(prev.mapping).filter(([clientUom]) => clientUom !== unmatchedUom))
+                                             }))}
+                                             placeholder="Select Master UOM..."
+                                             menuPortalTarget={document.body}
+                                             styles={{ menuPortal: base => ({ ...base, zIndex: 9999 }) }}
+                                          />
+                                       </td>
+                                       {/* <td>
+                                          <button className="btn btn-sm action-button" onClick={() => setNewUomForm({ show: true, code: '', name: '', forClientUom: unmatchedUom })}>
+                                             + Add New
+                                          </button>
+                                       </td> */}
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     </div>
+                     <div className="modal-footer border-0 pt-0">
+                        <button
+                           type="button"
+                           className="btn cancel-button px-4"
+                           onClick={() => setUomModal({ show: false, unmatched: [], mapping: {}, pendingSaveOptions: null })}
+                        >
+                           Cancel
+                        </button>
+                        <button
+                           type="button"
+                           className="btn action-button px-4"
+                           disabled={uomModal.unmatched.length !== Object.keys(uomModal.mapping).length}
+                           onClick={() => {
+                              const pending = uomModal.pendingSaveOptions;
+                              setUomModal(prev => ({ ...prev, show: false }));
+                              saveMappedBOQ({ ...pending, uomMapResolved: true });
+                           }}
+                        >
+                           Confirm Mapping & Import
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
+
+         {newUomForm.show && (
+            <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1070 }}>
+               <div className="modal-dialog modal-dialog-centered modal-sm">
+                  <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
+                     <div className="modal-header border-0 pb-0">
+                        <h6 className="modal-title fw-bold" style={{ color: '#005197' }}>Add New UOM</h6>
+                        <button type="button" className="btn-close" onClick={() => setNewUomForm({ show: false, code: '', name: '', forClientUom: '' })}></button>
+                     </div>
+                     <div className="modal-body py-3">
+                        <div className="mb-2">
+                           <label className="form-label" style={{ fontSize: '13px' }}>UOM Code <span className="text-danger">*</span></label>
+                           <input type="text" className="form-control form-control-sm" value={newUomForm.code} onChange={(e) => setNewUomForm(prev => ({ ...prev, code: e.target.value }))} />
+                        </div>
+                        <div className="mb-2">
+                           <label className="form-label" style={{ fontSize: '13px' }}>UOM Name <span className="text-danger">*</span></label>
+                           <input type="text" className="form-control form-control-sm" value={newUomForm.name} onChange={(e) => setNewUomForm(prev => ({ ...prev, name: e.target.value }))} />
+                        </div>
+                     </div>
+                     <div className="modal-footer border-0 pt-0">
+                        <button
+                           type="button"
+                           className="btn cancel-button btn-sm px-3"
+                           onClick={() => setNewUomForm({ show: false, code: '', name: '', forClientUom: '' })}
+                        >
+                           Cancel
+                        </button>
+                        <button
+                           type="button"
+                           className="btn action-button btn-sm px-3"
+                           onClick={async () => {
+                              if (!newUomForm.code.trim() || !newUomForm.name.trim()) {
+                                 toast.error("Code and Name are required");
+                                 return;
+                              }
+                              try {
+                                 const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/addUom`, {
+                                    uomCode: newUomForm.code,
+                                    uomName: newUomForm.name
+                                 }, {
+                                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                                 });
+                                 if (res.status === 200) {
+                                    toast.success("UOM added successfully");
+                                    const newUomObj = { uomCode: newUomForm.code, uomName: newUomForm.name };
+                                    setLocalAddedUoms(prev => [...prev, newUomObj]);
+                                    setUomModal(prev => ({ ...prev, mapping: { ...prev.mapping, [newUomForm.forClientUom]: newUomForm.code } }));
+                                    setNewUomForm({ show: false, code: '', name: '', forClientUom: '' });
+                                 }
+                              } catch (err) {
+                                 toast.error(typeof err.response?.data === 'string' ? err.response?.data : (err.response?.data?.message || "Error adding UOM"));
+                              }
+                           }}
+                        >
+                           Add
                         </button>
                      </div>
                   </div>

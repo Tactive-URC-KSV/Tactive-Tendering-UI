@@ -49,7 +49,9 @@ function ProjectCreation() {
     useEffect(() => {
         if (projectId) {
             // Enable document tab if feasibility is approved OR if feasibility study is not needed
-            if (project.needFeasibility === false || feasbilityStudy.feasibilityApproved) {
+            if (project.needFeasibility === false) {
+                setEnabledTabs(["info", "document"]);
+            } else if (feasbilityStudy.feasibilityApproved) {
                 setEnabledTabs(["info", "feasibility", "document"]);
             } else {
                 setEnabledTabs(["info", "feasibility"]);
@@ -63,6 +65,9 @@ function ProjectCreation() {
         const hash = window.location.hash.substring(1);
         if (hash && enabledTabs.includes(hash)) {
             setActiveTab(hash);
+        } else if (enabledTabs.length > 0 && !enabledTabs.includes(activeTab)) {
+            // Fallback to a valid tab if the current activeTab is no longer enabled
+            setActiveTab(enabledTabs[0]);
         }
     }, [enabledTabs]);
 
@@ -301,7 +306,7 @@ function ProjectCreation() {
             // Navigate using currentProjectId
             if (currentProjectId) {
                 const timer = setTimeout(() => {
-                    navigate(`/projectmanagement/project/${currentProjectId}#feasibility`);
+                    navigate(`/projectmanagement/project/${currentProjectId}#${needFeasibility ? 'feasibility' : 'document'}`);
                 }, 1000);
                 return () => clearTimeout(timer); // Cleanup timeout
             } else {
@@ -328,50 +333,61 @@ function ProjectCreation() {
                 </div>
             </div>
             <div className="row g-0 mb-4 ms-2 me-2 bg-white rounded shadow-sm overflow-hidden">
-                <div className="col-lg-4 col-md-4 text-center px-0">
-                    <button
-                        className={`btn w-100 h-100 p-2 d-flex align-items-center justify-content-center fw-bold rounded-0`}
-                        style={{
-                            backgroundColor: activeTab === "info" ? "#005197" : "transparent",
-                            color: activeTab === "info" ? "white" : "#6c757d",
-                            border: "none",
-                            margin: "0",
-                        }}
-                        onClick={() => handleTabs("info")}
-                    >
-                        <FaInfoCircle className="me-2" /> Project Info
-                    </button>
-                </div>
-                <div className="col-lg-4 col-md-4 text-center px-0">
-                    <button
-                        className={`btn w-100 h-100 p-2 d-flex align-items-center justify-content-center fw-bold rounded-0`}
-                        style={{
-                            backgroundColor: activeTab === "feasibility" ? "#005197" : "transparent",
-                            color: activeTab === "feasibility" ? "white" : "#6c757d",
-                            border: "none",
-                            margin: "0",
-                        }}
-                        onClick={() => handleTabs("feasibility")}
-                        disabled={!enabledTabs.includes("feasibility")}
-                    >
-                        <FaCheckCircle className="me-2" /> Feasibility Study
-                    </button>
-                </div>
-                <div className="col-lg-4 col-md-4 text-center px-0">
-                    <button
-                        className={`btn w-100 h-100 p-2 d-flex align-items-center justify-content-center fw-bold rounded-0`}
-                        style={{
-                            backgroundColor: activeTab === "document" ? "#005197" : "transparent",
-                            color: activeTab === "document" ? "white" : "#6c757d",
-                            border: "none",
-                            margin: "0",
-                        }}
-                        onClick={() => handleTabs("document")}
-                        disabled={!enabledTabs.includes("document")}
-                    >
-                        <FaFileAlt className="me-2" /> Documentation
-                    </button>
-                </div>
+                {(() => {
+                    const tabColClass = project.needFeasibility === false ? "col-lg-6 col-md-6" : "col-lg-4 col-md-4";
+                    return (
+                        <>
+                            <div className={`${tabColClass} text-center px-0`}>
+                                <button
+                                    className={`btn w-100 h-100 p-2 d-flex align-items-center justify-content-center fw-bold rounded-0`}
+                                    style={{
+                                        backgroundColor: activeTab === "info" ? "#005197" : "transparent",
+                                        color: activeTab === "info" ? "white" : "#6c757d",
+                                        border: "none",
+                                        margin: "0",
+                                    }}
+                                    onClick={() => handleTabs("info")}
+                                >
+                                    <FaInfoCircle className="me-2" /> Project Info
+                                </button>
+                            </div>
+                            
+                            {project.needFeasibility !== false && (
+                                <div className={`${tabColClass} text-center px-0`}>
+                                    <button
+                                        className={`btn w-100 h-100 p-2 d-flex align-items-center justify-content-center fw-bold rounded-0`}
+                                        style={{
+                                            backgroundColor: activeTab === "feasibility" ? "#005197" : "transparent",
+                                            color: activeTab === "feasibility" ? "white" : "#6c757d",
+                                            border: "none",
+                                            margin: "0",
+                                        }}
+                                        onClick={() => handleTabs("feasibility")}
+                                        disabled={!enabledTabs.includes("feasibility")}
+                                    >
+                                        <FaCheckCircle className="me-2" /> Feasibility Study
+                                    </button>
+                                </div>
+                            )}
+                            
+                            <div className={`${tabColClass} text-center px-0`}>
+                                <button
+                                    className={`btn w-100 h-100 p-2 d-flex align-items-center justify-content-center fw-bold rounded-0`}
+                                    style={{
+                                        backgroundColor: activeTab === "document" ? "#005197" : "transparent",
+                                        color: activeTab === "document" ? "white" : "#6c757d",
+                                        border: "none",
+                                        margin: "0",
+                                    }}
+                                    onClick={() => handleTabs("document")}
+                                    disabled={!enabledTabs.includes("document")}
+                                >
+                                    <FaFileAlt className="me-2" /> Documentation
+                                </button>
+                            </div>
+                        </>
+                    );
+                })()}
             </div>
             <div className="tab-content ms-2 me-2">
                 {activeTab === "info" && (

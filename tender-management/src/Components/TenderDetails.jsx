@@ -134,7 +134,7 @@ function TenderDetails() {
                 hydrated.push(item);
             } else if (item.level > 0) {
                 searchPromises.push(
-                    axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/searchProjectBoq/${projectId}?boqName=${encodeURIComponent(item.boqCode || item.boqName)}`, {
+                    axios.get(`${import.meta.env.VITE_API_BASE_URL}/searchBoq/${projectId}?searchQuery=${encodeURIComponent(item.boqCode || item.boqName)}`, {
                         headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
                     }).then(res => {
                         if (res.status === 200 && res.data) {
@@ -169,6 +169,14 @@ function TenderDetails() {
   const formatDate = (dateString) => {
     if (!dateString) return "-";
     return new Date(dateString).toLocaleDateString();
+  };
+
+  const formatTime = (timeString) => {
+    if (!timeString) return "";
+    if (typeof timeString === 'string' && timeString.length >= 5) {
+      return timeString.substring(0, 5);
+    }
+    return timeString;
   };
 
   const DetailItem = ({ label, value }) => (
@@ -326,7 +334,7 @@ function TenderDetails() {
   const getFileNameFromUrl = (url) => {
     if (!url) return "Unknown File";
     try {
-        return url.substring(url.lastIndexOf('/') + 1);
+        return url.split(/[/\\]/).pop() || url;
     } catch (e) {
         return url;
     }
@@ -531,13 +539,15 @@ function TenderDetails() {
                           <div className="col-12 mb-4">
                             <p className="text-start text-muted mb-1" style={{ fontSize: '0.75rem' }}>Pre-Bid Meeting Date</p>
                             <div className="text-start border-bottom fw-bold pb-2" style={{ fontSize: '14px' }}>
-                              {`${formatDate(selectedTenderData.preBiddingDate)} - `}
+                              {selectedTenderData.preBiddingDate ? `${formatDate(selectedTenderData.preBiddingDate)} ${formatTime(selectedTenderData.preBiddingTime)}` : '-'}
                             </div>
                           </div>
                           <div className="col-12 mb-4">
                             <p className="text-start text-muted mb-1" style={{ fontSize: '0.75rem' }}>Site Inspection Date</p>
                             <div className="text-start border-bottom fw-bold pb-2" style={{ fontSize: '14px' }}>
-                              {`${formatDate(selectedTenderData.siteInvestigationDate)} - `}
+                              {selectedTenderData.siteInvestigationFromDate 
+                                ? `${formatDate(selectedTenderData.siteInvestigationFromDate)} ${formatTime(selectedTenderData.siteInvestigationFromTime)} to ${formatDate(selectedTenderData.siteInvestigationToDate)} ${formatTime(selectedTenderData.siteInvestigationToTime)}`
+                                : '-'}
                             </div>
                           </div>
                         </div>

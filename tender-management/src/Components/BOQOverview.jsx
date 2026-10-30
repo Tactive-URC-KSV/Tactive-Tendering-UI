@@ -1089,7 +1089,8 @@ function BOQOverview({ projectId }) {
                             <span className="text-danger fw-bold bg-white px-1 rounded border border-danger">Missing Name</span> : boqNameDisplay}
                         {hierarchyUpdates[boq.id] && <span className="badge bg-warning ms-2">Moved</span>}
                     </td>
-                    <td className="px-2">{boq?.uom?.uomCode || boq.uomCode || '-'}</td>
+                    <td className="px-2">{boq?.uom?.uomCode || '-'}</td>
+                    <td className="px-2 text-muted">{boq.uomCode || '-'}</td>
                     <td className="px-2">{boq.quantity?.toFixed(3) || 0}</td>
                     <td className="px-2">{boq.pageNo || '-'}</td>
                     <td className="px-2">
@@ -1220,7 +1221,8 @@ function BOQOverview({ projectId }) {
                                                         </th>
                                                         <th className="px-2">BOQ Code</th>
                                                         <th className="px-2">BOQ Name</th>
-                                                        <th className="px-2">UOM</th>
+                                                        <th className="px-2">Master UOM</th>
+                                                        <th className="px-2">Client UOM</th>
                                                         <th className="px-2">Quantity</th>
                                                         <th className="px-2">Page No</th>
                                                         <th className="px-2">Actions</th>
@@ -1584,7 +1586,8 @@ function BOQOverview({ projectId }) {
                                                         </th>
                                                         <th className="px-2">BOQ Code</th>
                                                         <th className="px-2">BOQ Name</th>
-                                                        <th className="px-2">UOM</th>
+                                                        <th className="px-2">Master UOM</th>
+                                                        <th className="px-2">Client UOM</th>
                                                         <th className="px-2">Quantity</th>
                                                         <th className="px-2">Page No</th>
                                                         {isHierarchyMode && <th className="px-2">Move</th>}

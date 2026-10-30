@@ -53,7 +53,7 @@ function MasterDataController({ children }) {
     // { label: "Approval Documents", path: "approvals" },
     { label: "Attributes", path: "attributes" },
     { label: "Resources", path: "resources" },
-    { label: "Cost Code Activity", path: "costcodeactivity" },
+    // { label: "Cost Code Activity", path: "costcodeactivity" },
 
   ];
   const renderSection = (key, title, data) => (
