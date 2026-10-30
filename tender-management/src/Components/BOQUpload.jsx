@@ -122,7 +122,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [newUomForm, setNewUomForm] = useState({ show: false, code: '', name: '', forClientUom: '' });
 
    useEffect(() => {
-      if (!effectiveProjectId) {
+      if (!isExternalAccess || !effectiveProjectId) {
          setSavedUomMappings([]);
          return;
       }
@@ -535,7 +535,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       }
 
-      if (!uomMapResolved) {
+      if (isExternalAccess && !uomMapResolved) {
          const uniqueUoms = [...new Set(excelData.filter(row => row.uom && row.uom.trim() !== '').map(row => row.uom.trim()))];
          const unmatched = [];
          const savedUomKeys = new Set(savedUomMappings.map(mapping => normalizeUomMappingKey(mapping.clientUom || '')));
@@ -580,7 +580,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          formData.append("lastLevelMapping", JSON.stringify(lastLevelMap));
          formData.append("levelMapping", JSON.stringify(levelMap));
 
-         if (uomModal.mapping && Object.keys(uomModal.mapping).length > 0) {
+         if (isExternalAccess && uomModal.mapping && Object.keys(uomModal.mapping).length > 0) {
             formData.append("uomMapping", JSON.stringify(uomModal.mapping));
          }
 
@@ -1811,7 +1811,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             </div>
          )}
 
-         {uomModal.show && (
+         {isExternalAccess && uomModal.show && (
             <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
                <div className="modal-dialog modal-dialog-centered modal-lg">
                   <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
@@ -1895,7 +1895,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             </div>
          )}
 
-         {newUomForm.show && (
+         {isExternalAccess && newUomForm.show && (
             <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1070 }}>
                <div className="modal-dialog modal-dialog-centered modal-sm">
                   <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
