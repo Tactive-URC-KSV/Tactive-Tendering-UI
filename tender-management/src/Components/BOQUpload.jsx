@@ -1839,9 +1839,8 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                            <table className="table table-bordered table-sm text-center align-middle">
                               <thead className="table-light sticky-top">
                                  <tr>
-                                    <th style={{ width: '30%' }}>Client UOM (from file)</th>
-                                    <th style={{ width: '40%' }}>Master UOM Mapping</th>
-                                    <th style={{ width: '30%' }}>Action</th>
+                                    <th style={{ width: '40%' }}>Client UOM (from file)</th>
+                                    <th style={{ width: '60%' }}>Master UOM Mapping</th>
                                  </tr>
                               </thead>
                               <tbody>
@@ -1864,11 +1863,6 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                              styles={{ menuPortal: base => ({ ...base, zIndex: 9999 }) }}
                                           />
                                        </td>
-                                       {/* <td>
-                                          <button className="btn btn-sm action-button" onClick={() => setNewUomForm({ show: true, code: '', name: '', forClientUom: unmatchedUom })}>
-                                             + Add New
-                                          </button>
-                                       </td> */}
                                     </tr>
                                  ))}
                               </tbody>
