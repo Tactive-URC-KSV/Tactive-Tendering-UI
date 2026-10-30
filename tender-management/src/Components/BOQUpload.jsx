@@ -34,6 +34,8 @@ const autoScrollWhileDragging = (e) => {
 
 const throttledAutoScroll = throttle(autoScrollWhileDragging, 50);
 
+const normalizeUomMappingKey = (value) => value.trim().replace(/[., \/]/g, '').toLowerCase();
+
 function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const navigate = useNavigate();
    const location = useLocation();
@@ -110,12 +112,43 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [emptyBoqModal, setEmptyBoqModal] = useState({ show: false, count: 0, emptySnos: [], items: [] });
    const [duplicateModal, setDuplicateModal] = useState({ show: false, duplicates: [] });
    const [uomModal, setUomModal] = useState({ show: false, unmatched: [], mapping: {}, pendingSaveOptions: null });
+   const [activeClientUom, setActiveClientUom] = useState('');
+   const [savedUomMappings, setSavedUomMappings] = useState([]);
 
    const contextUoms = useUom() || [];
    const [localAddedUoms, setLocalAddedUoms] = useState([]);
    const masterUoms = [...contextUoms, ...localAddedUoms];
 
    const [newUomForm, setNewUomForm] = useState({ show: false, code: '', name: '', forClientUom: '' });
+
+   useEffect(() => {
+      if (!effectiveProjectId) {
+         setSavedUomMappings([]);
+         return;
+      }
+      const sessionToken = sessionStorage.getItem('token');
+      if (!sessionToken) {
+         navigate('/login');
+         return;
+      }
+      const authorization = sessionToken.startsWith('Bearer ')
+         ? sessionToken
+         : `Bearer ${sessionToken}`;
+
+      axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/uom-mappings/${effectiveProjectId}`, {
+         headers: {
+            Authorization: authorization,
+         }
+      }).then(response => {
+         setSavedUomMappings(Array.isArray(response.data) ? response.data : []);
+      }).catch(error => {
+         if (error?.response?.status === 401) {
+            navigate('/login');
+         } else {
+            toast.error(error?.response?.data?.message || 'Unable to load saved UOM mappings');
+         }
+      });
+   }, [effectiveProjectId, navigate]);
 
    const isLastLevelRow = (row) => {
       return (
@@ -505,18 +538,20 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       if (!uomMapResolved) {
          const uniqueUoms = [...new Set(excelData.filter(row => row.uom && row.uom.trim() !== '').map(row => row.uom.trim()))];
          const unmatched = [];
+         const savedUomKeys = new Set(savedUomMappings.map(mapping => normalizeUomMappingKey(mapping.clientUom || '')));
          uniqueUoms.forEach(uomStr => {
-            const sanitized = uomStr.toLowerCase().replace(/[., \/]/g, '');
+            const sanitized = normalizeUomMappingKey(uomStr);
             const isMatch = masterUoms.some(m =>
                (m.uomCode && m.uomCode.toLowerCase().replace(/[., \/]/g, '') === sanitized) ||
                (m.uomName && m.uomName.toLowerCase().replace(/[., \/]/g, '') === sanitized)
             );
-            if (!isMatch) {
+            if (!isMatch && !savedUomKeys.has(sanitized)) {
                unmatched.push(uomStr);
             }
          });
 
          if (unmatched.length > 0) {
+            setActiveClientUom(unmatched[0]);
             setUomModal({
                show: true,
                unmatched: unmatched,
@@ -574,6 +609,21 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             }
          );
          if (response.status === 200) {
+            if (Object.keys(uomModal.mapping).length > 0) {
+               setSavedUomMappings(previousMappings => {
+                  const mappingsByClientUom = new Map(
+                     previousMappings.map(mapping => [normalizeUomMappingKey(mapping.clientUom || ''), mapping])
+                  );
+                  Object.entries(uomModal.mapping).forEach(([clientUom, masterUomCode]) => {
+                     mappingsByClientUom.set(normalizeUomMappingKey(clientUom), {
+                        projectId: effectiveProjectId,
+                        clientUom,
+                        masterUomCode
+                     });
+                  });
+                  return [...mappingsByClientUom.values()].sort((a, b) => a.clientUom.localeCompare(b.clientUom));
+               });
+            }
             toast.success("BOQ mapping saved successfully!");
             if (isExternalAccess) {
                window.parent.postMessage(
@@ -1767,6 +1817,18 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                   <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
                      <div className="modal-header border-0 pb-0">
                         <h5 className="modal-title fw-bold" style={{ color: '#005197' }}>UOM Mapping Required</h5>
+                        <button
+                           className="btn btn-sm action-button position-absolute" style={{ right: '50px' }}
+                           title={`Add a master UOM for ${activeClientUom || uomModal.unmatched[0] || 'the selected client UOM'}`}
+                           onClick={() => setNewUomForm({
+                              show: true,
+                              code: '',
+                              name: '',
+                              forClientUom: uomModal.unmatched.includes(activeClientUom) ? activeClientUom : (uomModal.unmatched[0] || '')
+                           })}
+                        >
+                           + Add New
+                        </button>
                         <button type="button" className="btn-close" onClick={() => setUomModal({ show: false, unmatched: [], mapping: {}, pendingSaveOptions: null })}></button>
                      </div>
                      <div className="modal-body py-4">
@@ -1790,17 +1852,23 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                           <Select
                                              options={masterUoms.map(m => ({ value: m.uomCode, label: `${m.uomCode} - ${m.uomName}` }))}
                                              value={uomModal.mapping[unmatchedUom] ? { value: uomModal.mapping[unmatchedUom], label: masterUoms.find(m => m.uomCode === uomModal.mapping[unmatchedUom])?.uomCode + ' - ' + masterUoms.find(m => m.uomCode === uomModal.mapping[unmatchedUom])?.uomName } : null}
-                                             onChange={(selected) => setUomModal(prev => ({ ...prev, mapping: { ...prev.mapping, [unmatchedUom]: selected.value } }))}
+                                             onFocus={() => setActiveClientUom(unmatchedUom)}
+                                             onChange={(selected) => setUomModal(prev => ({
+                                                ...prev,
+                                                mapping: selected
+                                                   ? { ...prev.mapping, [unmatchedUom]: selected.value }
+                                                   : Object.fromEntries(Object.entries(prev.mapping).filter(([clientUom]) => clientUom !== unmatchedUom))
+                                             }))}
                                              placeholder="Select Master UOM..."
                                              menuPortalTarget={document.body}
                                              styles={{ menuPortal: base => ({ ...base, zIndex: 9999 }) }}
                                           />
                                        </td>
-                                       <td>
+                                       {/* <td>
                                           <button className="btn btn-sm action-button" onClick={() => setNewUomForm({ show: true, code: '', name: '', forClientUom: unmatchedUom })}>
                                              + Add New
                                           </button>
-                                       </td>
+                                       </td> */}
                                     </tr>
                                  ))}
                               </tbody>
@@ -1868,7 +1936,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                  return;
                               }
                               try {
-                                 const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/tactive/addUom`, {
+                                 const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/addUom`, {
                                     uomCode: newUomForm.code,
                                     uomName: newUomForm.name
                                  }, {
