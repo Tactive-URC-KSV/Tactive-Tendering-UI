@@ -120,7 +120,14 @@ function App() {
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path="/external/boq-overview/:projectId/:token" element={<ExternalBOQOverview />} />
-          <Route path="/external/boq-upload/:projectId/:token" element={<ExternalBOQUpload />} />
+          <Route
+            path="/external/boq-upload/:projectId/:token"
+            element={
+              <UomProvider>
+                <ExternalBOQUpload />
+              </UomProvider>
+            }
+          />
           <Route path='/*' element={
             <ProtectedRoute roles={["ADMIN", "USER"]}>
               <RegionsProvider>
@@ -238,7 +245,6 @@ function App() {
 }
 
 export default App;
-
 
 
 

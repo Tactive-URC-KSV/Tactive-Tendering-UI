@@ -1081,8 +1081,7 @@ function BOQOverview({ projectId }) {
                         />
                     </td>
                     <td className="px-2">
-                        {(!boq.boqCode || !String(boq.boqCode).trim()) ?
-                            <span className="text-danger fw-bold bg-white px-1 rounded border border-danger">Missing</span> : boq.boqCode}
+                        {boq.boqCode && String(boq.boqCode).trim() ? boq.boqCode : null}
                     </td>
                     <td className="px-2" title="Click to view full BOQ Name" onClick={(e) => { e.stopPropagation(); setSelectedBoqForModal(boq); }} style={{ cursor: 'pointer' }}>
                         {(!boq.boqName || !String(boq.boqName).trim()) ?

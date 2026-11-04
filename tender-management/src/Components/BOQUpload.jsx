@@ -76,6 +76,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [BOQfile, setBOQfile] = useState(null);
    const [sheetOption, setSheetOption] = useState([]);
    const [selectedSheet, setSelectedSheet] = useState('');
+   const [selectedEndPage, setSelectedEndPage] = useState('');
    const [columns, setColumns] = useState([]);
    const [columnLoading, setColumnLoading] = useState(false);
    const [draggedColumn, setDraggedColumn] = useState(null);
@@ -148,9 +149,12 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             toast.error(error?.response?.data?.message || 'Unable to load saved UOM mappings');
          }
       });
-   }, [effectiveProjectId, navigate]);
+   }, [effectiveProjectId, navigate, isExternalAccess]);
 
    const isLastLevelRow = (row) => {
+      if (fileType === 'pdf') {
+         return true;
+      }
       return (
          row.lastLevel ||
          row.uom ||
@@ -222,6 +226,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          fileInputRef.current.value = '';
       }
       setSelectedSheet(null);
+      setSelectedEndPage(null);
       setColumns([]);
       setDraggedColumn(null);
       setSelectedTemplate(null);
@@ -243,6 +248,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const getExcelSheets = (event) => {
       const file = event.target.files[0];
       setBOQfile(file);
+      setSelectedSheet('');
+      setSelectedEndPage('');
+      setColumns([]);
 
       const fileName = file.name;
       const ext = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
@@ -261,6 +269,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             switch (ext) {
                case 'pdf':
                   setSheetOption(response.map(name => ({ label: `Page ${name}`, value: name })));
+                  setSelectedEndPage(response[response.length - 1] ?? '');
                   break;
                case 'xlsx':
                case 'xls':
@@ -279,17 +288,20 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       })
    }
 
-   const loadSheetColumn = (sheetValue) => {
+   const loadSheetColumn = (sheetValue, endPageValue = selectedEndPage) => {
       setColumnLoading(true);
       const formData = new FormData();
       formData.append('file', BOQfile);
-      axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/excel/getColumns/${sheetValue}`, formData, {
+      const endPageQuery = fileType === 'pdf' && endPageValue
+         ? `?endPage=${encodeURIComponent(endPageValue)}`
+         : '';
+      axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/excel/getColumns/${sheetValue}${endPageQuery}`, formData, {
          headers: {
             Authorization: `Bearer ${sessionStorage.getItem('token')}`,
          }
       }).then(res => {
          if (res.status === 200) {
-            setColumns(Array.isArray(res.data) ? res.data : []);
+            setColumns(Array.isArray(res.data) ? res.data.filter(column => column?.trim()) : []);
          }
       }).catch(err => {
          if (err?.response?.status === 401) {
@@ -325,8 +337,8 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       }, 0);
    };
    const loadTemplate = (templateId) => {
-      if (columns.length === 0 && fileType !== 'pdf' && !selectedSheet) {
-         toast.error(fileType === 'pdf' ? "Please select a start page first to load columns." : "Please select an Excel sheet first to load columns.");
+      if (columns.length === 0 && (!selectedSheet || (fileType === 'pdf' && !selectedEndPage))) {
+         toast.error(fileType === 'pdf' ? "Please select a start and end page first to load columns." : "Please select an Excel sheet first to load columns.");
          setSelectedTemplate(null);
          return;
       }
@@ -385,6 +397,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          toast.error("Please upload a BOQ file");
          return;
       }
+      if (fileType === 'pdf'
+         && (!selectedSheet || !selectedEndPage || Number(selectedEndPage) < Number(selectedSheet))) {
+         toast.error("Choose a valid PDF start and end page range");
+         return;
+      }
       const columnMapping = internalFields.reduce((acc, item) => {
          if (item.mappingFields && item.mappingFields.length > 0) {
             acc[item.fields] = item.mappingFields;
@@ -401,6 +418,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          const formData = new FormData();
          formData.append('file', BOQfile);
          formData.append('sheetName', selectedSheet);
+         if (fileType === 'pdf') {
+            formData.append('endPage', selectedEndPage);
+         }
          const columnMappingBlob = new Blob([JSON.stringify(columnMapping)], {
             type: 'application/json'
          });
@@ -418,7 +438,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          );
          const merged = response.data.map(item => ({
             ...item,
-            level: levelMap[item.sno] ?? item.level,
+            level: levelMap[item.sno] ?? (fileType === 'pdf' ? 1 : item.level),
             lastLevel: isLastLevelRow(item),
             parentSno: parentMap[item.sno] ?? item.parentSno,
          }));
@@ -515,13 +535,18 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          toast.error(fileType === 'pdf' ? "Start page required" : "Sheet name required");
          return;
       }
+      if (fileType === 'pdf'
+         && (!selectedEndPage || Number(selectedEndPage) < Number(selectedSheet))) {
+         toast.error("Choose an end page that is equal to or after the start page");
+         return;
+      }
 
       if (ignoreEmpty === null) {
          const emptyLastLevelItems = excelData.filter(item => {
             const isLast = isLastLevelRow(item);
             const boqNameStr = item.boqName ? item.boqName.toString().trim() : '';
             const boqCodeStr = item.boqCode ? item.boqCode.toString().trim() : '';
-            return isLast && (!boqNameStr || !boqCodeStr);
+            return isLast && (!boqNameStr || (fileType !== 'pdf' && !boqCodeStr));
          });
 
          if (emptyLastLevelItems.length > 0) {
@@ -567,6 +592,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          const formData = new FormData();
          formData.append("file", BOQfile);
          formData.append("sheetName", selectedSheet);
+         if (fileType === 'pdf') {
+            formData.append("endPage", selectedEndPage);
+         }
          formData.append("columnMapping", JSON.stringify(
             internalFields.reduce((acc, item) => {
                acc[item.fields] = item.mappingFields;
@@ -578,11 +606,15 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
 
          formData.append("parentChildMapping", JSON.stringify(parentMap));
          formData.append("lastLevelMapping", JSON.stringify(lastLevelMap));
-         formData.append("levelMapping", JSON.stringify(levelMap));
+         const levelsToSave = fileType === 'pdf'
+            ? Object.fromEntries(excelData.map(item => [item.sno, levelMap[item.sno] ?? 1]))
+            : levelMap;
+         formData.append("levelMapping", JSON.stringify(levelsToSave));
 
-         if (isExternalAccess && uomModal.mapping && Object.keys(uomModal.mapping).length > 0) {
+         if (uomModal.mapping && Object.keys(uomModal.mapping).length > 0) {
             formData.append("uomMapping", JSON.stringify(uomModal.mapping));
          }
+         formData.append("persistUomMappings", String(isExternalAccess));
 
          let ignoredSnos = [];
          if (ignoreEmpty === true) {
@@ -590,7 +622,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                const isLast = isLastLevelRow(item);
                const boqNameStr = item.boqName ? item.boqName.toString().trim() : '';
                const boqCodeStr = item.boqCode ? item.boqCode.toString().trim() : '';
-               return isLast && (!boqNameStr || !boqCodeStr);
+               return isLast && (!boqNameStr || (fileType !== 'pdf' && !boqCodeStr));
             }).map(item => item.sno);
          }
          formData.append("ignoredSnos", JSON.stringify(ignoredSnos));
@@ -609,7 +641,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             }
          );
          if (response.status === 200) {
-            if (Object.keys(uomModal.mapping).length > 0) {
+            if (isExternalAccess && Object.keys(uomModal.mapping).length > 0) {
                setSavedUomMappings(previousMappings => {
                   const mappingsByClientUom = new Map(
                      previousMappings.map(mapping => [normalizeUomMappingKey(mapping.clientUom || ''), mapping])
@@ -644,6 +676,8 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                setSheetOption(prev =>
                   prev.filter(option => option.value !== selectedSheet)
                );
+               setSelectedSheet(null);
+               setSelectedEndPage(null);
                setExcelData([]);
                setLastLevelMap({});
                setParentMap({});
@@ -670,6 +704,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             setSearchTerm('');
             if (fileType === 'pdf') {
                setSelectedSheet(null);
+               setSelectedEndPage(null);
                setColumns([]);
                setDraggedColumn(null);
 
@@ -1292,7 +1327,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                         ) : (
                            <div className="text-center py-5 text-muted">
                               <h5>No BOQ items extracted</h5>
-                              <p>Please upload an Excel file and map the columns.</p>
+                              <p>{fileType === 'pdf'
+                                 ? 'No BOQ items were extracted from the selected PDF pages. Check the PDF table headers and column mapping.'
+                                 : 'Please upload an Excel file and map the columns.'}</p>
                            </div>
                         )}
                      </div>
@@ -1302,7 +1339,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             </div>
             <div className='d-flex justify-content-end mt-4'>
                <button className='btn cancel-button mt-2 me-4' onClick={removeFile}>Cancel</button>
-               <button className='btn action-button mt-2 fs-6' onClick={saveMappedBOQ}>{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : (<span>Import BOQ Data</span>)}</button>
+               <button className='btn action-button mt-2 fs-6' onClick={saveMappedBOQ} disabled={loading || excelData.length === 0}>{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : (<span>Import BOQ Data</span>)}</button>
             </div>
             {selectedBoqForModal && (
                <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1070 }}>
@@ -1369,7 +1406,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                <div className='mb-4 text-start fw-bold'>Map the Fields</div>
                <div className='row d-flex justify-content-between'>
                   <div className='col-lg-6 col-md-6 col-sm-12'>
-                     <ColumnIcon /><span className='fw-bold fs-6 ms-2'>Excel Fields</span>
+                     <ColumnIcon /><span className='fw-bold fs-6 ms-2'>{fileType === 'pdf' ? 'PDF Table Headers' : 'Excel Fields'}</span>
                      <div className='mt-1 rounded-3 p-2'>
                         {columnLoading ? (
                            [...Array(5)].map((_, index) => (
@@ -1387,6 +1424,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                  <span><Drag /></span>
                               </div>
                            ))}
+                        {!columnLoading && columns.length === 0 && (
+                           <p className="text-muted mt-3">
+                              No table headers were detected in the selected page range.
+                           </p>
+                        )}
                      </div>
                   </div>
                   <div className='col-lg-6 col-md-6 col-sm-12'>
@@ -1520,27 +1562,75 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                         <span className='me-2' style={{ cursor: 'pointer' }}><X color='#C33D1B' size={20} onClick={removeFile} /></span>
                      </div>
                   </div>
-                  <div className='col-lg-6 col-md-6 col-sm-12'>
-                     <label className="projectform-select text-start d-block">
-                        {fileType === 'pdf' ? 'Start Page' : 'Excel Sheet'}
-                     </label>
-                     <Select placeholder={fileType === 'pdf' ? 'Select Start Page' : 'Select Excel Sheet'}
-                        options={sheetOption}
-                        className="w-100"
-                        classNamePrefix="select"
-                        value={sheetOption.find(option => option.value === selectedSheet)}
-                        isClearable
-                        menuPlacement='auto'
-                        onChange={(option) => {
-                           const sheetValue = option?.value ?? null;
-                           setSelectedSheet(sheetValue);
-                           if (sheetValue) {
-                              loadSheetColumn(sheetValue);
-                           }
-                        }}
-                        isDisabled={false}
-                     />
-                  </div>
+                  {fileType === 'pdf' ? (
+                     <div className='col-lg-6 col-md-6 col-sm-12 row g-2'>
+                        <div className='col-6'>
+                           <label className="projectform-select text-start d-block">Start Page</label>
+                           <Select
+                              placeholder="Select Start Page"
+                              options={selectedEndPage
+                                 ? sheetOption.filter(option => Number(option.value) <= Number(selectedEndPage))
+                                 : sheetOption}
+                              className="w-100"
+                              classNamePrefix="select"
+                              value={sheetOption.find(option => option.value === selectedSheet)}
+                              isClearable
+                              menuPlacement='auto'
+                              onChange={(option) => {
+                                 const startPage = option?.value ?? null;
+                                 setSelectedSheet(startPage);
+                                 setColumns([]);
+                                 if (startPage && selectedEndPage) {
+                                    loadSheetColumn(startPage, selectedEndPage);
+                                 }
+                              }}
+                           />
+                        </div>
+                        <div className='col-6'>
+                           <label className="projectform-select text-start d-block">End Page</label>
+                           <Select
+                              placeholder="Select End Page"
+                              options={selectedSheet
+                                 ? sheetOption.filter(option => Number(option.value) >= Number(selectedSheet))
+                                 : sheetOption}
+                              className="w-100"
+                              classNamePrefix="select"
+                              value={sheetOption.find(option => option.value === selectedEndPage)}
+                              isClearable
+                              menuPlacement='auto'
+                              onChange={(option) => {
+                                 const endPage = option?.value ?? null;
+                                 setSelectedEndPage(endPage);
+                                 setColumns([]);
+                                 if (selectedSheet && endPage) {
+                                    loadSheetColumn(selectedSheet, endPage);
+                                 }
+                              }}
+                           />
+                        </div>
+                     </div>
+                  ) : (
+                     <div className='col-lg-6 col-md-6 col-sm-12'>
+                        <label className="projectform-select text-start d-block">Excel Sheet</label>
+                        <Select
+                           placeholder="Select Excel Sheet"
+                           options={sheetOption}
+                           className="w-100"
+                           classNamePrefix="select"
+                           value={sheetOption.find(option => option.value === selectedSheet)}
+                           isClearable
+                           menuPlacement='auto'
+                           onChange={(option) => {
+                              const sheetValue = option?.value ?? null;
+                              setSelectedSheet(sheetValue);
+                              if (sheetValue) {
+                                 loadSheetColumn(sheetValue);
+                              }
+                           }}
+                           isDisabled={false}
+                        />
+                     </div>
+                  )}
                </div>
             </div>
             <div className="d-flex ms-3 mt-5">
@@ -1811,24 +1901,26 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             </div>
          )}
 
-         {isExternalAccess && uomModal.show && (
+         {uomModal.show && (
             <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
                <div className="modal-dialog modal-dialog-centered modal-lg">
                   <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
                      <div className="modal-header border-0 pb-0">
                         <h5 className="modal-title fw-bold" style={{ color: '#005197' }}>UOM Mapping Required</h5>
-                        <button
-                           className="btn btn-sm action-button position-absolute" style={{ right: '50px' }}
-                           title={`Add a master UOM for ${activeClientUom || uomModal.unmatched[0] || 'the selected client UOM'}`}
-                           onClick={() => setNewUomForm({
-                              show: true,
-                              code: '',
-                              name: '',
-                              forClientUom: uomModal.unmatched.includes(activeClientUom) ? activeClientUom : (uomModal.unmatched[0] || '')
-                           })}
-                        >
-                           + Add New
-                        </button>
+                        {isExternalAccess && (
+                           <button
+                              className="btn btn-sm action-button position-absolute" style={{ right: '50px' }}
+                              title={`Add a master UOM for ${activeClientUom || uomModal.unmatched[0] || 'the selected client UOM'}`}
+                              onClick={() => setNewUomForm({
+                                 show: true,
+                                 code: '',
+                                 name: '',
+                                 forClientUom: uomModal.unmatched.includes(activeClientUom) ? activeClientUom : (uomModal.unmatched[0] || '')
+                              })}
+                           >
+                              + Add New
+                           </button>
+                        )}
                         <button type="button" className="btn-close" onClick={() => setUomModal({ show: false, unmatched: [], mapping: {}, pendingSaveOptions: null })}></button>
                      </div>
                      <div className="modal-body py-4">
@@ -1932,7 +2024,8 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                               try {
                                  const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/addUom`, {
                                     uomCode: newUomForm.code,
-                                    uomName: newUomForm.name
+                                    uomName: newUomForm.name,
+                                    active: true
                                  }, {
                                     headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
                                  });
