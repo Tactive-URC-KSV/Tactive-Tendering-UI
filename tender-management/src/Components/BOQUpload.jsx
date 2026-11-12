@@ -95,6 +95,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       { fields: 'uom', mappingFields: [], importance: 'Required', label: 'UOM' },
       { fields: 'quantity', mappingFields: [], importance: 'Required', label: 'Quantity' },
       { fields: 'division', mappingFields: [], importance: 'Optional', label: 'Division' },
+      { fields: 'rateOnly', mappingFields: [], importance: 'Optional', label: 'Rate Only' },
+      { fields: 'provisionalSum', mappingFields: [], importance: 'Optional', label: 'Provisional Sum' },
+      { fields: 'notQuotedBoq', mappingFields: [], importance: 'Optional', label: 'Not Quoted BOQ' },
       { fields: 'pageNo', mappingFields: [], importance: 'Optional', label: 'Page No' },
    ]);
    const [excelData, setExcelData] = useState([]);
@@ -1261,6 +1264,10 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                        <th className="text-center text-nowrap" style={{ width: '100px' }}>Division</th>
                                        <th className="text-center text-nowrap" style={{ width: '100px' }}>Unit</th>
                                        <th className="text-center text-nowrap" style={{ width: '140px' }}>Quantity</th>
+                                       <th className="text-center text-nowrap" style={{ width: '100px' }}>Rate Only</th>
+                                       <th className="text-center text-nowrap" style={{ width: '100px' }}>Provisional Sum</th>
+                                       <th className="text-center text-nowrap" style={{ width: '100px' }}>Not Quoted BOQ</th>
+                                    
                                     </tr>
                                  </thead>
                                  <tbody>
@@ -1317,6 +1324,15 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                           <td className="text-center text-nowrap">{item.uom || '-'}</td>
                                           <td className="text-center text-nowrap">
                                              {item.quantity && item.quantity !== 0 ? item.quantity.toFixed(3) : "-"}
+                                          </td>
+                                          <td className="text-center text-nowrap">
+                                             {item.rateOnly == null ? '-' : item.rateOnly ? 'Yes' : 'No'}
+                                          </td>
+                                          <td className="text-center text-nowrap">
+                                             {item.provisionalSum == null ? '-' : item.provisionalSum ? 'Yes' : 'No'}
+                                          </td>
+                                          <td className="text-center text-nowrap">
+                                             {item.notQuotedBoq == null ? '-' : item.notQuotedBoq ? 'Yes' : 'No'}
                                           </td>
                                        </tr>
                                     ))}
@@ -1846,6 +1862,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                     if (item.oldData?.quantity !== undefined) changes.push({ field: 'Quantity', old: item.oldData.quantity, new: item.quantity || 0 });
                                     if (item.oldData?.uom !== undefined) changes.push({ field: 'UOM', old: item.oldData.uom, new: item.uom || '' });
                                     if (item.oldData?.division !== undefined) changes.push({ field: 'Division', old: item.oldData.division, new: item.division || '' });
+                                    if (item.oldData?.rateOnly !== undefined) changes.push({ field: 'Rate Only', old: item.oldData.rateOnly ? 'Yes' : 'No', new: item.rateOnly ? 'Yes' : 'No' });
+                                    if (item.oldData?.provisionalSum !== undefined) changes.push({ field: 'Provisional Sum', old: item.oldData.provisionalSum ? 'Yes' : 'No', new: item.provisionalSum ? 'Yes' : 'No' });
+                                    if (item.oldData?.notQuotedBoq !== undefined) changes.push({ field: 'Not Quoted BOQ', old: item.oldData.notQuotedBoq ? 'Yes' : 'No', new: item.notQuotedBoq ? 'Yes' : 'No' });
                                     if (item.oldData?.pageNo !== undefined) changes.push({ field: 'Page No', old: item.oldData.pageNo, new: item.pageNo || 0 });
 
                                     return changes.map((change, cIdx) => (
