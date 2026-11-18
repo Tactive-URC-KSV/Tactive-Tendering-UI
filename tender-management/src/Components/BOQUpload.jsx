@@ -155,13 +155,10 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    }, [effectiveProjectId, navigate, isExternalAccess]);
 
    const isLastLevelRow = (row) => {
-      if (fileType === 'pdf') {
-         return true;
-      }
       return (
          row.lastLevel ||
-         row.uom ||
-         (row.quantity && row.quantity !== 0)
+         (typeof row.uom === 'string' && row.uom.trim() !== '') ||
+         (row.quantity !== null && row.quantity !== undefined && row.quantity !== '')
       );
    };
 
@@ -272,12 +269,21 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             switch (ext) {
                case 'pdf':
                   setSheetOption(response.map(name => ({ label: `Page ${name}`, value: name })));
-                  setSelectedEndPage(response[response.length - 1] ?? '');
+                  setSelectedEndPage(''); // Do not auto-select last page; user must choose explicitly
                   break;
                case 'xlsx':
-               case 'xls':
-                  setSheetOption(response.map(name => ({ label: name, value: name })));
+               case 'xls': {
+                  const excelOptions = response.map(name => ({ label: name, value: name }));
+                  if (response.length > 1) {
+                     setSheetOption([
+                        { label: 'All Sheets', value: '__ALL__' },
+                        ...excelOptions
+                     ]);
+                  } else {
+                     setSheetOption(excelOptions);
+                  }
                   break;
+               }
                default:
                   toast.error(`Unsupported file type: ${ext}`);
             }
@@ -298,7 +304,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       const endPageQuery = fileType === 'pdf' && endPageValue
          ? `?endPage=${encodeURIComponent(endPageValue)}`
          : '';
-      axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/excel/getColumns/${sheetValue}${endPageQuery}`, formData, {
+      axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/excel/getColumns/${encodeURIComponent(sheetValue)}${endPageQuery}`, formData, {
          headers: {
             Authorization: `Bearer ${sessionStorage.getItem('token')}`,
          }
@@ -441,7 +447,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          );
          const merged = response.data.map(item => ({
             ...item,
-            level: levelMap[item.sno] ?? (fileType === 'pdf' ? 1 : item.level),
+            level: levelMap[item.sno] ?? item.level,
             lastLevel: isLastLevelRow(item),
             parentSno: parentMap[item.sno] ?? item.parentSno,
          }));
@@ -609,10 +615,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
 
          formData.append("parentChildMapping", JSON.stringify(parentMap));
          formData.append("lastLevelMapping", JSON.stringify(lastLevelMap));
-         const levelsToSave = fileType === 'pdf'
-            ? Object.fromEntries(excelData.map(item => [item.sno, levelMap[item.sno] ?? 1]))
-            : levelMap;
-         formData.append("levelMapping", JSON.stringify(levelsToSave));
+         formData.append("levelMapping", JSON.stringify(levelMap));
 
          if (uomModal.mapping && Object.keys(uomModal.mapping).length > 0) {
             formData.append("uomMapping", JSON.stringify(uomModal.mapping));
@@ -676,8 +679,11 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                setTimeout(() => {
                   navigate(`/external/boq-overview/${effectiveProjectId}/${token}${location.search}`);
                }, 3000);
+               const importedValues = selectedSheet === '__ALL__'
+                  ? sheetOption.map(opt => opt.value)
+                  : (selectedSheet ? selectedSheet.split(',') : []);
                setSheetOption(prev =>
-                  prev.filter(option => option.value !== selectedSheet)
+                  prev.filter(option => !importedValues.includes(option.value) && option.value !== '__ALL__')
                );
                setSelectedSheet(null);
                setSelectedEndPage(null);
@@ -690,14 +696,21 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                setSearchTerm('');
                return;
             }
-            if (sheetOption.length === 1) {
+            const importedValues = selectedSheet === '__ALL__'
+               ? sheetOption.map(opt => opt.value)
+               : (selectedSheet ? selectedSheet.split(',') : []);
+
+            const remainingOptions = sheetOption.filter(
+               option => !importedValues.includes(option.value) && option.value !== '__ALL__'
+            );
+
+            if (remainingOptions.length === 0 || selectedSheet === '__ALL__') {
                setTimeout(() => {
                   window.location.href = `/boqdefinition/${projectId}`;
                }, 3000);
             }
-            setSheetOption(prev =>
-               prev.filter(option => option.value !== selectedSheet)
-            );
+            setSheetOption(remainingOptions);
+            setSelectedSheet('');
             setExcelData([]);
             setLastLevelMap({});
             setParentMap({});
@@ -1629,18 +1642,41 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                      <div className='col-lg-6 col-md-6 col-sm-12'>
                         <label className="projectform-select text-start d-block">Excel Sheet</label>
                         <Select
-                           placeholder="Select Excel Sheet"
+                           placeholder="Select Excel Sheet(s)"
                            options={sheetOption}
                            className="w-100"
                            classNamePrefix="select"
-                           value={sheetOption.find(option => option.value === selectedSheet)}
+                           isMulti
+                           value={
+                              selectedSheet === '__ALL__'
+                                 ? sheetOption.filter(opt => opt.value === '__ALL__')
+                                 : (selectedSheet ? selectedSheet.split(',').map(val => sheetOption.find(opt => opt.value === val)).filter(Boolean) : [])
+                           }
                            isClearable
                            menuPlacement='auto'
-                           onChange={(option) => {
-                              const sheetValue = option?.value ?? null;
-                              setSelectedSheet(sheetValue);
-                              if (sheetValue) {
-                                 loadSheetColumn(sheetValue);
+                           onChange={(selected) => {
+                              if (!selected || selected.length === 0) {
+                                 setSelectedSheet('');
+                                 setColumns([]);
+                                 return;
+                              }
+                              const wasAll = selectedSheet === '__ALL__';
+                              const hasAll = selected.some(opt => opt.value === '__ALL__');
+                              if (hasAll && !wasAll) {
+                                 setSelectedSheet('__ALL__');
+                                 loadSheetColumn('__ALL__');
+                              } else if (wasAll && selected.length > 1) {
+                                 const specific = selected.filter(opt => opt.value !== '__ALL__');
+                                 const sheetValues = specific.map(opt => opt.value).join(',');
+                                 setSelectedSheet(sheetValues);
+                                 loadSheetColumn(sheetValues);
+                              } else if (hasAll) {
+                                 setSelectedSheet('__ALL__');
+                                 loadSheetColumn('__ALL__');
+                              } else {
+                                 const sheetValues = selected.map(opt => opt.value).join(',');
+                                 setSelectedSheet(sheetValues);
+                                 loadSheetColumn(sheetValues);
                               }
                            }}
                            isDisabled={false}
