@@ -72,6 +72,26 @@ function CompareOffers() {
     );
   };
 
+  const getOfferVersion = (offer, offersList = []) => {
+    if (!offer) return 1;
+    const rawVersion = offer.offerQuotations?.[0]?.offerVersion;
+    if (offersList && offersList.length > 1) {
+      const versions = offersList.map(o => o.offerQuotations?.[0]?.offerVersion);
+      const hasDuplicates = new Set(versions).size !== versions.length;
+      if (hasDuplicates || !rawVersion) {
+        const sorted = [...offersList].sort((a, b) => {
+          const dateA = new Date(a.submittedOn || 0).getTime();
+          const dateB = new Date(b.submittedOn || 0).getTime();
+          if (dateA !== dateB) return dateA - dateB;
+          return (a.id || "").localeCompare(b.id || "");
+        });
+        const idx = sorted.findIndex(o => o.id === offer.id);
+        return idx !== -1 ? idx + 1 : (rawVersion || 1);
+      }
+    }
+    return rawVersion || 1;
+  };
+
   const calculateOfferTotal = (offer) => {
     if (!offer?.offerQuotations) return 0;
     return offer.offerQuotations.reduce((acc, curr) => acc + (curr.amount || 0), 0);
@@ -220,7 +240,7 @@ function CompareOffers() {
                           <div className="flex-grow-1 text-start">
                             <div className="d-flex justify-content-between align-items-center mb-1">
                               <span className="fw-semibold text-dark" style={{ fontSize: '0.95rem' }}>
-                                Offer v{offer.offerVersion || 1}
+                                Offer v{getOfferVersion(offer, offers)}
                               </span>
                               <span className="fw-bold text-primary">
                                 ₹ {calculateOfferTotal(offer).toLocaleString('en-IN', { minimumFractionDigits: 2 })}

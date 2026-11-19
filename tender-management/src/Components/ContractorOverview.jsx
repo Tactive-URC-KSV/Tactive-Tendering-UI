@@ -57,20 +57,25 @@ const ManualEntryForm = ({
     territoryTypeOptions,
     territoryOptions,
     taxTypeOptions,
-    taxCityOptions,
     additionalInfoTypeOptions,
     fetchNatureOfBusiness,
     fetchAddressState,
     fetchAddressCity,
-    fetchTerritory,
-    taxCountryOptions,
-    taxStateOptions,
-    taxFilterCountry,
-    taxFilterState,
+    handleAddressChange,
+    addAddress,
+    removeAddress,
+    handleContactChange,
+    addContact,
+    removeContact,
     handleTaxCountryFilterChange,
     handleTaxStateFilterChange,
-    addressStateOptions,
-    addresscityOptions
+    taxFilterCountry,
+    taxFilterState,
+    taxStateOptions,
+    activeTab,
+    setActiveTab,
+    tabs,
+    handleTabClick
 }) => {
     const fileInputRef = useRef(null);
 
@@ -91,487 +96,522 @@ const ManualEntryForm = ({
     };
 
     return (
-        <>
-            <div className="card text-start border-0 shadow-sm p-4 pt-0" style={{ borderRadius: "8px" }}>
-                <div className="p-3 mb-4 d-flex align-items-center justify-content-center rounded-top mx-n4" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
-                    <Briefcase size={20} className="me-2 text-white" />
-                    <h3 className="mb-0 fs-6 fw-bold text-white">Basic Information</h3>
-                </div>
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Entity Code <span style={{ color: "red" }}>*</span></label>
-                        <input type="text" name="entityCode" className="form-input w-100" placeholder="Enter entity code" value={formData.entityCode}
-                            onChange={(e) => {
-                                setFormData({ ...formData, entityCode: e.target.value });
-                            }} />
-                    </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Entity Name <span style={{ color: "red" }}>*</span></label>
-                        <input type="text" name="entityName" className="form-input w-100" placeholder="Enter entity name" value={formData.entityName}
-                            onChange={(e) => {
-                                setFormData({ ...formData, entityName: e.target.value });
-                            }} />
-                    </div>
-                </div>
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform-select text-start d-block">Effective Date <span style={{ color: "red" }}>*</span></label>
-                        <div className="position-relative">
-                            <Flatpickr
-                                ref={effectiveDateRef}
-                                value={formData.effectiveDate}
-                                name="effectiveDate"
-                                className="form-input w-100"
-                                placeholder="Select Effective date"
-                                options={{ dateFormat: "d-m-Y", allowInput: true }}
-                                onClose={(_, dateStr) => {
-                                    setFormData({ ...formData, effectiveDate: dateStr });
-                                }}
-                            />
-                            <span
-                                className='calendar-icon'
-                                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer' }}
-                                onClick={() => effectiveDateRef.current?.flatpickr?.open()}
-                            >
-                                <FaCalendarAlt size={18} color='#005197' />
-                            </span>
-                        </div>
-                    </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform-select text-start d-block">Entity Type <span style={{ color: "red" }}>*</span></label>
-                        <Select
-                            name="entityType"
-                            options={entityTypeOptions}
-                            value={entityTypeOptions?.find(opt => opt.value === formData.entityType)}
-                            onChange={(option) => {
-                                setFormData({ ...formData, entityType: option.value });
-                                fetchNatureOfBusiness(option.value);
-                            }}
-                            placeholder="Select entity type"
-                            classNamePrefix="select"
-                        />
-                    </div>
-                </div>
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform-select text-start d-block">Nature of Business </label>
-                        <Select
-                            name="natureOfBusiness"
-                            options={natureOfBusinessOptions}
-                            value={natureOfBusinessOptions?.find(opt => opt.value === formData.natureOfBusiness)}
-                            onChange={(option) => {
-                                setFormData({ ...formData, natureOfBusiness: option.value });
-                            }}
-                            placeholder="Select nature of business"
-                            classNamePrefix="select"
-                        />
-                    </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform-select text-start d-block">Grade</label>
-                        <Select
-                            name="grade"
-                            options={gradeOptions}
-                            value={gradeOptions?.find(opt => opt.value === formData.grade)}
-                            onChange={(option) => {
-                                setFormData({ ...formData, grade: option.value });
-                            }}
-                            placeholder="Select grade"
-                            classNamePrefix="select"
-                        />
-                    </div>
-                </div>
-                <div className="row">
-                    <div className="col-md-12 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Attachments (Certificates/Licenses)</label>
-                        <input type="file" ref={fileInputRef} multiple onChange={handleFileChange} style={{ display: "none" }} />
-                        <div onDragOver={handleDragOver} onDrop={handleDrop} style={{ border: `2px dashed ${bluePrimaryLight}`, borderRadius: "8px", padding: "20px", textAlign: "center" }}>
-                            <div onClick={handleUploadClick} style={{ cursor: "pointer" }}>
-                                <UploadCloud size={30} style={{ color: bluePrimaryLight }} />
-                                <p className="mb-0 fw-bold" style={{ color: bluePrimary }}>Click to upload or drag and drop</p>
-                                <p className="mb-0 small" style={{ color: bluePrimary }}>PDF, DOCX up to 10MB</p>
-                            </div>
-                            <div className="d-flex flex-wrap justify-content-center mt-3">
-                                {formData.attachmentMetadata.map((file) => (
-                                    <div key={file.id} className="d-flex align-items-center mx-2 mb-2 px-3 py-2 rounded border bg-white shadow-sm">
-                                        <FileText size={16} className="me-2 text-muted" />
-                                        <span className="text-dark me-2">{file.name}</span>
-                                        <X size={14} className="text-danger" onClick={() => handleRemoveFile(file.id)} style={{ cursor: "pointer" }} />
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div className="card text-start border-0 shadow-sm mt-4 px-4 pb-4" style={{ borderRadius: "8px" }}>
-                <div className="p-3 mb-4 d-flex align-items-center justify-content-center rounded-top mx-n4" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
-                    <MapPin size={20} className="me-2 text-white" />
-                    <h3 className="mb-0 fs-6 fw-bold text-white">Address Details</h3>
-                </div>
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Phone No</label>
-                        <input type="text" name="phoneNo" className="form-input w-100" placeholder="Enter phone no" value={formData.phoneNo}
-                            onChange={(e) => {
-                                setFormData({ ...formData, phoneNo: e.target.value });
-                            }} />
-                    </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Email ID</label>
-                        <input type="text" name="emailID" className="form-input w-100" placeholder="Enter email ID" value={formData.emailID}
-                            onChange={(e) => {
-                                setFormData({ ...formData, emailID: e.target.value });
-                            }} />
-                    </div>
-                </div>
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform-select text-start d-block">Address Type <span className="text-danger">*</span></label>
-                        <Select name="addressType"
-                            options={addressTypeOptions}
-                            onChange={(option) => {
-                                setFormData({ ...formData, addressType: option.value });
-                            }}
-                            classNamePrefix="select"
-                            value={addressTypeOptions?.find(opt => opt.value === formData.addressType)}
-                            placeholder="Select address type" />
-                    </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Address 1</label>
-                        <input type="text" name="address1" className="form-input w-100" placeholder="Enter address 1" value={formData.address1}
-                            onChange={(e) => {
-                                setFormData({ ...formData, address1: e.target.value });
-                            }} />
-                    </div>
-                </div>
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Address 2</label>
-                        <input type="text" name="address2" className="form-input w-100" placeholder="Enter address 2" value={formData.address2}
-                            onChange={(e) => {
-                                setFormData({ ...formData, address2: e.target.value });
-                            }} />
-                    </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform-select text-start d-block">Country <span className="text-danger">*</span></label>
-                        <Select name="country"
-                            options={countryOptions}
-                            onChange={(option) => {
-                                setFormData({ ...formData, country: option.value, addressState: null, addresscity: null });
-                                fetchAddressState(option.value);
-                            }}
-                            classNamePrefix="select"
-                            value={countryOptions?.find(opt => opt.value === formData.country)}
-                            placeholder="Select country" />
-                    </div>
-                </div>
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform-select text-start d-block">State <span className="text-danger">*</span></label>
-                        <Select name="addressState"
-                            options={addressStateOptions}
-                            onChange={(option) => {
-                                setFormData({ ...formData, addressState: option.value, addresscity: null });
-                                fetchAddressCity(option.value);
-                            }}
-                            classNamePrefix="select"
-                            isDisabled={!formData.country}
-                            value={addressStateOptions?.find(opt => opt.value === formData.addressState)}
-                            placeholder="Select state" />
-                    </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform-select text-start d-block">City <span className="text-danger">*</span></label>
-                        <Select name="addresscity"
-                            options={addresscityOptions}
-                            onChange={(option) => {
-                                setFormData({ ...formData, addresscity: option.value });
-                            }}
-                            classNamePrefix="select"
-                            isDisabled={!formData.addressState}
-                            value={addresscityOptions?.find(opt => opt.value === formData.addresscity)}
-                            placeholder="Select city" />
-                    </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Zip/Postal Code <span style={{ color: 'red' }}>*</span></label>
-                        <input type="text" name="zipCode" className="form-input w-100" placeholder="Enter Zip/Postal Code" value={formData.zipCode}
-                            onChange={(e) => {
-                                setFormData({ ...formData, zipCode: e.target.value });
-                            }} />
-                    </div>
-                </div>
-            </div>
-            <div className="card text-start border-0 shadow-sm mt-4 px-4 pb-4" style={{ borderRadius: "8px", overflow: "hidden" }}>
-                <div className="p-3 mb-4 d-flex align-items-center justify-content-center" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
-                    <User size={20} className="me-2 text-white" />
-                    <h3 className="mb-0 fs-6 fw-bold text-white">Contact Details</h3>
-                </div>
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block"> Name <span style={{ color: 'red' }}>*</span></label>
-                        <input type="text" name="contactName" className="form-input w-100" placeholder="Enter contact name" value={formData.contactName}
-                            onChange={(e) => {
-                                setFormData({ ...formData, contactName: e.target.value });
-                            }} />
-                    </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform-select text-start d-block"> Position <span className="text-danger">*</span></label>
-                        <input type="text" name="contactPosition" className="form-input w-100" placeholder="Enter contact position" value={formData.contactPosition}
-                            onChange={(e) => {
-                                setFormData({ ...formData, contactPosition: e.target.value });
-                            }} />
-                    </div>
-                </div>
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Phone No <span className="text-danger">*</span> </label>
-                        <input type="text" name="contactPhoneNo" className="form-input w-100" placeholder="Enter phone no" value={formData.contactPhoneNo}
-                            onChange={(e) => {
-                                setFormData({ ...formData, contactPhoneNo: e.target.value });
-                            }} />
-                    </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block"> Email ID <span className="text-danger">*</span></label>
-                        <input type="text" name="contactEmailID" className="form-input w-100" placeholder="Enter email ID" value={formData.contactEmailID}
-                            onChange={(e) => {
-                                setFormData({ ...formData, contactEmailID: e.target.value });
-                            }} />
-                    </div>
+        <div className="manual-entry-form">
+            <div className="bg-white rounded-3 shadow-sm mb-4" style={{ overflowX: 'auto' }}>
+                <div className="d-flex border-bottom">
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab.id}
+                            type="button"
+                            className={`custom-tab d-flex align-items-center px-4 py-3 text-nowrap ${activeTab === tab.id ? "active" : ""}`}
+                            onClick={() => handleTabClick(tab.id)}
+                        >
+                            <span className="me-2 d-flex align-items-center">{tab.icon}</span>
+                            {tab.label}
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            <div className="card text-start border-0 shadow-sm mt-4 px-4 pb-4" style={{ borderRadius: "8px" }}>
-                <div className="p-3 mb-4 d-flex align-items-center justify-content-center" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
-                    <FileText size={20} className="me-2 text-white" />
-                    <h3 className="mb-0 fs-6 fw-bold text-white">Tax Details</h3>
-                </div>
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform-select text-start d-block">Tax Type <span className="text-danger">*</span></label>
-                        <Select name="taxType"
-                            options={taxTypeOptions}
-                            onChange={(option) => {
-                                setFormData({ ...formData, taxType: option.value });
-                            }}
-                            classNamePrefix="select"
-                            value={taxTypeOptions?.find(opt => opt.value === formData.taxType)}
-                            placeholder="Select tax type" />
-                    </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform-select text-start d-block">Territory Type <span style={{ color: "red" }}>*</span></label>
-                        <Select name="territoryType"
-                            options={territoryTypeOptions}
-                            onChange={(option) => {
-                                setFormData({ ...formData, territoryType: option.value });
-                                fetchTerritory(option.value)
-                            }}
-                            classNamePrefix="select"
-                            value={territoryTypeOptions?.find(opt => opt.value === formData.territoryType)}
-                            placeholder="Select territory type" />
-                    </div>
-                </div>
-                {['STATE', 'CITY'].includes(formData.territoryType) && (
-                    <div className="row">
-                        <div className={`${formData.territoryType === 'CITY' ? 'col-md-4' : 'col-md-6'} mt-3 mb-4`}>
-                            <label className="projectform-select text-start d-block">Filter Country <span style={{ color: "red" }}>*</span></label>
-                            <Select
-                                options={taxCountryOptions}
-                                placeholder="Select Country"
-                                value={taxFilterCountry}
-                                onChange={handleTaxCountryFilterChange}
-                                classNamePrefix="select"
-                            />
+            <div className="card text-start border-0 shadow-sm p-4 bg-white" style={{ borderRadius: "8px" }}>
+                {activeTab === 'basic' && (
+                    <>
+                        <div className="row">
+                            <div className="col-md-6 mb-4 position-relative">
+                                <label className="projectform text-start d-block">Entity Code <span style={{ color: "red" }}>*</span></label>
+                                <input type="text" name="entityCode" className="form-input w-100" placeholder="Auto Generated" value={formData.entityCode}
+                                    readOnly />
+                            </div>
+                            <div className="col-md-6 mb-4 position-relative">
+                                <label className="projectform text-start d-block">Entity Name <span style={{ color: "red" }}>*</span></label>
+                                <input type="text" name="entityName" className="form-input w-100" placeholder="Enter entity name" value={formData.entityName}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, entityName: e.target.value });
+                                    }} />
+                            </div>
                         </div>
-                        {formData.territoryType === 'CITY' && (
-                            <div className="col-md-4 mt-3 mb-4">
-                                <label className="projectform-select text-start d-block">Filter State <span style={{ color: "red" }}>*</span></label>
+                        <div className="row mt-2">
+                            <div className="col-md-6 mb-4 position-relative">
+                                <label className="projectform-select text-start d-block">Effective Date <span style={{ color: "red" }}>*</span></label>
+                                <div className="position-relative">
+                                    <Flatpickr
+                                        ref={effectiveDateRef}
+                                        value={formData.effectiveDate}
+                                        name="effectiveDate"
+                                        className="form-input w-100"
+                                        placeholder="Select Effective date"
+                                        options={{ dateFormat: "d-m-Y", allowInput: true }}
+                                        onClose={(_, dateStr) => {
+                                            setFormData({ ...formData, effectiveDate: dateStr });
+                                        }}
+                                    />
+                                    <span
+                                        className='calendar-icon'
+                                        style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer' }}
+                                        onClick={() => effectiveDateRef.current?.flatpickr?.open()}
+                                    >
+                                        <FaCalendarAlt size={18} color='#005197' />
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="col-md-6 mb-4 position-relative">
+                                <label className="projectform-select text-start d-block">Entity Type <span style={{ color: "red" }}>*</span></label>
                                 <Select
-                                    options={taxStateOptions}
-                                    placeholder="Select State"
-                                    value={taxFilterState}
-                                    onChange={handleTaxStateFilterChange}
-                                    isDisabled={!taxFilterCountry}
+                                    name="entityType"
+                                    options={entityTypeOptions}
+                                    value={entityTypeOptions?.find(opt => opt.value === formData.entityType)}
+                                    onChange={(option) => {
+                                        setFormData({ ...formData, entityType: option.value });
+                                        fetchNatureOfBusiness(option.value);
+                                    }}
+                                    placeholder="Select entity type"
                                     classNamePrefix="select"
                                 />
                             </div>
+                        </div>
+                        <div className="row mt-2">
+                            <div className="col-md-6 mb-4 position-relative">
+                                <label className="projectform-select text-start d-block">Nature of Business </label>
+                                <Select
+                                    name="natureOfBusiness"
+                                    options={natureOfBusinessOptions}
+                                    value={natureOfBusinessOptions?.find(opt => opt.value === formData.natureOfBusiness)}
+                                    onChange={(option) => {
+                                        setFormData({ ...formData, natureOfBusiness: option.value });
+                                    }}
+                                    placeholder="Select nature of business"
+                                    classNamePrefix="select"
+                                />
+                            </div>
+                            <div className="col-md-6 mb-4 position-relative">
+                                <label className="projectform-select text-start d-block">Grade</label>
+                                <Select
+                                    name="grade"
+                                    options={gradeOptions}
+                                    value={gradeOptions?.find(opt => opt.value === formData.grade)}
+                                    onChange={(option) => {
+                                        setFormData({ ...formData, grade: option.value });
+                                    }}
+                                    placeholder="Select grade"
+                                    classNamePrefix="select"
+                                />
+                            </div>
+                        </div>
+                        <div className="row mt-2">
+                            <div className="col-md-12 mb-4 position-relative">
+                                <label className="projectform text-start d-block">Attachments (Certificates/Licenses)</label>
+                                <input type="file" ref={fileInputRef} multiple onChange={handleFileChange} style={{ display: "none" }} />
+                                <div onDragOver={handleDragOver} onDrop={handleDrop} style={{ border: `2px dashed ${bluePrimaryLight}`, borderRadius: "8px", padding: "20px", textAlign: "center" }}>
+                                    <div onClick={handleUploadClick} style={{ cursor: "pointer" }}>
+                                        <UploadCloud size={30} style={{ color: bluePrimaryLight }} />
+                                        <p className="mb-0 fw-bold" style={{ color: bluePrimary }}>Click to upload or drag and drop</p>
+                                        <p className="mb-0 small" style={{ color: bluePrimary }}>PDF, DOCX up to 10MB</p>
+                                    </div>
+                                    <div className="d-flex flex-wrap justify-content-center mt-3">
+                                        {formData.attachmentMetadata.map((file) => (
+                                            <div key={file.id} className="d-flex align-items-center mx-2 mb-2 px-3 py-2 rounded border bg-white shadow-sm">
+                                                <FileText size={16} className="me-2 text-muted" />
+                                                <span className="text-dark me-2">{file.name}</span>
+                                                <X size={14} className="text-danger" onClick={() => handleRemoveFile(file.id)} style={{ cursor: "pointer" }} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {activeTab === 'address' && (
+                    <div className="address-section">
+                        {formData.addressList.map((addr, index) => (
+                            <div key={index} className={`mb-5 ${index > 0 ? "pt-4 border-top" : ""}`}>
+                                <div className="d-flex justify-content-between align-items-center mb-4">
+                                    <h5 className="fw-bold mb-0" style={{ color: bluePrimary }}>Address {index + 1}</h5>
+                                    {index > 0 && (
+                                        <button type="button" className="btn btn-outline-danger btn-sm d-flex align-items-center" onClick={() => removeAddress(index)}>
+                                            <Trash2 size={16} className="me-1" /> Remove
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="row">
+                                    <div className="col-md-6 mb-4 position-relative">
+                                        <label className="projectform text-start d-block">Phone No</label>
+                                        <input type="text" name="phoneNo" className="form-input w-100" placeholder="Enter phone no" value={addr.phoneNo}
+                                            onChange={(e) => handleAddressChange(index, e)} />
+                                    </div>
+                                    <div className="col-md-6 mb-4 position-relative">
+                                        <label className="projectform text-start d-block">Email ID</label>
+                                        <input type="text" name="emailID" className="form-input w-100" placeholder="Enter email ID" value={addr.emailID}
+                                            onChange={(e) => handleAddressChange(index, e)} />
+                                    </div>
+                                </div>
+                                <div className="row mt-2">
+                                    <div className="col-md-6 mb-4 position-relative">
+                                        <label className="projectform-select text-start d-block">Address Type <span className="text-danger">*</span></label>
+                                        <Select name="addressType"
+                                            options={addressTypeOptions}
+                                            onChange={(option) => {
+                                                const newList = [...formData.addressList];
+                                                newList[index].addressType = option.value;
+                                                setFormData({ ...formData, addressList: newList });
+                                            }}
+                                            classNamePrefix="select"
+                                            value={addressTypeOptions?.find(opt => opt.value === addr.addressType)}
+                                            placeholder="Select address type" />
+                                    </div>
+                                    <div className="col-md-6 mb-4 position-relative">
+                                        <label className="projectform text-start d-block">Address 1</label>
+                                        <input type="text" name="address1" className="form-input w-100" placeholder="Enter address 1" value={addr.address1}
+                                            onChange={(e) => handleAddressChange(index, e)} />
+                                    </div>
+                                </div>
+                                <div className="row mt-2">
+                                    <div className="col-md-6 mb-4 position-relative">
+                                        <label className="projectform text-start d-block">Address 2</label>
+                                        <input type="text" name="address2" className="form-input w-100" placeholder="Enter address 2" value={addr.address2}
+                                            onChange={(e) => handleAddressChange(index, e)} />
+                                    </div>
+                                    <div className="col-md-6 mb-4 position-relative">
+                                        <label className="projectform-select text-start d-block">Country <span className="text-danger">*</span></label>
+                                        <Select name="country"
+                                            options={countryOptions}
+                                            onChange={(option) => {
+                                                const newList = [...formData.addressList];
+                                                newList[index].country = option.value;
+                                                newList[index].addressState = null;
+                                                newList[index].addresscity = null;
+                                                setFormData({ ...formData, addressList: newList });
+                                                fetchAddressState(index, option.value);
+                                            }}
+                                            classNamePrefix="select"
+                                            value={countryOptions?.find(opt => opt.value === addr.country)}
+                                            placeholder="Select country" />
+                                    </div>
+                                </div>
+                                <div className="row mt-2">
+                                    <div className="col-md-6 mb-4 position-relative">
+                                        <label className="projectform-select text-start d-block">State <span className="text-danger">*</span></label>
+                                        <Select name="addressState"
+                                            options={addr.stateOptions || []}
+                                            onChange={(option) => {
+                                                const newList = [...formData.addressList];
+                                                newList[index].addressState = option.value;
+                                                newList[index].addresscity = null;
+                                                setFormData({ ...formData, addressList: newList });
+                                                fetchAddressCity(index, option.value);
+                                            }}
+                                            classNamePrefix="select"
+                                            isDisabled={!addr.country}
+                                            value={(addr.stateOptions || []).find(opt => opt.value === addr.addressState)}
+                                            placeholder="Select state" />
+                                    </div>
+                                    <div className="col-md-6 mb-4 position-relative">
+                                        <label className="projectform-select text-start d-block">City <span className="text-danger">*</span></label>
+                                        <Select name="addresscity"
+                                            options={addr.cityOptions || []}
+                                            onChange={(option) => {
+                                                const newList = [...formData.addressList];
+                                                newList[index].addresscity = option.value;
+                                                setFormData({ ...formData, addressList: newList });
+                                            }}
+                                            classNamePrefix="select"
+                                            isDisabled={!addr.addressState}
+                                            value={(addr.cityOptions || []).find(opt => opt.value === addr.addresscity)}
+                                            placeholder="Select city" />
+                                    </div>
+                                </div>
+                                <div className="row mt-2">
+                                    <div className="col-md-6 mb-4 position-relative">
+                                        <label className="projectform text-start d-block">Zip/Postal Code <span style={{ color: 'red' }}>*</span></label>
+                                        <input type="text" name="zipCode" className="form-input w-100" placeholder="Enter Zip/Postal Code" value={addr.zipCode}
+                                            onChange={(e) => handleAddressChange(index, e)} />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        <button type="button" className="btn btn-outline-primary d-flex align-items-center mt-2 fw-bold" onClick={addAddress}>
+                            <ArrowRight size={18} className="me-2" style={{ transform: 'rotate(-90deg)' }} /> Add Another Address
+                        </button>
+                    </div>
+                )}
+
+                {activeTab === 'contact' && (
+                    <div className="contact-section">
+                        {formData.contactList.map((contact, index) => (
+                            <div key={index} className={`mb-5 ${index > 0 ? "pt-4 border-top" : ""}`}>
+                                <div className="d-flex justify-content-between align-items-center mb-4">
+                                    <h5 className="fw-bold mb-0" style={{ color: bluePrimary }}>Contact {index + 1}</h5>
+                                    {index > 0 && (
+                                        <button type="button" className="btn btn-outline-danger btn-sm d-flex align-items-center" onClick={() => removeContact(index)}>
+                                            <Trash2 size={16} className="me-1" /> Remove
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="row">
+                                    <div className="col-md-6 mb-4 position-relative">
+                                        <label className="projectform text-start d-block"> Name <span style={{ color: 'red' }}>*</span></label>
+                                        <input type="text" name="name" className="form-input w-100" placeholder="Enter contact name" value={contact.name}
+                                            onChange={(e) => handleContactChange(index, e)} />
+                                    </div>
+                                    <div className="col-md-6 mb-4 position-relative">
+                                        <label className="projectform-select text-start d-block"> Position <span className="text-danger">*</span></label>
+                                        <input type="text" name="position" className="form-input w-100" placeholder="Enter contact position" value={contact.position}
+                                            onChange={(e) => handleContactChange(index, e)} />
+                                    </div>
+                                </div>
+                                <div className="row mt-2">
+                                    <div className="col-md-6 mb-4 position-relative">
+                                        <label className="projectform text-start d-block">Phone No <span className="text-danger">*</span> </label>
+                                        <input type="text" name="phoneNo" className="form-input w-100" placeholder="Enter phone no" value={contact.phoneNo}
+                                            onChange={(e) => handleContactChange(index, e)} />
+                                    </div>
+                                    <div className="col-md-6 mb-4 position-relative">
+                                        <label className="projectform text-start d-block"> Email ID <span className="text-danger">*</span></label>
+                                        <input type="text" name="emailId" className="form-input w-100" placeholder="Enter email ID" value={contact.emailId}
+                                            onChange={(e) => handleContactChange(index, e)} />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        <button type="button" className="btn btn-outline-primary d-flex align-items-center mt-2 fw-bold" onClick={addContact}>
+                            <ArrowRight size={18} className="me-2" style={{ transform: 'rotate(-90deg)' }} /> Add Another Contact
+                        </button>
+                    </div>
+                )}
+
+                {activeTab === 'tax' && (
+                    <div className="row mt-2">
+                        <div className="col-md-6 mb-4 position-relative">
+                            <label className="projectform-select text-start d-block">Tax Type <span className="text-danger">*</span></label>
+                            <Select name="taxType"
+                                options={taxTypeOptions}
+                                onChange={(option) => {
+                                    const val = option ? option.value : null;
+                                    if (val === 'GST_UNREGISTER') {
+                                        setFormData({
+                                            ...formData,
+                                            taxType: val,
+                                            territoryType: '',
+                                            territory: '',
+                                            taxRegNo: '',
+                                            taxRegDate: '',
+                                            taxAddress1: '',
+                                            taxAddress2: '',
+                                            taxZipCode: '',
+                                            taxEmailID: ''
+                                        });
+                                    } else {
+                                        setFormData({ ...formData, taxType: val });
+                                    }
+                                }}
+                                classNamePrefix="select"
+                                value={taxTypeOptions?.find(opt => opt.value === formData.taxType)}
+                                placeholder="Select tax type"
+                                isClearable />
+                        </div>
+                        {formData.taxType !== 'GST_UNREGISTER' && (
+                            <>
+                                <div className="col-md-6 mb-4 position-relative">
+                                    <label className="projectform-select text-start d-block">Territory Type <span style={{ color: "red" }}>*</span></label>
+                                    <Select name="territoryType"
+                                        options={territoryTypeOptions}
+                                        onChange={(option) => {
+                                            const newTerritoryTypeId = option ? option.value : null;
+                                            setFormData({ ...formData, territoryType: newTerritoryTypeId, territory: null });
+                                            if (newTerritoryTypeId) {
+                                                fetchTerritory(newTerritoryTypeId);
+                                            } else {
+                                                handleTaxCountryFilterChange(null);
+                                            }
+                                        }}
+                                        classNamePrefix="select"
+                                        value={territoryTypeOptions?.find(opt => opt.value === formData.territoryType) || null}
+                                        placeholder="Select territory type"
+                                        isClearable />
+                                </div>
+                                {['STATE', 'CITY'].includes(formData.territoryType) && (
+                                    <>
+                                        <div className={`${formData.territoryType === 'CITY' ? 'col-md-4' : 'col-md-6'} mb-4 position-relative`}>
+                                            <label className="projectform-select text-start d-block">Filter Country <span style={{ color: "red" }}>*</span></label>
+                                            <Select
+                                                options={taxCountryOptions}
+                                                placeholder="Select Country"
+                                                value={taxFilterCountry}
+                                                onChange={handleTaxCountryFilterChange}
+                                                classNamePrefix="select"
+                                                isClearable
+                                            />
+                                        </div>
+                                        {formData.territoryType === 'CITY' && (
+                                            <div className="col-md-4 mb-4 position-relative">
+                                                <label className="projectform-select text-start d-block">Filter State <span style={{ color: "red" }}>*</span></label>
+                                                <Select
+                                                    options={taxStateOptions}
+                                                    placeholder="Select State"
+                                                    value={taxFilterState}
+                                                    onChange={handleTaxStateFilterChange}
+                                                    isDisabled={!taxFilterCountry}
+                                                    classNamePrefix="select"
+                                                    isClearable
+                                                />
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                                <div className={`${formData.territoryType === 'CITY' ? 'col-md-4' : 'col-md-6'} mb-4 position-relative`}>
+                                    <label className="projectform-select text-start d-block">Territory <span style={{ color: "red" }}>*</span></label>
+                                    <Select name="territory"
+                                        options={territoryOptions}
+                                        onChange={(option) => {
+                                            setFormData({ ...formData, territory: option ? option.value : null });
+                                        }}
+                                        classNamePrefix="select"
+                                        value={territoryOptions?.find(opt => opt.value === formData.territory) || null}
+                                        placeholder="Select territory"
+                                        isDisabled={
+                                            (formData.territoryType === 'STATE' && !taxFilterCountry) ||
+                                            (formData.territoryType === 'CITY' && !taxFilterState)
+                                        }
+                                        isClearable
+                                    />
+                                </div>
+                                <div className="col-md-6 mb-4 position-relative">
+                                    <label className="projectform text-start d-block">Tax Reg No <span style={{ color: 'red' }}>*</span></label>
+                                    <input type="text" name="taxRegNo" className="form-input w-100" placeholder="Enter tax registration no" value={formData.taxRegNo || ''}
+                                        onChange={(e) => {
+                                            setFormData({ ...formData, taxRegNo: e.target.value });
+                                        }} />
+                                </div>
+                                <div className="col-md-6 mb-4 position-relative">
+                                    <label className="projectform-select text-start d-block">Tax Reg Date <span style={{ color: "red" }}>*</span></label>
+                                    <div className="position-relative">
+                                        <Flatpickr
+                                            ref={taxRegDateRef}
+                                            name="taxRegDate"
+                                            value={formData.taxRegDate || ''}
+                                            className="form-input w-100"
+                                            placeholder="Select Tax Reg date"
+                                            options={{ dateFormat: "d-M-Y", allowInput: true }}
+                                            onClose={(_, dateStr) => {
+                                                setFormData({ ...formData, taxRegDate: dateStr });
+                                            }}
+                                        />
+                                        <span
+                                            className='calendar-icon'
+                                            style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer' }}
+                                            onClick={() => taxRegDateRef.current?.flatpickr?.open()}
+                                        >
+                                            <FaCalendarAlt size={18} color='#005197' />
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="col-md-6 mb-4 position-relative">
+                                    <label className="projectform text-start d-block">Address 1</label>
+                                    <input type="text" name="taxAddress1" className="form-input w-100" placeholder="Enter address 1" value={formData.taxAddress1 || ''}
+                                        onChange={(e) => {
+                                            setFormData({ ...formData, taxAddress1: e.target.value });
+                                        }} />
+                                </div>
+                                <div className="col-md-6 mb-4 position-relative">
+                                    <label className="projectform text-start d-block">Address 2</label>
+                                    <input type="text" name="taxAddress2" className="form-input w-100" placeholder="Enter address 2" value={formData.taxAddress2 || ''}
+                                        onChange={(e) => {
+                                            setFormData({ ...formData, taxAddress2: e.target.value });
+                                        }} />
+                                </div>
+                                <div className="col-md-6 mb-4 position-relative">
+                                    <label className="projectform text-start d-block">Zip/Postal Code</label>
+                                    <input type="text" name="taxZipCode" className="form-input w-100" placeholder="Enter Zip/Postal Code" value={formData.taxZipCode || ''}
+                                        onChange={(e) => {
+                                            setFormData({ ...formData, taxZipCode: e.target.value })
+                                        }} />
+                                </div>
+                                <div className="col-md-6 mb-4 position-relative">
+                                    <label className="projectform text-start d-block">Email ID</label>
+                                    <input type="text" name="taxEmailID" className="form-input w-100" placeholder="Enter email ID" value={formData.taxEmailID || ''}
+                                        onChange={(e) => {
+                                            setFormData({ ...formData, taxEmailID: e.target.value })
+                                        }} />
+                                </div>
+                            </>
                         )}
-                        <div className={`${formData.territoryType === 'CITY' ? 'col-md-4' : 'col-md-6'} mt-3 mb-4`}>
-                            <label className="projectform-select text-start d-block">Territory <span style={{ color: "red" }}>*</span></label>
-                            <Select name="territory"
-                                options={territoryOptions}
-                                onChange={(option) => {
-                                    setFormData({ ...formData, territory: option.value });
-                                }}
-                                classNamePrefix="select"
-                                value={territoryOptions?.find(opt => opt.value === formData.territory)}
-                                placeholder="Select territory"
-                                isDisabled={
-                                    (formData.territoryType === 'STATE' && !taxFilterCountry) ||
-                                    (formData.territoryType === 'CITY' && !taxFilterState)
-                                }
-                            />
-                        </div>
                     </div>
                 )}
-                {!['STATE', 'CITY'].includes(formData.territoryType) && (
-                    <div className="row">
-                        <div className="col-md-6 mt-3 mb-4">
-                            <label className="projectform-select text-start d-block">Territory <span style={{ color: "red" }}>*</span></label>
-                            <Select name="territory"
-                                options={territoryOptions}
-                                onChange={(option) => {
-                                    setFormData({ ...formData, territory: option.value });
-                                }}
-                                classNamePrefix="select"
-                                value={territoryOptions?.find(opt => opt.value === formData.territory)}
-                                placeholder="Select territory"
-                            />
+
+                {activeTab === 'bank' && (
+                    <>
+                        <div className="row">
+                            <div className="col-md-6 mb-4 position-relative">
+                                <label className="projectform text-start d-block">Account Holder Name <span style={{ color: 'red' }}>*</span></label>
+                                <input type="text" name="accountHolderName" className="form-input w-100" placeholder="Enter account holder name" value={formData.accountHolderName}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, accountHolderName: e.target.value });
+                                    }
+                                    } />
+                            </div>
+                            <div className="col-md-6 mb-4 position-relative">
+                                <label className="projectform text-start d-block">Account No <span style={{ color: 'red' }}>*</span></label>
+                                <input type="text" name="accountNo" className="form-input w-100" placeholder="Enter account no" value={formData.accountNo}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, accountNo: e.target.value });
+                                    }} />
+                            </div>
                         </div>
-                    </div>
+                        <div className="row mt-2">
+                            <div className="col-md-6 mb-4 position-relative">
+                                <label className="projectform text-start d-block">Bank Name <span style={{ color: 'red' }}>*</span></label>
+                                <input type="text" name="bankName" className="form-input w-100" placeholder="Enter bank name" value={formData.bankName}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, bankName: e.target.value });
+                                    }} />
+                            </div>
+                            <div className="col-md-6 mb-4 position-relative">
+                                <label className="projectform text-start d-block">Branch Name <span style={{ color: "red" }}>*</span></label>
+                                <input type="text" name="branchName" className="form-input w-100" placeholder="Enter branch name" value={formData.branchName}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, branchName: e.target.value });
+                                    }} />
+                            </div>
+                        </div>
+                        <div className="row mt-2">
+                            <div className="col-md-12 mb-4 position-relative">
+                                <label className="projectform text-start d-block">Bank Address</label>
+                                <input type="text" name="bankAddress" className="form-input w-100" placeholder="Enter bank address" value={formData.bankAddress}
+                                    autoComplete='off'
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, bankAddress: e.target.value });
+                                    }} />
+                            </div>
+                        </div>
+                    </>
                 )}
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Tax Reg No <span style={{ color: 'red' }}>*</span></label>
-                        <input type="text" name="taxRegNo" className="form-input w-100" placeholder="Enter tax registration no" value={formData.taxRegNo}
-                            onChange={(e) => {
-                                setFormData({ ...formData, taxRegNo: e.target.value });
-                            }} />
-                    </div>
-                </div>
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform-select text-start d-block">Tax Reg Date <span style={{ color: "red" }}>*</span></label>
-                        <div className="position-relative">
-                            <Flatpickr
-                                ref={taxRegDateRef}
-                                name="taxRegDate"
-                                value={formData.taxRegDate}
-                                className="form-input w-100"
-                                placeholder="Select Tax Reg date"
-                                options={{ dateFormat: "d-m-Y", allowInput: true }}
-                                onClose={(_, dateStr) => {
-                                    setFormData({ ...formData, taxRegDate: dateStr });
-                                }}
-                            />
-                            <span
-                                className='calendar-icon'
-                                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer' }}
-                                onClick={() => taxRegDateRef.current?.flatpickr?.open()}
-                            >
-                                <FaCalendarAlt size={18} color='#005197' />
-                            </span>
+
+                {activeTab === 'additional' && (
+                    <>
+                        <div className="row">
+                            <div className="col-md-6 mb-4 position-relative">
+                                <label className="projectform-select text-start d-block">Type <span style={{ color: "red" }}>*</span></label>
+                                <Select name="additionalInfoType" options={additionalInfoTypeOptions}
+                                    onChange={(option) => {
+                                        setFormData({ ...formData, additionalInfoType: option.value });
+                                    }}
+                                    classNamePrefix="select"
+                                    value={additionalInfoTypeOptions?.find(opt => opt.value === formData.additionalInfoType)}
+                                    placeholder="Select type" />
+                            </div>
+                            <div className="col-md-6 mb-4 position-relative">
+                                <label className="projectform text-start d-block">Registration No <span style={{ color: "red" }}>*</span></label>
+                                <input type="text" name="registrationNo" className="form-input w-100" placeholder="Enter registration no" value={formData.registrationNo}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, registrationNo: e.target.value });
+                                    }} />
+                            </div>
                         </div>
-                    </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Address 1</label>
-                        <input type="text" name="taxAddress1" className="form-input w-100" placeholder="Enter address 1" value={formData.taxAddress1}
-                            onChange={(e) => {
-                                setFormData({ ...formData, taxAddress1: e.target.value });
-                            }} />
-                    </div>
-                </div>
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Address 2</label>
-                        <input type="text" name="taxAddress2" className="form-input w-100" placeholder="Enter address 2" value={formData.taxAddress2}
-                            onChange={(e) => {
-                                setFormData({ ...formData, taxAddress2: e.target.value });
-                            }} />
-                    </div>
-                </div>
-
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Zip/Postal Code</label>
-                        <input type="text" name="taxZipCode" className="form-input w-100" placeholder="Enter Zip/Postal Code" value={formData.taxZipCode}
-                            onChange={(e) => {
-                                setFormData({ ...formData, taxZipCode: e.target.value })
-                            }} />
-                    </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Email ID</label>
-                        <input type="text" name="taxEmailID" className="form-input w-100" placeholder="Enter email ID" value={formData.taxEmailID}
-                            onChange={(e) => {
-                                setFormData({ ...formData, taxEmailID: e.target.value })
-                            }} />
-                    </div>
-                </div>
+                    </>
+                )}
             </div>
-            <div className="card text-start border-0 shadow-sm mt-4 px-4 pb-4" style={{ borderRadius: "8px" }}>
-                <div className="p-3 mb-4 d-flex align-items-center justify-content-center" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
-                    <CreditCard size={20} className="me-2 text-white" />
-                    <h3 className="mb-0 fs-6 fw-bold text-white">Bank Accounts</h3>
-                </div>
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Account Holder Name <span style={{ color: 'red' }}>*</span></label>
-                        <input type="text" name="accountHolderName" className="form-input w-100" placeholder="Enter account holder name" value={formData.accountHolderName}
-                            onChange={(e) => {
-                                setFormData({ ...formData, accountHolderName: e.target.value });
-                            }
-                            } />
-                    </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Account No <span style={{ color: 'red' }}>*</span></label>
-                        <input type="text" name="accountNo" className="form-input w-100" placeholder="Enter account no" value={formData.accountNo}
-                            onChange={(e) => {
-                                setFormData({ ...formData, accountNo: e.target.value });
-                            }} />
-                    </div>
-                </div>
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Bank Name <span style={{ color: 'red' }}>*</span></label>
-                        <input type="text" name="bankName" className="form-input w-100" placeholder="Enter bank name" value={formData.bankName}
-                            onChange={(e) => {
-                                setFormData({ ...formData, bankName: e.target.value });
-                            }} />
-                    </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Branch Name <span style={{ color: "red" }}>*</span></label>
-                        <input type="text" name="branchName" className="form-input w-100" placeholder="Enter branch name" value={formData.branchName}
-                            onChange={(e) => {
-                                setFormData({ ...formData, branchName: e.target.value });
-                            }} />
-                    </div>
-                </div>
-                <div className="row">
-                    <div className="col-md-12 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Bank Address</label>
-                        <input type="text" name="bankAddress" className="form-input w-100" placeholder="Enter bank address" value={formData.bankAddress}
-                            autoComplete='off'
-                            onChange={(e) => {
-                                setFormData({ ...formData, bankAddress: e.target.value });
-                            }} />
-                    </div>
-                </div>
-            </div>
-
-            <div className="card text-start border-0 shadow-sm mt-4 px-4 pb-4" style={{ borderRadius: "8px" }}>
-                <div className="p-3 mb-4 d-flex align-items-center justify-content-center" style={{ backgroundColor: bluePrimary, width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem", borderRadius: "8px 8px 0 0" }}>
-                    <Info size={20} className="me-2 text-white" />
-                    <h3 className="mb-0 fs-6 fw-bold text-white">Additional Info</h3>
-                </div>
-                <div className="row">
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform-select text-start d-block">Type <span style={{ color: "red" }}>*</span></label>
-                        <Select name="additionalInfoType" options={additionalInfoTypeOptions}
-                            onChange={(option) => {
-                                setFormData({ ...formData, additionalInfoType: option.value });
-                            }}
-                            classNamePrefix="select"
-                            value={additionalInfoTypeOptions?.find(opt => opt.value === formData.additionalInfoType)}
-                            placeholder="Select type" />
-                    </div>
-                    <div className="col-md-6 mt-3 mb-4">
-                        <label className="projectform text-start d-block">Registration No <span style={{ color: "red" }}>*</span></label>
-                        <input type="text" name="registrationNo" className="form-input w-100" placeholder="Enter registration no" value={formData.registrationNo}
-                            onChange={(e) => {
-                                setFormData({ ...formData, registrationNo: e.target.value });
-                            }} />
-                    </div>
-                </div>
-            </div>
-        </>
+        </div>
     );
 };
 
@@ -696,9 +736,7 @@ const ReviewSummaryContent = ({
     additionalInfoTypeOptions,
     isLoading,
 }) => {
-    const { entityCode, entityName, effectiveDate, entityType, natureOfBusiness, grade, attachmentMetadata = [] } = formData;
-    const { phoneNo, emailID, addressType, address1, address2, country, addressState, addresscity, zipCode, } = formData;
-    const { contactName, contactPosition, contactPhoneNo, contactEmailID, } = formData;
+    const { entityCode, entityName, effectiveDate, entityType, natureOfBusiness, grade, attachmentMetadata = [], addressList = [], contactList = [] } = formData;
     const { taxType, territoryType, territory, taxRegNo, taxRegDate, taxAddress1, taxAddress2, taxZipCode, taxEmailID, } = formData;
     const { accountHolderName, accountNo, bankName, branchName, bankAddress, } = formData;
     const { additionalInfoType, registrationNo, } = formData;
@@ -807,57 +845,61 @@ const ReviewSummaryContent = ({
                     </div>
                 </div>
 
-                <div className="pt-4 mt-4" style={{ borderTop: '1px solid #f0f0f0' }}>
-                    <div className="row mt-3">
-                        <div className="col-lg-4 col-md-12 col-sm-12 mb-4">
-                            <h5 className="fw-bold mb-1" style={{ color: bluePrimary }}>
-                                <MapPin size={18} className="me-2" /> Address Details
-                            </h5>
-                            <p className="text-muted" style={{ fontSize: '0.9rem' }}>Registered company address</p>
-                        </div>
-                        <div className="col-lg-8 col-md-12 col-sm-12">
-                            <div className="row">
-                                <DetailItem label="Phone No" value={phoneNo} />
-                                <DetailItem label="Email ID" value={emailID} />
-                                <DetailItem label="Address Type" value={getLabel(addressType, addressTypeOptions)} />
+                {addressList.map((addr, idx) => (
+                    <div key={idx} className="pt-4 mt-4" style={{ borderTop: '1px solid #f0f0f0' }}>
+                        <div className="row mt-3">
+                            <div className="col-lg-4 col-md-12 col-sm-12 mb-4">
+                                <h5 className="fw-bold mb-1" style={{ color: bluePrimary }}>
+                                    <MapPin size={18} className="me-2" /> Address Details {addressList.length > 1 ? `(${idx + 1})` : ''}
+                                </h5>
+                                <p className="text-muted" style={{ fontSize: '0.9rem' }}>Registered company address</p>
                             </div>
-                            <div className="row">
-                                <DetailItem label="Address 1" value={address1} />
-                                <DetailItem label="Address 2" value={address2} />
-                                <DetailItem label="" value="" />
-                            </div>
-                            <div className="row mb-3">
-                                <DetailItem label="Country" value={getLabel(country, countryOptions)} />
-                                <DetailItem label="State" value={getLabel(addressState, addressStateOptions)} />
-                                <DetailItem label="City" value={getLabel(addresscity, addresscityOptions)} />
-                                <DetailItem label="Zip/Postal Code" value={zipCode} />
+                            <div className="col-lg-8 col-md-12 col-sm-12">
+                                <div className="row">
+                                    <DetailItem label="Phone No" value={addr.phoneNo} />
+                                    <DetailItem label="Email ID" value={addr.emailID} />
+                                    <DetailItem label="Address Type" value={getLabel(addr.addressType, addressTypeOptions)} />
+                                </div>
+                                <div className="row">
+                                    <DetailItem label="Address 1" value={addr.address1} />
+                                    <DetailItem label="Address 2" value={addr.address2} />
+                                    <DetailItem label="" value="" />
+                                </div>
+                                <div className="row mb-3">
+                                    <DetailItem label="Country" value={getLabel(addr.country, countryOptions)} />
+                                    <DetailItem label="State" value={getLabel(addr.addressState, addr.stateOptions)} />
+                                    <DetailItem label="City" value={getLabel(addr.addresscity, addr.cityOptions)} />
+                                    <DetailItem label="Zip/Postal Code" value={addr.zipCode} />
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                ))}
 
-                <div className="pt-4 mt-4" style={{ borderTop: '1px solid #f0f0f0' }}>
-                    <div className="row mt-3">
-                        <div className="col-lg-4 col-md-12 col-sm-12 mb-4">
-                            <h5 className="fw-bold mb-1" style={{ color: bluePrimary }}>
-                                <User size={18} className="me-2" /> Contact Details
-                            </h5>
-                            <p className="text-muted" style={{ fontSize: '0.9rem' }}>Primary point of contact</p>
-                        </div>
-                        <div className="col-lg-8 col-md-12 col-sm-12">
-                            <div className="row">
-                                <DetailItem label="Name" value={contactName} />
-                                <DetailItem label="Position" value={contactPosition} />
-                                <DetailItem label="" value="" />
+                {contactList.map((contact, idx) => (
+                    <div key={idx} className="pt-4 mt-4" style={{ borderTop: '1px solid #f0f0f0' }}>
+                        <div className="row mt-3">
+                            <div className="col-lg-4 col-md-12 col-sm-12 mb-4">
+                                <h5 className="fw-bold mb-1" style={{ color: bluePrimary }}>
+                                    <User size={18} className="me-2" /> Contact Details {contactList.length > 1 ? `(${idx + 1})` : ''}
+                                </h5>
+                                <p className="text-muted" style={{ fontSize: '0.9rem' }}>Primary point of contact</p>
                             </div>
-                            <div className="row mb-3">
-                                <DetailItem label="Phone No" value={contactPhoneNo} />
-                                <DetailItem label="Email ID" value={contactEmailID} />
-                                <DetailItem label="" value="" />
+                            <div className="col-lg-8 col-md-12 col-sm-12">
+                                <div className="row">
+                                    <DetailItem label="Name" value={contact.name} />
+                                    <DetailItem label="Position" value={contact.position} />
+                                    <DetailItem label="" value="" />
+                                </div>
+                                <div className="row mb-3">
+                                    <DetailItem label="Phone No" value={contact.phoneNo} />
+                                    <DetailItem label="Email ID" value={contact.emailId} />
+                                    <DetailItem label="" value="" />
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                ))}
 
                 <div className="pt-4 mt-4" style={{ borderTop: '1px solid #f0f0f0' }}>
                     <div className="row mt-3">
@@ -870,23 +912,27 @@ const ReviewSummaryContent = ({
                         <div className="col-lg-8 col-md-12 col-sm-12">
                             <div className="row">
                                 <DetailItem label="Tax Type" value={getLabel(taxType, taxTypeOptions)} />
-                                <DetailItem label="Territory Type" value={getLabel(territoryType, territoryTypeOptions)} />
-                                <DetailItem label="Territory" value={getLabel(territory, territoryOptions)} />
+                                {taxType !== 'GST_UNREGISTER' && (
+                                    <>
+                                        <DetailItem label="Territory Type" value={getLabel(territoryType, territoryTypeOptions)} />
+                                        <DetailItem label="Territory" value={getLabel(territory, territoryOptions)} />
+                                    </>
+                                )}
                             </div>
-                            <div className="row">
-                                <DetailItem label="Tax Reg No" value={taxRegNo} />
-                                <DetailItem label="Tax Reg Date" value={taxRegDate} />
-                                <DetailItem label="Email ID" value={taxEmailID} />
-                            </div>
-                            <div className="row mb-3">
-                                <DetailItem label="Address 1" value={taxAddress1} />
-                                <DetailItem label="Address 2" value={taxAddress2} />
-                                <DetailItem label="Zip/Postal Code" value={taxZipCode} />
-                            </div>
-                            <div className="row mb-3">
-                                <DetailItem label="" value="" />
-                                <DetailItem label="" value="" />
-                            </div>
+                            {taxType !== 'GST_UNREGISTER' && (
+                                <>
+                                    <div className="row">
+                                        <DetailItem label="Tax Reg No" value={taxRegNo} />
+                                        <DetailItem label="Tax Reg Date" value={taxRegDate} />
+                                        <DetailItem label="Email ID" value={taxEmailID} />
+                                    </div>
+                                    <div className="row mb-3">
+                                        <DetailItem label="Address 1" value={taxAddress1} />
+                                        <DetailItem label="Address 2" value={taxAddress2} />
+                                        <DetailItem label="Zip/Postal Code" value={taxZipCode} />
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -978,7 +1024,7 @@ function ContractorOverview() {
     const [selectedView, setSelectedView] = useState('manual');
     const [viewMode, setViewMode] = useState('entry');
     const STORAGE_KEY = 'contractorFormData';
-    const [isLoading, setIsLoadnig] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [entityTypeOptions, setEntityTypeOptions] = useState([]);
     const [natureOfBusinessOptions, setNatureOfBusinessOptions] = useState([]);
     const [gradeOptions, setGradeOptions] = useState([]);
@@ -998,47 +1044,115 @@ function ContractorOverview() {
     const headers = { Authorization: `Bearer ${token}` };
     const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
-    const fetchAddressState = (countryId) => {
+    const fetchAddressState = (index, countryId) => {
         if (!countryId) {
-            setAddressStateOptions([]);
-            setAddresscityOptions([]);
+            setFormData(prev => {
+                const newList = [...prev.addressList];
+                newList[index] = { ...newList[index], stateOptions: [], cityOptions: [] };
+                return { ...prev, addressList: newList };
+            });
             return;
         }
-        axios.get(`${baseUrl}/states/byCountry/${countryId}`, { headers })
+        axios.get(`${baseUrl}/states/${countryId}`, { headers })
             .then(r => {
                 const list = r.data?.data ?? r.data ?? [];
-                setAddressStateOptions(
-                    list.map(item => ({
-                        value: item.id,
-                        label: item.state
-                    }))
-                );
+                const options = list.map(item => ({ value: item.id, label: item.state }));
+                setFormData(prev => {
+                    const newList = [...prev.addressList];
+                    newList[index] = { ...newList[index], stateOptions: options };
+                    return { ...prev, addressList: newList };
+                });
             })
             .catch(() => {
-                setAddressStateOptions([]);
-                setAddresscityOptions([]);
+                setFormData(prev => {
+                    const newList = [...prev.addressList];
+                    newList[index] = { ...newList[index], stateOptions: [], cityOptions: [] };
+                    return { ...prev, addressList: newList };
+                });
             });
     }
 
-    const fetchAddressCity = (stateId) => {
+    const fetchAddressCity = (index, stateId) => {
         if (!stateId) {
-            setAddresscityOptions([]);
+            setFormData(prev => {
+                const newList = [...prev.addressList];
+                newList[index] = { ...newList[index], cityOptions: [] };
+                return { ...prev, addressList: newList };
+            });
             return;
         }
         axios.get(`${baseUrl}/cities/byState/${stateId}`, { headers })
             .then(r => {
                 const list = r.data?.data ?? r.data ?? [];
-                setAddresscityOptions(
-                    list.map(item => ({
-                        value: item.id,
-                        label: item.city
-                    }))
-                );
+                const options = list.map(item => ({ value: item.id, label: item.city }));
+                setFormData(prev => {
+                    const newList = [...prev.addressList];
+                    newList[index] = { ...newList[index], cityOptions: options };
+                    return { ...prev, addressList: newList };
+                });
             })
             .catch(() => {
-                setAddresscityOptions([]);
+                setFormData(prev => {
+                    const newList = [...prev.addressList];
+                    newList[index] = { ...newList[index], cityOptions: [] };
+                    return { ...prev, addressList: newList };
+                });
             });
     }
+
+    const handleAddressChange = (index, e) => {
+        const { name, value } = e.target;
+        setFormData(prev => {
+            const newList = [...prev.addressList];
+            newList[index] = { ...newList[index], [name]: value };
+            return { ...prev, addressList: newList };
+        });
+    };
+
+    const addAddress = () => {
+        setFormData(prev => ({
+            ...prev,
+            addressList: [...prev.addressList, {
+                addressType: '', address1: '', address2: '', country: '',
+                addressState: '', addresscity: '', zipCode: '', phoneNo: '', emailID: '',
+                stateOptions: [], cityOptions: []
+            }]
+        }));
+    };
+
+    const removeAddress = (index) => {
+        if (formData.addressList.length > 1) {
+            setFormData(prev => ({
+                ...prev,
+                addressList: prev.addressList.filter((_, i) => i !== index)
+            }));
+        }
+    };
+
+    const handleContactChange = (index, e) => {
+        const { name, value } = e.target;
+        setFormData(prev => {
+            const newList = [...prev.contactList];
+            newList[index] = { ...newList[index], [name]: value };
+            return { ...prev, contactList: newList };
+        });
+    };
+
+    const addContact = () => {
+        setFormData(prev => ({
+            ...prev,
+            contactList: [...prev.contactList, { name: '', position: '', phoneNo: '', emailId: '' }]
+        }));
+    };
+
+    const removeContact = (index) => {
+        if (formData.contactList.length > 1) {
+            setFormData(prev => ({
+                ...prev,
+                contactList: prev.contactList.filter((_, i) => i !== index)
+            }));
+        }
+    };
 
     const handleSendInvitation = async () => {
         if (!formData.contractorEmailId) {
@@ -1063,10 +1177,20 @@ function ContractorOverview() {
             }));
         } catch (error) {
             console.error("Error sending invitation:", error);
-            const errorMessage = error.response?.data || "Failed to send invitation.";
+            const errorMessage = error.response?.data?.message || error.response?.data || "Failed to send invitation.";
             toast.error(typeof errorMessage === 'string' ? errorMessage : "Failed to send invitation.");
         }
     };
+
+    const [activeTab, setActiveTab] = useState("basic");
+    const tabs = [
+        { id: "basic", label: "Basic Details", icon: <Briefcase size={16} /> },
+        { id: "address", label: "Address Details", icon: <MapPin size={16} /> },
+        { id: "contact", label: "Contact Details", icon: <User size={16} /> },
+        { id: "tax", label: "Tax Details", icon: <FileText size={16} /> },
+        { id: "bank", label: "Bank Details", icon: <CreditCard size={16} /> },
+        { id: "additional", label: "Additional Info", icon: <Info size={16} /> },
+    ];
 
     useEffect(() => {
         if (!token) return;
@@ -1115,8 +1239,8 @@ function ContractorOverview() {
                 const list = r.data?.data ?? r.data ?? [];
                 setTaxTypeOptions(
                     list.map(item => ({
-                        value: item.id,
-                        label: item.taxType
+                        value: item.code,
+                        label: item.label
                     }))
                 );
             });
@@ -1222,11 +1346,11 @@ function ContractorOverview() {
 
             if (formData.territoryType === 'STATE') {
                 // Fetch States by Country for Territory Options
-                const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/states/byCountry/${selectedOption.value}`, { headers });
+                const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/states/${selectedOption.value}`, { headers });
                 setTerritoryOptions(response.data.map(item => ({ value: item.id, label: item.state })));
             } else if (formData.territoryType === 'CITY') {
                 // Fetch States by Country for State Filter
-                const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/states/byCountry/${selectedOption.value}`, { headers });
+                const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/states/${selectedOption.value}`, { headers });
                 setTaxStateOptions(response.data.map(item => ({ value: item.id, label: item.state })));
             }
         } catch (error) {
@@ -1252,12 +1376,21 @@ function ContractorOverview() {
             }
         }
     };
+
+    const generateEntityCode = () => `CON-${Math.floor(100 + Math.random() * 900)}`;
+
     const defaultFormData = {
-        entityCode: '', entityName: '', effectiveDate: '', entityType: '',
+        id: null,
+        entityCode: generateEntityCode(), entityName: '', effectiveDate: '', entityType: '',
         natureOfBusiness: '', grade: '', attachments: [], attachmentMetadata: [],
-        phoneNo: '', emailID: '', addressType: '', address1: '', address2: '',
-        country: '', addressState: '', addresscity: '', zipCode: '',
-        contactName: '', contactPosition: '', contactPhoneNo: '', contactEmailID: '',
+        addressList: [{
+            addressType: '', address1: '', address2: '', country: '',
+            addressState: '', addresscity: '', zipCode: '', phoneNo: '', emailID: '',
+            stateOptions: [], cityOptions: []
+        }],
+        contactList: [{
+            name: '', position: '', phoneNo: '', emailId: ''
+        }],
         taxType: '', territoryType: '', territory: '', taxRegNo: '',
         taxRegDate: '', taxAddress1: '', taxAddress2: '',
         taxZipCode: '', taxEmailID: '',
@@ -1284,93 +1417,156 @@ function ContractorOverview() {
         return defaultFormData;
     });
 
+    const validateCurrentTab = (tabId) => {
+        if (tabId === 'basic') {
+            if (!formData.entityName || !formData.effectiveDate || !formData.entityType) {
+                toast.error("Please fill in all mandatory basic details.");
+                return false;
+            }
+        } else if (tabId === 'address') {
+            const isValid = formData.addressList.every(addr =>
+                addr.addressType && addr.country && addr.addressState && addr.addresscity && addr.zipCode
+            );
+            if (!isValid) {
+                toast.error("Please fill in all mandatory address details.");
+                return false;
+            }
+        } else if (tabId === 'contact') {
+            const isValid = formData.contactList.every(contact =>
+                contact.name && contact.position && contact.emailId && contact.phoneNo
+            );
+            if (!isValid) {
+                toast.error("Please fill in all mandatory contact details.");
+                return false;
+            }
+        } else if (tabId === 'tax') {
+            if (!formData.taxType) {
+                toast.error("Please select a tax type.");
+                return false;
+            }
+            if (formData.taxType !== 'GST_UNREGISTER') {
+                if (!formData.territoryType || !formData.territory || !formData.taxRegNo || !formData.taxRegDate) {
+                    toast.error("Please fill in all mandatory tax details.");
+                    return false;
+                }
+            }
+        } else if (tabId === 'bank') {
+            if (!formData.accountHolderName || !formData.accountNo || !formData.bankName || !formData.branchName) {
+                toast.error("Please fill in all mandatory bank details.");
+                return false;
+            }
+        } else if (tabId === 'additional') {
+            if (!formData.additionalInfoType || !formData.registrationNo) {
+                toast.error("Please fill in all mandatory additional info details.");
+                return false;
+            }
+        }
+        return true;
+    };
+
+    const handleTabClick = (targetTabId) => {
+        const currentIndex = tabs.findIndex(t => t.id === activeTab);
+        const targetIndex = tabs.findIndex(t => t.id === targetTabId);
+        
+        if (targetIndex > currentIndex) {
+            for (let i = currentIndex; i < targetIndex; i++) {
+                if (!validateCurrentTab(tabs[i].id)) {
+                    setActiveTab(tabs[i].id);
+                    return;
+                }
+            }
+        }
+        setActiveTab(targetTabId);
+    };
+
+    const handleNextTab = () => {
+        if (!validateCurrentTab(activeTab)) return;
+        const currentIndex = tabs.findIndex(t => t.id === activeTab);
+        if (currentIndex < tabs.length - 1) {
+            setActiveTab(tabs[currentIndex + 1].id);
+            window.scrollTo(0, 0);
+        }
+    };
+
+    const handlePrevTab = () => {
+        const currentIndex = tabs.findIndex(t => t.id === activeTab);
+        if (currentIndex > 0) {
+            setActiveTab(tabs[currentIndex - 1].id);
+            window.scrollTo(0, 0);
+        }
+    };
     const handleSubmitFinal = async () => {
-        setIsLoadnig(true);
+        setIsLoading(true);
 
-        const requiredFields = [
-            'entityCode', 'entityName', 'effectiveDate', 'entityType',
-            'addressType', 'country', 'addressState', 'addresscity', 'zipCode',
-            'contactName', 'contactPosition', 'contactEmailID', 'contactPhoneNo',
-            'taxType', 'territoryType', 'territory', 'taxRegNo',
-            'taxRegDate',
-            'accountHolderName', 'accountNo', 'bankName', 'branchName',
-            'additionalInfoType', 'registrationNo'
-        ];
-
-        const missingFields = requiredFields.filter(field => !formData[field]);
-
-        if (missingFields.length > 0) {
-            toast.error("Please fill in all mandatory fields.");
-            setIsLoadnig(false);
-            return;
+        // Run the same validations as the tabs
+        for (let i = 0; i < tabs.length; i++) {
+            if (!validateCurrentTab(tabs[i].id)) {
+                setViewMode('entry');
+                setActiveTab(tabs[i].id);
+                setIsLoading(false);
+                return;
+            }
         }
 
-        const data = new FormData();
-
-        const inputDto = {
+        const contractorDTO = {
+            id: formData.id || null,
             entityCode: formData.entityCode,
             entityName: formData.entityName,
             effectiveDate: formatDateForBackend(formData.effectiveDate),
             contractorTypeId: formData.entityType,
             contractorGradeId: formData.grade,
-            contractorNatureId: [formData.natureOfBusiness],
-            subbmissionMode: "MANUAL",
-            taxTypeId: formData.taxType,
-            addressTypeId: formData.addressType,
-            idTypeId: formData.additionalInfoType,
-            territoryTypeId: formData.territoryType
+            contractorNatureIds: formData.natureOfBusiness ? [formData.natureOfBusiness] : [],
+            submissionMode: "MANUAL",
+            attachmentUrls: [],
+            contacts: formData.contactList.map(c => ({
+                id: c.id || null,
+                name: c.name,
+                position: c.position,
+                phoneNo: c.phoneNo,
+                email: c.emailId
+            })),
+            addresses: formData.addressList.map(a => ({
+                id: a.id || null,
+                addressTypeId: a.addressType,
+                address1: a.address1,
+                address2: a.address2,
+                zipcode: a.zipCode,
+                email: a.emailID,
+                phone: a.phoneNo,
+                countryId: a.country,
+                stateId: a.addressState,
+                cityId: a.addresscity
+            })),
+            taxDetails: [{
+                id: formData.taxId || null,
+                taxTypeId: formData.taxType,
+                territoryTypeId: formData.territoryType,
+                territory: formData.territory,
+                taxRegNo: formData.taxRegNo,
+                taxRegDate: formatDateForBackend(formData.taxRegDate),
+                address1: formData.taxAddress1,
+                address2: formData.taxAddress2,
+                city: "",
+                pinCode: formData.taxZipCode,
+                email: formData.taxEmailID
+            }],
+            bankDetails: [{
+                id: formData.bankId || null,
+                accHolderName: formData.accountHolderName,
+                accNumber: formData.accountNo,
+                bankName: formData.bankName,
+                branch: formData.branchName,
+                bankAddress: formData.bankAddress
+            }],
+            additionalInfo: [{
+                id: formData.additionalInfoId || null,
+                identityTypeId: formData.additionalInfoType,
+                regNo: formData.registrationNo
+            }]
         };
-        data.append("contractorInputDto", new Blob([JSON.stringify(inputDto)], { type: "application/json" }));
 
-        const addressObj = {
-            addressType: { id: formData.addressType },
-            address1: formData.address1,
-            address2: formData.address2,
-            country: formData.country,
-            state: formData.addressState,
-            city: formData.addresscity,
-            zipCode: formData.zipCode,
-            phoneNumber: formData.phoneNo,
-            email: formData.emailID
-        };
-        data.append("contractorAddress", new Blob([JSON.stringify(addressObj)], { type: "application/json" }));
-
-        const contactsObj = {
-            name: formData.contactName,
-            designation: formData.contactPosition,
-            phoneNumber: formData.contactPhoneNo,
-            email: formData.contactEmailID
-        };
-        data.append("contractorContacts", new Blob([JSON.stringify(contactsObj)], { type: "application/json" }));
-
-        const taxObj = {
-            taxType: { id: formData.taxType },
-            territoryType: formData.territoryType,
-            territory: formData.territory,
-            taxRegNumber: formData.taxRegNo,
-            taxRegDate: formatDateForBackend(formData.taxRegDate),
-            address1: formData.taxAddress1,
-            address2: formData.taxAddress2,
-
-            pinCode: formData.taxZipCode,
-            email: formData.taxEmailID
-        };
-        data.append("contractorTaxDetails", new Blob([JSON.stringify(taxObj)], { type: "application/json" }));
-
-        const bankObj = {
-            accHolderName: formData.accountHolderName,
-            accNumber: formData.accountNo,
-            bankName: formData.bankName,
-            branch: formData.branchName,
-            bankAddress: formData.bankAddress
-        };
-        data.append("contractorBankDetails", new Blob([JSON.stringify(bankObj)], { type: "application/json" }));
-
-        const addInfoObj = {
-            identityType: { id: formData.additionalInfoType },
-            regNo: formData.registrationNo
-        };
-        data.append("contractorAddInfo", new Blob([JSON.stringify(addInfoObj)], { type: "application/json" }));
+        const data = new FormData();
+        data.append("contractor", new Blob([JSON.stringify(contractorDTO)], { type: "application/json" }));
 
         if (formData.attachmentMetadata) {
             formData.attachmentMetadata.forEach(fileData => {
@@ -1392,7 +1588,7 @@ function ContractorOverview() {
             toast.error("Failed to submit contractor details.");
         }
         finally {
-            setIsLoadnig(false);
+            setIsLoading(false);
         }
     };
 
@@ -1414,6 +1610,14 @@ function ContractorOverview() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        
+        for (let i = 0; i < tabs.length; i++) {
+            if (!validateCurrentTab(tabs[i].id)) {
+                setActiveTab(tabs[i].id);
+                return;
+            }
+        }
+
         setViewMode('review');
         window.scrollTo(0, 0);
     };
@@ -1493,23 +1697,29 @@ function ContractorOverview() {
                                         gradeOptions={gradeOptions}
                                         addressTypeOptions={addressTypeOptions}
                                         countryOptions={countryOptions}
-                                        addressStateOptions={addressStateOptions}
-                                        addresscityOptions={addresscityOptions}
                                         territoryTypeOptions={territoryTypeOptions}
                                         territoryOptions={territoryOptions}
                                         taxTypeOptions={taxTypeOptions}
-                                        taxCityOptions={[]}
                                         additionalInfoTypeOptions={additionalInfoTypeOptions}
                                         fetchNatureOfBusiness={fetchNatureOfBusiness}
                                         fetchAddressState={fetchAddressState}
                                         fetchAddressCity={fetchAddressCity}
-                                        fetchTerritory={fetchTerritory}
+                                        handleAddressChange={handleAddressChange}
+                                        addAddress={addAddress}
+                                        removeAddress={removeAddress}
+                                        handleContactChange={handleContactChange}
+                                        addContact={addContact}
+                                        removeContact={removeContact}
                                         taxCountryOptions={taxCountryOptions}
                                         taxStateOptions={taxStateOptions}
                                         taxFilterCountry={taxFilterCountry}
                                         taxFilterState={taxFilterState}
                                         handleTaxCountryFilterChange={handleTaxCountryFilterChange}
                                         handleTaxStateFilterChange={handleTaxStateFilterChange}
+                                        activeTab={activeTab}
+                                        setActiveTab={setActiveTab}
+                                        tabs={tabs}
+                                        handleTabClick={handleTabClick}
                                     />
                                 )}
 
@@ -1536,24 +1746,48 @@ function ContractorOverview() {
                                 )}
                             </form>
                             {isManualActive && (
-                                <div className="d-flex justify-content-end mt-4">
+                                <div className="d-flex justify-content-between mt-4">
                                     <button
                                         type="button"
                                         onClick={() => navigate("/ContractorOnboarding")}
-                                        className="btn px-4 fw-bold me-3"
+                                        className="btn px-4 fw-bold"
                                         style={{ color: bluePrimary }}
                                     >
                                         Cancel
                                     </button>
 
-                                    <button
-                                        type="submit"
-                                        form="contractorForm"
-                                        className="btn px-4 fw-bold"
-                                        style={{ backgroundColor: bluePrimary, color: "white" }}
-                                    >
-                                        Review & Submit <ArrowRight size={20} className="ms-2" />
-                                    </button>
+                                    <div className="d-flex">
+                                        {activeTab !== tabs[0].id && (
+                                            <button
+                                                type="button"
+                                                onClick={handlePrevTab}
+                                                className="btn px-4 fw-bold me-3"
+                                                style={{ border: `1px solid ${bluePrimary}`, color: bluePrimary, backgroundColor: 'white' }}
+                                            >
+                                                Previous
+                                            </button>
+                                        )}
+                                        
+                                        {activeTab !== tabs[tabs.length - 1].id ? (
+                                            <button
+                                                type="button"
+                                                onClick={handleNextTab}
+                                                className="btn px-4 fw-bold"
+                                                style={{ backgroundColor: bluePrimary, color: "white" }}
+                                            >
+                                                Next <ArrowRight size={20} className="ms-2" />
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="submit"
+                                                form="contractorForm"
+                                                className="btn px-4 fw-bold"
+                                                style={{ backgroundColor: bluePrimary, color: "white" }}
+                                            >
+                                                Review & Submit <ArrowRight size={20} className="ms-2" />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </>

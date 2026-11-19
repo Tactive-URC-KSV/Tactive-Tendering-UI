@@ -143,10 +143,11 @@ function ContractorInfo() {
                                 <div className="row">
                                     <DetailRow label="Entity Name" value={contractorData.contractor?.entityName} />
                                     <DetailRow label="Entity Code" value={contractorData.contractor?.entityCode} />
-                                    <DetailRow label="Entity Type" value={contractorData.contractor?.contractorType || contractorData.contractor?.contractorType?.type} />
-                                    <DetailRow label="Grade" value={contractorData.contractor?.contractorGrade || contractorData.contractor?.contractorGrade?.grade} />
-                                    <DetailRow label="Nature of Business" value={contractorData.contractor?.natureOfBusiness?.map(n => n.nature || n.label || n.name).join(', ') || "-"} />
+                                    <DetailRow label="Entity Type" value={contractorData.contractor?.contractorType?.type} />
+                                    <DetailRow label="Grade" value={contractorData.contractor?.contractorGrade?.gradeName} />
+                                    <DetailRow label="Nature of Business" value={contractorData.contractor?.contractorNature?.map(n => n.nature).join(', ') || "-"} />
                                     <DetailRow label="Effective Date" value={formatDate(contractorData.contractor?.effectiveDate)} />
+                                    <DetailRow label="Submission Mode" value={contractorData.contractor?.submissionMode} />
                                 </div>
 
                                 <hr className="my-4" />
@@ -154,60 +155,59 @@ function ContractorInfo() {
                                 <h5 className="mb-4 fw-bold text-start" style={{ color: bluePrimary }}>Contact Person</h5>
                                 <div className="row">
                                     <DetailRow label="Name" value={contractorData.contact?.name} />
-                                    <DetailRow label="Position" value={contractorData.contact?.designation || contractorData.contact?.position} />
+                                    <DetailRow label="Designation" value={contractorData.contact?.designation} />
                                     <DetailRow label="Email" value={contractorData.contact?.email} />
                                     <DetailRow label="Phone" value={contractorData.contact?.phoneNumber} />
                                 </div>
 
                                 <hr className="my-4" />
 
-                                <h5 className="mb-4 fw-bold text-start" style={{ color: bluePrimary }}>Registered Address</h5>
-                                <div className="row">
-                                    <DetailRow label="Address 1" value={contractorData.address?.address1} />
-                                    <DetailRow label="Address 2" value={contractorData.address?.address2} />
-                                    <DetailRow label="City" value={contractorData.address?.city} />
-                                    <DetailRow label="Country" value={contractorData.address?.country} />
-                                    <DetailRow label="Zip Code" value={contractorData.address?.zipCode} />
-                                    <DetailRow label="Phone" value={contractorData.address?.phoneNumber} />
-                                    <DetailRow label="Email" value={contractorData.address?.email} />
-                                </div>
+                                <h5 className="mb-4 fw-bold text-start" style={{ color: bluePrimary }}>Addresses</h5>
+                                {contractorData.contractor?.contractorAddresses?.length > 0 ? (
+                                    contractorData.contractor.contractorAddresses.map((addr, index) => (
+                                        <div key={index} className="card mb-3 border-light bg-light">
+                                            <div className="card-body">
+                                                <div className="row">
+                                                    <DetailRow label="Address Type" value={addr.addressType?.addressType} />
+                                                    <DetailRow label="Address 1" value={addr.address1} />
+                                                    <DetailRow label="Address 2" value={addr.address2} />
+                                                    <DetailRow label="City" value={addr.city} />
+                                                    <DetailRow label="Country" value={addr.country} />
+                                                    <DetailRow label="Zip Code" value={addr.zipCode} />
+                                                    <DetailRow label="Phone" value={addr.phoneNumber} />
+                                                    <DetailRow label="Email" value={addr.email} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-muted">No address details available.</div>
+                                )}
                             </div>
                         )}
 
                         {activeTab === "financials" && (
                             <div>
                                 <h5 className="mb-4 fw-bold text-start" style={{ color: bluePrimary }}>Tax Details</h5>
-                                {contractorData.taxDetails ? (
-                                    // Assuming single object based on form, but handling if it's an array
-                                    Array.isArray(contractorData.taxDetails) ? (
-                                        contractorData.taxDetails.map((tax, index) => (
-                                            <div key={index} className="card mb-3 border-light bg-light">
-                                                <div className="card-body">
-                                                    <div className="row">
-                                                        <DetailRow label="Tax Type" value={tax.taxType} />
-                                                        <DetailRow label="Registration No" value={tax.taxRegNumber} />
-                                                        <DetailRow label="Registration Date" value={formatDate(tax.taxRegDate)} />
-                                                        <DetailRow label="Territory Type" value={tax.territoryType} />
-                                                        <DetailRow label="Territory" value={tax.territory} />
-
-                                                        <DetailRow label="Address 1" value={tax.address1} />
-                                                        <DetailRow label="Address 2" value={tax.address2} />
-                                                    </div>
+                                {contractorData.contractor?.contractorTaxDetails?.length > 0 ? (
+                                    contractorData.contractor.contractorTaxDetails.map((tax, index) => (
+                                        <div key={index} className="card mb-3 border-light bg-light">
+                                            <div className="card-body">
+                                                <div className="row">
+                                                    <DetailRow label="Tax Type" value={tax.taxType} />
+                                                    <DetailRow label="Registration No" value={tax.taxRegNumber} />
+                                                    <DetailRow label="Registration Date" value={formatDate(tax.taxRegDate)} />
+                                                    <DetailRow label="Territory Type" value={tax.territoryType} />
+                                                    <DetailRow label="Territory" value={tax.territory} />
+                                                    <DetailRow label="Address 1" value={tax.address1} />
+                                                    <DetailRow label="Address 2" value={tax.address2} />
+                                                    <DetailRow label="City" value={tax.city} />
+                                                    <DetailRow label="Pin Code" value={tax.pinCode} />
+                                                    <DetailRow label="Email" value={tax.email} />
                                                 </div>
                                             </div>
-                                        ))
-                                    ) : (
-                                        <div className="row">
-                                            <DetailRow label="Tax Type" value={contractorData.taxDetails.taxType} />
-                                            <DetailRow label="Registration No" value={contractorData.taxDetails.taxRegNumber} />
-                                            <DetailRow label="Registration Date" value={formatDate(contractorData.taxDetails.taxRegDate)} />
-                                            <DetailRow label="Territory Type" value={contractorData.taxDetails.territoryType} />
-                                            <DetailRow label="Territory" value={contractorData.taxDetails.territory} />
-
-                                            <DetailRow label="Address 1" value={contractorData.taxDetails.address1} />
-                                            <DetailRow label="Address 2" value={contractorData.taxDetails.address2} />
                                         </div>
-                                    )
+                                    ))
                                 ) : (
                                     <div className="text-muted mb-4">No tax details available.</div>
                                 )}
@@ -215,30 +215,20 @@ function ContractorInfo() {
                                 <hr className="my-4" />
 
                                 <h5 className="mb-4 fw-bold text-start" style={{ color: bluePrimary }}>Bank Accounts</h5>
-                                {contractorData.bankDetails ? (
-                                    Array.isArray(contractorData.bankDetails) ? (
-                                        contractorData.bankDetails.map((bank, index) => (
-                                            <div key={index} className="card mb-3 border-light bg-light">
-                                                <div className="card-body">
-                                                    <div className="row">
-                                                        <DetailRow label="Account Holder" value={bank.accHolderName} />
-                                                        <DetailRow label="Account No" value={bank.accNumber} />
-                                                        <DetailRow label="Bank Name" value={bank.bankName} />
-                                                        <DetailRow label="Branch" value={bank.branch} />
-                                                        <DetailRow label="Address" value={bank.bankAddress} />
-                                                    </div>
+                                {contractorData.contractor?.contractorBankDetails?.length > 0 ? (
+                                    contractorData.contractor.contractorBankDetails.map((bank, index) => (
+                                        <div key={index} className="card mb-3 border-light bg-light">
+                                            <div className="card-body">
+                                                <div className="row">
+                                                    <DetailRow label="Account Holder" value={bank.accHolderName} />
+                                                    <DetailRow label="Account No" value={bank.accNumber} />
+                                                    <DetailRow label="Bank Name" value={bank.bankName} />
+                                                    <DetailRow label="Branch" value={bank.branch} />
+                                                    <DetailRow label="Address" value={bank.bankAddress} />
                                                 </div>
                                             </div>
-                                        ))
-                                    ) : (
-                                        <div className="row">
-                                            <DetailRow label="Account Holder" value={contractorData.bankDetails.accHolderName} />
-                                            <DetailRow label="Account No" value={contractorData.bankDetails.accNumber} />
-                                            <DetailRow label="Bank Name" value={contractorData.bankDetails.bankName} />
-                                            <DetailRow label="Branch" value={contractorData.bankDetails.branch} />
-                                            <DetailRow label="Address" value={contractorData.bankDetails.bankAddress} />
                                         </div>
-                                    )
+                                    ))
                                 ) : (
                                     <div className="text-muted mb-4">No bank details available.</div>
                                 )}
@@ -246,11 +236,17 @@ function ContractorInfo() {
                                 <hr className="my-4" />
 
                                 <h5 className="mb-4 fw-bold text-start" style={{ color: bluePrimary }}>Additional Info</h5>
-                                {contractorData.additionalInfo ? (
-                                    <div className="row">
-                                        <DetailRow label="Type" value={contractorData.additionalInfo.identityType} />
-                                        <DetailRow label="Registration No" value={contractorData.additionalInfo.regNo} />
-                                    </div>
+                                {contractorData.contractor?.contractorAddInfos?.length > 0 ? (
+                                    contractorData.contractor.contractorAddInfos.map((info, index) => (
+                                        <div key={index} className="card mb-3 border-light bg-light">
+                                            <div className="card-body">
+                                                <div className="row">
+                                                    <DetailRow label="Type" value={info.identityType || info.type} />
+                                                    <DetailRow label="Registration No" value={info.regNo || info.value} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
                                 ) : (
                                     <div className="text-muted">No additional info available.</div>
                                 )}

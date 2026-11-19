@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { ArrowLeft, Plus, X, Edit, Trash2, RotateCcw } from "lucide-react";
+import { ArrowLeft, Plus, X, Edit, Trash2, RotateCcw, Eye, Calendar, Save } from "lucide-react";
 import { toast } from "react-toastify";
+import Select from 'react-select';
 
 export function TaxType() {
     const [taxTypes, setTaxTypes] = useState([]);
@@ -828,11 +829,17 @@ export function IdentityType() {
         </div>
     );
 }
+
 export function Currency() {
     const [currencies, setCurrencies] = useState([]);
     const [search, setSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
+    const [openConversionModal, setOpenConversionModal] = useState(false);
+    const [selectedBaseCurrency, setSelectedBaseCurrency] = useState(null);
+    const [conversionRates, setConversionRates] = useState([]);
+    const [conversionLoading, setConversionLoading] = useState(false);
+    const [openAddConversionModal, setOpenAddConversionModal] = useState(false);
 
     const [currency, setCurrency] = useState({
         id: null,
@@ -842,7 +849,15 @@ export function Currency() {
         active: true,
     });
 
+    // New Conversion Rate form state
+    const [newConversion, setNewConversion] = useState({
+        conversionCurrencyId: "",
+        rate: "",
+        effectiveDate: new Date().toISOString().split('T')[0]
+    });
+
     const token = sessionStorage.getItem("token");
+
     const fetchCurrencies = () => {
         axios
             .get(`${import.meta.env.VITE_API_BASE_URL}/project/currency`, {
@@ -856,18 +871,31 @@ export function Currency() {
             .catch(() => toast.error("Failed to load currencies"));
     };
 
+    const fetchConversions = (baseId) => {
+        setConversionLoading(true);
+        axios
+            .get(`${import.meta.env.VITE_API_BASE_URL}/currency-conversion/base`, {
+                params: { baseCurrencyId: baseId },
+                headers: { Authorization: `Bearer ${token}` },
+            })
+            .then((r) => {
+                setConversionRates(r.data || []);
+            })
+            .catch(() => toast.error("Failed to load conversion rates"))
+            .finally(() => setConversionLoading(false));
+    };
+
     useEffect(() => {
         fetchCurrencies();
     }, []);
 
-    /* 🔍 Search */
     const filteredCurrencies = currencies.filter(
         (c) =>
             c.currencyName?.toLowerCase().includes(search.toLowerCase()) ||
-            c.symbol?.toLowerCase().includes(search.toLowerCase())
+            c.symbol?.toLowerCase().includes(search.toLowerCase()) ||
+            c.currencyCode?.toLowerCase().includes(search.toLowerCase())
     );
 
-    /* ➕ Add */
     const handleAdd = () => {
         setIsEdit(false);
         setCurrency({
@@ -880,15 +908,69 @@ export function Currency() {
         setOpenModal(true);
     };
 
-    /* ✏️ Edit */
     const handleEdit = (c) => {
         setIsEdit(true);
         setCurrency({ ...c });
         setOpenModal(true);
     };
 
-    /* 🗑️ Deactivate */
-    const handleDelete = (c) => {
+    const handleViewConversion = (c) => {
+        setSelectedBaseCurrency(c);
+        fetchConversions(c.id);
+        setOpenConversionModal(true);
+    };
+
+    const handleSaveCurrency = () => {
+        if (!currency.currencyName.trim() || !currency.symbol.trim()) return;
+
+        const url = isEdit
+            ? `${import.meta.env.VITE_API_BASE_URL}/currency/edit`
+            : `${import.meta.env.VITE_API_BASE_URL}/currency/add`;
+
+        const method = isEdit ? "put" : "post";
+
+        axios[method](url, currency, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+            .then((r) => {
+                toast.success(r.data);
+                fetchCurrencies();
+                setOpenModal(false);
+            })
+            .catch((e) => toast.error(e?.response?.data || "Operation failed"));
+    };
+
+    const handleSaveConversion = () => {
+        if (!newConversion.conversionCurrencyId || !newConversion.rate || !newConversion.effectiveDate) {
+            toast.warn("Please fill all required fields");
+            return;
+        }
+
+        const params = new URLSearchParams();
+        params.append("baseCurrencyId", selectedBaseCurrency.id);
+        params.append("conversionCurrencyId", newConversion.conversionCurrencyId);
+        params.append("rate", newConversion.rate);
+        params.append("effectiveDate", newConversion.effectiveDate);
+
+        axios
+            .post(`${import.meta.env.VITE_API_BASE_URL}/currency-conversion`, null, {
+                params: params,
+                headers: { Authorization: `Bearer ${token}` },
+            })
+            .then((r) => {
+                toast.success(r.data || "Conversion saved successfully");
+                fetchConversions(selectedBaseCurrency.id);
+                setNewConversion({
+                    conversionCurrencyId: "",
+                    rate: "",
+                    effectiveDate: new Date().toISOString().split('T')[0]
+                });
+                setOpenAddConversionModal(false);
+            })
+            .catch((e) => toast.error(e?.response?.data || "Failed to save conversion"));
+    };
+
+    const handleDeleteCurrency = (c) => {
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/currency/edit`,
@@ -906,8 +988,7 @@ export function Currency() {
             );
     };
 
-    /* 🔄 Reactivate */
-    const handleReactivate = (c) => {
+    const handleReactivateCurrency = (c) => {
         axios
             .put(
                 `${import.meta.env.VITE_API_BASE_URL}/currency/edit`,
@@ -925,127 +1006,31 @@ export function Currency() {
             );
     };
 
-    /* 💾 Save */
-    const handleSave = () => {
-        if (!currency.currencyName.trim() || !currency.symbol.trim()) return;
-
-        if (isEdit) {
-            axios
-                .put(
-                    `${import.meta.env.VITE_API_BASE_URL}/currency/edit`,
-                    currency,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                )
-                .then((r) => {
-                    toast.success(r.data);
-                    fetchCurrencies();
-                    setOpenModal(false);
-                })
-                .catch((e) =>
-                    toast.error(e?.response?.data || "Update failed")
-                );
-        } else {
-            axios
-                .post(
-                    `${import.meta.env.VITE_API_BASE_URL}/currency/add`,
-                    currency,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                )
-                .then((r) => {
-                    toast.success(r.data);
-                    fetchCurrencies();
-                    setOpenModal(false);
-                })
-                .catch((e) =>
-                    toast.error(e?.response?.data || "Save failed")
-                );
-        }
-    };
-
-    /* 🪟 Modal */
-    const modal = () => (
-        <div
-            className="modal fade show d-block"
-            style={{ background: "rgba(0,0,0,0.5)" }}
-            onClick={() => setOpenModal(false)}
-        >
-            <div
-                className="modal-dialog modal-md modal-dialog-centered"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className="modal-content rounded-3">
-                    <div className="modal-header d-flex justify-content-between">
-                        <p className="fw-bold mb-0">
-                            {isEdit ? "Edit Currency" : "Add Currency"}
-                        </p>
-                        <button
-                            className="modal-close-btn"
-                            onClick={() => setOpenModal(false)}
-                        >
-                            <X />
-                        </button>
+    const currencyModal = () => (
+        <div className="modal fade show d-block" style={{ background: "rgba(0,0,0,0.5)" }} onClick={() => setOpenModal(false)}>
+            <div className="modal-dialog modal-md modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-content rounded-3 border-0 shadow">
+                    <div className="modal-header d-flex justify-content-between p-3" style={{ borderBottom: '1px solid #0051973D' }}>
+                        <p className="fw-bold mb-0">{isEdit ? "Edit Currency" : "Add Currency"}</p>
+                        <button className="modal-close-btn" onClick={() => setOpenModal(false)}><X /></button>
                     </div>
-
-                    <div className="modal-body">
-                        <label className="projectform d-block">
-                            Currency Name <span className="text-danger">*</span>
-                        </label>
-                        <input
-                            className="form-input w-100 mb-3"
-                            placeholder="Enter currency name"
-                            value={currency.currencyName}
-                            onChange={(e) =>
-                                setCurrency((prev) => ({
-                                    ...prev,
-                                    currencyName: e.target.value,
-                                }))
-                            }
-                        />
-                        <label className="projectform d-block">
-                            Currency Code
-                        </label>
-                        <input
-                            className="form-input w-100 mb-3"
-                            placeholder="Enter currency Code"
-                            value={currency.currencyCode}
-                            onChange={(e) =>
-                                setCurrency((prev) => ({
-                                    ...prev,
-                                    currencyCode: e.target.value,
-                                }))
-                            }
-                        />
-                        <label className="projectform d-block">
-                            Symbol <span className="text-danger">*</span>
-                        </label>
-                        <input
-                            className="form-input w-100"
-                            placeholder="Enter symbol (₹, $, €)"
-                            value={currency.symbol}
-                            onChange={(e) =>
-                                setCurrency((prev) => ({
-                                    ...prev,
-                                    symbol: e.target.value,
-                                }))
-                            }
-                        />
+                    <div className="modal-body p-4">
+                        <div className="mb-3">
+                            <label className="projectform-select text-start d-block mb-1">Currency Name <span className="text-danger">*</span></label>
+                            <input className="form-input w-100" placeholder="Enter currency name" value={currency.currencyName} onChange={(e) => setCurrency({ ...currency, currencyName: e.target.value })} />
+                        </div>
+                        <div className="mb-3">
+                            <label className="projectform-select text-start d-block mb-1">Currency Code</label>
+                            <input className="form-input w-100" placeholder="Enter code (e.g. USD)" value={currency.currencyCode} onChange={(e) => setCurrency({ ...currency, currencyCode: e.target.value })} />
+                        </div>
+                        <div className="mb-3">
+                            <label className="projectform-select text-start d-block mb-1">Symbol <span className="text-danger">*</span></label>
+                            <input className="form-input w-100" placeholder="Enter symbol (₹, $, €)" value={currency.symbol} onChange={(e) => setCurrency({ ...currency, symbol: e.target.value })} />
+                        </div>
                     </div>
-
-                    <div className="modal-footer">
-                        <button
-                            className="btn btn-secondary"
-                            onClick={() => setOpenModal(false)}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            className="btn btn-primary"
-                            onClick={handleSave}
-                            disabled={
-                                !currency.currencyName.trim() ||
-                                !currency.symbol.trim()
-                            }
-                        >
+                    <div className="modal-footer p-3" style={{ borderTop: '1px solid #0051973D' }}>
+                        <button className="btn btn-secondary px-4 me-2" onClick={() => setOpenModal(false)}>Cancel</button>
+                        <button className="btn btn-primary px-4" onClick={handleSaveCurrency} disabled={!currency.currencyName.trim() || !currency.symbol.trim()}>
                             {isEdit ? "Update" : "Save"}
                         </button>
                     </div>
@@ -1054,27 +1039,144 @@ export function Currency() {
         </div>
     );
 
+    const addConversionModal = () => (
+        <div className="modal fade show d-block" style={{ background: "rgba(0,0,0,0.5)", zIndex: 1060 }} onClick={() => setOpenAddConversionModal(false)}>
+            <div className="modal-dialog modal-md modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-content rounded-3 border-0 shadow">
+                    <div className="modal-header d-flex justify-content-between p-3" style={{ borderBottom: '1px solid #0051973D' }}>
+                        <p className="fw-bold mb-0">Add Conversion Rate</p>
+                        <button className="modal-close-btn" onClick={() => setOpenAddConversionModal(false)}><X /></button>
+                    </div>
+                    <div className="modal-body p-4">
+                        <div className="mb-3">
+                            <label className="projectform-select text-start d-block mb-1">Conversion Currency <span className="text-danger">*</span></label>
+                            <Select
+                                options={currencies
+                                    .filter(c => c.id !== selectedBaseCurrency?.id && c.active)
+                                    .map(c => ({ value: c.id, label: `${c.currencyName} (${c.symbol})` }))}
+                                value={
+                                    newConversion.conversionCurrencyId
+                                        ? currencies
+                                            .filter(c => c.id !== selectedBaseCurrency?.id && c.active)
+                                            .map(c => ({ value: c.id, label: `${c.currencyName} (${c.symbol})` }))
+                                            .find(opt => opt.value === newConversion.conversionCurrencyId) || null
+                                        : null
+                                }
+                                onChange={(selected) => setNewConversion({...newConversion, conversionCurrencyId: selected ? selected.value : ""})}
+                                placeholder="Select Currency"
+                                classNamePrefix={"select"}
+                                isClearable
+                                menuPortalTarget={document.body}
+                                styles={{ menuPortal: base => ({ ...base, zIndex: 9999 }) }}
+                            />
+                        </div>
+                        <div className="mb-3">
+                            <label className="projectform-select text-start d-block mb-1">Conversion Rate <span className="text-danger">*</span></label>
+                            <input 
+                                type="number" 
+                                className="form-input w-100" 
+                                placeholder="Enter rate"
+                                value={newConversion.rate}
+                                onChange={(e) => setNewConversion({...newConversion, rate: e.target.value})}
+                            />
+                        </div>
+                        <div className="mb-3">
+                            <label className="projectform-select text-start d-block mb-1">Effective Date <span className="text-danger">*</span></label>
+                            <input 
+                                type="date" 
+                                className="form-input w-100"
+                                value={newConversion.effectiveDate}
+                                min={new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]} // Restricted to 30 days
+                                onChange={(e) => setNewConversion({...newConversion, effectiveDate: e.target.value})}
+                            />
+                        </div>
+                    </div>
+                    <div className="modal-footer p-3" style={{ borderTop: '1px solid #0051973D' }}>
+                        <button className="btn btn-secondary px-4 me-2" onClick={() => setOpenAddConversionModal(false)}>Cancel</button>
+                        <button className="btn btn-primary px-4" onClick={handleSaveConversion} disabled={!newConversion.conversionCurrencyId || !newConversion.rate}>
+                            Save Rate
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    const conversionModal = () => (
+        <div className="modal fade show d-block" style={{ background: "rgba(0,0,0,0.5)" }} onClick={() => setOpenConversionModal(false)}>
+            <div className="modal-dialog modal-lg modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-content rounded-3 border-0 shadow">
+                    <div className="modal-header d-flex justify-content-between p-3" style={{ backgroundColor: '#005197', color: 'white' }}>
+                        <div>
+                            <p className="fw-bold mb-0">Currency Conversion Management</p>
+                            <small className="text-white-50">Base Currency: {selectedBaseCurrency?.currencyName} ({selectedBaseCurrency?.symbol})</small>
+                        </div>
+                        <button className="modal-close-btn text-white" onClick={() => setOpenConversionModal(false)}><X /></button>
+                    </div>
+                    <div className="modal-body p-4">
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                            <h6 className="fw-bold mb-0">Conversion History</h6>
+                            <button className="btn btn-primary btn-sm d-flex align-items-center gap-2" onClick={() => setOpenAddConversionModal(true)}>
+                                <Plus size={16} /> Add New Rate
+                            </button>
+                        </div>
+
+                        <div className="table-responsive">
+                            <table className="table align-middle table-hover">
+                                <thead className="bg-light">
+                                    <tr>
+                                        <th className="small fw-bold">Converted To</th>
+                                        <th className="small fw-bold">Rate</th>
+                                        <th className="small fw-bold">Effective Date</th>
+                                        <th className="small fw-bold text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {conversionLoading ? (
+                                        <tr><td colSpan="4" className="text-center py-4">Loading rates...</td></tr>
+                                    ) : conversionRates.length > 0 ? (
+                                        conversionRates.map((cr, idx) => (
+                                            <tr key={idx}>
+                                                <td>
+                                                    <div className="d-flex flex-column">
+                                                        <span className="fw-medium">{cr.conversionCurrency?.currencyName}</span>
+                                                        <small className="text-muted">{cr.conversionCurrency?.currencyCode}</small>
+                                                    </div>
+                                                </td>
+                                                <td className="fw-bold text-primary">{cr.conversionRate}</td>
+                                                <td>{new Date(cr.effectiveDate).toLocaleDateString()}</td>
+                                                <td className="text-center"><span className="badge bg-success-subtle text-success">Latest</span></td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr><td colSpan="4" className="text-center py-4 text-muted">No conversion rates found</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
     return (
         <div className="container-fluid p-4 mt-3">
-            {/* Header */}
-            <div className="d-flex justify-content-between">
-                <div className="fw-bold">
-                    <ArrowLeft size={16} />
-                    <span className="ms-2">Currency</span>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+                <div className="fw-bold d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={() => window.history.back()}>
+                    <ArrowLeft size={20} className="me-2 text-primary" />
+                    <span className="fs-5">Currency Management</span>
                 </div>
 
-                <button className="btn action-button" onClick={handleAdd}>
-                    <Plus size={16} />
-                    <span className="ms-2">Add Currency</span>
+                <button className="btn btn-primary px-4 d-flex align-items-center gap-2 shadow-sm" style={{ backgroundColor: '#005197' }} onClick={handleAdd}>
+                    <Plus size={18} />
+                    <span>Add New Currency</span>
                 </button>
             </div>
 
-            <div
-                className="bg-white rounded-3 mt-5"
-                style={{ border: "1px solid #0051973D" }}
-            >
+            <div className="bg-white rounded-3 mt-5 shadow-sm" style={{ border: "1px solid #0051973D" }}>
                 <div className="tab-info">
-                    <span className="ms-2">Currencies</span>
+                    <span className="ms-2">Master Currencies</span>
                 </div>
 
                 {/* Search */}
@@ -1083,65 +1185,82 @@ export function Currency() {
                         <label>Search</label>
                         <input
                             className="form-input w-100"
-                            placeholder="Search Currency"
+                            placeholder="Search by name, code or symbol"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-
                     <div className="col-lg-4 d-flex align-items-center justify-content-center">
                         {filteredCurrencies.length} of {currencies.length} Currencies
                     </div>
                 </div>
 
-                {/* Cards */}
+                {/* Table */}
                 <div className="row ms-1 me-1 mt-3">
-                    {filteredCurrencies.map((c, i) => (
-                        <div className="col-lg-4 mb-3" key={i}>
-                            <div className="card shadow-sm h-100">
-                                <div className="card-body">
-                                    <div className="d-flex justify-content-between">
-                                        <Edit
-                                            size={18}
-                                            onClick={() => handleEdit(c)}
-                                            style={{ cursor: "pointer" }}
-                                        />
-                                        {c.active ? (
-                                            <Trash2
-                                                size={18}
-                                                onClick={() => handleDelete(c)}
-                                                style={{ cursor: "pointer" }}
-                                            />
-                                        ) : (
-                                            <RotateCcw
-                                                size={18}
-                                                onClick={() => handleReactivate(c)}
-                                                className="text-primary"
-                                                style={{ cursor: "pointer" }}
-                                            />
-                                        )}
-                                    </div>
-
-                                    <div className="mt-2 d-flex justify-content-between">
-                                        <span>
-                                            {c.currencyName} ({c.symbol}) ({c.currencyCode})
-                                        </span>
-                                        <span
-                                            className={
-                                                c.active ? "text-success" : "text-muted"
-                                            }
-                                        >
-                                            {c.active ? "Active" : "Inactive"}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+                    <div className="table-responsive">
+                        <table className="table table-bordered">
+                            <thead className="table-header-primary">
+                                <tr>
+                                    <th>S.No</th>
+                                    <th>Currency Name</th>
+                                    <th>Code</th>
+                                    <th className="text-center">Symbol</th>
+                                    <th className="text-center">Conversion</th>
+                                    <th className="text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredCurrencies.length > 0 ? (
+                                    filteredCurrencies.map((c, i) => (
+                                        <tr key={c.id || i}>
+                                            <td>{i + 1}</td>
+                                            <td className="fw-bold">{c.currencyName}</td>
+                                            <td><span className="badge bg-light text-dark">{c.currencyCode || 'N/A'}</span></td>
+                                            <td className="text-center fs-5">{c.symbol}</td>
+                                            <td className="text-center">
+                                                <button
+                                                    className="btn btn-sm view-conversion-btn"
+                                                    onClick={() => handleViewConversion(c)}
+                                                >
+                                                    <Eye size={16} className="me-1" /> View Conversion
+                                                </button>
+                                            </td>
+                                            <td className="text-center">
+                                                <Edit
+                                                    size={18}
+                                                    className="me-3 text-primary cursor-pointer"
+                                                    onClick={() => handleEdit(c)}
+                                                />
+                                                {c.active ? (
+                                                    <Trash2
+                                                        size={18}
+                                                        className="text-danger cursor-pointer"
+                                                        onClick={() => handleDeleteCurrency(c)}
+                                                    />
+                                                ) : (
+                                                    <RotateCcw
+                                                        size={18}
+                                                        onClick={() => handleReactivateCurrency(c)}
+                                                        className="text-primary cursor-pointer"
+                                                    />
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="6" className="text-center py-5 text-muted">No currencies found</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
-                {openModal && modal()}
+                {openModal && currencyModal()}
+                {openConversionModal && conversionModal()}
+                {openAddConversionModal && addConversionModal()}
             </div>
         </div>
     );
-}
+}

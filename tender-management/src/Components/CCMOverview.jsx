@@ -1237,7 +1237,14 @@ const CCMOverview = () => {
                     <div className="modal-dialog modal-dialog-centered modal-lg text-start">
                         <div className="modal-content">
                             <div className="modal-header">
-                                <h5 className="modal-title">Configure Mapping - {selectedMappingType}</h5>
+                                <h5 className="modal-title">
+                                    Configure Mapping - {selectedMappingType}
+                                    {selectedBOQs.size === 1 && (
+                                        <span className="ms-2" style={{ fontSize: '0.9rem', fontWeight: 'normal' }}>
+                                            ({Array.from(selectedBOQs)[0]} - {findBOQItem(Array.from(selectedBOQs)[0])?.boqName})
+                                        </span>
+                                    )}
+                                </h5>
                                 <button
                                     type="button"
                                     className="btn-close"
@@ -1516,7 +1523,7 @@ const CCMOverview = () => {
                                     className="btn btn-secondary"
                                     onClick={() => setShowMappingPopover(false)}
                                 >
-                                    Cancel
+                                    Close
                                 </button>
                                 <button
                                     type="button"
@@ -1621,13 +1628,17 @@ const CCMOverview = () => {
                                 Selected: {selectedBOQs.size} {selectedMappingType === "1 : M" ? "(Max: 1)" : ""}
                             </div>
                         </div>
-                        <div className="position-relative mb-3 pb-1">
-                            <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" />
+                        <div className="position-relative mb-3">
+                            <Search
+                                className="position-absolute"
+                                style={{ right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#6B7280', zIndex: 1 }}
+                                size={18}
+                            />
                             <input
                                 type="text"
-                                className="search form-input w-100 ps-5"
+                                className="form-input w-100"
                                 placeholder="Search BOQ items..."
-                                style={{ border: '0.5px solid #0051973D', fontSize: "15px" }}
+                                style={{ border: '0.5px solid #0051973D', fontSize: "15px", paddingRight: '30px' }}
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
                             />
@@ -1688,12 +1699,17 @@ const CCMOverview = () => {
                                 </button>
                             )}
                         </div>
-                        <div className="position-relative mb-3 pb-1">
-                            <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" />
+                        <div className="position-relative mb-3">
+                            <Search
+                                className="position-absolute"
+                                style={{ right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#6B7280', zIndex: 1 }}
+                                size={18}
+                            />
                             <input
                                 type="text"
-                                className="search form-input w-100 ps-5"
-                                placeholder="Search activities..." style={{ border: '0.5px solid #0051973D', fontSize: "15px" }}
+                                className="form-input w-100"
+                                placeholder="Search activities..."
+                                style={{ border: '0.5px solid #0051973D', fontSize: "15px", paddingRight: '30px' }}
                                 value={activitySearchQuery}
                                 onChange={(e) => setActivitySearchQuery(e.target.value)}
                             />

@@ -1,259 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
-import { ArrowLeft, Plus, X, Edit, Trash2, RotateCcw, ChevronDown, ChevronUp, Eye } from "lucide-react";
+import { ArrowLeft, Plus, X, Edit, Trash2, RotateCcw, ChevronDown, ChevronUp, Eye, Search } from "lucide-react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import Select, { components } from 'react-select';
+import AsyncSelect from 'react-select/async';
 
-export function ResourceNature() {
-    const [resourceNature, setResourceNature] = useState([]);
-    const [search, setSearch] = useState("");
-    const [openModal, setOpenModal] = useState(false);
-    const [isEdit, setIsEdit] = useState(false);
-
-    const [nature, setNature] = useState({
-        id: null,
-        nature: "",
-        active: true,
-    });
-    const token = sessionStorage.getItem("token");
-    const handleUnauthorized = () => {
-        sessionStorage.clear();
-        window.location.href = "/login";
-    };
-    const fetchResourceNature = useCallback(() => {
-        axios
-            .get(`${import.meta.env.VITE_API_BASE_URL}/resourceNature`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            })
-            .then((res) => {
-                if (res.status === 200) setResourceNature(res.data || []);
-            })
-            .catch((err) => {
-                if (err?.response?.status === 401) handleUnauthorized();
-                else toast.error("Failed to fetch resource natures");
-            });
-    }, [token]);
-
-    useEffect(() => {
-        fetchResourceNature();
-    }, [fetchResourceNature]);
-    const filteredList = resourceNature.filter((n) =>
-        n.nature?.toLowerCase().includes(search.toLowerCase())
-    );
-    const handleAdd = () => {
-        setIsEdit(false);
-        setNature({ id: null, nature: "", active: true });
-        setOpenModal(true);
-    };
-    const handleEdit = (n) => {
-        setIsEdit(true);
-        setNature({ ...n });
-        setOpenModal(true);
-    };
-    const handleDelete = (n) => {
-        axios
-            .put(
-                `${import.meta.env.VITE_API_BASE_URL}/resourceNature/edit`,
-                { ...n, active: false },
-                { headers: { Authorization: `Bearer ${token}` } }
-            )
-            .then((res) => {
-                toast.success(res.data || "Resource nature deactivated");
-                fetchResourceNature();
-            })
-            .catch((e) => {
-                if (e?.response?.status === 401) handleUnauthorized();
-                else toast.error(e?.response?.data || "Deactivate failed");
-            });
-    };
-    const handleReactivate = (n) => {
-        axios
-            .put(
-                `${import.meta.env.VITE_API_BASE_URL}/resourceNature/edit`,
-                { ...n, active: true },
-                { headers: { Authorization: `Bearer ${token}` } }
-            )
-            .then((res) => {
-                toast.success(res.data || "Resource nature reactivated");
-                fetchResourceNature();
-            })
-            .catch((e) => {
-                toast.error(e?.response?.data || "Reactivation failed");
-            });
-    };
-    const handleSave = () => {
-        if (!nature.nature.trim()) return;
-
-        const apiCall = isEdit
-            ? axios.put(
-                `${import.meta.env.VITE_API_BASE_URL}/resourceNature/edit`,
-                nature,
-                { headers: { Authorization: `Bearer ${token}` } }
-            )
-            : axios.post(
-                `${import.meta.env.VITE_API_BASE_URL}/resourceNature/add`,
-                nature,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-
-        apiCall
-            .then((res) => {
-                toast.success(res.data || "Resource nature saved");
-                setOpenModal(false);
-                fetchResourceNature();
-            })
-            .catch((e) => {
-                if (e?.response?.status === 401) handleUnauthorized();
-                else toast.error(e?.response?.data || "Save failed");
-            });
-    };
-    const modalForm = () => (
-        <div
-            className="modal fade show d-block"
-            style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-            onClick={() => setOpenModal(false)}
-        >
-            <div
-                className="modal-dialog modal-md modal-dialog-centered"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className="modal-content rounded-3">
-                    <div className="modal-header d-flex justify-content-between">
-                        <p className="fw-bold mb-0">
-                            {isEdit ? "Edit Identity Type" : "Add Identity Type"}
-                        </p>
-                        <button
-                            className="modal-close-btn"
-                            onClick={() => setOpenModal(false)}
-                        >
-                            <X />
-                        </button>
-                    </div>
-
-                    <div className="modal-body">
-                        <label className="projectform d-block">
-                            Nature Name <span className="text-danger">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            className="form-input w-100"
-                            placeholder="Enter nature name"
-                            value={nature.nature}
-                            onChange={(e) =>
-                                setNature((p) => ({
-                                    ...p,
-                                    nature: e.target.value,
-                                }))
-                            }
-                        />
-                    </div>
-
-                    <div className="modal-footer">
-                        <button
-                            className="btn btn-secondary"
-                            onClick={() => setOpenModal(false)}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            className="btn btn-primary"
-                            onClick={handleSave}
-                            disabled={!nature.nature.trim()}
-                        >
-                            {isEdit ? "Update" : "Save"}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
-    return (
-        <div className="container-fluid p-4 mt-3">
-            <div className="d-flex justify-content-between">
-                <div className="fw-bold">
-                    <ArrowLeft size={16} />
-                    <span className="ms-2">Resource Nature</span>
-                </div>
-
-                <button className="btn action-button" onClick={handleAdd}>
-                    <Plus size={16} />
-                    <span className="ms-2">Add Resource Nature</span>
-                </button>
-            </div>
-
-            <div className="bg-white rounded-3 mt-5" style={{ border: "1px solid #0051973D" }}>
-                <div className="tab-info">
-                    <span className="ms-2">Resource Natures</span>
-                </div>
-
-                {/* Search */}
-                <div className="row mt-3 p-4">
-                    <div className="col-md-8">
-                        <label>Search</label>
-                        <input
-                            className="form-input w-100"
-                            placeholder="Search by name"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
-                    </div>
-                    <div className="col-md-4 d-flex align-items-center justify-content-center">
-                        {filteredList.length} of {resourceNature.length}
-                    </div>
-                </div>
-
-                <div className="row p-4">
-                    {filteredList.map((n, i) => (
-                        <div className="col-md-4 mb-3" key={i}>
-                            <div className="card shadow-sm h-100">
-                                <div className="card-body">
-                                    <div className="d-flex justify-content-between">
-                                        <Edit
-                                            size={18}
-                                            style={{ cursor: "pointer" }}
-                                            onClick={() => handleEdit(n)}
-                                        />
-                                        {n.active ? (
-                                            <Trash2
-                                                size={18}
-                                                style={{ cursor: "pointer" }}
-                                                onClick={() => handleDelete(n)}
-                                            />
-                                        ) : (
-                                            <RotateCcw
-                                                size={18}
-                                                className="text-primary"
-                                                style={{ cursor: "pointer" }}
-                                                onClick={() => handleReactivate(n)}
-                                            />
-                                        )}
-                                    </div>
-
-                                    <div className="mt-2 d-flex justify-content-between">
-                                        <span>{n.nature}</span>
-                                        <span
-                                            className={
-                                                n.active ? "text-success" : "text-muted"
-                                            }
-                                        >
-                                            {n.active ? "Active" : "Inactive"}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {openModal && modalForm()}
-            </div>
-        </div>
-    );
-}
 export function ResourceType() {
     const navigate = useNavigate();
     const [resourceTypes, setResourceTypes] = useState([]);
@@ -266,10 +18,6 @@ export function ResourceType() {
         active: true,
     });
     const token = sessionStorage.getItem("token");
-    const handleUnauthorized = () => {
-        sessionStorage.clear();
-        navigate("/login");
-    };
     const fetchResourceTypes = useCallback(() => {
         axios
             .get(`${import.meta.env.VITE_API_BASE_URL}/resourceType`, {
@@ -279,10 +27,9 @@ export function ResourceType() {
                 if (res.status === 200) setResourceTypes(res.data || []);
             })
             .catch((err) => {
-                if (err?.response?.status === 401) handleUnauthorized();
-                else toast.error("Failed to fetch resource types");
+                toast.error("Failed to fetch resource types");
             });
-    }, [token, navigate]);
+    }, [token]);
     useEffect(() => {
         fetchResourceTypes();
     }, [fetchResourceTypes]);
@@ -311,8 +58,7 @@ export function ResourceType() {
                 fetchResourceTypes();
             })
             .catch((e) => {
-                if (e?.response?.status === 401) handleUnauthorized();
-                else toast.error(e?.response?.data || "Deactivate failed");
+                toast.error(e?.response?.data || "Deactivate failed");
             });
     };
     const handleReactivate = (rt) => {
@@ -352,8 +98,7 @@ export function ResourceType() {
                 fetchResourceTypes();
             })
             .catch((e) => {
-                if (e?.response?.status === 401) handleUnauthorized();
-                else toast.error(e?.response?.data || "Save failed");
+                toast.error(e?.response?.data || "Save failed");
             });
     };
     const resourceTypeForm = () => (
@@ -482,7 +227,7 @@ export function ResourceType() {
                                     </div>
 
                                     <div className="d-flex justify-content-between mt-2">
-                                        <span>{rt.resourceTypeName}</span>
+                                        <span>{rt.label || rt.resourceTypeName}</span>
                                         <span
                                             className={
                                                 rt.active ? "text-success" : "text-muted"
@@ -502,278 +247,16 @@ export function ResourceType() {
         </div>
     );
 }
-export function QuantityType() {
-    const navigate = useNavigate();
-
-    const [quantityTypes, setQuantityTypes] = useState([]);
-    const [search, setSearch] = useState("");
-    const [openModal, setOpenModal] = useState(false);
-    const [isEdit, setIsEdit] = useState(false);
-
-    const [quantity, setQuantity] = useState({
-        id: null,
-        quantityType: "",
-        active: true,
-    });
-
-    /* 🔐 Unauthorized handler */
-    const handleUnauthorized = () => {
-        sessionStorage.clear();
-        navigate("/login");
-    };
-
-    /* 📥 Fetch Quantity Types */
-    const fetchQuantityTypes = useCallback(() => {
-        axios
-            .get(`${import.meta.env.VITE_API_BASE_URL}/quantityType`, {
-                headers: {
-                    Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-                },
-            })
-            .then(res => {
-                if (res.status === 200) {
-                    setQuantityTypes(res.data || []);
-                }
-            })
-            .catch(err => {
-                if (err?.response?.status === 401) handleUnauthorized();
-                else toast.error("Failed to fetch quantity types");
-            });
-    }, [navigate]);
-
-    useEffect(() => {
-        fetchQuantityTypes();
-    }, [fetchQuantityTypes]);
-
-    /* 🔍 Filter */
-    const filteredList = quantityTypes.filter(q =>
-        q.quantityType?.toLowerCase().includes(search.toLowerCase())
-    );
-
-    /* ➕ Add */
-    const handleAdd = () => {
-        setIsEdit(false);
-        setQuantity({ id: null, quantityType: "", active: true });
-        setOpenModal(true);
-    };
-
-    /* ✏️ Edit */
-    const handleEdit = (q) => {
-        setIsEdit(true);
-        setQuantity({
-            id: q.id,
-            quantityType: q.quantityType,
-            active: q.active,
-        });
-        setOpenModal(true);
-    };
-
-    /* 🗑️ Soft delete */
-    const handleDelete = (q) => {
-        const payload = { ...q, active: false };
-
-        axios
-            .put(`${import.meta.env.VITE_API_BASE_URL}/quantityType/edit`, payload, {
-                headers: {
-                    Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-                },
-            })
-            .then(() => {
-                toast.info("Quantity type marked as inactive");
-                fetchQuantityTypes();
-            })
-            .catch(err => {
-                if (err?.response?.status === 401) handleUnauthorized();
-                else toast.error("Failed to deactivate quantity type");
-            });
-    };
-
-    /* ♻️ Reactivate */
-    const handleReactivate = (q) => {
-        const payload = { ...q, active: true };
-
-        axios
-            .put(`${import.meta.env.VITE_API_BASE_URL}/quantityType/edit`, payload, {
-                headers: {
-                    Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-                },
-            })
-            .then(() => {
-                toast.success("Quantity type reactivated");
-                fetchQuantityTypes();
-            })
-            .catch(err => {
-                if (err?.response?.status === 401) handleUnauthorized();
-                else toast.error("Failed to reactivate quantity type");
-            });
-    };
-
-    /* 💾 Save */
-    const handleSave = () => {
-        if (!quantity.quantityType.trim()) return;
-
-        const apiCall = isEdit
-            ? axios.put(
-                `${import.meta.env.VITE_API_BASE_URL}/quantityType/edit`,
-                quantity,
-                { headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` } }
-            )
-            : axios.post(
-                `${import.meta.env.VITE_API_BASE_URL}/quantityType`,
-                quantity,
-                { headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` } }
-            );
-
-        apiCall
-            .then(() => {
-                toast.success(isEdit ? "Quantity type updated" : "Quantity type created");
-                setOpenModal(false);
-                fetchQuantityTypes();
-            })
-            .catch(err => {
-                if (err?.response?.status === 401) handleUnauthorized();
-                else toast.error("Save failed");
-            });
-    };
-
-    /* 🪟 Modal */
-    const quantityForm = () => (
-        <div
-            className="modal fade show d-block"
-            style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-            onClick={() => setOpenModal(false)}
-        >
-            <div className="modal-dialog modal-md modal-dialog-centered" onClick={e => e.stopPropagation()}>
-                <div className="modal-content rounded-3">
-                    <div className="modal-header d-flex justify-content-between">
-                        <p className="fw-bold mb-0">
-                            {isEdit ? "Edit Identity Type" : "Add Identity Type"}
-                        </p>
-                        <button
-                            className="modal-close-btn"
-                            onClick={() => setOpenModal(false)}
-                        >
-                            <X />
-                        </button>
-                    </div>
-
-                    <div className="modal-body">
-                        <label className="projectform d-block">
-                            Quantity Type <span className="text-danger">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            className="form-input w-100"
-                            placeholder="Enter quantity type"
-                            value={quantity.quantityType}
-                            onChange={(e) =>
-                                setQuantity(prev => ({
-                                    ...prev,
-                                    quantityType: e.target.value,
-                                }))
-                            }
-                        />
-                    </div>
-
-                    <div className="modal-footer">
-                        <button className="btn btn-secondary" onClick={() => setOpenModal(false)}>
-                            Cancel
-                        </button>
-                        <button
-                            className="btn btn-primary"
-                            onClick={handleSave}
-                            disabled={!quantity.quantityType.trim()}
-                        >
-                            {isEdit ? "Update" : "Save"}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
-    /* 🧩 UI */
-    return (
-        <div className="container-fluid p-4 mt-3">
-            <div className="d-flex justify-content-between">
-                <div className="fw-bold">
-                    <ArrowLeft size={16} />
-                    <span className="ms-2">Quantity Type</span>
-                </div>
-
-                <button className="btn action-button" onClick={handleAdd}>
-                    <Plus size={16} />
-                    <span className="ms-2">Add Quantity Type</span>
-                </button>
-            </div>
-
-            <div className="bg-white rounded-3 mt-5" style={{ border: "1px solid #0051973D" }}>
-                <div className="tab-info">
-                    <span className="ms-2">Quantity Types</span>
-                </div>
-
-                {/* Search */}
-                <div className="row p-4">
-                    <div className="col-lg-8">
-                        <label>Search</label>
-                        <input
-                            className="form-input w-100"
-                            placeholder="Search quantity type"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
-                    </div>
-                    <div className="col-lg-4 d-flex align-items-center justify-content-center">
-                        {filteredList.length} of {quantityTypes.length} Quantity Types
-                    </div>
-                </div>
-
-                {/* Cards */}
-                <div className="row p-4">
-                    {filteredList.map((q, index) => (
-                        <div className="col-lg-4 mb-3" key={index}>
-                            <div className="card shadow-sm h-100">
-                                <div className="card-body">
-                                    <div className="d-flex justify-content-between">
-                                        <Edit size={18} style={{ cursor: "pointer" }} onClick={() => handleEdit(q)} />
-                                        {q.active ? (
-                                            <Trash2 size={18} style={{ cursor: "pointer" }} onClick={() => handleDelete(q)} />
-                                        ) : (
-                                            <RotateCcw
-                                                size={18}
-                                                style={{ cursor: "pointer" }}
-                                                onClick={() => handleReactivate(q)}
-                                            />
-                                        )}
-                                    </div>
-
-                                    <div className="d-flex justify-content-between mt-2">
-                                        <span>{q.quantityType}</span>
-                                        <span className={q.active ? "text-success" : "text-muted"}>
-                                            {q.active ? "Active" : "Inactive"}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {openModal && quantityForm()}
-            </div>
-        </div>
-    );
-}
 export function Resources() {
     const navigate = useNavigate();
 
     const [resourceTypes, setResourceTypes] = useState([]);
-    const [attributeGroups, setAttributeGroups] = useState([]);
-    const [allAttributes, setAllAttributes] = useState([]);
+    const [groupAttributesMap, setGroupAttributesMap] = useState({});
     const [uoms, setUoms] = useState([]);
     const [allResources, setAllResources] = useState([]);
     const [selectedResType, setSelectedResType] = useState(null);
     const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
     const [editingId, setEditingId] = useState(null);
@@ -791,37 +274,89 @@ export function Resources() {
         attributes: []
     });
 
-    const handleUnauthorized = () => {
-        sessionStorage.clear();
-        navigate("/login");
-    };
+    // Pagination state
+    const [page, setPage] = useState(0);
+    const [pageSize] = useState(30);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
+    const [loading, setLoading] = useState(false);
 
     const fetchInitialData = useCallback(() => {
-        axios
-            .all([
-                axios.get(`${import.meta.env.VITE_API_BASE_URL}/resourceType`, {
-                    headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
-                }),
-                axios.get(`${import.meta.env.VITE_API_BASE_URL}/resources`, {
-                    headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
-                })
-            ])
-            .then(
-                axios.spread((typeRes, resData) => {
-                    setResourceTypes(
-                        typeRes.data.map(rt => ({
-                            value: rt.id,
-                            label: rt.resourceTypeName
-                        }))
-                    );
-                    setAllResources(resData.data || []);
-                })
-            )
+        if (!selectedResType && !debouncedSearch) return;
+        setLoading(true);
+        const endpoint = debouncedSearch ? "/resources/search" : "/resources";
+        const params = {
+            page,
+            size: pageSize,
+            ...(debouncedSearch ? { search: debouncedSearch } : { resourceType: selectedResType?.value || null })
+        };
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}${endpoint}`, {
+            headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` },
+            params
+        })
+            .then(resData => {
+                const data = resData.data;
+                if (data?.content) {
+                    setAllResources(data.content);
+                    setTotalPages(data.totalPages || 0);
+                    setTotalElements(data.totalElements || 0);
+                } else {
+                    setAllResources(data || []);
+                }
+            })
             .catch(err => {
-                if (err?.response?.status === 401) handleUnauthorized();
-                else toast.error("Failed to load resources");
-            });
-    }, [navigate]);
+                toast.error("Failed to load resources");
+            })
+            .finally(() => setLoading(false));
+    }, [navigate, page, pageSize, selectedResType, debouncedSearch, resourceTypes.length]);
+
+    // Debounce search logic
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 200);
+
+        return () => clearTimeout(handler);
+    }, [search]);
+
+    useEffect(() => {
+        setPage(0);
+    }, [selectedResType, debouncedSearch]);
+
+    useEffect(() => {
+        // Fetch Master Data once
+        setLoading(true);
+        axios.all([
+            axios.get(`${import.meta.env.VITE_API_BASE_URL}/resourceType`, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+            }),
+            axios.get(`${import.meta.env.VITE_API_BASE_URL}/uoms`, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+            })
+        ]).then(axios.spread((typeRes, uomRes) => {
+            const types = typeRes.data.map(rt => ({
+                value: rt.code || rt.id,
+                label: rt.label || rt.resourceTypeName
+            }));
+            const mappedUoms = uomRes.data.map(u => ({
+                value: u.id,
+                label: u.uomName && u.uomCode ? `${u.uomName} - ${u.uomCode}` : (u.uomName || u.uomCode)
+            }));
+
+            setResourceTypes(types);
+            setUoms(mappedUoms);
+
+            if (types.length > 0) {
+                setSelectedResType(types[0]);
+            }
+        })).catch(err => {
+            console.error("Failed to fetch master data", err);
+        }).finally(() => setLoading(false));
+    }, []);
+
+    useEffect(() => {
+        setPage(0);
+    }, [selectedResType]);
 
     useEffect(() => {
         fetchInitialData();
@@ -835,60 +370,45 @@ export function Resources() {
                 }),
                 axios.get(`${import.meta.env.VITE_API_BASE_URL}/resourceType`, {
                     headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
-                }),
-                axios.get(`${import.meta.env.VITE_API_BASE_URL}/attributeGroup`, {
-                    headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
-                }),
-                axios.get(`${import.meta.env.VITE_API_BASE_URL}/attribute`, {
-                    headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
                 })
             ])
             .then(
-                axios.spread((uomRes, typeRes, groupRes, attrRes) => {
+                axios.spread((uomRes, typeRes) => {
                     setUoms(uomRes.data.map(u => ({
                         value: u.id,
-                        label: u.uomName || u.uomCode
+                        label: u.uomName && u.uomCode ? `${u.uomName} - ${u.uomCode}` : (u.uomName || u.uomCode)
                     })));
-                    setResourceTypes(typeRes.data.map(t => ({ value: t.id, label: t.resourceTypeName })));
-                    setAttributeGroups(groupRes.data.map(g => ({ value: g.id, label: g.groupName })));
-                    setAllAttributes(attrRes.data || []);
+                    setResourceTypes(typeRes.data.map(t => ({ value: t.code || t.id, label: t.label || t.resourceTypeName })));
                 })
             )
             .catch(() => toast.error("Failed to load dropdowns"));
     };
 
-    const generateRandomResourceCode = (existingResources) => {
-        let code;
-        let isUnique = false;
-        const maxAttempts = 100;
-        let attempts = 0;
-
-        while (!isUnique && attempts < maxAttempts) {
-            // Generate random 6 digit number
-            code = Math.floor(100000 + Math.random() * 900000).toString();
-            // Check if exists
-            const exists = existingResources.some(r => r.resourceCode === code);
-            if (!exists) {
-                isUnique = true;
-            }
-            attempts++;
-        }
-        return isUnique ? code : "";
+    const loadAttributeGroups = (inputValue) => {
+        return axios.get(`${import.meta.env.VITE_API_BASE_URL}/attributeGroup`, {
+            headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` },
+            params: { search: inputValue || "", page: 0, size: 50 }
+        }).then(res => {
+            const data = res.data.content || res.data || [];
+            return data.map(g => ({ 
+                value: g.id, 
+                label: g.groupName, 
+                attributes: (g.attributes || []).map(a => ({ value: a.id, label: a.attributeName }))
+            }));
+        }).catch(() => []);
     };
 
     const handleAdd = () => {
         fetchDropdownMasters();
         setIsEdit(false);
         setEditingId(null);
-        const newCode = generateRandomResourceCode(allResources);
         setResourceForm({
-            resourceCode: newCode,
+            resourceCode: "",
             resourceName: "",
-            unitRate: "",
             resourceTypeId: null,
             uomId: null,
             active: true,
-            attributes: [{ id: null, attributeGroupId: null, isMandatory: false }]
+            attributes: [{ id: null, attributeGroupId: null, groupLabel: "", isMandatory: false, orderNo: '', selectedAttributes: [] }]
         });
         setActiveTab('general');
         setOpenModal(true);
@@ -905,20 +425,30 @@ export function Resources() {
         })
             .then(res => {
                 const attrData = res.data || [];
-                const attributes = attrData.map(a => ({
-                    id: a.id,
-                    attributeGroupId: a.attributeGroup?.id || null,
-                    isMandatory: a.mandatory
-                }));
+                const initialMap = { ...groupAttributesMap };
+                const attributes = attrData.map(a => {
+                    const groupId = a.attributeGroup?.id;
+                    if (groupId && a.attributeGroup.attributes) {
+                        initialMap[groupId] = a.attributeGroup.attributes.map(attr => ({ value: attr.id, label: attr.attributeName }));
+                    }
+                    return {
+                        id: a.id,
+                        attributeGroupId: groupId || null,
+                        groupLabel: a.attributeGroup?.groupName || "",
+                        isMandatory: a.mandatory,
+                        orderNo: a.orderNo,
+                        selectedAttributes: (a.attributes || []).map(sa => sa.id)
+                    };
+                });
+                setGroupAttributesMap(initialMap);
 
                 setResourceForm({
                     resourceCode: r.resourceCode,
                     resourceName: r.resourceName,
-                    unitRate: r.unitRate,
                     resourceTypeId: r.resourceType?.id || null,
                     uomId: r.uom?.id || null,
                     active: r.active,
-                    attributes: attributes.length > 0 ? attributes : [{ id: null, attributeGroupId: null, isMandatory: false }]
+                    attributes: attributes.length > 0 ? attributes : [{ id: null, attributeGroupId: null, groupLabel: "", isMandatory: false, orderNo: '', selectedAttributes: [] }]
                 });
                 setActiveTab('general');
                 setOpenModal(true);
@@ -928,11 +458,10 @@ export function Resources() {
                 setResourceForm({
                     resourceCode: r.resourceCode,
                     resourceName: r.resourceName,
-                    unitRate: r.unitRate,
                     resourceTypeId: r.resourceType?.id || null,
                     uomId: r.uom?.id || null,
                     active: r.active,
-                    attributes: [{ id: null, attributeGroupId: null, isMandatory: false }]
+                    attributes: [{ id: null, attributeGroupId: null, groupLabel: "", isMandatory: false, orderNo: '', selectedAttributes: [] }]
                 });
                 setActiveTab('general');
                 setOpenModal(true);
@@ -949,20 +478,30 @@ export function Resources() {
         })
             .then(res => {
                 const attrData = res.data || [];
-                const attributes = attrData.map(a => ({
-                    id: a.id,
-                    attributeGroupId: a.attributeGroup?.id || null,
-                    isMandatory: a.mandatory
-                }));
+                const initialMap = { ...groupAttributesMap };
+                const attributes = attrData.map(a => {
+                    const groupId = a.attributeGroup?.id;
+                    if (groupId && a.attributeGroup.attributes) {
+                        initialMap[groupId] = a.attributeGroup.attributes.map(attr => ({ value: attr.id, label: attr.attributeName }));
+                    }
+                    return {
+                        id: a.id,
+                        attributeGroupId: groupId || null,
+                        groupLabel: a.attributeGroup?.groupName || "",
+                        isMandatory: a.mandatory,
+                        orderNo: a.orderNo,
+                        selectedAttributes: (a.attributes || []).map(sa => sa.id)
+                    };
+                });
+                setGroupAttributesMap(initialMap);
 
                 setResourceForm({
                     resourceCode: r.resourceCode,
                     resourceName: r.resourceName,
-                    unitRate: r.unitRate,
                     resourceTypeId: r.resourceType?.id || null,
                     uomId: r.uom?.id || null,
                     active: r.active,
-                    attributes: attributes.length > 0 ? attributes : [{ id: null, attributeGroupId: null, isMandatory: false }]
+                    attributes: attributes.length > 0 ? attributes : [{ id: null, attributeGroupId: null, groupLabel: "", isMandatory: false, orderNo: '', selectedAttributes: [] }]
                 });
                 setActiveTab('attributes');
                 setOpenModal(true);
@@ -971,11 +510,10 @@ export function Resources() {
                 setResourceForm({
                     resourceCode: r.resourceCode,
                     resourceName: r.resourceName,
-                    unitRate: r.unitRate,
                     resourceTypeId: r.resourceType?.id || null,
                     uomId: r.uom?.id || null,
                     active: r.active,
-                    attributes: [{ id: null, attributeGroupId: null, isMandatory: false }]
+                    attributes: [{ id: null, attributeGroupId: null, groupLabel: "", isMandatory: false, orderNo: '', selectedAttributes: [] }]
                 });
                 setActiveTab('attributes');
                 setOpenModal(true);
@@ -997,38 +535,28 @@ export function Resources() {
                     return;
                 }
 
-                // Fetch attributes for each assigned group
-                const groupFetches = assignments.map(assignment => {
-                    if (!assignment.attributeGroup?.id) return Promise.resolve([]);
+                // Extract attributes from each assigned group directly from the response
+                const allAttrs = assignments.map(assignment => {
+                    const group = assignment.attributeGroup;
+                    const assignedAttributes = assignment.attributes;
+                    const attributesList = assignedAttributes && assignedAttributes.length > 0 
+                        ? assignedAttributes.map(attr => attr.attributeName).join(", ") 
+                        : "-";
 
-                    return axios.get(`${import.meta.env.VITE_API_BASE_URL}/get-by-group/${assignment.attributeGroup.id}`, {
-                        headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
-                    })
-                        .then(gRes => {
-                            const attrs = gRes.data || [];
-                            // Attach group metadata to each attribute
-                            return attrs.map(attr => ({
-                                ...attr,
-                                groupName: assignment.attributeGroup.groupName,
-                                isMandatory: assignment.mandatory,
-                                assignmentId: assignment.id // Keep track of the assignment ID if needed
-                            }));
-                        })
-                        .catch(() => []); // If one group fails, just return empty for that one
+                    return {
+                        id: assignment.id,
+                        groupName: group ? group.groupName : "-",
+                        attributeName: attributesList,
+                        isMandatory: assignment.mandatory,
+                        assignmentId: assignment.id, // Keep track of the assignment ID if needed
+                        orderNo: assignment.orderNo,
+                        active: group ? group.active : true
+                    };
                 });
 
-                Promise.all(groupFetches)
-                    .then(results => {
-                        // Flatten the array of arrays
-                        const allAttrs = results.flat();
-                        setGroupAttributes(allAttrs);
-                        setSelectedResource(r);
-                        setViewAttributeModal(true);
-                    })
-                    .catch(err => {
-                        console.error(err);
-                        toast.error("Failed to fetch group attributes");
-                    });
+                setGroupAttributes(allAttrs);
+                setSelectedResource(r);
+                setViewAttributeModal(true);
             })
             .catch(err => {
                 toast.error("Failed to fetch attribute details");
@@ -1045,7 +573,6 @@ export function Resources() {
                     id: r.id,
                     resourceCode: r.resourceCode,
                     resourceName: r.resourceName,
-                    unitRate: r.unitRate,
                     resourceTypeId: r.resourceType.id,
                     uomId: r.uom.id,
                     active: nextStatus
@@ -1063,7 +590,7 @@ export function Resources() {
     const addNewAttributeRow = () => {
         setResourceForm(prev => ({
             ...prev,
-            attributes: [...prev.attributes, { id: null, attributeGroupId: null, isMandatory: false }]
+            attributes: [...prev.attributes, { id: null, attributeGroupId: null, groupLabel: "", isMandatory: false, orderNo: '', selectedAttributes: [] }]
         }));
     };
 
@@ -1096,9 +623,9 @@ export function Resources() {
         });
     };
     const handleSaveResource = () => {
-        const { resourceCode, resourceName, unitRate, resourceTypeId, uomId, active, attributes } = resourceForm;
+        const { resourceCode, resourceName, resourceTypeId, uomId, active, attributes } = resourceForm;
 
-        if (!resourceCode || !resourceName || !unitRate || !resourceTypeId || !uomId) {
+        if (!resourceCode || !resourceName || !resourceTypeId || !uomId) {
             toast.warning("All fields are required");
             return;
         }
@@ -1113,8 +640,6 @@ export function Resources() {
         const payload = {
             resourceCode,
             resourceName,
-            unitRate,
-
             resourceTypeId,
             uomId,
             active
@@ -1144,7 +669,8 @@ export function Resources() {
                                 id: attr.id, // Include ID if editing/existing
                                 resourceId: savedResourceId,
                                 attributeGroupId: attr.attributeGroupId,
-                                mandatory: attr.isMandatory
+                                mandatory: attr.isMandatory,
+                                orderNo: attr.orderNo || 0
                             };
                             return axios.post(`${import.meta.env.VITE_API_BASE_URL}/addResourceAttribute`, attrPayload, {
                                 headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
@@ -1175,11 +701,7 @@ export function Resources() {
     };
 
 
-    const displayData = allResources.filter(r => {
-        const matchSearch = r.resourceName?.toLowerCase().includes(search.toLowerCase());
-        const matchType = selectedResType ? r.resourceType.id === selectedResType.value : true;
-        return matchSearch && matchType;
-    });
+    const displayData = allResources;
 
     return (
         <div className="container-fluid p-4 mt-3">
@@ -1194,13 +716,13 @@ export function Resources() {
                 </button>
             </div>
 
-            <div className="bg-white mt-5">
-                <div className="tab-info">
-                    <span className="ms-2">Resources</span>
+            <div className="bg-white rounded-3 mt-5" style={{ border: "1px solid #0051973D" }}>
+                <div className="tab-info text-white p-3 rounded-top" style={{ backgroundColor: "#005197" }}>
+                    <span className="ms-2 fw-bold">Resources Management</span>
                 </div>
 
-                <div className="p-4 row g-3">
-                    <div className="col-lg-6">
+                <div className="row align-items-center mt-3 px-4">
+                    <div className="col-lg-4">
                         <label className="small fw-bold text-muted">Resource Type</label>
                         <Select
                             options={resourceTypes}
@@ -1208,9 +730,10 @@ export function Resources() {
                             onChange={setSelectedResType}
                             classNamePrefix={"select"}
                             isClearable
+                            placeholder="All Types"
                         />
                     </div>
-                    <div className="col-lg-6">
+                    <div className="col-lg-4">
                         <label className="small fw-bold text-muted">Search</label>
                         <input
                             className="form-input w-100"
@@ -1219,74 +742,134 @@ export function Resources() {
                             onChange={e => setSearch(e.target.value)}
                         />
                     </div>
+                    <div className="col-lg-2 d-flex align-items-center justify-content-center">
+                        <span className="fw-bold" style={{ color: '#005197' }}>Total Pages: {totalPages}</span>
+                    </div>
+                    <div className="col-lg-2 d-flex align-items-center justify-content-center gap-2 pt-3">
+                        <button
+                            className="btn btn-sm"
+                            style={{ border: '1px solid #005197', color: '#005197' }}
+                            disabled={page === 0}
+                            onClick={() => setPage(prev => prev - 1)}
+                        >
+                            Previous
+                        </button>
+                        <span className="btn btn-sm" style={{ backgroundColor: '#005197', color: '#fff' }}>{page + 1}</span>
+                        <button
+                            className="btn btn-sm"
+                            style={{ border: '1px solid #005197', color: '#005197' }}
+                            disabled={page >= totalPages - 1}
+                            onClick={() => setPage(prev => prev + 1)}
+                        >
+                            Next
+                        </button>
+                    </div>
                 </div>
 
-                <div className="table-responsive">
-                    <table className="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Sno</th>
-                                <th>Type</th>
-                                <th>Code</th>
-                                <th>Name</th>
-                                <th>UOM</th>
-                                <th>Rate</th>
-                                <th>Status</th>
-                                <th>Attribute</th>
-                                <th className="text-end">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {displayData.map((r, i) => (
-                                <tr key={r.id}>
-                                    <td>{i + 1}</td>
-                                    <td>{r.resourceType.resourceTypeName}</td>
-                                    <td>{r.resourceCode}</td>
-                                    <td>{r.resourceName}</td>
-                                    <td>{r.uom.uomCode}</td>
-                                    <td>{r.unitRate}</td>
-
-                                    <td>
-                                        <span className={r.active ? "text-success" : ""}>
-                                            {r.active ? "Active" : "Inactive"}
-                                        </span>
-                                    </td>
-
-                                    <td>
-                                        <button
-                                            className="btn btn-sm btn-outline-info"
-                                            onClick={() => handleViewAttributes(r)}
-                                            title="View Attributes"
-                                        >
-                                            <Eye size={14} /> View
-                                        </button>
-                                    </td>
-
-                                    <td className="text-end">
-                                        <Edit
-                                            size={18}
-                                            className="cursor-pointer text-muted me-2"
-                                            onClick={() => handleEdit(r)}
-                                        />
-                                        {r.active ? (
-                                            <Trash2
-                                                size={18}
-                                                className="cursor-pointer text-dark"
-                                                onClick={() => toggleStatus(r)}
-                                            />
-                                        ) : (
-                                            <RotateCcw
-                                                size={18}
-                                                className="cursor-pointer"
-                                                style={{ color: '#0d6efd' }}
-                                                onClick={() => toggleStatus(r)}
-                                            />
-                                        )}
-                                    </td>
+                <div className="px-4 pb-4 pt-3">
+                    <div className="table-responsive">
+                        <table className="table table-bordered align-middle table-hover">
+                            <thead className="table-header-primary">
+                                <tr>
+                                    <th style={{ width: '60px' }}>S.No</th>
+                                    <th>Type</th>
+                                    <th>Code</th>
+                                    <th>Name</th>
+                                    <th>UOM</th>
+                                    <th className="text-center">Status</th>
+                                    <th className="text-center">Attribute</th>
+                                    <th className="text-center">Action</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    <tr><td colSpan="9" className="text-center py-4">Loading...</td></tr>
+                                ) : displayData.length > 0 ? (
+                                    displayData.map((r, i) => (
+                                        <tr key={r.id}>
+                                            <td>{page * pageSize + i + 1}</td>
+                                            <td>
+                                                {r.resourceType?.label ||
+                                                    r.resourceType?.resourceTypeName ||
+                                                    resourceTypes.find(t => t.value === r.resourceTypeId)?.label ||
+                                                    r.resourceTypeId || "-"}
+                                            </td>
+                                            <td>{r.resourceCode || "N/A"}</td>
+                                            <td>{r.resourceName}</td>
+                                            <td>
+                                                {r.uom?.uomCode ||
+                                                    uoms.find(u => u.value === r.uomId)?.label ||
+                                                    r.uomId || "-"}
+                                            </td>
+
+                                            <td className="text-center">
+                                                <span className={`badge ${r.active ? 'bg-success' : 'bg-secondary'}`}>
+                                                    {r.active ? "Active" : "Inactive"}
+                                                </span>
+                                            </td>
+
+                                            <td className="text-center">
+                                                <button
+                                                    className="btn btn-sm d-inline-flex align-items-center gap-1"
+                                                    style={{ color: '#005197', border: '1px solid #005197' }}
+                                                    onClick={() => handleViewAttributes(r)}
+                                                    title="View Attributes"
+                                                >
+                                                    <Eye size={14} /> View
+                                                </button>
+                                            </td>
+
+                                            <td className="text-center">
+                                                <Edit
+                                                    size={18}
+                                                    className="me-2 text-primary cursor-pointer"
+                                                    onClick={() => handleEdit(r)}
+                                                />
+                                                {r.active ? (
+                                                    <Trash2
+                                                        size={18}
+                                                        className="cursor-pointer text-danger"
+                                                        onClick={() => toggleStatus(r)}
+                                                    />
+                                                ) : (
+                                                    <RotateCcw
+                                                        size={18}
+                                                        className="cursor-pointer text-primary"
+                                                        onClick={() => toggleStatus(r)}
+                                                    />
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan="9" className="text-center py-4 text-muted">No resources found</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Bottom Pagination */}
+                    {totalPages > 1 && (
+                        <div className="d-flex justify-content-center align-items-center mt-3 gap-2">
+                            <button
+                                className="btn btn-sm"
+                                style={{ border: '1px solid #005197', color: '#005197' }}
+                                disabled={page === 0}
+                                onClick={() => setPage(prev => prev - 1)}
+                            >
+                                Previous
+                            </button>
+                            <span className="btn btn-sm" style={{ backgroundColor: '#005197', color: '#fff' }}>{page + 1}</span>
+                            <button
+                                className="btn btn-sm"
+                                style={{ border: '1px solid #005197', color: '#005197' }}
+                                disabled={page >= totalPages - 1}
+                                onClick={() => setPage(prev => prev + 1)}
+                            >
+                                Next
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -1307,6 +890,7 @@ export function Resources() {
                                         <thead>
                                             <tr>
                                                 <th style={{ width: '50px' }}>S.No</th>
+                                                <th>Order No</th>
                                                 <th>Attribute Group</th>
                                                 <th>Attribute Name</th>
                                                 <th>Mandatory</th>
@@ -1317,6 +901,7 @@ export function Resources() {
                                             {groupAttributes.map((attr, idx) => (
                                                 <tr key={attr.id || idx}>
                                                     <td>{idx + 1}</td>
+                                                    <td>{attr.orderNo || "-"}</td>
                                                     <td>{attr.groupName || "-"}</td>
                                                     <td>{attr.attributeName}</td>
                                                     <td>{attr.isMandatory ? "Yes" : "No"}</td>
@@ -1329,7 +914,7 @@ export function Resources() {
                                             ))}
                                             {groupAttributes.length === 0 && (
                                                 <tr>
-                                                    <td colSpan="5" className="text-center text-muted">No attributes found.</td>
+                                                    <td colSpan="6" className="text-center text-muted">No attributes found.</td>
                                                 </tr>
                                             )}
                                         </tbody>
@@ -1364,7 +949,7 @@ export function Resources() {
 
             {openModal && (
                 <div className="modal fade show d-block" style={{ background: "rgba(0,0,0,.5)" }}>
-                    <div className="modal-dialog modal-lg modal-dialog-centered">
+                    <div className="modal-dialog modal-xl modal-dialog-centered">
                         <div className="modal-content">
                             <div className="modal-header d-flex justify-content-between">
                                 <p className="fw-bold mb-0">
@@ -1403,7 +988,7 @@ export function Resources() {
                                 {activeTab === 'general' ? (
                                     <div className="row g-3">
                                         {/* 1. Code */}
-                                        <div className="col-md-6">
+                                        <div className="col-md-3">
                                             <label className="projectform d-block">Code<span className="text-danger">*</span></label>
                                             <input className="form-input w-100" placeholder="Code"
                                                 value={resourceForm.resourceCode}
@@ -1411,22 +996,14 @@ export function Resources() {
                                         </div>
 
                                         {/* 2. Name */}
-                                        <div className="col-md-6">
+                                        <div className="col-md-3">
                                             <label className="projectform d-block">Name<span className="text-danger">*</span></label>
                                             <input className="form-input w-100" placeholder="Name"
                                                 value={resourceForm.resourceName}
                                                 onChange={e => setResourceForm(p => ({ ...p, resourceName: e.target.value }))} />
                                         </div>
 
-                                        {/* 3. Rate */}
-                                        <div className="col-md-6">
-                                            <label className="projectform d-block">Rate<span className="text-danger">*</span></label>
-                                            <input type="number" className="form-input w-100" placeholder="Rate"
-                                                value={resourceForm.unitRate}
-                                                onChange={e => setResourceForm(p => ({ ...p, unitRate: e.target.value }))} />
-                                        </div>
-
-                                        <div className="col-md-6">
+                                        <div className="col-md-3">
                                             <label className="projectform-select d-block">UOM<span className="text-danger">*</span></label>
                                             <Select
                                                 options={uoms}
@@ -1439,7 +1016,7 @@ export function Resources() {
                                             />
                                         </div>
 
-                                        <div className="col-md-12">
+                                        <div className="col-md-3">
                                             <label className="projectform-select d-block">Resource Type<span className="text-danger">*</span></label>
                                             <Select
                                                 options={resourceTypes}
@@ -1459,20 +1036,62 @@ export function Resources() {
                                                 <thead className="table-light">
                                                     <tr>
                                                         <th>Attribute Group</th>
+                                                        <th>Attributes</th>
+                                                        <th style={{ width: '150px' }}>Order No</th>
                                                         <th style={{ width: '150px' }}>Mandatory</th>
                                                         <th style={{ width: '80px' }}>Action</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {resourceForm.attributes.map((attr, idx) => (
+                                                    {resourceForm.attributes.map((attr, idx) => {
+                                                        const options = attr.attributeGroupId ? (groupAttributesMap[attr.attributeGroupId] || []) : [];
+                                                        const selectedValue = options.filter(opt => (attr.selectedAttributes || []).includes(opt.value));
+                                                        return (
                                                         <tr key={idx}>
                                                             <td>
-                                                                <Select
-                                                                    options={attributeGroups}
+                                                                <AsyncSelect
+                                                                    cacheOptions
+                                                                    defaultOptions
+                                                                    loadOptions={loadAttributeGroups}
                                                                     classNamePrefix="select"
                                                                     placeholder="Select Attribute Group"
-                                                                    value={attributeGroups.find(g => g.value === attr.attributeGroupId) || null}
-                                                                    onChange={opt => updateAttributeRow(idx, 'attributeGroupId', opt?.value || null)}
+                                                                    value={attr.attributeGroupId ? { value: attr.attributeGroupId, label: attr.groupLabel || "Select" } : null}
+                                                                    onChange={opt => {
+                                                                        const groupId = opt?.value || null;
+                                                                        updateAttributeRow(idx, 'attributeGroupId', groupId);
+                                                                        updateAttributeRow(idx, 'groupLabel', opt?.label || "");
+                                                                        updateAttributeRow(idx, 'selectedAttributes', []);
+                                                                        
+                                                                        if (groupId && opt?.attributes) {
+                                                                            setGroupAttributesMap(prev => ({ ...prev, [groupId]: opt.attributes }));
+                                                                        } else if (groupId && !groupAttributesMap[groupId]) {
+                                                                            axios.get(`${import.meta.env.VITE_API_BASE_URL}/attribute/by-group/${groupId}`, {
+                                                                                headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
+                                                                            }).then(res => {
+                                                                                setGroupAttributesMap(prev => ({ ...prev, [groupId]: (res.data || []).map(a => ({ value: a.id, label: a.attributeName })) }));
+                                                                            });
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            </td>
+                                                            <td>
+                                                                <Select
+                                                                    isMulti
+                                                                    options={options}
+                                                                    classNamePrefix="select"
+                                                                    placeholder="Select Attributes"
+                                                                    value={selectedValue}
+                                                                    onChange={selectedOptions => updateAttributeRow(idx, 'selectedAttributes', (selectedOptions || []).map(opt => opt.value))}
+                                                                />
+                                                            </td>
+                                                            <td className="text-center align-middle">
+                                                                <input
+                                                                    type="number"
+                                                                    className="form-control form-control-sm text-center"
+                                                                    value={attr.orderNo || ''}
+                                                                    onChange={e => updateAttributeRow(idx, 'orderNo', e.target.value ? Number(e.target.value) : '')}
+                                                                    placeholder="1"
+                                                                    min="0"
                                                                 />
                                                             </td>
                                                             <td className="text-center align-middle">
@@ -1494,7 +1113,7 @@ export function Resources() {
                                                                 </button>
                                                             </td>
                                                         </tr>
-                                                    ))}
+                                                    )})}
                                                 </tbody>
                                             </table>
                                         </div>
@@ -1531,7 +1150,6 @@ export function Resources() {
         </div>
     );
 }
-
 const CustomOption = (props) => {
     return (
         <components.Option {...props}>
@@ -1545,15 +1163,23 @@ const CustomOption = (props) => {
         </components.Option>
     );
 };
-
 const CustomMultiValueContainer = () => null;
-
 export function Attributes() {
     const [attributeGroups, setAttributeGroups] = useState([]);
     const [attributes, setAttributes] = useState([]);
-    const [expandedGroups, setExpandedGroups] = useState({});
+    const [groupAttributes, setGroupAttributes] = useState({});
+    const [viewAttributesModal, setViewAttributesModal] = useState(false);
+    const [selectedGroup, setSelectedGroup] = useState(null);
     const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [modalSearch, setModalSearch] = useState("");
     const [loading, setLoading] = useState(false);
+
+    // Pagination state for attribute groups
+    const [page, setPage] = useState(0);
+    const [pageSize] = useState(30);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
 
     // View State
     const [viewMode, setViewMode] = useState("group"); // 'group' | 'attribute'
@@ -1577,49 +1203,72 @@ export function Attributes() {
         selectedAttributes: []
     });
     const token = sessionStorage.getItem("token");
-    const handleUnauthorized = () => {
-        sessionStorage.clear();
-        window.location.href = "/login";
-    };
     const fetchData = useCallback(() => {
         setLoading(true);
-        axios
-            .all([
-                axios.get(`${import.meta.env.VITE_API_BASE_URL}/attributeGroup`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                }),
-                axios.get(`${import.meta.env.VITE_API_BASE_URL}/attribute`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                })
-            ])
-            .then(
-                axios.spread((groupsRes, attrsRes) => {
-                    if (groupsRes.status === 200) setAttributeGroups(groupsRes.data || []);
-                    if (attrsRes.status === 200) setAttributes(attrsRes.data || []);
-                })
-            )
+        const endpoint = debouncedSearch ? "/attributeGroup/search" : "/attributeGroup";
+        const params = {
+            page,
+            size: pageSize,
+            ...(debouncedSearch ? { search: debouncedSearch } : {})
+        };
+
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}${endpoint}`, {
+            headers: { Authorization: `Bearer ${token}` },
+            params
+        })
+            .then((groupsRes) => {
+                if (groupsRes.status === 200) {
+                    const data = groupsRes.data;
+                    if (data?.content) {
+                        setAttributeGroups(data.content);
+                        setTotalPages(data.totalPages || 0);
+                        setTotalElements(data.totalElements || 0);
+                    } else {
+                        setAttributeGroups(data || []);
+                    }
+                }
+            })
             .catch((err) => {
-                if (err?.response?.status === 401) handleUnauthorized();
-                else toast.error("Failed to fetch attributes data");
+                toast.error("Failed to fetch attribute groups");
             })
             .finally(() => setLoading(false));
-    }, [token]);
+    }, [token, page, pageSize, debouncedSearch]);
+
+    // Debounce search logic
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 200);
+
+        return () => clearTimeout(handler);
+    }, [search]);
+
+    useEffect(() => {
+        setPage(0);
+    }, [debouncedSearch]);
+
     useEffect(() => {
         fetchData();
     }, [fetchData]);
-    const toggleGroup = (groupId) => {
-        setExpandedGroups(prev => ({
-            ...prev,
-            [groupId]: !prev[groupId]
-        }));
-    };
-    const filteredGroups = attributeGroups.filter(g =>
-        g.groupName?.toLowerCase().includes(search.toLowerCase())
-    );
-    const getAttributesForGroup = (groupId) => {
-        return attributes.filter(attr =>
-            attr.attributeGroup?.some(g => g.id === groupId)
-        );
+    const toggleGroup = (groupId, group) => {
+        setSelectedGroup(group);
+        setViewAttributesModal(true);
+
+        // Load only once
+        if (!groupAttributes[groupId]) {
+            axios.get(`${import.meta.env.VITE_API_BASE_URL}/attribute/by-group/${groupId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+                .then(res => {
+                    setGroupAttributes(prev => ({
+                        ...prev,
+                        [groupId]: res.data || []
+                    }));
+                })
+                .catch(err => {
+                    toast.error("Failed to load attributes");
+                });
+        }
     };
     const handleAdd = () => {
         setIsEdit(false);
@@ -1633,19 +1282,36 @@ export function Attributes() {
         e.stopPropagation();
         setIsEdit(true);
         setModalTab("group");
-        const currentGroupAttrs = getAttributesForGroup(group.id);
-        const selectedOptions = currentGroupAttrs.map(attr => ({
-            value: attr.id,
-            label: attr.attributeName
-        }));
 
-        setGroupForm({
-            id: group.id,
-            groupName: group.groupName,
-            active: group.active,
-            selectedAttributes: selectedOptions
-        });
-        setOpenModal(true);
+        const openEditModal = (attrs) => {
+            const selectedOptions = (attrs || []).map(attr => ({
+                value: attr.id,
+                label: attr.attributeName
+            }));
+            setGroupForm({
+                id: group.id,
+                groupName: group.groupName,
+                active: group.active,
+                selectedAttributes: selectedOptions
+            });
+            setOpenModal(true);
+        };
+
+        if (groupAttributes[group.id]) {
+            openEditModal(groupAttributes[group.id]);
+        } else {
+            axios.get(`${import.meta.env.VITE_API_BASE_URL}/attribute/by-group/${group.id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+                .then(res => {
+                    const attrs = res.data || [];
+                    setGroupAttributes(prev => ({ ...prev, [group.id]: attrs }));
+                    openEditModal(attrs);
+                })
+                .catch(err => {
+                    toast.error("Failed to load group attributes");
+                });
+        }
     };
 
     const handleEditAttribute = (attr) => {
@@ -1672,7 +1338,7 @@ export function Attributes() {
     };
 
     const handleGroupStatus = (group) => {
-        const currentAttributes = getAttributesForGroup(group.id);
+        const currentAttributes = groupAttributes[group.id] || [];
         const attributeIds = currentAttributes.map(a => a.id);
 
         const payload = {
@@ -1767,8 +1433,8 @@ export function Attributes() {
     // Modal UI
     const renderModal = () => (
         <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-            <div className="modal-dialog modal-md modal-dialog-centered">
-                <div className="modal-content rounded-3">
+            <div className="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable">
+                <div className="modal-content rounded-3" style={{ maxHeight: '80vh' }}>
                     <div className="modal-header d-flex justify-content-between">
                         <p className="fw-bold mb-0">
                             {isEdit ? "Edit" : "Add"} {modalTab === "attribute" ? "Attribute" : "Attribute Group"}
@@ -1992,8 +1658,8 @@ export function Attributes() {
                     </div>
                 ) : (
                     <>
-                        <div className="row mt-3 p-4">
-                            <div className="col-md-8">
+                        <div className="row align-items-center mt-3 px-4">
+                            <div className="col-md-6">
                                 <label>Search</label>
                                 <input
                                     className="form-input w-100"
@@ -2002,102 +1668,237 @@ export function Attributes() {
                                     onChange={(e) => setSearch(e.target.value)}
                                 />
                             </div>
-                            <div className="col-md-4 d-flex align-items-center justify-content-center">
-                                {filteredGroups.length} of {attributeGroups.length} Groups
+                            <div className="col-md-3 d-flex align-items-center justify-content-center">
+                                <span className="fw-bold" style={{ color: '#005197' }}>Total Pages: {totalPages}</span>
+                            </div>
+                            <div className="col-md-3 d-flex align-items-center justify-content-center gap-2">
+                                <button
+                                    className="btn btn-sm"
+                                    style={{ border: '1px solid #005197', color: '#005197' }}
+                                    disabled={page === 0}
+                                    onClick={() => setPage(prev => prev - 1)}
+                                >
+                                    Previous
+                                </button>
+                                <span className="btn btn-sm" style={{ backgroundColor: '#005197', color: '#fff' }}>{page + 1}</span>
+                                <button
+                                    className="btn btn-sm"
+                                    style={{ border: '1px solid #005197', color: '#005197' }}
+                                    disabled={page >= totalPages - 1}
+                                    onClick={() => setPage(prev => prev + 1)}
+                                >
+                                    Next
+                                </button>
                             </div>
                         </div>
 
-                        {/* Groups List */}
-                        <div className="row p-4">
-                            {loading ? (
-                                <div className="text-center w-100">Loading...</div>
-                            ) : (
-                                filteredGroups.map((group) => (
-                                    <div className="col-12 mb-3" key={group.id}>
-                                        <div className="card shadow-sm">
-                                            <div className="card-body">
-                                                <div className="d-flex justify-content-between align-items-center cursor-pointer"
-                                                    onClick={() => toggleGroup(group.id)}>
-                                                    <div className="d-flex align-items-center gap-3">
-                                                        {expandedGroups[group.id] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                                                        <h6 className="mb-0 fw-bold">{group.groupName}</h6>
+                        {/* Groups Table */}
+                        <div className="px-4 pb-4 pt-3">
+
+                            <div className="table-responsive">
+                                <table className="table table-bordered align-middle">
+                                    <thead className="table-header-primary">
+                                        <tr>
+                                            <th style={{ width: '60px' }}>S.No</th>
+                                            <th>Group Code</th>
+                                            <th>Group Name</th>
+                                            <th>Attributes</th>
+                                            <th className="text-center">Status</th>
+                                            <th className="text-center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {loading ? (
+                                            <tr><td colSpan="6" className="text-center py-4">Loading...</td></tr>
+                                        ) : attributeGroups.length > 0 ? (
+                                            attributeGroups.map((group, idx) => (
+                                                <tr key={group.id}>
+                                                    <td>{page * pageSize + idx + 1}</td>
+                                                    <td><span className="badge bg-light text-dark">{group.groupCode || 'N/A'}</span></td>
+                                                    <td className="fw-bold">{group.groupName}</td>
+                                                    <td className="text-center">
+                                                        <button
+                                                            className="btn btn-sm d-inline-flex align-items-center gap-1 mx-auto"
+                                                            style={{ color: '#005197', border: '1px solid #005197' }}
+                                                            onClick={() => toggleGroup(group.id, group)}
+                                                        >
+                                                            <Eye size={14} />
+                                                            Show More
+                                                        </button>
+                                                    </td>
+                                                    <td className="text-center">
                                                         <span className={`badge ${group.active ? 'bg-success' : 'bg-secondary'}`}>
                                                             {group.active ? 'Active' : 'Inactive'}
                                                         </span>
-                                                    </div>
-                                                    <div className="d-flex gap-2">
+                                                    </td>
+                                                    <td className="text-center">
                                                         <Edit
                                                             size={18}
-                                                            className="text-muted cursor-pointer"
+                                                            className="me-2 text-primary cursor-pointer"
                                                             onClick={(e) => handleEditGroup(e, group)}
                                                         />
                                                         {group.active ? (
                                                             <Trash2
                                                                 size={18}
-                                                                className="cursor-pointer text-dark"
-                                                                onClick={(e) => { e.stopPropagation(); handleGroupStatus(group); }}
+                                                                className="cursor-pointer text-danger"
+                                                                onClick={() => handleGroupStatus(group)}
                                                             />
                                                         ) : (
                                                             <RotateCcw
                                                                 size={18}
                                                                 className="cursor-pointer text-primary"
-                                                                onClick={(e) => { e.stopPropagation(); handleGroupStatus(group); }}
+                                                                onClick={() => handleGroupStatus(group)}
                                                             />
                                                         )}
-                                                    </div>
-                                                </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr><td colSpan="6" className="text-center py-4 text-muted">No attribute groups found</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
 
-                                                {/* Expanded Attributes List */}
-                                                {expandedGroups[group.id] && (
-                                                    <div className="mt-4 ps-4 border-start border-3 border-primary">
-                                                        <h6 className="text-muted mb-3">Attributes in this group:</h6>
-                                                        <div className="row">
-                                                            {getAttributesForGroup(group.id).length > 0 ? (
-                                                                getAttributesForGroup(group.id).map(attr => (
-                                                                    <div className="col-md-4 mb-2" key={attr.id}>
-                                                                        <div className="p-2 border rounded d-flex justify-content-between align-items-center bg-light">
-                                                                            <span>{attr.attributeName}</span>
-                                                                            <div className="d-flex align-items-center gap-2">
-                                                                                <span className={`badge ${attr.active ? 'bg-success' : 'bg-secondary'} rounded-pill`} style={{ fontSize: '0.7rem' }}>
-                                                                                    {attr.active ? 'Active' : 'Inactive'}
-                                                                                </span>
-                                                                                <Edit
-                                                                                    size={14}
-                                                                                    className="cursor-pointer text-muted"
-                                                                                    onClick={() => handleEditAttribute(attr)}
-                                                                                />
-                                                                                {attr.active ? (
-                                                                                    <Trash2
-                                                                                        size={14}
-                                                                                        className="cursor-pointer text-dark"
-                                                                                        onClick={() => handleAttributeStatus(attr)}
-                                                                                    />
-                                                                                ) : (
-                                                                                    <RotateCcw
-                                                                                        size={14}
-                                                                                        className="cursor-pointer text-primary"
-                                                                                        onClick={() => handleAttributeStatus(attr)}
-                                                                                    />
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                ))
-                                                            ) : (
-                                                                <div className="col-12 text-muted fst-italic">No attributes found for this group.</div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
+                            {/* Bottom Pagination */}
+                            {totalPages > 1 && (
+                                <div className="d-flex justify-content-center align-items-center mt-3 gap-2">
+                                    <button
+                                        className="btn btn-sm"
+                                        style={{ border: '1px solid #005197', color: '#005197' }}
+                                        disabled={page === 0}
+                                        onClick={() => setPage(prev => prev - 1)}
+                                    >
+                                        Previous
+                                    </button>
+                                    <span className="btn btn-sm" style={{ backgroundColor: '#005197', color: '#fff' }}>{page + 1}</span>
+                                    <button
+                                        className="btn btn-sm"
+                                        style={{ border: '1px solid #005197', color: '#005197' }}
+                                        disabled={page >= totalPages - 1}
+                                        onClick={() => setPage(prev => prev + 1)}
+                                    >
+                                        Next
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </>
                 )}
             </div>
+
+            {viewAttributesModal && (
+                <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+                    <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                        <div className="modal-content border-0 shadow" style={{ maxHeight: '80vh' }}>
+                            <div className="modal-header d-flex justify-content-between align-items-center" style={{ backgroundColor: '#005197', color: 'white' }}>
+                                <h6 className="mb-0 fw-bold">
+                                    Attributes in Group: {selectedGroup?.groupName}
+                                </h6>
+                                <button className="btn-close btn-close-white" onClick={() => {
+                                    setViewAttributesModal(false);
+                                    setModalSearch("");
+                                }}></button>
+                            </div>
+                            <div className="modal-body p-0 d-flex flex-column" style={{ overflow: 'hidden' }}>
+                                <div className="p-3 border-bottom bg-light sticky-top">
+                                    <div className="position-relative" style={{ width: '300px' }}>
+                                        <Search
+                                            className="position-absolute"
+                                            style={{ right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#6B7280', zIndex: 1 }}
+                                            size={18}
+                                        />
+                                        <input
+                                            type="text"
+                                            className="form-input w-100"
+                                            placeholder="Search attributes in this group..."
+                                            value={modalSearch}
+                                            onChange={(e) => setModalSearch(e.target.value)}
+                                            style={{ paddingRight: '30px' }}
+                                            autoFocus
+                                        />
+                                        {modalSearch && (
+                                            <button 
+                                                className="btn position-absolute border-0" 
+                                                style={{ right: '35px', top: '50%', transform: 'translateY(-50%)', background: 'transparent' }}
+                                                onClick={() => setModalSearch("")}
+                                                type="button"
+                                            >
+                                                <X size={16} className="text-muted" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Scrollable List */}
+                                <div className="p-4 flex-grow-1" style={{ overflowY: 'auto' }}>
+                                    <div className="row">
+                                        {(() => {
+                                            const attrs = groupAttributes[selectedGroup?.id] || [];
+                                            const filtered = attrs.filter(a => 
+                                                a.attributeName?.toLowerCase().includes(modalSearch.toLowerCase())
+                                            );
+                                            
+                                            if (filtered.length > 0) {
+                                                return filtered.map(attr => (
+                                                    <div className="col-12 mb-2" key={attr.id}>
+                                                        <div className="p-2 px-3 border rounded shadow-sm bg-white d-flex justify-content-between align-items-center hover-shadow-sm transition-all">
+                                                            <div className="d-flex align-items-center gap-3">
+                                                                <div className="fw-bold text-dark">{attr.attributeName}</div>
+                                                                <span className={`badge ${attr.active ? 'bg-success-subtle text-success border border-success' : 'bg-secondary-subtle text-muted border border-secondary'} rounded-pill`} style={{ fontSize: '0.7rem' }}>
+                                                                    {attr.active ? 'Active' : 'Inactive'}
+                                                                </span>
+                                                            </div>
+                                                            <div className="d-flex align-items-center gap-2">
+                                                                <Edit
+                                                                    size={16}
+                                                                    className="cursor-pointer text-muted"
+                                                                    onClick={() => {
+                                                                        handleEditAttribute(attr);
+                                                                        setViewAttributesModal(false);
+                                                                        setModalSearch("");
+                                                                    }}
+                                                                />
+                                                                {attr.active ? (
+                                                                    <Trash2
+                                                                        size={16}
+                                                                        className="cursor-pointer text-danger"
+                                                                        onClick={() => handleAttributeStatus(attr)}
+                                                                    />
+                                                                ) : (
+                                                                    <RotateCcw
+                                                                        size={16}
+                                                                        className="cursor-pointer text-primary"
+                                                                        onClick={() => handleAttributeStatus(attr)}
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ));
+                                            } else {
+                                                return (
+                                                    <div className="col-12 text-center py-5">
+                                                        <div className="text-muted fst-italic">
+                                                            {modalSearch ? `No attributes matching "${modalSearch}"` : "No attributes found for this group."}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="modal-footer bg-light">
+                                <button className="btn btn-secondary px-4" onClick={() => {
+                                    setViewAttributesModal(false);
+                                    setModalSearch("");
+                                }}>Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {openModal && renderModal()}
         </div>

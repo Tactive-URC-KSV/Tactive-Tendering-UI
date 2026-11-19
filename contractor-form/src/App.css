@@ -1,186 +1,236 @@
-
-.main-container {
-  background-color: #f8fafc;
-  min-height: 100vh;
-  padding-bottom: 40px;
+.container-fluid {
+  font-family: 'Poppins', sans-serif;
+  background-color: #F9FAFB;
 }
 
-.form-card {
-  border: none !important;
-  border-radius: 4px !important;
-  overflow: visible;
-  margin-bottom: 30px;
+/* Form Inputs */
+.form-input {
+  outline: none;
+  border-radius: 8px !important;
+  border: 1px solid #005197CC !important;
+  height: 50px !important;
+  font-size: 14px;
+  padding-left: 20px !important;
+  color: black;
+  caret-color: black;
+  box-shadow: none !important;
 }
 
-.form-header {
-  background-color: #005bb7;
-  color: white;
-  padding: 10px;
-  text-align: center;
-  font-weight: 500;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
+.form-input::placeholder {
+  color: #00519780;
+  font-size: 13px;
 }
 
-.outline-group {
-  position: relative;
-  margin-bottom: 2rem;
-}
-
-.outline-label {
-  position: absolute;
-  top: -12px;
-  left: 15px;
-  background: white;
-  padding: 0 8px;
-  font-size: 0.85rem;
-  color: #005bb7;
-  font-weight: 500;
-  z-index: 1;
-}
-
-.outline-input,
-.flatpickr-input,
-.react-select__control {
-  height: 48px !important;
-  min-height: 48px !important;
-  padding: 0.375rem 0.75rem !important;
-  font-size: 0.9rem;
-  border: 1.5px solid #a3c4f3 !important;
-  border-radius: 6px !important;
-  color: #333;
-  box-shadow: none;
-}
-
-.outline-input:focus,
-.flatpickr-input:focus {
-  border-color: #005bb7 !important;
+.form-input:focus {
+  border: 1px solid #005197 !important;
   outline: none !important;
   box-shadow: none !important;
 }
 
-.outline-textarea {
-  min-height: 48px !important;
-  padding: 0.375rem 0.75rem !important;
-  font-size: 0.9rem;
-  border: 1.5px solid #a3c4f3 !important;
-  border-radius: 6px !important;
-  resize: vertical;
-  color: #333;
+.projectform {
+  position: absolute;
+  background-color: white;
+  margin-left: 19px;
+  margin-top: -10px;
+  padding-left: 6px;
+  padding-right: 5px;
+  font-size: 13px;
+  color: #005197;
+  font-weight: 600;
+  z-index: 1;
 }
 
-.react-select__control {
-  height: 48px !important;
-  min-height: 48px !important;
-  border-radius: 6px !important;
-  border: 1.5px solid #a3c4f3 !important;
-  box-shadow: none;
-}
-
-.react-select__control--is-focused {
-  border: 1.5px solid #005bb7 !important;
-  box-shadow: none !important;
-}
-
-.react-select__value-container {
-  height: 48px !important;
-  padding: 0 8px !important;
-  display: flex;
-  align-items: center;
-}
-
-.react-select__placeholder {
+/* Tabs */
+.custom-tab {
+  border: none;
+  border-bottom: 2px solid transparent;
+  background-color: white;
+  padding: 10px 20px;
+  font-weight: 400;
   color: #6c757d;
-  font-size: 0.9rem;
+  border-radius: 0;
+  transition: all 0.2s ease-in-out;
 }
 
-.attachment-title {
-  color: #005bb7;
-  font-weight: 600;
-  margin-bottom: 15px;
+.custom-tab.active {
+  border-bottom: 2px solid #005197 !important;
+  font-weight: 600 !important;
+  color: #005197 !important;
 }
 
+.custom-tab:hover {
+  color: #005197;
+}
+
+/* Upload Section */
 .upload-section {
-  cursor: pointer;
-  border: 2px dashed #a3c4f3;
-  padding: 25px;
-  text-align: center;
-  border-radius: 8px;
-  background-color: #fff;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 160px;
-  transition: background-color 0.2s ease;
+  border: 2px dashed #0051973D !important;
+  background-color: #f8faff;
+  transition: all 0.3s ease;
 }
 
-.file-list-horizontal {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  margin-top: 20px;
+.upload-section:hover {
+  background-color: #f0f5ff;
+  border-color: #005197 !important;
 }
 
-.file-badge {
-  background-color: #f8f9fa;
-  border: 1px solid #dee2e6;
-  padding: 4px 12px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  font-size: 0.85rem;
-  color: #333;
-}
-
-.file-name-text {
-  max-width: 180px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.remove-file-icon {
-  cursor: pointer;
-  color: #ff0000 !important;
-  font-size: 1.2rem;
-  font-weight: bold;
-  margin-left: 8px;
-  line-height: 1;
-}
-
-.footer-btns {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 30px;
-  padding: 20px 0;
-}
-
-.btn-cancel {
-  color: #005bb7;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.btn-submit {
+/* Buttons */
+.btn-primary {
   background-color: #005197 !important;
-  border: none !important;
-  padding: 10px 25px !important;
-  border-radius: 6px !important;
+  border-color: #005197 !important;
+}
+
+.btn-primary:hover {
+  background-color: #004080 !important;
+  border-color: #004080 !important;
+}
+
+/* React Select customization via classNamePrefix="select" */
+.select__menu {
+  z-index: 100 !important;
+}
+
+.select__control {
+  border-radius: 8px !important;
+  border: 1px solid #005197CC !important;
+  height: 50px;
+  font-size: 14px;
+  padding-left: 15px;
+  color: black !important;
+  box-shadow: none;
+  text-align: left !important;
+  background-color: transparent !important;
+  caret-color: black !important;
+}
+
+.select__control--is-disabled {
+  background-color: white !important;
+  opacity: 1 !important;
+  cursor: not-allowed;
+}
+
+.select__indicator-separator {
+  display: none !important;
+}
+
+.select__placeholder {
+  color: #00519780 !important;
+  font-size: 13px !important;
+}
+
+.select__control--is-focused {
+  border: 1px solid #005197 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: black !important;
+}
+
+.select__option {
+  cursor: pointer !important;
+  text-align: start !important;
+  color: #005197b7 !important;
+  font-size: 14px !important;
+  height: 35px !important;
   font-weight: 500 !important;
+}
+
+.select__option--is-selected {
+  background-color: #DBEAFE !important;
+  color: #005197 !important;
+}
+
+.select__multi-value {
+  background-color: #005197 !important;
+  color: white !important;
+  border-radius: 6px !important;
+  margin-right: 5px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+.select__multi-value__label {
   color: white !important;
 }
 
-.position-relative i.bi-calendar3 {
-  top: 12px !important;
-  right: 15px !important;
-  color: #005bb7;
+.select__multi-value__remove:hover {
+  background-color: #005197 !important;
+  color: white !important;
   cursor: pointer;
-  z-index: 5;
+}
+
+.select__multi-value__remove {
+  cursor: pointer;
+  margin-left: 8px;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.form-input:disabled {
+  background-color: white !important;
+}
+
+.form-input::-webkit-inner-spin-button,
+.form-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+label {
+  font-size: 15px;
+}
+
+.projectform-select {
+  position: absolute;
+  background-color: white;
+  margin-left: 19px;
+  margin-top: -10px;
+  padding-left: 6px;
+  padding-right: 5px;
+  font-size: 13px;
+  color: #005197;
+  font-weight: 600;
+  z-index: 1;
+}
+
+/* Header Styles */
+.header {
+  background-color: white;
+  height: 65px;
+  box-shadow: 0px 3px 3px 0px #b4d2ec52;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  margin-bottom: 0rem;
+}
+
+.user-profile {
+  font-weight: 600;
+  color: #005197;
+  font-size: 14px;
+}
+
+.toggle-btn {
+  background: transparent;
+  border: none;
+  padding: 8px;
+  color: #005197;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-btn:hover {
+  background-color: #00519714;
+  border-radius: 4px;
+}
+
+.logo {
+  max-height: 40px;
+}
+
+.main-content {
+  margin-top: 0;
 }

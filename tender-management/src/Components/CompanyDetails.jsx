@@ -1,4 +1,4 @@
-import { Filter, List, Plus, Grid, Eye, Building } from "lucide-react";
+import { Filter, List, Plus, Grid, Eye, Building, Edit } from "lucide-react";
 import "../CSS/Styles.css";
 import Select, { components } from "react-select";
 import { useState, useEffect, useMemo } from "react";
@@ -49,8 +49,10 @@ function CompanyDetails() {
                 );
 
                 const levelRes = await axios.get(`${baseUrl}/companyLevel`, { headers });
-                const levelList = levelRes.data || [];
-                setCompanyLevelOptions(levelList);
+                const levelList = levelRes.data?.data ?? levelRes.data ?? [];
+                setCompanyLevelOptions(
+                    levelList.map((item) => ({ value: item.code, label: item.label }))
+                );
 
             } catch (error) {
                 console.error("Error fetching master data:", error);
@@ -99,8 +101,7 @@ function CompanyDetails() {
 
             // Company Level Filter
             if (selectedCompanyLevel) {
-                const levelId = item.companyLevel?.id;
-                if (levelId !== selectedCompanyLevel.value) return false;
+                if (item.companyLevel !== selectedCompanyLevel.value) return false;
             }
 
             return true;
@@ -194,7 +195,7 @@ function CompanyDetails() {
                     <div className="col-lg-4 col-md-4 position-relative">
                         <label className="projectform-select text-start d-block">Company Level</label>
                         <Select
-                            options={companyLevelOptions.map(l => ({ value: l.id, label: l.level }))}
+                            options={companyLevelOptions}
                             onChange={setSelectedCompanyLevel}
                             value={selectedCompanyLevel}
                             placeholder="All company levels"
@@ -317,15 +318,24 @@ function CompanyDetails() {
                                             <td>{index + 1}</td>
                                             <td>{item.companyName || "-"}</td>
                                             <td>{item.shortName || "-"}</td>
-                                            <td>{item.comType || "-"}</td>
-                                            <td>{item.companyLevel?.level || "-"}</td>
+                                            <td>{companyTypeOptions.find(opt => opt.value === item.comType)?.label || item.comType || "-"}</td>
+                                            <td>{companyLevelOptions.find(opt => opt.value === item.companyLevel)?.label || item.companyLevel || "-"}</td>
                                             <td>
                                                 <button
                                                     className="btn btn-sm"
                                                     style={{ border: 'none', background: 'transparent', color: bluePrimary }}
                                                     onClick={() => navigate(`/companydetails/${item.id}`)}
+                                                    title="View Details"
                                                 >
                                                     <Eye size={20} />
+                                                </button>
+                                                <button
+                                                    className="btn btn-sm ms-2"
+                                                    style={{ border: 'none', background: 'transparent', color: bluePrimary }}
+                                                    onClick={() => navigate('/company-form', { state: { editCompanyId: item.id } })}
+                                                    title="Edit Company"
+                                                >
+                                                    <Edit size={20} />
                                                 </button>
                                             </td>
                                         </tr>
@@ -362,12 +372,19 @@ function CompanyDetails() {
                                                 </div>
                                             </div>
                                             <div className="mb-3">
-                                                <CardRow label="Company Type" value={item.comType} />
-                                                <CardRow label="Company Level" value={item.companyLevel?.level} />
+                                                <CardRow label="Company Type" value={companyTypeOptions.find(opt => opt.value === item.comType)?.label || item.comType} />
+                                                <CardRow label="Company Level" value={companyLevelOptions.find(opt => opt.value === item.companyLevel)?.label || item.companyLevel} />
                                                 <CardRow label="Contact Name" value={item.contacts?.[0]?.name} />
                                                 <CardRow label="Phone" value={item.contacts?.[0]?.phoneNo} />
                                             </div>
                                             <div className="text-end mt-4">
+                                                <button
+                                                    className="btn btn-link text-decoration-none p-0 fw-bold d-inline-flex align-items-center me-3"
+                                                    style={{ color: bluePrimary, fontSize: '0.95rem' }}
+                                                    onClick={() => navigate('/company-form', { state: { editCompanyId: item.id } })}
+                                                >
+                                                    <Edit size={18} className="me-2" /> Edit
+                                                </button>
                                                 <button
                                                     className="btn btn-link text-decoration-none p-0 fw-bold d-inline-flex align-items-center"
                                                     style={{ color: bluePrimary, fontSize: '0.95rem' }}

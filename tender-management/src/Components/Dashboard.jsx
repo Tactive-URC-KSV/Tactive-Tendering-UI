@@ -21,7 +21,7 @@ import { IndianRupee } from 'lucide-react';
 function ProjectWorklist() {
     const navigate = useNavigate();
     const handleUnauthorized = () => {
-        navigate('/');
+        // navigate('/');
     }
 
     const [isListView, setIsListView] = useState(true);
@@ -88,6 +88,28 @@ function ProjectWorklist() {
                     handleUnauthorized();
                 }
                 console.error('Error fetching projects:', error);
+            });
+    }, []);
+
+    useEffect(() => {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/companyDetails`, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(response => {
+                let data = response.data;
+                if (data && !Array.isArray(data) && data.data && Array.isArray(data.data)) {
+                    data = data.data;
+                }
+                setCompanyList(Array.isArray(data) ? data : []);
+            })
+            .catch(error => {
+                if (error?.response?.status === 401) {
+                    handleUnauthorized();
+                }
+                console.error('Error fetching companies:', error);
             });
     }, []);
 
@@ -175,7 +197,7 @@ function ProjectWorklist() {
                             <div className="text-start">
                                 <p className="report-feild fw-bold mb-2 mt-2">Total Value</p>
                                 <p className="value fw-bold fs-4">
-                                    <IndianRupee /> {projects.reduce((total, project) => total + parseInt(project.estimatedValue) / 1000000, 0).toFixed(2)} M
+                                    <IndianRupee /> {projects.reduce((total, project) => total + (parseFloat(project.totalEstimatedValue) || 0) / 1000000, 0).toFixed(2)} M
                                 </p>
                             </div>
                             <div className="icon">
@@ -273,7 +295,7 @@ function ProjectWorklist() {
                         classNamePrefix="select"
                         isClearable
                         menuPlacement='auto'
-                        isDisabled={true}
+
                     />
                 </div>
                 <div className="col-lg-3 col-md-6 col-sm-12 mb-4">
@@ -317,7 +339,7 @@ function ProjectWorklist() {
                                     <tr key={index}>
                                         <td>{project.projectCode}</td>
                                         <td>{project.projectName}</td>
-                                        <td>{project.estimatedValue}</td>
+                                        <td>{project.totalEstimatedValue}</td>
                                         <td>{project.startDate &&
                                             new Date(project.startDate).toLocaleDateString(
                                                 "en-US",
@@ -406,7 +428,7 @@ function ProjectWorklist() {
 
                                     <div className="d-flex justify-content-between mt-1 small">
                                         <span>Value:</span>
-                                        <span><IndianRupee size={14} />{project.estimatedValue}</span>
+                                        <span><IndianRupee size={14} />{project.totalEstimatedValue}</span>
                                     </div>
 
                                     <div className="progress mt-3" style={{ height: "10px" }}>

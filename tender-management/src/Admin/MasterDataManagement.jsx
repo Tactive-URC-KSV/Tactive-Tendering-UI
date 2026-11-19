@@ -1,4 +1,4 @@
-import { ArrowLeft, Edit, Plus, Trash2, X, Ban, RotateCcw } from "lucide-react";
+import { ArrowLeft, Edit, Plus, Trash2, X, Ban, RotateCcw, Eye } from "lucide-react";
 import { useRegions } from "../Context/RegionsContext";
 import { useCallback, useEffect, useState } from "react";
 import { useSectors } from "../Context/SectorsContext";
@@ -8,7 +8,6 @@ import axios from "axios";
 import Select from "react-select";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-
 
 export function Region() {
     const [regions, setRegions] = useState([]);
@@ -246,6 +245,21 @@ export function Sectors() {
         sectorName: "",
         active: true,
     });
+    const [showFieldsModal, setShowFieldsModal] = useState(false);
+    const [showAddFieldsModal, setShowAddFieldsModal] = useState(false);
+    const [selectedSector, setSelectedSector] = useState(null);
+    const [selectedSection, setSelectedSection] = useState(null);
+    const [sectorFields, setSectorFields] = useState([]);
+    const [fieldData, setFieldData] = useState({
+        id: null,
+        fieldName: "",
+        fieldType: null,
+        mandatory: false,
+        active: true,
+        fieldSection: null
+    });
+    const [fieldTypeOptions, setFieldTypeOptions] = useState([]);
+    const [fieldSectionOptions, setFieldSectionOptions] = useState([]);
     const token = sessionStorage.getItem("token");
     const fetchSector = useCallback(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/sectors`, {
@@ -254,9 +268,40 @@ export function Sectors() {
             setSectors(Array.isArray(res.data) ? res.data : res.data.data || []);
         });
     }, []);
+
+    const fetchFieldTypes = useCallback(() => {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/fieldType`, {
+            headers: { Authorization: `Bearer ${token}` },
+        }).then((res) => {
+            const types = Array.isArray(res.data) ? res.data : res.data.data || [];
+            const options = types.map(t => {
+                if (t.code && t.label) return { value: t.code, label: t.label };
+                const val = typeof t === 'string' ? t : (t.name || t.type || t);
+                return { value: val, label: val };
+            });
+            setFieldTypeOptions(options);
+        }).catch(err => console.error("Error fetching field types:", err));
+    }, [token]);
+
+    const fetchFieldSections = useCallback(() => {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/fieldSection`, {
+            headers: { Authorization: `Bearer ${token}` },
+        }).then((res) => {
+            const sections = Array.isArray(res.data) ? res.data : res.data.data || [];
+            const options = sections.map(s => {
+                if (s.code && s.label) return { value: s.code, label: s.label };
+                const val = typeof s === 'string' ? s : (s.name || s.type || s);
+                return { value: val, label: val };
+            });
+            setFieldSectionOptions(options);
+        }).catch(err => console.error("Error fetching field sections:", err));
+    }, [token]);
+
     useEffect(() => {
         fetchSector();
-    }, [fetchSector])
+        fetchFieldTypes();
+        fetchFieldSections();
+    }, [fetchSector, fetchFieldTypes, fetchFieldSections]);
     const filteredSectors = sectors.filter((sec) =>
         sec.sectorName?.toLowerCase().includes(search.toLowerCase())
     );
@@ -265,6 +310,86 @@ export function Sectors() {
         setSector({ id: null, sectorName: "", active: true });
         setOpenModal(true);
     };
+    const handleViewFields = (sec, sectionCode) => {
+        setSelectedSector(sec);
+        setSelectedSection(sectionCode);
+        setSectorFields([]);
+        setShowFieldsModal(true);
+        fetchSectorFields(sec.id);
+    };
+
+    const fetchSectorFields = (sectorId) => {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/sector/fields/${sectorId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        }).then((res) => {
+            const fields = Array.isArray(res.data) ? res.data : res.data.data || [];
+            setSectorFields(fields);
+        }).catch(err => console.error("Error fetching sector fields:", err));
+    };
+
+    const handleEditField = (field) => {
+        setFieldData({
+            id: field.id,
+            fieldName: field.fieldName,
+            fieldType: field.fieldType,
+            mandatory: field.mandatory,
+            active: field.active !== undefined ? field.active : true,
+            fieldSection: field.fieldSection
+        });
+        setShowAddFieldsModal(true);
+    };
+
+    const handleAddFieldSave = () => {
+        if (!fieldData.fieldName.trim() || (selectedSection !== 'DOCUMENTS' && !fieldData.fieldType)) return;
+
+        const payload = {
+            id: fieldData.id || null,
+            fieldName: fieldData.fieldName,
+            fieldType: selectedSection === 'DOCUMENTS' ? 'FILE' : fieldData.fieldType,
+            mandatory: fieldData.mandatory || false,
+            active: fieldData.active !== undefined ? fieldData.active : true,
+            sectorId: selectedSector.id,
+            fieldSection: selectedSection
+        };
+
+        axios
+            .post(
+                `${import.meta.env.VITE_API_BASE_URL}/sector/fields`,
+                payload,
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(typeof res.data === 'string' ? res.data : (fieldData.id ? "Field updated successfully" : "Field added successfully"));
+                setShowAddFieldsModal(false);
+                fetchSectorFields(selectedSector.id);
+            })
+            .catch((e) => toast.error(e?.response?.data || "Failed to save field"));
+    };
+
+    const handleToggleFieldActive = (field, isActive) => {
+        const payload = {
+            id: field.id,
+            fieldName: field.fieldName,
+            fieldType: field.fieldType,
+            mandatory: field.mandatory,
+            active: isActive,
+            sectorId: selectedSector.id,
+            fieldSection: field.fieldSection
+        };
+
+        axios
+            .post(
+                `${import.meta.env.VITE_API_BASE_URL}/sector/fields`,
+                payload,
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((res) => {
+                toast.success(isActive ? "Field reactivated" : "Field deactivated");
+                fetchSectorFields(selectedSector.id);
+            })
+            .catch((e) => toast.error(e?.response?.data || "Failed to update field status"));
+    };
+
     const handleEdit = (sec) => {
         setIsEdit(true);
         setSector({ ...sec });
@@ -436,53 +561,275 @@ export function Sectors() {
                     </div>
                 </div>
 
-                {/* Cards */}
+                {/* Table */}
                 <div className="row ms-1 me-1 mt-3">
-                    {filteredSectors.map((sec, i) => (
-                        <div className="col-lg-4 mb-3" key={i}>
-                            <div className="card shadow-sm h-100">
-                                <div className="card-body">
-                                    <div className="d-flex justify-content-between">
-                                        <Edit
-                                            size={18}
-                                            onClick={() => handleEdit(sec)}
-                                            style={{ cursor: "pointer" }}
-                                        />
-                                        {sec.active ? (
-                                            <Trash2
+                    <div className="table-responsive">
+                        <table className="table table-bordered">
+                            <thead className="table-header-primary">
+                                <tr>
+                                    <th>S.No</th>
+                                    <th>Sector</th>
+                                    <th>Tech fields</th>
+                                    <th>ROI</th>
+                                    <th>Documents</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredSectors.map((sec, i) => (
+                                    <tr key={sec.id || i}>
+                                        <td>{i + 1}</td>
+                                        <td>{sec.sectorName}</td>
+                                        <td>
+                                            <button
+                                                className="btn btn-sm view-conversion-btn"
+                                                onClick={() => handleViewFields(sec, 'TECH')}
+                                            >
+                                                <Eye size={16} className="me-1" /> View Fields
+                                            </button>
+                                        </td>
+                                        <td>
+                                            <button
+                                                className="btn btn-sm view-conversion-btn"
+                                                onClick={() => handleViewFields(sec, 'ROI')}
+                                            >
+                                                <Eye size={16} className="me-1" /> View Fields
+                                            </button>
+                                        </td>
+                                        <td>
+                                            <button
+                                                className="btn btn-sm view-conversion-btn"
+                                                onClick={() => handleViewFields(sec, 'DOCUMENTS')}
+                                            >
+                                                <Eye size={16} className="me-1" /> View Fields
+                                            </button>
+                                        </td>
+                                        <td>
+                                            <Edit
                                                 size={18}
-                                                onClick={() => handleDelete(sec)}
-                                                style={{ cursor: "pointer" }}
+                                                className="me-3 text-primary cursor-pointer"
+                                                onClick={() => handleEdit(sec)}
                                             />
-                                        ) : (
-                                            <RotateCcw
-                                                size={18}
-                                                onClick={() => handleReactivate(sec)}
-                                                className="text-primary"
-                                                style={{ cursor: "pointer" }}
-                                            />
-                                        )}
-                                    </div>
+                                            {sec.active ? (
+                                                <Trash2
+                                                    size={18}
+                                                    className="text-danger cursor-pointer"
+                                                    onClick={() => handleDelete(sec)}
+                                                />
+                                            ) : (
+                                                <RotateCcw
+                                                    size={18}
+                                                    onClick={() => handleReactivate(sec)}
+                                                    className="text-primary cursor-pointer"
+                                                />
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {filteredSectors.length === 0 && (
+                                    <tr>
+                                        <td colSpan="5" className="text-center text-muted">No sectors found</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
 
-                                    <div className="mt-2 d-flex justify-content-between">
-                                        <span>{sec.sectorName}</span>
-                                        <span
-                                            className={
-                                                sec.active
-                                                    ? "text-success"
-                                                    : "text-muted"
-                                            }
+                {openModal && sectorForm()}
+
+                {showFieldsModal && (
+                    <div
+                        className="modal fade show d-block modal-overlay-primary"
+                        onClick={() => setShowFieldsModal(false)}
+                    >
+                        <div
+                            className="modal-dialog modal-lg modal-dialog-centered"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="modal-content rounded-3">
+                                <div className="modal-header d-flex justify-content-between">
+                                    <p className="fw-bold mb-0">
+                                        {fieldSectionOptions.find(o => o.value === selectedSection)?.label || selectedSection} Fields for {selectedSector?.sectorName || ""}
+                                    </p>
+                                    <button
+                                        className="modal-close-btn"
+                                        onClick={() => setShowFieldsModal(false)}
+                                    >
+                                        <X />
+                                    </button>
+                                </div>
+                                <div className="modal-body">
+                                    <div className="d-flex justify-content-end mb-3">
+                                        <button
+                                            className="btn action-button d-flex align-items-center"
+                                            onClick={() => {
+                                                setFieldData({ id: null, fieldName: "", fieldType: null, mandatory: false, active: true, fieldSection: selectedSection });
+                                                setShowAddFieldsModal(true);
+                                            }}
                                         >
-                                            {sec.active ? "Active" : "Inactive"}
-                                        </span>
+                                            <Plus size={16} className="me-1" /> Add fields
+                                        </button>
+                                    </div>
+                                    <div className="table-responsive">
+                                        <table className="table table-bordered">
+                                            <thead className="table-header-primary">
+                                                <tr>
+                                                    <th>S.No</th>
+                                                    <th>{selectedSection === 'DOCUMENTS' ? 'Document Name' : 'Field Name'}</th>
+                                                    {selectedSection !== 'DOCUMENTS' && <th>Field Type</th>}
+                                                    <th>Mandatory</th>
+                                                    <th>Status</th>
+                                                    <th>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(sectorFields.filter(f => f.fieldSection === selectedSection)?.length > 0) ? (
+                                                    sectorFields.filter(f => f.fieldSection === selectedSection).map((field, index) => (
+                                                        <tr key={field.id || index}>
+                                                            <td>{index + 1}</td>
+                                                            <td>{field.fieldName}</td>
+                                                            {selectedSection !== 'DOCUMENTS' && <td>{field.fieldType}</td>}
+                                                            <td>{field.mandatory ? 'Yes' : 'No'}</td>
+                                                            <td className={field.active === false ? "text-danger" : "text-success"}>
+                                                                {field.active === false ? 'Inactive' : 'Active'}
+                                                            </td>
+                                                            <td>
+                                                                <Edit
+                                                                    size={18}
+                                                                    className="me-3 text-primary cursor-pointer"
+                                                                    onClick={() => handleEditField(field)}
+                                                                />
+                                                                {field.active !== false ? (
+                                                                    <Trash2
+                                                                        size={18}
+                                                                        className="text-danger cursor-pointer"
+                                                                        onClick={() => handleToggleFieldActive(field, false)}
+                                                                    />
+                                                                ) : (
+                                                                    <RotateCcw
+                                                                        size={18}
+                                                                        className="text-primary cursor-pointer"
+                                                                        onClick={() => handleToggleFieldActive(field, true)}
+                                                                    />
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan="5" className="text-center text-muted">No matching fields found</td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    ))}
-                </div>
+                    </div>
+                )}
 
-                {openModal && sectorForm()}
+                {showAddFieldsModal && (
+                    <div
+                        className="modal fade show d-block modal-overlay-secondary"
+                        onClick={() => setShowAddFieldsModal(false)}
+                    >
+                        <div
+                            className="modal-dialog modal-md modal-dialog-centered"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="modal-content rounded-3">
+                                <div className="modal-header d-flex justify-content-between">
+                                    <p className="fw-bold mb-0">{fieldData.id ? "Edit Field" : "Add Field"}</p>
+                                    <button
+                                        className="modal-close-btn"
+                                        onClick={() => setShowAddFieldsModal(false)}
+                                    >
+                                        <X />
+                                    </button>
+                                </div>
+                                <div className="modal-body">
+                                    <div className="mb-3">
+                                        <label className="projectform d-block mb-1">Sector</label>
+                                        <input
+                                            type="text"
+                                            className="form-input w-100 bg-light"
+                                            value={selectedSector?.sectorName || ""}
+                                            readOnly
+                                        />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="projectform d-block mb-1">
+                                            {selectedSection === 'DOCUMENTS' ? 'Document Name' : 'Field Name'} <span className="text-danger">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className="form-input w-100"
+                                            value={fieldData.fieldName}
+                                            placeholder={selectedSection === 'DOCUMENTS' ? 'Enter Document Name' : 'Enter Field Name'}
+                                            onChange={(e) => setFieldData({ ...fieldData, fieldName: e.target.value })}
+                                        />
+                                    </div>
+                                    {selectedSection !== 'DOCUMENTS' && (
+                                        <div className="mb-3">
+                                            <label className="projectform-select d-block mb-1">
+                                                Field Type <span className="text-danger">*</span>
+                                            </label>
+                                            <Select
+                                                classNamePrefix="select"
+                                                options={fieldTypeOptions}
+                                                value={fieldTypeOptions.find(opt => opt.value === fieldData.fieldType) || null}
+                                                onChange={(opt) => setFieldData({ ...fieldData, fieldType: opt ? opt.value : null })}
+                                                placeholder="Select Type"
+                                                isClearable
+                                            />
+                                        </div>
+                                    )}
+                                    <div className="mb-2 d-flex align-items-center">
+                                        <input
+                                            type="checkbox"
+                                            className="form-check-input me-2 mt-0"
+                                            id="mandatoryCheck"
+                                            checked={fieldData.mandatory}
+                                            onChange={(e) => setFieldData({ ...fieldData, mandatory: e.target.checked })}
+                                        />
+                                        <label className="projectform mb-0" htmlFor="mandatoryCheck">
+                                            Mandatory Field
+                                        </label>
+                                    </div>
+                                    <div className="mb-2 d-flex align-items-center">
+                                        <input
+                                            type="checkbox"
+                                            className="form-check-input me-2 mt-0"
+                                            id="activeCheck"
+                                            checked={fieldData.active !== undefined ? fieldData.active : true}
+                                            onChange={(e) => setFieldData({ ...fieldData, active: e.target.checked })}
+                                        />
+                                        <label className="projectform mb-0" htmlFor="activeCheck">
+                                            Active
+                                        </label>
+                                    </div>
+                                </div>
+                                <div className="modal-footer">
+                                    <button
+                                        className="btn cancel-button"
+                                        onClick={() => setShowAddFieldsModal(false)}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        className="btn action-button"
+                                        onClick={handleAddFieldSave}
+                                        disabled={!fieldData.fieldName.trim() || (selectedSection !== 'DOCUMENTS' && !fieldData.fieldType)}
+                                    >
+                                        {fieldData.id ? "Update" : "Save"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -741,6 +1088,15 @@ export function UOM() {
         uomCode: "",
         active: true,
     });
+    const [showConversionModal, setShowConversionModal] = useState(false);
+    const [showAddConversionModal, setShowAddConversionModal] = useState(false);
+    const [selectedConversionUom, setSelectedConversionUom] = useState(null);
+    const [conversions, setConversions] = useState([]);
+    const [conversionData, setConversionData] = useState({
+        id: null,
+        convertTo: null,
+        formula: ""
+    });
     const token = sessionStorage.getItem("token");
     const fetchUom = useCallback(() => {
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/uoms`, {
@@ -748,10 +1104,11 @@ export function UOM() {
         }).then((res) => {
             setUoms(Array.isArray(res.data) ? res.data : res.data.data || []);
         });
-    }, []);
+    }, [token]);
+
     useEffect(() => {
         fetchUom();
-    }, [fetchUom])
+    }, [fetchUom]);
     const filteredUnits = uoms.filter(
         (uom) =>
             uom.uomName?.toLowerCase().includes(search.toLowerCase()) ||
@@ -831,6 +1188,61 @@ export function UOM() {
                     toast.error(e?.response?.data || "Save failed")
                 );
         }
+    };
+    const handleViewConversion = (uom) => {
+        setSelectedConversionUom(uom);
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/uom/conversion/${uom.id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        }).then((res) => {
+            const data = res.data || [];
+            const mapped = data.map(c => ({
+                ...c,
+                base: c.baseUom?.uomName || uom.uomName,
+                convertTo: c.conversionUom?.uomName || uoms.find(u => u.id === c.conversionUomId)?.uomName || "Unknown",
+                rawFormula: c.formula,
+                formula: `x ${c.formula}`
+            }));
+            setConversions(mapped);
+            setShowConversionModal(true);
+        }).catch(() => {
+            setConversions([]);
+            setShowConversionModal(true);
+        });
+    };
+    const handleEditConversion = (conv) => {
+        setConversionData({
+            id: conv.id,
+            convertTo: conv.conversionUom?.id || conv.conversionUomId,
+            formula: conv.rawFormula
+        });
+        setShowAddConversionModal(true);
+    };
+    const handleAddConversionSave = () => {
+        if (!conversionData.convertTo || !conversionData.formula.trim()) return;
+        const payload = {
+            id: conversionData.id || null,
+            baseUomId: selectedConversionUom.id,
+            conversionUomId: conversionData.convertTo,
+            formula: conversionData.formula
+        };
+        axios.post(`${import.meta.env.VITE_API_BASE_URL}/uom/conversion/add`, payload, {
+            headers: { Authorization: `Bearer ${token}` }
+        }).then((res) => {
+            toast.success(res.data || (conversionData.id ? "Conversion updated successfully" : "Conversion added successfully"));
+            setConversions([...conversions.filter(c => c.id !== conversionData.id), {
+                ...res.data,
+                id: res.data?.id || conversionData.id || Date.now(),
+                conversionUomId: conversionData.convertTo,
+                base: selectedConversionUom.uomName,
+                rawFormula: conversionData.formula,
+                convertTo: uoms.find(u => u.id === conversionData.convertTo)?.uomName || "Unknown",
+                formula: `x ${conversionData.formula}`
+            }]);
+            setShowAddConversionModal(false);
+            setConversionData({ id: null, convertTo: null, formula: "" });
+        }).catch((err) => {
+            toast.error(err?.response?.data || "Failed to add conversion");
+        });
     };
     const uomForm = () => (
         <div
@@ -927,8 +1339,7 @@ export function UOM() {
                 </button>
             </div>
             <div
-                className="bg-white rounded-3 mt-5"
-                style={{ border: "1px solid #0051973D" }}
+                className="bg-white rounded-3 mt-5 uom-container"
             >
                 <div className="tab-info">
                     <span className="ms-2">Unit of Measurements</span>
@@ -948,313 +1359,220 @@ export function UOM() {
                     </div>
                 </div>
                 <div className="row ms-1 me-1 mt-3">
-                    {filteredUnits.map((uom, i) => (
-                        <div className="col-lg-4 mb-3" key={i}>
-                            <div className="card shadow-sm h-100">
-                                <div className="card-body">
-                                    <div className="d-flex justify-content-between">
-                                        <Edit
-                                            size={18}
-                                            onClick={() => handleEdit(uom)}
-                                            style={{ cursor: "pointer" }}
-                                        />
-                                        {uom.active ? (
-                                            <Trash2
+                    <div className="table-responsive">
+                        <table className="table table-bordered">
+                            <thead className="table-header-primary">
+                                <tr>
+                                    <th>S.No</th>
+                                    <th>UOM Code</th>
+                                    <th>UOM Name</th>
+                                    <th>Conversion</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredUnits.map((uom, i) => (
+                                    <tr key={uom.id || i}>
+                                        <td>{i + 1}</td>
+                                        <td>{uom.uomCode}</td>
+                                        <td>{uom.uomName}</td>
+                                        <td>
+                                            <button
+                                                className="btn btn-sm view-conversion-btn"
+                                                onClick={() => handleViewConversion(uom)}
+                                            >
+                                                <Eye size={16} className="me-1" /> View Conversion
+                                            </button>
+                                        </td>
+                                        <td>
+                                            <Edit
                                                 size={18}
-                                                onClick={() => handleDelete(uom)}
-                                                style={{ cursor: "pointer" }}
+                                                className="me-3 text-primary cursor-pointer"
+                                                onClick={() => handleEdit(uom)}
                                             />
-                                        ) : (
-                                            <RotateCcw
-                                                size={18}
-                                                onClick={() => handleReactivate(uom)}
-                                                className="text-primary"
-                                                style={{ cursor: "pointer" }}
-                                            />
-                                        )}
-                                    </div>
-                                    <div className="mt-2 d-flex justify-content-between">
-                                        <span>
-                                            {uom.uomName} ({uom.uomCode})
-                                        </span>
-                                        <span
-                                            className={
-                                                uom.active
-                                                    ? "text-success"
-                                                    : "text-muted"
-                                            }
-                                        >
-                                            {uom.active ? "Active" : "Inactive"}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+                                            {uom.active ? (
+                                                <Trash2
+                                                    size={18}
+                                                    className="text-danger cursor-pointer"
+                                                    onClick={() => handleDelete(uom)}
+                                                />
+                                            ) : (
+                                                <RotateCcw
+                                                    size={18}
+                                                    onClick={() => handleReactivate(uom)}
+                                                    className="text-primary cursor-pointer"
+                                                />
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {filteredUnits.length === 0 && (
+                                    <tr>
+                                        <td colSpan="5" className="text-center text-muted">No units found</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 {openModal && uomForm()}
-            </div>
-        </div>
-    );
-}
-export function ListOfApprovals() {
-    const [listOfApprovals, setListOfApprovals] = useState([]);
-    const [search, setSearch] = useState("");
-    const [openModal, setOpenModal] = useState(false);
-    const [isEdit, setIsEdit] = useState(false);
-    const [approval, setApproval] = useState({
-        id: null,
-        documentName: "",
-        active: true,
-    });
-    const token = sessionStorage.getItem("token");
-    const fetchApprovals = () => {
-        axios
-            .get(`${import.meta.env.VITE_API_BASE_URL}/listOfApprovals`, {
-                headers: { Authorization: `Bearer ${token}` },
-            })
-            .then((r) => {
-                if (r.status === 200) setListOfApprovals(r.data || []);
-            })
-            .catch(() => toast.error("Failed to load approval documents"));
-    };
-    useEffect(() => {
-        fetchApprovals();
-    }, []);
-    const filteredDoc = listOfApprovals.filter((d) =>
-        d.documentName?.toLowerCase().includes(search.toLowerCase())
-    );
-    const handleAdd = () => {
-        setIsEdit(false);
-        setApproval({ id: null, documentName: "", active: true });
-        setOpenModal(true);
-    };
-    const handleEdit = (doc) => {
-        setIsEdit(true);
-        setApproval({
-            id: doc.id,
-            documentName: doc.documentName,
-            active: doc.active
-        });
-        setOpenModal(true);
-    };
-
-    const handleDelete = (doc) => {
-        axios
-            .put(
-                `${import.meta.env.VITE_API_BASE_URL}/approvalDocuments/edit`,
-                { ...doc, active: false },
-                { headers: { Authorization: `Bearer ${token}` } }
-            )
-            .then((r) => {
-                toast.success(r.data || "Approval document deactivated");
-                fetchApprovals();
-            })
-            .catch((e) =>
-                toast.error(
-                    e?.response?.data || "Failed to deactivate approval"
-                )
-            );
-    };
-    const handleReactivate = (doc) => {
-        axios
-            .put(
-                `${import.meta.env.VITE_API_BASE_URL}/approvalDocuments/edit`,
-                { ...doc, active: true },
-                { headers: { Authorization: `Bearer ${token}` } }
-            )
-            .then((r) => {
-                toast.success(r.data || "Approval document reactivated");
-                fetchApprovals();
-            })
-            .catch((e) =>
-                toast.error(
-                    e?.response?.data || "Failed to reactivate approval"
-                )
-            );
-    };
-    const handleSave = () => {
-        if (!approval.documentName.trim()) return;
-
-        const payload = {
-            id: approval.id,
-            documentName: approval.documentName,
-            active: approval.active
-        };
-
-        if (isEdit) {
-            axios.put(
-                `${import.meta.env.VITE_API_BASE_URL}/approvalDocuments/edit`,
-                payload,
-                { headers: { Authorization: `Bearer ${token}` } }
-            )
-                .then(() => {
-                    toast.success("Approval updated successfully");
-                    fetchApprovals();
-                    setOpenModal(false);
-                })
-                .catch(() => toast.error("Update failed"));
-        } else {
-            axios.post(
-                `${import.meta.env.VITE_API_BASE_URL}/approvalDocuments/add`,
-                payload,
-                { headers: { Authorization: `Bearer ${token}` } }
-            )
-                .then(() => {
-                    toast.success("Approval added successfully");
-                    fetchApprovals();
-                    setOpenModal(false);
-                })
-                .catch(() => toast.error("Save failed"));
-        }
-    };
-
-
-    /* 🪟 Modal */
-    const modal = () => (
-        <div
-            className="modal fade show d-block"
-            style={{ background: "rgba(0,0,0,0.5)" }}
-            onClick={() => setOpenModal(false)}
-        >
-            <div
-                className="modal-dialog modal-md modal-dialog-centered"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className="modal-content rounded-3">
-                    <div className="modal-header d-flex justify-content-between">
-                        <p className="fw-bold mb-0">
-                            {isEdit ? "Edit Approval" : "Add Approval"}
-                        </p>
-                        <button
-                            className="modal-close-btn"
-                            onClick={() => setOpenModal(false)}
+                {showConversionModal && (
+                    <div
+                        className="modal fade show d-block modal-overlay-primary"
+                        onClick={() => setShowConversionModal(false)}
+                    >
+                        <div
+                            className="modal-dialog modal-lg modal-dialog-centered"
+                            onClick={(e) => e.stopPropagation()}
                         >
-                            <X />
-                        </button>
-                    </div>
-
-                    <div className="modal-body">
-                        <label className="projectform d-block">
-                            Document Name <span className="text-danger">*</span>
-                        </label>
-                        <input
-                            className="form-input w-100"
-                            value={approval.documentName}
-                            onChange={(e) =>
-                                setApproval((p) => ({
-                                    ...p,
-                                    documentName: e.target.value,
-                                }))
-                            }
-                        />
-                    </div>
-
-                    <div className="modal-footer">
-                        <button
-                            className="btn btn-secondary"
-                            onClick={() => setOpenModal(false)}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            className="btn btn-primary"
-                            onClick={handleSave}
-                            disabled={!approval.documentName.trim()}
-                        >
-                            {isEdit ? "Update" : "Save"}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
-    return (
-        <div className="container-fluid p-4 mt-3">
-            {/* Header */}
-            <div className="d-flex justify-content-between">
-                <div className="fw-bold">
-                    <ArrowLeft size={16} />
-                    <span className="ms-2">List Of Approvals</span>
-                </div>
-                <button className="btn action-button" onClick={handleAdd}>
-                    <Plus size={16} /> Add new approval doc
-                </button>
-            </div>
-
-            <div
-                className="bg-white rounded-3 mt-5"
-                style={{ border: "1px solid #0051973D" }}
-            >
-                <div className="tab-info">
-                    <span className="ms-2">List of Approval Documents</span>
-                </div>
-
-                {/* Search */}
-                <div className="row ms-1 me-1 mt-3 bg-white p-4 rounded-3">
-                    <div className="col-lg-8">
-                        <label>Search</label>
-                        <input
-                            className="form-input w-100"
-                            placeholder="Search Approval Document"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
-                    </div>
-                    <div className="col-lg-4 d-flex align-items-center justify-content-center">
-                        {filteredDoc.length} of {listOfApprovals.length} documents
-                    </div>
-                </div>
-
-                {/* Cards */}
-                <div className="row ms-1 me-1 mt-3">
-                    {filteredDoc.map((doc, i) => (
-                        <div className="col-lg-4 mb-3" key={i}>
-                            <div className="card shadow-sm h-100">
-                                <div className="card-body">
-                                    <div className="d-flex justify-content-between">
-                                        <Edit
-                                            size={18}
-                                            onClick={() => handleEdit(doc)}
-                                            style={{ cursor: "pointer" }}
-                                        />
-                                        {doc.active ? (
-                                            <Trash2
-                                                size={18}
-                                                onClick={() => handleDelete(doc)}
-                                                style={{ cursor: "pointer" }}
-                                            />
-                                        ) : (
-                                            <RotateCcw
-                                                size={18}
-                                                onClick={() => handleReactivate(doc)}
-                                                className="text-primary"
-                                                style={{ cursor: "pointer" }}
-                                            />
-                                        )}
-                                    </div>
-
-                                    <div className="mt-2 d-flex justify-content-between">
-                                        <span>{doc.documentName}</span>
-                                        <span
-                                            className={
-                                                doc.active
-                                                    ? "text-success"
-                                                    : "text-muted"
-                                            }
+                            <div className="modal-content rounded-3">
+                                <div className="modal-header d-flex justify-content-between">
+                                    <p className="fw-bold mb-0">
+                                        Conversions for {selectedConversionUom?.uomName || ""}
+                                    </p>
+                                    <button
+                                        className="modal-close-btn"
+                                        onClick={() => setShowConversionModal(false)}
+                                    >
+                                        <X />
+                                    </button>
+                                </div>
+                                <div className="modal-body">
+                                    <div className="d-flex justify-content-end mb-3">
+                                        <button
+                                            className="btn action-button d-flex align-items-center"
+                                            onClick={() => {
+                                                setConversionData({ id: null, convertTo: null, formula: "" });
+                                                setShowAddConversionModal(true);
+                                            }}
                                         >
-                                            {doc.active ? "Active" : "Inactive"}
-                                        </span>
+                                            <Plus size={16} className="me-1" /> Add conversion
+                                        </button>
+                                    </div>
+                                    <div className="table-responsive">
+                                        <table className="table table-bordered">
+                                            <thead className="table-header-primary">
+                                                <tr>
+                                                    <th>S.No</th>
+                                                    <th>Base</th>
+                                                    <th>Convert To</th>
+                                                    <th>Conversion Formula</th>
+                                                    <th>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {conversions.length > 0 ? (
+                                                    conversions.map((conv, i) => (
+                                                        <tr key={conv.id || i}>
+                                                            <td>{i + 1}</td>
+                                                            <td>{conv.base}</td>
+                                                            <td>{conv.convertTo}</td>
+                                                            <td>{conv.formula}</td>
+                                                            <td>
+                                                                <Edit size={16} className="me-3 text-primary cursor-pointer" onClick={() => handleEditConversion(conv)} />
+                                                                <Trash2 size={16} className="text-danger cursor-pointer" />
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan="5" className="text-center text-muted">No conversions found</td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    ))}
-                </div>
-
-                {openModal && modal()}
+                    </div>
+                )}
+                {showAddConversionModal && (
+                    <div
+                        className="modal fade show d-block modal-overlay-secondary"
+                        onClick={() => setShowAddConversionModal(false)}
+                    >
+                        <div
+                            className="modal-dialog modal-md modal-dialog-centered"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="modal-content rounded-3">
+                                <div className="modal-header d-flex justify-content-between">
+                                    <p className="fw-bold mb-0">{conversionData.id ? "Edit conversion" : "Add conversion"}</p>
+                                    <button
+                                        className="modal-close-btn"
+                                        onClick={() => setShowAddConversionModal(false)}
+                                    >
+                                        <X />
+                                    </button>
+                                </div>
+                                <div className="modal-body">
+                                    <div className="mb-3">
+                                        <label className="projectform d-block">Base Unit</label>
+                                        <input
+                                            className="form-input w-100 bg-light"
+                                            value={selectedConversionUom?.uomName || ""}
+                                            readOnly
+                                            disabled
+                                        />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="projectform-select d-block">
+                                            Convert To <span className="text-danger">*</span>
+                                        </label>
+                                        <Select
+                                            options={uoms.filter(u => u.id !== selectedConversionUom?.id).map(u => ({ value: u.id, label: u.uomName }))}
+                                            placeholder="Select unit"
+                                            classNamePrefix="select"
+                                            isClearable
+                                            value={uoms.filter(u => u.id !== selectedConversionUom?.id).map(u => ({ value: u.id, label: u.uomName })).find(o => o.value === conversionData.convertTo) || null}
+                                            onChange={(opt) => setConversionData(p => ({ ...p, convertTo: opt ? opt.value : null }))}
+                                        />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="projectform d-block">Formula <span className="text-danger">*</span></label>
+                                        <div className="d-flex align-items-center">
+                                            <span
+                                                className="fw-bold me-2"
+                                            >
+                                                x
+                                            </span>
+                                            <input
+                                                className="form-input w-100"
+                                                placeholder="Enter formula multiplier/expression"
+                                                value={conversionData.formula}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (/[a-zA-Z]/.test(val)) {
+                                                        toast.warning("Alphabets are not allowed in the formula field");
+                                                        return;
+                                                    }
+                                                    setConversionData(p => ({ ...p, formula: val }));
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="modal-footer">
+                                    <button
+                                        className="btn cancel-button"
+                                        onClick={() => setShowAddConversionModal(false)}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        className="btn action-button"
+                                        onClick={handleAddConversionSave}
+                                        disabled={!conversionData.convertTo || !conversionData.formula.trim()}
+                                    >
+                                        Save
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

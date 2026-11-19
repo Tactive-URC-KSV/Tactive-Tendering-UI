@@ -7,6 +7,8 @@ const ResourceModal = ({
   setShowModal,
   resourceData,
   setResourceData,
+  boqCode,
+  boqName,
   resourceTypesOption,
   resourceNatureOption,
   resourceOption,
@@ -21,6 +23,7 @@ const ResourceModal = ({
   handleEditResource,
   fetchResource,
   idType,
+  isEdit,
 }) => {
   if (!showModal) return null;
   const safeToFixed = (value, decimals = 2) => {
@@ -33,9 +36,11 @@ const ResourceModal = ({
       <div className="modal-dialog modal-xl">
         <div className="modal-content">
           <div className="modal-header d-flex justify-content-between text-white" style={{ background: 'linear-gradient(to right, #0056b3, #007bff)' }}>
-            <h6 className="modal-title">
+            <h6 className="modal-title d-flex align-items-center">
               <Plus />
-              <span className="ms-2">Add Resource details - {resourceData.docNumber}</span>
+              <span className="ms-2">
+                {isEdit ? 'Edit' : 'Add'} Resource details - {boqCode} - {boqName}
+              </span>
             </h6>
             <button
               type="button"
@@ -363,20 +368,54 @@ const ResourceModal = ({
                 </div>
               </div>
             </div>
-            <div className="d-flex justify-content-end mt-3">
-              {resourceData.id ? (
-                <button className="btn action-button" onClick={handleEditResource}>
-                  <Edit size={16} />
-                  <span className="ms-2">Edit Resource</span>
-                </button>
-              )
-                :
-                (
-                  <button className="btn action-button" onClick={handleAddResource}>
-                    <Plus />
-                    <span className="ms-2">Add Resource</span>
-                  </button>)}
-            </div>
+          </div>
+          <div className="modal-footer">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                setShowModal(false);
+                setResourceData({
+                  id: '',
+                  docNumber: `DOC${Date.now()}`,
+                  coEfficient: 1,
+                  calculatedQuantity: 0,
+                  wastePercentage: 0,
+                  wasteQuantity: 0,
+                  netQuantity: 0,
+                  rate: 0,
+                  additionalRate: 0,
+                  shippingPrice: 0,
+                  costUnitRate: 0,
+                  resourceTotalCost: 0,
+                  rateLock: false,
+                  totalCostCompanyCurrency: 0,
+                  exchangeRate: '',
+                  resourceTypeId: '',
+                  quantityTypeId: '',
+                  resourceNatureId: '',
+                  uomId: '',
+                  currencyId: '',
+                  resourceId: '',
+                  costCodeActivityId: '',
+                  activityGroupId: '',
+                  projectId: resourceData.projectId,
+                });
+              }}
+            >
+              Close
+            </button>
+            {resourceData.id ? (
+              <button className="btn action-button" onClick={handleEditResource}>
+                <Edit size={16} />
+                <span className="ms-2">Edit Resource</span>
+              </button>
+            ) : (
+              <button className="btn action-button" onClick={handleAddResource}>
+                <Plus />
+                <span className="ms-2">Add Resource</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

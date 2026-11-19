@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import toast, { Toaster } from 'react-hot-toast';
+import Logo from "./assets/logo.svg?react";
 
 const LoadingOverlay = () => (
   <div style={{
@@ -132,7 +133,8 @@ function ContractorDetails() {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (res.data) {
-      setContractor(res.data.data || res.data);
+      const contractorData = res.data.data || res.data;
+      setContractor(contractorData.contractor || contractorData);
     }
   };
 
@@ -439,9 +441,8 @@ function ContractorDetails() {
       {isLoading && <LoadingOverlay />}
 
       <div className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom bg-white" style={{ height: "84px" }}>
-        <div className="d-flex flex-column lh-sm">
-          <div className="fw-bold fs-4 text-primary">TACTIVE</div>
-          <div className="small text-muted">PRACTISING VALUES</div>
+        <div className="d-flex align-items-center">
+          <Logo className="logo" style={{ width: '150px' }} />
         </div>
 
         <div className="d-flex align-items-center gap-4">

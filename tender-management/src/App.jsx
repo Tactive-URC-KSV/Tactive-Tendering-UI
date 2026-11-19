@@ -31,12 +31,12 @@ import AddResource from './Components/AddResource';
 import TenderFloating from './Components/TenderFloating';
 import ContractorReview from './Components/ContractorReview';
 import MasterDataController from './Admin/MasterDataController';
-import { CostCodeActivity, CostCodeType, ListOfApprovals, Region, Scopes, Sectors, UOM } from './Admin/MasterDataManagement';
+import { CostCodeActivity, CostCodeType, Region, Scopes, Sectors, UOM } from './Admin/MasterDataManagement';
 import { Addresstype, Cities, Countries, States } from './Admin/LocationDataManagement';
-import { CompanyConstitution, CompanyLanguage, CompanyLevel, CompanyNature, CompanyNatureOfBusiness, CompanyStatus, CompanyType } from './Admin/CompanyDataManagement';
+import { CompanyConstitution, CompanyDesignation, CompanyLanguage, CompanyNatureOfBusiness } from './Admin/CompanyDataManagement';
 import { ContractorGrade, EntityType, NatureOfBusiness } from './Admin/ContractorDataMangement';
 import { Currency, IdentityType, TaxType, TerritoryType } from './Admin/TaxManagement';
-import { ResourceNature, ResourceType, QuantityType, Resources, Attributes } from './Admin/ResourceQuantityManagement';
+import { Resources, Attributes } from './Admin/ResourceQuantityManagement';
 import CompanyDetails from './Components/CompanyDetails';
 import CompanyForm from './Components/CompanyForm';
 import TenderTracking from './Components/TenderTracking';
@@ -45,8 +45,35 @@ import CompareOffers from './Components/CompareOffers';
 import TenderOffers from './Components/TenderOffers';
 import CompanyInfo from './Components/CompanyInfo';
 import ContractorInfo from './Components/ContractorInfo';
+import BOQOverview from './Components/BOQOverview';
+import BOQUpload from './Components/BOQUpload';
+import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
+const ExternalBOQOverview = () => {
+  const { projectId, token } = useParams();
+  if (token) {
+    sessionStorage.setItem('token', token);
+  }
+  return <BOQOverview projectId={projectId} />;
+};
 
+const ExternalBOQUpload = () => {
+  const { projectId, token } = useParams();
+  const navigate = useNavigate();
+
+  if (token) {
+    sessionStorage.setItem('token', token);
+  }
+
+  return (
+    <BOQUpload
+      projectId={projectId}
+      projectName=""
+      setUploadScreen={() => navigate(`/external/boq-overview/${projectId}/${token}`)}
+    />
+  );
+};
 
 function App() {
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 768);
@@ -92,6 +119,15 @@ function App() {
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/external/boq-overview/:projectId/:token" element={<ExternalBOQOverview />} />
+          <Route
+            path="/external/boq-upload/:projectId/:token"
+            element={
+              <UomProvider>
+                <ExternalBOQUpload />
+              </UomProvider>
+            }
+          />
           <Route path='/*' element={
             <ProtectedRoute roles={["ADMIN", "USER"]}>
               <RegionsProvider>
@@ -104,7 +140,7 @@ function App() {
                             <Route path="/dashboard" element={<Dashboard />} caseSensitive={false} />
                             <Route path='companydetails' element={<CompanyDetails />} caseSensitive={false} />
                             <Route path='companydetails/:id' element={<CompanyInfo />} caseSensitive={false} />
-                            <Route path='company-form' element={<CompanyForm />} caseSensitive={false} />
+                            <Route path='/company-form' element={<CompanyForm />} caseSensitive={false} />
                             <Route path="/projectmanagement" element={<ProjectManagement />} caseSensitive={false} />
                             <Route path="/dashboard/project/:projectId" element={<ProjectInfo />} caseSensitive={false} />
                             <Route path="/projectmanagement/project/:projectId" element={<ProjectManagement />} caseSensitive={false} />
@@ -114,7 +150,16 @@ function App() {
                             <Route path="/costcodemapping/:projectId" element={<CCMOverview />} caseSensitive={false} />
                             <Route path="/tenderestimation" element={<TenderEstimation />} caseSensitive={false} />
                             <Route path="/tenderestimation/:projectId" element={<TenderEstimation />} caseSensitive={false} />
-                            <Route path="/tenderestimation/:projectId/resourceadding/:boqId" element={<TenderResource />} caseSensitive={false} />                            {/* <Route path="/tenderestimation/resourceadding/:activityGroupId" element={<ResourceAdding />} caseSensitive={false} /> */}
+                            <Route path="/tenderestimation/:projectId/resourceadding/:boqId" element={<TenderResource />} caseSensitive={false} />
+                            <Route
+                              path="/tenderestimation/:projectId/resourceadding/:boqId"
+                              element={<TenderResource />}
+                            />
+
+                            <Route
+                              path="/tender-resource/:projectId/:boqId"
+                              element={<TenderResource />}
+                            />                        {/* <Route path="/tenderestimation/resourceadding/:activityGroupId" element={<ResourceAdding />} caseSensitive={false} /> */}
                             <Route path="/tenderfloating" element={<TenderFloating />} caseSensitive={false} />
                             <Route path="/tenderfloating/:projectId" element={<TenderFloating />} caseSensitive={false} />
                             <Route path="/tenderfloating/:projectId/:tenderId" element={<TenderFloating />} caseSensitive={false} />
@@ -127,8 +172,8 @@ function App() {
                             <Route path="/ContractorOnboarding" element={<Contractor />} caseSensitive={false} />
                             <Route path="/contractor/:id" element={<ContractorInfo />} caseSensitive={false} />
                             <Route path="ContractorOnboarding/review-submissions" element={<ContractorReview />} caseSensitive={false} />
-                            <Route path="/add-resource/:projectId/:boqId" element={<AddResource />} caseSensitive={false} />
-                            <Route path="/add-resource/:projectId/:boqId/:tenderEstimationId" element={<AddResource />} caseSensitive={false} />
+                            <Route path="/add-resource/:boqId/:projectId" element={<AddResource />} caseSensitive={false} />
+                            <Route path="/add-resource/:boqId/:projectId/:resourceId" element={<AddResource />} caseSensitive={false} />
                             <Route path="ContractorOnboarding/contractor-overview" element={<ContractorOverview />} caseSensitive={false} />
                           </Routes>
                         </Sidebar>
@@ -153,18 +198,18 @@ function App() {
                               <Route path='sector' element={<Sectors />} caseSensitive={false} />
                               <Route path='scopes' element={<Scopes />} caseSensitive={false} />
                               <Route path='uom' element={<UOM />} caseSensitive={false} />
-                              <Route path='approvals' element={<ListOfApprovals />} caseSensitive={false} />
+                              {/* <Route path='approvals' element={<ListOfApprovals />} caseSensitive={false} /> */}
                               <Route path='costcodetype' element={<CostCodeType />} caseSensitive={false} />
                               <Route path='costcodeactivity' element={<CostCodeActivity />} caseSensitive={false} />
                               <Route path='country' element={<Countries />} caseSensitive={false} />
                               <Route path='state' element={<States />} caseSensitive={false} />
                               <Route path='city' element={<Cities />} caseSensitive={false} />
                               <Route path='addresstype' element={<Addresstype />} caseSensitive={false} />
-                              <Route path='companylevel' element={<CompanyLevel />} caseSensitive={false} />
-                              <Route path='companytype' element={<CompanyType />} caseSensitive={false} />
-                              <Route path='companystatus' element={<CompanyStatus />} caseSensitive={false} />
+                              {/* <Route path='companylevel' element={<CompanyLevel />} caseSensitive={false} /> */}
+                              {/* <Route path='companytype' element={<CompanyType />} caseSensitive={false} /> */}
+                              {/* <Route path='companystatus' element={<CompanyStatus />} caseSensitive={false} /> */}
                               <Route path='companyconstitution' element={<CompanyConstitution />} caseSensitive={false} />
-                              <Route path='companynature' element={<CompanyNature />} caseSensitive={false} />
+                              {/* <Route path='companynature' element={<CompanyNature />} caseSensitive={false} /> */}
                               <Route path='companynatureofbusiness' element={<CompanyNatureOfBusiness />} caseSensitive={false} />
                               <Route path='companylanguage' element={<CompanyLanguage />} caseSensitive={false} />
                               <Route path='contractortype' element={<EntityType />} caseSensitive={false} />
@@ -174,11 +219,12 @@ function App() {
                               <Route path='territorytype' element={<TerritoryType />} caseSensitive={false} />
                               <Route path='identitytype' element={<IdentityType />} caseSensitive={false} />
                               <Route path='currency' element={<Currency />} caseSensitive={false} />
-                              <Route path="resourcenature" element={<ResourceNature />} />
-                              <Route path="resourcetype" element={<ResourceType />} />
-                              <Route path="quantitytype" element={<QuantityType />} />
+                              {/* <Route path="resourcenature" element={<ResourceNature />} /> */}
+                              {/* <Route path="resourcetype" element={<ResourceType />} /> */}
+                              {/* <Route path="quantitytype" element={<QuantityType />} /> */}
                               <Route path="resources" element={<Resources />} />
                               <Route path="attributes" element={<Attributes />} />
+                              <Route path="designation" element={<CompanyDesignation />} />
                             </Routes>
                           </MasterDataController>
                         </Sidebar>
@@ -199,7 +245,6 @@ function App() {
 }
 
 export default App;
-
 
 
 

@@ -1,5 +1,6 @@
 import axios from "axios";
-import { ArrowLeft, Check, Eye, IndianRupee, X } from "lucide-react";
+import Select from "react-select";
+import { ArrowLeft, Check, Eye, IndianRupee, X, MapPin } from "lucide-react";
 import { use, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -17,6 +18,8 @@ import { useSectors } from "../Context/SectorsContext";
 import { useRegions } from "../Context/RegionsContext";
 import { useScope } from "../Context/ScopeContext";
 import { useUom } from "../Context/UomContext";
+import { decodeToken } from "../config/Jwt";
+
 
 function ProjectOverview() {
     const { projectId } = useParams();
@@ -33,6 +36,8 @@ function ProjectOverview() {
     const uom = useUom();
     const [user, setUser] = useState('');
     const [approvalDoc, setApprovalDoc] = useState();
+    const token = sessionStorage.getItem("token");
+    const decoded = decodeToken(token);
 
     const editDetails = () => {
         navigate(`/projectmanagement/project/${project.id}#info`);
@@ -41,6 +46,32 @@ function ProjectOverview() {
     const handleAddFeasibility = () => {
         navigate(`/projectmanagement/project/${project.id}#feasibility`);
     };
+
+    const [isEditingStatus, setIsEditingStatus] = useState(false);
+    const [selectedStatusId, setSelectedStatusId] = useState('');
+
+    const handleStatusUpdate = () => {
+        if (!selectedStatusId) {
+            setIsEditingStatus(false);
+            return;
+        }
+        axios.put(`${import.meta.env.VITE_API_BASE_URL}/project/updateStatus/${projectId}/${selectedStatusId}`, {}, {
+            headers: {
+                Authorization: `Bearer ${sessionStorage.getItem('token')}`
+            }
+        }).then(res => {
+            if (res.status === 200) {
+                toast.success("Project status updated successfully");
+                setIsEditingStatus(false);
+                const updatedStatus = projectStatus.find(s => s.id === selectedStatusId);
+                setProject({ ...project, projectStatus: updatedStatus });
+            }
+        }).catch(err => {
+            console.error(err);
+            toast.error("Failed to update project status");
+        });
+    };
+
 
     useEffect(() => {
         if (projectId) {
@@ -125,38 +156,40 @@ function ProjectOverview() {
         { label: "Project Name", value: project.projectName },
         { label: "Project Code", value: project.projectCode },
         { label: "Short Name", value: project.shortName },
-        // { label: "Agreement Date", value: project.agreementDate },
-        // { label: "Agreement Number", value: project.agreementNumber },
         { label: "Start Date", value: project.startDate },
         { label: "End Date", value: project.endDate },
         { label: "Sector", value: project.sector?.sectorName || "N/A" },
-        { label: "Address", value: project.address },
-        { label: "City", value: project.city },
         { label: "Region", value: project.region?.regionName || "N/A" },
         {
             label: "Scope of Packages",
-            value:
-                project.scopeOfPackage?.map((pkg) => pkg.scope).join(", ") || "N/A",
+            value: project.scopeOfPackage?.map((pkg) => pkg.scope || pkg).join(", ") || "N/A",
         },
     ];
 
 
     const technicalInfo = [
-        { label: "Number of Floors", value: project.numberOfFloors || "N/A" },
-        { label: "Car Parking Floors", value: project.carParkingFloors || "N/A" },
-        { label: "Above Ground", value: project.numberOfAboveGround || "N/A" },
-        { label: "Below Ground", value: project.numberOfBelowGround || "N/A" },
         { label: "Unit of Measurement", value: project.uom?.uomCode || "N/A" },
-        { label: "Building Area", value: project.buildingArea || "N/A" },
-        { label: "Other Amenities", value: project.otherAmenities?.join(", ") || "N/A" },
-        { label: "Rate Per Unit", value: project.ratePerUnit || "N/A" },
-        { label: "Estimated Value", value: `${(project.estimatedValue / 1000000).toFixed(2)} M` || "N/A" },
+        ...(project.techFields?.map(tf => ({
+            label: tf.techField?.fieldName || "N/A",
+            value: tf.value || "N/A"
+        })) || [])
     ];
+
+    const getTechFieldValue = (nameFragment) => {
+        const field = project.techFields?.find(f => f.techField?.fieldName?.toLowerCase().includes(nameFragment.toLowerCase()));
+        return field?.value;
+    };
+
+    const ratePerUnit = getTechFieldValue('rate') || project.ratePerUnit;
+    const estimatedValue = getTechFieldValue('estimated') || project.estimatedValue;
+    const noOfFloors = getTechFieldValue('floor') || project.numberOfFloors;
+    const buildingArea = getTechFieldValue('area') || project.buildingArea;
+
     const projectEstimationOverview = [
-        { label: 'No.Of.Floors', value: project.numberOfFloors || 'N/A', bgColor: '#EFF6FF', color: '#2563EB' },
-        { label: 'Total Area', value: project.buildingArea || 'N/A', bgColor: '#F0FDF4', color: '#2BA95A' },
-        { label: 'Rate per Units', value: <><IndianRupee size={14} />{project.ratePerUnit} </>, bgColor: '#FAF5FF', color: '#9333EA' },
-        { label: 'Estimated value', value: <><IndianRupee size={14} />{(project.estimatedValue / 1000000).toFixed(2)} M</>, bgColor: '#FFF7ED', color: '#EA580C' },
+        { label: 'No.Of.Floors', value: noOfFloors || 'N/A', bgColor: '#EFF6FF', color: '#2563EB' },
+        { label: 'Total Area', value: buildingArea || 'N/A', bgColor: '#F0FDF4', color: '#2BA95A' },
+        { label: 'Rate per Units', value: <><IndianRupee size={14} />{ratePerUnit || 'N/A'} </>, bgColor: '#FAF5FF', color: '#9333EA' },
+        { label: 'Estimated value', value: estimatedValue ? <><IndianRupee size={14} />{(!isNaN(estimatedValue) ? (estimatedValue / 1000000).toFixed(2) : estimatedValue)} M</> : 'N/A', bgColor: '#FFF7ED', color: '#EA580C' },
     ];
     const finFeasibility = [
         { label: 'Selling cost', value: <><IndianRupee size={14} />{feasbilityStudy?.financialFeasibility?.sellingCost} </> },
@@ -247,7 +280,7 @@ function ProjectOverview() {
             }, 100);
         } catch (error) {
             console.error("Error downloading document:", error);
-            alert(error.message || "Failed to download document");
+            toast.error(error.message || "Failed to download document");
         }
     };
 
@@ -273,13 +306,50 @@ function ProjectOverview() {
                         <p>Project Code - {project.projectCode}</p>
                     </div>
                     <div className="text-end me-2">
-                        {projectStatus
-                            .filter((state) => (state.status === project.projectStatus?.status))
-                            .map((state, index) => (
-                                <span key={index} className="badge rounded-pill mb-1"
-                                    style={{ backgroundColor: state.bgColor, color: state.textColor, fontSize: '14px' }}
-                                >{state.status}</span>
-                            ))}
+                        {isEditingStatus ? (
+                            <div className="d-flex align-items-center justify-content-end mb-1">
+                                <div style={{ minWidth: '200px', textAlign: 'left' }} className="me-2">
+                                    <Select 
+                                        options={projectStatus.map(s => ({ value: s.id, label: s.status }))}
+                                        value={
+                                            projectStatus
+                                                .filter(s => s.id === (selectedStatusId || project.projectStatus?.id))
+                                                .map(s => ({ value: s.id, label: s.status }))[0] || null
+                                        }
+                                        onChange={(selectedOption) => setSelectedStatusId(selectedOption.value)}
+                                        placeholder="Select Status"
+                                        menuPosition="fixed"
+                                        menuPlacement="auto"
+                                        styles={{
+                                            option: (provided, state) => ({
+                                                ...provided,
+                                                color: state.isSelected ? 'white' : 'black',
+                                                backgroundColor: state.isSelected ? '#005197' : state.isFocused ? '#e9ecef' : 'white',
+                                            }),
+                                            singleValue: (provided) => ({
+                                                ...provided,
+                                                color: 'black',
+                                            })
+                                        }}
+                                    />
+                                </div>
+                                <div className="d-flex bg-white rounded-pill px-2 py-1 shadow-sm">
+                                    <Check size={20} className="text-success cursor-pointer me-2" onClick={handleStatusUpdate} title="Save Status" />
+                                    <X size={20} className="text-danger cursor-pointer" onClick={() => setIsEditingStatus(false)} title="Cancel" />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="d-flex align-items-center justify-content-end mb-1">
+                                {projectStatus
+                                    .filter((state) => (state.status === project.projectStatus?.status))
+                                    .map((state, index) => (
+                                        <span key={index} className="badge rounded-pill me-2"
+                                            style={{ backgroundColor: state.bgColor, color: state.textColor, fontSize: '14px' }}
+                                        >{state.status}</span>
+                                    ))}
+                                <Edit width={14} height={14} className="cursor-pointer" style={{ color: '#005197' }} onClick={() => { setSelectedStatusId(project.projectStatus?.id); setIsEditingStatus(true); }} />
+                            </div>
+                        )}
                         <p className="me-1">created by - {user.name}</p>
                     </div>
                 </div>
@@ -320,6 +390,36 @@ function ProjectOverview() {
                             ))}
                         </div>
                     </div>
+
+                    <div className="text-start d-flex align-items-center p-2 mt-3" style={{ borderTop: '1px solid #0051973D' }}>
+                        <div className="mt-2 ms-3">
+                            <p className="fw-bold" style={{ fontSize: '16px' }}>
+                                <MapPin size={22} className="me-2 mb-1" style={{ color: '#005197' }} />
+                                Project Addresses
+                            </p>
+                        </div>
+                    </div>
+                    <div className="mt-2 ms-4 text-start" >
+                        <div className="row">
+                            {project.projectAddresses?.length > 0 ? (
+                                project.projectAddresses.map((addr, idx) => {
+                                    const locationString = [addr.city, addr.state, addr.country].filter(Boolean).join(", ");
+                                    return (
+                                        <div className="col-md-4 mb-3" key={idx} style={{ fontSize: '14px' }}>
+                                            <div className="text-muted mb-1">Location {idx + 1}</div>
+                                            {addr.address && <div className="fw-bold">{addr.address}</div>}
+                                            {locationString && <div className="fw-bold">{locationString}</div>}
+                                            {addr.phone && <div className="mt-1"><span className="text-muted">Phone:</span> <span className="fw-medium">{addr.phone}</span></div>}
+                                            {addr.email && <div><span className="text-muted">Email:</span> <span className="fw-medium">{addr.email}</span></div>}
+                                            {!addr.address && !locationString && !addr.phone && !addr.email && <div className="text-muted fst-italic">Empty Address Entry</div>}
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="col-12 mb-3 text-muted" style={{ fontSize: '14px' }}>No addresses provided.</div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
             <div className="row mb-4 mt-2 rounded-3 bg-white mx-5" style={{ border: '0.5px solid #0051973D' }}>
@@ -344,7 +444,7 @@ function ProjectOverview() {
                     </div>
                     <div className="ms-3 text-start p-1" style={{ borderBottom: '0.5px solid #0051973D' }}>
                         <p className="text-muted">Other Amenities</p>
-                        <p className="fw-bold">{project.otherAmenities?.join(", ") || "N/A"}</p>
+                        <p className="fw-bold">{project.otherAmenities?.join(", ") || getTechFieldValue('amenities') || "N/A"}</p>
                     </div>
                     <div className="fw-bold text-start mt-3 ms-3 p-2" style={{ fontSize: '16px' }}><GeneralInfo /><span className="ms-2">Technical Feasibility</span></div>
                     <div className="d-flex text-start ms-3 justify-content-between p-2" style={{ borderBottom: '0.5px solid #0051973D' }}>
@@ -387,7 +487,7 @@ function ProjectOverview() {
                         <span className="text-muted">Financial Backup</span>
                         <p className="fw-bold mt-1">{feasbilityStudy?.financialFeasibility?.financialBackup?.join(", ") || "N/A"}</p>
                     </div>
-                    {feasbilityStudy?.reviewedBy === null ? (
+                    {decoded.role === 'ADMIN' && feasbilityStudy?.reviewedBy === null ? (
                         <div className=" ms-3 text-start mt-4 me-3">
                             <span className="text-muted">Feasibility analysis</span>
                             <p className="fw-bold mt-1">Review and approve or reject the feasibility study based on the analysis</p>
@@ -410,12 +510,16 @@ function ProjectOverview() {
                     : (
                         <div className="d-flex justify-content-between align-items-center p-3">
                             <span className="fw-bold ms-2 " style={{ fontSize: '17px' }}>Feasibility Study</span>
-                            <button
-                                onClick={handleAddFeasibility}
-                                className="btn action-button me-1"
-                            >
-                                Add Feasibility
-                            </button>
+                            {project.needFeasibility === false ? (
+                                <span className="text-muted fw-bold me-3">Feasibility Study is not needed</span>
+                            ) : (
+                                <button
+                                    onClick={handleAddFeasibility}
+                                    className="btn action-button me-1"
+                                >
+                                    Add Feasibility
+                                </button>
+                            )}
                         </div>)}
             </div>
         </div >

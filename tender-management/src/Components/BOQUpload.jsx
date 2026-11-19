@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import '../CSS/Styles.css'
-import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, FileSymlink, FileText, Folder, Link, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, FileSymlink, FileText, Folder, Link, Search, SlidersHorizontal, X } from 'lucide-react';
 import { useEffect } from 'react';
 import axios from 'axios';
 import { FaCloudUploadAlt } from 'react-icons/fa';
@@ -12,9 +12,12 @@ import InternalIcon from '../assest/Internal_Fields.svg?react';
 import Drag from '../assest/Drag.svg?react';
 import Template from '../assest/Template.svg?react';
 import Mapping from '../assest/Mapping.svg?react';
+import ExpandIcon from '../assest/Expand.svg?react';
+import CollapseIcon from '../assest/Collapse.svg?react';
 import useDebounce from '../Utills/useDebounce.js'
 import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { useUom } from '../Context/UomContext';
 
 const autoScrollWhileDragging = (e) => {
    const padding = 100;
@@ -29,21 +32,53 @@ const autoScrollWhileDragging = (e) => {
    }
 };
 
-const handleUnauthorized = () => {
-   const navigate = useNavigate();
-   navigate('/login');
-}
-
 const throttledAutoScroll = throttle(autoScrollWhileDragging, 50);
 
+const normalizeUomMappingKey = (value) => value.trim().replace(/[., \/]/g, '').toLowerCase();
+
 function BOQUpload({ projectId, projectName, setUploadScreen }) {
+   const navigate = useNavigate();
+   const location = useLocation();
+   const { token } = useParams();
    const [section, setSection] = useState('columnMapping');
+   const [confirmModal, setConfirmModal] = useState({ show: false, type: '', message: '' });
    const [loading, setLoading] = useState(false);
+
+   const isExternalAccess = location.pathname.startsWith('/external');
+
+   // Parse query parameters from URL
+   const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+
+   const getQueryParam = (name) => {
+      if (queryParams.has(name)) return queryParams.get(name);
+      const normalizedName = name.toLowerCase().replace(/[\s\._-]/g, '');
+      for (const key of queryParams.keys()) {
+         const normalizedKey = key.toLowerCase().replace(/[\s\._-]/g, '');
+         if (normalizedKey === normalizedName) {
+            return queryParams.get(key);
+         }
+      }
+      return null;
+   };
+
+   const externalModuleRef = useMemo(() => isExternalAccess ? (getQueryParam("Module_Reference") || getQueryParam("moduleReference") || getQueryParam("moduleRef") || getQueryParam("projectId")) : null, [isExternalAccess, queryParams]);
+   const externalEnqirySlno = useMemo(() => isExternalAccess ? (getQueryParam("EnqirySlno") || getQueryParam("enquirySlno") || getQueryParam("EnquirySlNo") || getQueryParam("enqirySlno")) : null, [isExternalAccess, queryParams]);
+   const externalTenderRevNo = useMemo(() => isExternalAccess ? (getQueryParam("Tender_Rev_No") || getQueryParam("tenderRevNo") || getQueryParam("TenderRevNo") || getQueryParam("tenderRev")) : null, [isExternalAccess, queryParams]);
+   const externalTederCode = useMemo(() => isExternalAccess ? (getQueryParam("Teder_Code") || getQueryParam("tenderCode") || getQueryParam("TederCode") || getQueryParam("tender_code") || getQueryParam("Tender_Code")) : null, [isExternalAccess, queryParams]);
+   const externalTenderName = useMemo(() => isExternalAccess ? (getQueryParam("Tender_Name") || getQueryParam("tenderName") || getQueryParam("TenderName") || getQueryParam("tender_name")) : null, [isExternalAccess, queryParams]);
+
+   const effectiveProjectId = (isExternalAccess && externalEnqirySlno) ? externalEnqirySlno : projectId;
+
+   const displayProjectName = (isExternalAccess && (externalTederCode || externalTenderName))
+      ? `${externalTederCode ? externalTederCode.replace(/_/g, '/') : ''} - ${externalTenderName ? externalTenderName.replace(/_/g, ' ') : ''}`
+      : projectName;
    const fileInputRef = useRef(null);
    const [BOQfile, setBOQfile] = useState(null);
    const [sheetOption, setSheetOption] = useState([]);
    const [selectedSheet, setSelectedSheet] = useState('');
+   const [selectedEndPage, setSelectedEndPage] = useState('');
    const [columns, setColumns] = useState([]);
+   const [columnLoading, setColumnLoading] = useState(false);
    const [draggedColumn, setDraggedColumn] = useState(null);
    const [template, setTemplate] = useState({
       templateName: '',
@@ -55,26 +90,102 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    const [fileType, setFileType] = useState('')
 
    const [internalFields, setInternalFields] = useState([
-      { fields: 'boqCode', mappingFields: '', importance: 'Required', label: 'BOQ Code' },
-      { fields: 'boqName', mappingFields: '', importance: 'Required', label: 'BOQ Name' },
-      { fields: 'uom', mappingFields: '', importance: 'Required', label: 'UOM' },
-      { fields: 'quantity', mappingFields: '', importance: 'Required', label: 'Quantity' },
+      { fields: 'boqCode', mappingFields: [], importance: 'Required', label: 'BOQ Code' },
+      { fields: 'boqName', mappingFields: [], importance: 'Required', label: 'BOQ Name' },
+      { fields: 'uom', mappingFields: [], importance: 'Required', label: 'UOM' },
+      { fields: 'quantity', mappingFields: [], importance: 'Required', label: 'Quantity' },
+      { fields: 'division', mappingFields: [], importance: 'Optional', label: 'Division' },
+      { fields: 'rateOnly', mappingFields: [], importance: 'Optional', label: 'Rate Only' },
+      { fields: 'provisionalSum', mappingFields: [], importance: 'Optional', label: 'Provisional Sum' },
+      { fields: 'notQuotedBoq', mappingFields: [], importance: 'Optional', label: 'Not Quoted BOQ' },
+      { fields: 'pageNo', mappingFields: [], importance: 'Optional', label: 'Page No' },
    ]);
-   const [startRow, setStartRow] = useState(0);
-   const [endRow, setEndRow] = useState(0);
    const [excelData, setExcelData] = useState([]);
-   const [currentPage, setCurrentPage] = useState(0);
-   const [pageSize, setPageSize] = useState(50);
-   const [totalPages, setTotalPages] = useState(0);
-   const [totalItems, setTotalItems] = useState(0);
    const [searchTerm, setSearchTerm] = useState('');
    const debouncedSearch = useDebounce(searchTerm, 600);
    const [selectedRow, setSelectedRow] = useState(new Set());
    const [levelMap, setLevelMap] = useState({});
    const [lastLevelMap, setLastLevelMap] = useState({});
    const [parentMap, setParentMap] = useState({});
-   const [isParentSelecting, setIsParentSelecting] = useState(false);
-   const [selectedChildLevel, setSelectedChildLevel] = useState(null);
+   const [expandedRows, setExpandedRows] = useState(new Set());
+   const [selectedBoqForModal, setSelectedBoqForModal] = useState(null);
+   const [isAssigningParent, setIsAssigningParent] = useState(false);
+   const [autoIncreaseLevel, setAutoIncreaseLevel] = useState(true);
+   const [pageBreakWord, setPageBreakWord] = useState('');
+   const [pageBreakModal, setPageBreakModal] = useState(false);
+   const [emptyBoqModal, setEmptyBoqModal] = useState({ show: false, count: 0, emptySnos: [], items: [] });
+   const [duplicateModal, setDuplicateModal] = useState({ show: false, duplicates: [] });
+   const [uomModal, setUomModal] = useState({ show: false, unmatched: [], mapping: {}, pendingSaveOptions: null });
+   const [activeClientUom, setActiveClientUom] = useState('');
+   const [savedUomMappings, setSavedUomMappings] = useState([]);
+
+   const contextUoms = useUom() || [];
+   const [localAddedUoms, setLocalAddedUoms] = useState([]);
+   const masterUoms = [...contextUoms, ...localAddedUoms];
+
+   const [newUomForm, setNewUomForm] = useState({ show: false, code: '', name: '', forClientUom: '' });
+
+   useEffect(() => {
+      if (!isExternalAccess || !effectiveProjectId) {
+         setSavedUomMappings([]);
+         return;
+      }
+      const sessionToken = sessionStorage.getItem('token');
+      if (!sessionToken) {
+         navigate('/login');
+         return;
+      }
+      const authorization = sessionToken.startsWith('Bearer ')
+         ? sessionToken
+         : `Bearer ${sessionToken}`;
+
+      axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/uom-mappings/${effectiveProjectId}`, {
+         headers: {
+            Authorization: authorization,
+         }
+      }).then(response => {
+         setSavedUomMappings(Array.isArray(response.data) ? response.data : []);
+      }).catch(error => {
+         if (error?.response?.status === 401) {
+            navigate('/login');
+         } else {
+            toast.error(error?.response?.data?.message || 'Unable to load saved UOM mappings');
+         }
+      });
+   }, [effectiveProjectId, navigate, isExternalAccess]);
+
+   const isLastLevelRow = (row) => {
+      return (
+         row.lastLevel ||
+         (typeof row.uom === 'string' && row.uom.trim() !== '') ||
+         (row.quantity !== null && row.quantity !== undefined && row.quantity !== '')
+      );
+   };
+
+   const findParentSno = (currentIndex, level) => {
+      if (level <= 1) return 0;
+      // Look for the nearest previous row with level = level - 1
+      for (let i = currentIndex - 1; i >= 0; i--) {
+         if (excelData[i].level === level - 1) {
+            return excelData[i].sno;
+         }
+      }
+      return 0;
+   };
+
+   const isRowVisible = (row) => {
+      // Root rows (level 0 or 1) are always visible unless a level 0 item is nested (which shouldn't happen)
+      // Actually, any row whose parent is expanded is visible.
+      if (!row.parentSno) return true;
+
+      let currentParentSno = row.parentSno;
+      while (currentParentSno) {
+         if (!expandedRows.has(currentParentSno)) return false;
+         const parent = excelData.find(item => item.sno === currentParentSno);
+         currentParentSno = parent?.parentSno || 0;
+      }
+      return true;
+   };
 
    useEffect(() => {
       axios.get(`${import.meta.env.VITE_API_BASE_URL}/project/getAllTemplate`, {
@@ -89,9 +200,9 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       }).catch(err => {
          if (err?.response?.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(navigate);
          }
-      })
+      });
    }, [])
    const templateOption = templateList.map(temp => ({
       value: temp.id,
@@ -115,16 +226,13 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          fileInputRef.current.value = '';
       }
       setSelectedSheet(null);
+      setSelectedEndPage(null);
       setColumns([]);
       setDraggedColumn(null);
       setSelectedTemplate(null);
       setFileType('');
       setSheetOption([]);
-      excelData([]);
-      setCurrentPage(0);
-      setPageSize(50);
-      setTotalPages(0);
-      setTotalItems(0);
+      setExcelData([]);
       setSearchTerm('');
       setLevelMap({});
       setLastLevelMap({});
@@ -133,12 +241,16 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       setUploadScreen(false);
       setSelectedRow(new Set());
       setInternalFields(prev =>
-         prev.map(f => ({ ...f, mappingFields: '' }))
+         prev.map(f => ({ ...f, mappingFields: [] }))
       );
+      setPageBreakWord('');
    };
    const getExcelSheets = (event) => {
       const file = event.target.files[0];
       setBOQfile(file);
+      setSelectedSheet('');
+      setSelectedEndPage('');
+      setColumns([]);
 
       const fileName = file.name;
       const ext = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
@@ -156,39 +268,59 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             const response = res.data;
             switch (ext) {
                case 'pdf':
-                  setColumns(response);
+                  setSheetOption(response.map(name => ({ label: `Page ${name}`, value: name })));
+                  setSelectedEndPage(''); // Do not auto-select last page; user must choose explicitly
                   break;
                case 'xlsx':
-               case 'xls':
-                  setSheetOption(response.map(name => ({ label: name, value: name })));
+               case 'xls': {
+                  const excelOptions = response.map(name => ({ label: name, value: name }));
+                  if (response.length > 1) {
+                     setSheetOption([
+                        { label: 'All Sheets', value: '__ALL__' },
+                        ...excelOptions
+                     ]);
+                  } else {
+                     setSheetOption(excelOptions);
+                  }
                   break;
+               }
                default:
                   toast.error(`Unsupported file type: ${ext}`);
             }
          }
       }).catch(err => {
          if (err?.response?.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(navigate);
+         } else if (err?.response?.data?.message) {
+            toast.error(err.response.data.message);
          }
       })
    }
 
-   const loadSheetColumn = (sheetValue) => {
+   const loadSheetColumn = (sheetValue, endPageValue = selectedEndPage) => {
+      setColumnLoading(true);
       const formData = new FormData();
       formData.append('file', BOQfile);
-      axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/excel/getColumns/${sheetValue}`, formData, {
+      const endPageQuery = fileType === 'pdf' && endPageValue
+         ? `?endPage=${encodeURIComponent(endPageValue)}`
+         : '';
+      axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/excel/getColumns/${encodeURIComponent(sheetValue)}${endPageQuery}`, formData, {
          headers: {
             Authorization: `Bearer ${sessionStorage.getItem('token')}`,
          }
       }).then(res => {
          if (res.status === 200) {
-            setColumns(res.data);
+            setColumns(Array.isArray(res.data) ? res.data.filter(column => column?.trim()) : []);
          }
       }).catch(err => {
          if (err?.response?.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(navigate);
+         } else if (err?.response?.data?.message) {
+            toast.error(err.response.data.message);
          }
-      })
+      }).finally(() => {
+         setColumnLoading(false);
+      });
    }
    const handleDragStart = (e, column) => {
       setDraggedColumn(column);
@@ -214,8 +346,8 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       }, 0);
    };
    const loadTemplate = (templateId) => {
-      if (columns.length === 0 && fileType !== 'pdf' && !selectedSheet) {
-         toast.error("Please select an Excel sheet first to load columns.");
+      if (columns.length === 0 && (!selectedSheet || (fileType === 'pdf' && !selectedEndPage))) {
+         toast.error(fileType === 'pdf' ? "Please select a start and end page first to load columns." : "Please select an Excel sheet first to load columns.");
          setSelectedTemplate(null);
          return;
       }
@@ -231,24 +363,25 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             const response = res.data;
             const templateMapping = response.templateMapping;
             const availableColumns = new Set(columns);
-            const mappedColumnNames = Object.values(templateMapping);
-            const allColumnsPresent = mappedColumnNames.every(mappedName =>
+            // Flatten all mapped column names from the template (now arrays)
+            const allMappedNames = Object.values(templateMapping).flat();
+            const allColumnsPresent = allMappedNames.every(mappedName =>
                availableColumns.has(mappedName)
             );
             if (!allColumnsPresent) {
                toast.error("Template mapping failed: The uploaded file is missing one or more columns required by this template.");
                setSelectedTemplate(null);
                setInternalFields(prev =>
-                  prev.map(f => ({ ...f, mappingFields: '' }))
+                  prev.map(f => ({ ...f, mappingFields: [] }))
                );
                return;
             }
             const updatedInternalFields = internalFields.map(field => {
-               const mappedColumnName = templateMapping[field.fields];
+               const mappedColumns = templateMapping[field.fields];
 
                return {
                   ...field,
-                  mappingFields: mappedColumnName || ''
+                  mappingFields: Array.isArray(mappedColumns) ? mappedColumns : (mappedColumns ? [mappedColumns] : [])
                };
             });
 
@@ -258,23 +391,28 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       }).catch(err => {
          if (err?.response?.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(navigate);
          }
          toast.error("Error loading template.");
       });
    }
    useEffect(() => {
       if (BOQfile) {
-         fetchExcelData(0, pageSize);
+         fetchExcelData();
       }
    }, [debouncedSearch]);
-   const fetchExcelData = async (page = 0, size = 50) => {
+   const fetchExcelData = async () => {
       if (!BOQfile) {
          toast.error("Please upload a BOQ file");
          return;
       }
+      if (fileType === 'pdf'
+         && (!selectedSheet || !selectedEndPage || Number(selectedEndPage) < Number(selectedSheet))) {
+         toast.error("Choose a valid PDF start and end page range");
+         return;
+      }
       const columnMapping = internalFields.reduce((acc, item) => {
-         if (item.mappingFields && item.mappingFields !== "") {
+         if (item.mappingFields && item.mappingFields.length > 0) {
             acc[item.fields] = item.mappingFields;
          }
          return acc;
@@ -289,15 +427,17 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          const formData = new FormData();
          formData.append('file', BOQfile);
          formData.append('sheetName', selectedSheet);
+         if (fileType === 'pdf') {
+            formData.append('endPage', selectedEndPage);
+         }
          const columnMappingBlob = new Blob([JSON.stringify(columnMapping)], {
             type: 'application/json'
          });
          formData.append('columnMapping', columnMappingBlob);
-         formData.append('startRow', startRow.toString());
-         formData.append('endRow', endRow.toString());
+         formData.append('pageBreakWord', pageBreakWord);
 
          const response = await axios.post(
-            `${import.meta.env.VITE_API_BASE_URL}/project/extractedBOQ?page=${page}&size=${size}&search=${debouncedSearch}`,
+            `${import.meta.env.VITE_API_BASE_URL}/project/extractedBOQ?search=${debouncedSearch}`,
             formData,
             {
                headers: {
@@ -305,20 +445,30 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                }
             }
          );
-         const merged = response.data.data.map(item => ({
+         const merged = response.data.map(item => ({
             ...item,
             level: levelMap[item.sno] ?? item.level,
-            lastLevel: lastLevelMap[item.sno] ?? item.lastLevel,
+            lastLevel: isLastLevelRow(item),
             parentSno: parentMap[item.sno] ?? item.parentSno,
          }));
          setExcelData(merged);
-         setCurrentPage(response.data.currentPage);
-         setTotalPages(response.data.totalPages);
-         setPageSize(response.data.pageSize);
-         setTotalItems(response.data.totalItems);
+
+         // Auto-expand Level 1 items
+         const level1Snos = merged.filter(item => item.level === 1).map(item => item.sno);
+         if (level1Snos.length > 0) {
+            setExpandedRows(prev => {
+               const updated = new Set(prev);
+               level1Snos.forEach(sno => updated.add(sno));
+               return updated;
+            });
+         }
       } catch (error) {
          console.error("Error fetching Excel data:", error);
-         toast.error("Failed to load Excel data");
+         if (error?.response?.data?.message) {
+            toast.error(error.response.data.message);
+         } else {
+            toast.error("Failed to load Excel data");
+         }
       } finally {
          setLoading(false);
          setSection('levelMapping');
@@ -373,27 +523,87 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    //    }
    //    ).catch(err => {
    //       if (err?.response?.status === 401) {
-   //          handleUnauthorized();
+   //          handleUnauthorized(navigate);
    //       }
    //       toast.error("Something went wrong");
    //    }).finally(() => {
    //       setLoading(false);
    //    })
    // }
-   const saveMappedBOQ = async () => {
-      try {
-         if (!BOQfile) {
-            toast.error("Please upload a BOQ file");
-            return;
-         }
+   const saveMappedBOQ = async (options = {}) => {
+      const isEvent = options && typeof options === 'object' && options.nativeEvent;
+      const opts = isEvent ? {} : (typeof options === 'boolean' ? { ignoreEmpty: options } : options);
+      const { ignoreEmpty = null, duplicateHandled = false, saveAsNewList = [], uomMapResolved = false } = opts;
 
-         if (!selectedSheet) {
-            toast.error("Sheet name required");
+      if (!BOQfile) {
+         toast.error("Please upload a BOQ file");
+         return;
+      }
+
+      if (!selectedSheet) {
+         toast.error(fileType === 'pdf' ? "Start page required" : "Sheet name required");
+         return;
+      }
+      if (fileType === 'pdf'
+         && (!selectedEndPage || Number(selectedEndPage) < Number(selectedSheet))) {
+         toast.error("Choose an end page that is equal to or after the start page");
+         return;
+      }
+
+      if (ignoreEmpty === null) {
+         const emptyLastLevelItems = excelData.filter(item => {
+            const isLast = isLastLevelRow(item);
+            const boqNameStr = item.boqName ? item.boqName.toString().trim() : '';
+            const boqCodeStr = item.boqCode ? item.boqCode.toString().trim() : '';
+            return isLast && (!boqNameStr || (fileType !== 'pdf' && !boqCodeStr));
+         });
+
+         if (emptyLastLevelItems.length > 0) {
+            setEmptyBoqModal({
+               show: true,
+               count: emptyLastLevelItems.length,
+               emptySnos: emptyLastLevelItems.map(item => item.sno),
+               items: emptyLastLevelItems
+            });
             return;
          }
+      }
+
+      if (isExternalAccess && !uomMapResolved) {
+         const uniqueUoms = [...new Set(excelData.filter(row => row.uom && row.uom.trim() !== '').map(row => row.uom.trim()))];
+         const unmatched = [];
+         const savedUomKeys = new Set(savedUomMappings.map(mapping => normalizeUomMappingKey(mapping.clientUom || '')));
+         uniqueUoms.forEach(uomStr => {
+            const sanitized = normalizeUomMappingKey(uomStr);
+            const isMatch = masterUoms.some(m =>
+               (m.uomCode && m.uomCode.toLowerCase().replace(/[., \/]/g, '') === sanitized) ||
+               (m.uomName && m.uomName.toLowerCase().replace(/[., \/]/g, '') === sanitized)
+            );
+            if (!isMatch && !savedUomKeys.has(sanitized)) {
+               unmatched.push(uomStr);
+            }
+         });
+
+         if (unmatched.length > 0) {
+            setActiveClientUom(unmatched[0]);
+            setUomModal({
+               show: true,
+               unmatched: unmatched,
+               mapping: {},
+               pendingSaveOptions: opts
+            });
+            return;
+         }
+      }
+
+      setLoading(true)
+      try {
          const formData = new FormData();
          formData.append("file", BOQfile);
          formData.append("sheetName", selectedSheet);
+         if (fileType === 'pdf') {
+            formData.append("endPage", selectedEndPage);
+         }
          formData.append("columnMapping", JSON.stringify(
             internalFields.reduce((acc, item) => {
                acc[item.fields] = item.mappingFields;
@@ -401,11 +611,34 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             }, {})
          ));
 
+         formData.append("pageBreakWord", pageBreakWord);
+
          formData.append("parentChildMapping", JSON.stringify(parentMap));
          formData.append("lastLevelMapping", JSON.stringify(lastLevelMap));
          formData.append("levelMapping", JSON.stringify(levelMap));
 
-         const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/mapBOQ/${projectId}`,
+         if (uomModal.mapping && Object.keys(uomModal.mapping).length > 0) {
+            formData.append("uomMapping", JSON.stringify(uomModal.mapping));
+         }
+         formData.append("persistUomMappings", String(isExternalAccess));
+
+         let ignoredSnos = [];
+         if (ignoreEmpty === true) {
+            ignoredSnos = excelData.filter(item => {
+               const isLast = isLastLevelRow(item);
+               const boqNameStr = item.boqName ? item.boqName.toString().trim() : '';
+               const boqCodeStr = item.boqCode ? item.boqCode.toString().trim() : '';
+               return isLast && (!boqNameStr || (fileType !== 'pdf' && !boqCodeStr));
+            }).map(item => item.sno);
+         }
+         formData.append("ignoredSnos", JSON.stringify(ignoredSnos));
+         formData.append("duplicateHandled", duplicateHandled);
+
+         if (saveAsNewList && saveAsNewList.length > 0) {
+            formData.append("saveAsNewSnos", JSON.stringify(saveAsNewList));
+         }
+
+         const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/project/mapBOQ/${effectiveProjectId}`,
             formData,
             {
                headers: {
@@ -414,36 +647,86 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             }
          );
          if (response.status === 200) {
+            if (isExternalAccess && Object.keys(uomModal.mapping).length > 0) {
+               setSavedUomMappings(previousMappings => {
+                  const mappingsByClientUom = new Map(
+                     previousMappings.map(mapping => [normalizeUomMappingKey(mapping.clientUom || ''), mapping])
+                  );
+                  Object.entries(uomModal.mapping).forEach(([clientUom, masterUomCode]) => {
+                     mappingsByClientUom.set(normalizeUomMappingKey(clientUom), {
+                        projectId: effectiveProjectId,
+                        clientUom,
+                        masterUomCode
+                     });
+                  });
+                  return [...mappingsByClientUom.values()].sort((a, b) => a.clientUom.localeCompare(b.clientUom));
+               });
+            }
             toast.success("BOQ mapping saved successfully!");
-            if (sheetOption.length === 1) {
+            if (isExternalAccess) {
+               window.parent.postMessage(
+                  {
+                     type: "FORM_SAVE_COMPLETED",
+                     status: "SUCCESS",
+                     message: "Data saved successfully",
+                     data: {
+                        projectId: effectiveProjectId,
+                        boqCode: externalTederCode
+                     },
+                  },
+                  "*"
+               );
+               setTimeout(() => {
+                  navigate(`/external/boq-overview/${effectiveProjectId}/${token}${location.search}`);
+               }, 3000);
+               const importedValues = selectedSheet === '__ALL__'
+                  ? sheetOption.map(opt => opt.value)
+                  : (selectedSheet ? selectedSheet.split(',') : []);
+               setSheetOption(prev =>
+                  prev.filter(option => !importedValues.includes(option.value) && option.value !== '__ALL__')
+               );
+               setSelectedSheet(null);
+               setSelectedEndPage(null);
+               setExcelData([]);
+               setLastLevelMap({});
+               setParentMap({});
+               setLevelMap({});
+               setSelectedRow(new Set());
+               setSection('columnMapping');
+               setSearchTerm('');
+               return;
+            }
+            const importedValues = selectedSheet === '__ALL__'
+               ? sheetOption.map(opt => opt.value)
+               : (selectedSheet ? selectedSheet.split(',') : []);
+
+            const remainingOptions = sheetOption.filter(
+               option => !importedValues.includes(option.value) && option.value !== '__ALL__'
+            );
+
+            if (remainingOptions.length === 0 || selectedSheet === '__ALL__') {
                setTimeout(() => {
                   window.location.href = `/boqdefinition/${projectId}`;
                }, 3000);
             }
-            setSheetOption(prev =>
-               prev.filter(option => option.value !== selectedSheet)
-            );
-            plate();
+            setSheetOption(remainingOptions);
+            setSelectedSheet('');
             setExcelData([]);
-            setCurrentPage(0);
-            setTotalPages(0);
-            setPageSize(50);
-            setTotalItems(0);
             setLastLevelMap({});
             setParentMap({});
             setLevelMap({});
             setSelectedRow(new Set());
             setSection('columnMapping');
             setSearchTerm('');
-            toast.success("BOQ Data imported Successfully");
             if (fileType === 'pdf') {
                setSelectedSheet(null);
+               setSelectedEndPage(null);
                setColumns([]);
                setDraggedColumn(null);
 
                const updatedInternalFields = internalFields.map(field => ({
                   ...field,
-                  mappingFields: ''
+                  mappingFields: []
                }));
                setInternalFields(updatedInternalFields);
                setSelectedTemplate(null);
@@ -454,7 +737,28 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       }
       catch (error) {
-         toast.error("Error saving BOQ mapping");
+         if (error.response && error.response.status === 409) {
+            setDuplicateModal({ show: true, duplicates: error.response.data });
+            return;
+         }
+         if (error?.response?.data?.message) {
+            toast.error(error.response.data.message);
+         } else {
+            toast.error("Error saving BOQ mapping");
+         }
+         if (isExternalAccess) {
+            window.parent.postMessage(
+               {
+                  type: "FORM_SAVE_COMPLETED",
+                  status: "FAILED",
+                  message: error.response?.data?.message || "Save failed",
+               },
+               "*"
+            );
+         }
+      }
+      finally {
+         setLoading(false);
       }
    };
 
@@ -467,7 +771,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       const formData = new FormData();
       formData.append('file', BOQfile);
       internalFields.forEach(field => {
-         if (field.mappingFields) {
+         if (field.mappingFields && field.mappingFields.length > 0) {
             mapping[field.fields] = field.mappingFields;
          }
       })
@@ -495,57 +799,89 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          }
       }).catch(err => {
          if (err?.response?.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(navigate);
          }
          toast.error("Error saving template");
       });
    }
 
    const buildTree = () => {
-      if (!excelData) return [];
+      if (!excelData || excelData.length === 0) return [];
       const nodeMap = new Map();
       const roots = [];
+
       excelData.forEach(item => {
          nodeMap.set(item.sno, {
             ...item,
-            children: item.lastLevel ? null : []
+            children: []
          });
       });
+
       excelData.forEach(item => {
          const node = nodeMap.get(item.sno);
-         const parentId = item.parentSno || parentMap[item.sno];
+         const parentId = item.parentSno;
          if (!parentId) {
             roots.push(node);
          } else {
             const parent = nodeMap.get(parentId);
             if (parent) {
-               if (!item.lastLevel) {
-                  parent.children.push(node);
-               } else {
-                  parent.children.push(node);
-               }
+               parent.children.push(node);
+            } else {
+               roots.push(node);
             }
          }
       });
       return roots;
    };
 
+   const toggleExpand = (sno) => {
+      setExpandedRows(prev => {
+         const updated = new Set(prev);
+         if (updated.has(sno)) {
+            updated.delete(sno);
+         } else {
+            updated.add(sno);
+         }
+         return updated;
+      });
+   };
+
+   const getLevelColor = (level) => {
+      const colors = ['#9333EA', '#2563EB', '#CA8A04', '#DC2626', '#059669', '#D97706'];
+      if (level > 0) {
+         return colors[(level - 1) % colors.length];
+      }
+      return '#6B7280';
+   };
+
    const renderNode = (node) => {
-      const marginClass = node.children === null
-         ? "ms-3"
-         : `ms-${(node.level - 1) * 2}`;
-      const icon = node.level === 1 ? <Folder size={16} color={'#9333EA'} />
-         : node.level === 2 ? <Folder size={16} color={'#2563EB'} />
-            : node.level === 3 ? <Folder size={16} color={'#CA8A04'} />
-               : node.lastLevel ? <FileText size={16} color={'#2BA95A'} />
-                  : null;
+      const isExpanded = expandedRows.has(node.sno);
+      const isLeaf = isLastLevelRow(node) || (node.children && node.children.length === 0);
+
+      const icon = isLeaf
+         ? <FileText size={15} color={'#2BA95A'} strokeWidth={2.5} />
+         : <Folder size={15} color={getLevelColor(node.level)} strokeWidth={2.5} />;
+
+      const chevron = !isLeaf && (
+         <span onClick={(e) => { e.stopPropagation(); toggleExpand(node.sno); }} style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', marginRight: '4px' }}>
+            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+         </span>
+      );
+
       return (
-         <div key={node.sno}>
-            <div className={marginClass}>
-               {icon}<span className='ms-1' style={{ fontSize: '14px' }}>{boqNameDisplay(node.boqCode || node.boqName, 10)}</span>
+         <div key={node.sno} className="tree-node-container" style={{ marginLeft: node.parentSno ? '15px' : '0' }}>
+            <div className="d-flex align-items-center mb-1">
+               {chevron}
+               {icon}
+               <span className='ms-1' style={{ fontSize: '13px', fontWeight: node.level === 1 ? '600' : '400', whiteSpace: 'nowrap' }}>
+                  {boqNameDisplay(node.boqName || node.boqCode, 20)}
+               </span>
             </div>
-            {Array.isArray(node.children) &&
-               node.children.map(child => renderNode(child))}
+            {isExpanded && Array.isArray(node.children) && node.children.length > 0 && (
+               <div className="tree-children">
+                  {node.children.map(child => renderNode(child))}
+               </div>
+            )}
          </div>
       );
    };
@@ -586,17 +922,101 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          ? boqName.substring(0, length) + '...'
          : boqName;
    }
+   function handleBulkClear() {
+      if (confirmModal.type === 'level') {
+         setLevelMap({});
+         setParentMap({});
+         setLastLevelMap({});
+         setExpandedRows(new Set());
+         setExcelData(prev =>
+            prev.map(item => ({
+               ...item,
+               level: 0,
+               parentSno: 0,
+               lastLevel: (item.uom || (item.quantity && item.quantity !== 0)) ? true : false
+            }))
+         );
+         toast.success("All levels and structure cleared successfully.");
+      } else if (confirmModal.type === 'parent') {
+         setParentMap({});
+         setExcelData(prev =>
+            prev.map(item => ({
+               ...item,
+               parentSno: 0
+            }))
+         );
+         toast.success("All parents removed successfully.");
+      }
+      setConfirmModal({ show: false, type: '', message: '' });
+   }
+
    const levelMapping = () => {
       const treeData = buildTree();
       console.log(treeData);
-      const goToPreviousPage = () => {
-         if (currentPage > 0) {
-            fetchExcelData(currentPage - 1);
+
+      const handleSingleLevelChange = (sno, level) => {
+         const itemIndex = excelData.findIndex(item => item.sno === sno);
+         if (itemIndex === -1) return;
+
+         const updatedLevelMap = { ...levelMap };
+         const updatedParentMap = { ...parentMap };
+
+         if (level === 0 || isNaN(level)) {
+            updatedLevelMap[sno] = 0;
+            delete updatedParentMap[sno];
+         } else {
+            // Level L for current row, L+1 for all subsequent rows
+            updatedLevelMap[sno] = level;
+            updatedParentMap[sno] = findParentSno(itemIndex, level);
+
+            const nextLevel = autoIncreaseLevel ? level + 1 : level;
+            const parentSnoForSubsequent = autoIncreaseLevel ? sno : updatedParentMap[sno];
+
+            let hasFoundLastLevel = false;
+            for (let i = itemIndex + 1; i < excelData.length; i++) {
+               const currentRow = excelData[i];
+               const currentSno = currentRow.sno;
+               const isLast = isLastLevelRow(currentRow);
+
+               if (hasFoundLastLevel && !isLast) {
+                  break;
+               }
+
+               updatedLevelMap[currentSno] = nextLevel;
+               updatedParentMap[currentSno] = parentSnoForSubsequent;
+
+               if (isLast) {
+                  hasFoundLastLevel = true;
+               }
+            }
          }
-      };
-      const goToNextPage = () => {
-         if (currentPage < totalPages - 1) {
-            fetchExcelData(currentPage + 1);
+
+         setLevelMap(updatedLevelMap);
+         setParentMap(updatedParentMap);
+
+         setExcelData(prev =>
+            prev.map(item => {
+               const newLevel = updatedLevelMap[item.sno] ?? item.level;
+               const newParent = updatedParentMap[item.sno] ?? item.parentSno;
+               return {
+                  ...item,
+                  level: newLevel,
+                  parentSno: newParent,
+                  lastLevel: isLastLevelRow({ ...item, level: newLevel })
+               };
+            })
+         );
+
+         // Expand all parents in the chain
+         if (level > 0) {
+            setExpandedRows(prev => {
+               const updated = new Set(prev);
+               // Expand the current one and all newly created parents in the chain
+               for (let i = itemIndex; i < excelData.length; i++) {
+                  updated.add(excelData[i].sno);
+               }
+               return updated;
+            });
          }
       };
 
@@ -611,38 +1031,42 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             return updated;
          });
       };
+
       const assignLevel = (level) => {
-        if (level === 3) {
-            let violationExists = false;
-            violationExists = excelData.some(item => {
-                return item.level === 2 && !parentMap[item.sno];
-            });
-            if (!violationExists) {
-                violationExists = Object.keys(levelMap).some(sno => {
-                    return levelMap[sno] === 2 && !parentMap[sno];
-                });
-            }
-            if (violationExists) {
-                toast.error("Cannot assign level 3 without assigning parents to all level 2 items.");
-                return;
-            }
-        }
-        setLevelMap(prev => {
-            const updated = { ...prev };
-            selectedRow.forEach(sno => {
-                updated[sno] = level;
-            });
-            return updated;
-        });
-        setExcelData(prev =>
-            prev.map(item =>
-                selectedRow.has(item.sno) ? { ...item, level: level } : item
-            )
-        );
-        setSelectedRow(new Set());
-    };
+         if (selectedRow.size === 0) {
+            toast.error("Please select at least one row.");
+            return;
+         }
+
+         const sortedSelected = [...selectedRow].sort((a, b) => {
+            const indexA = excelData.findIndex(item => item.sno === a);
+            const indexB = excelData.findIndex(item => item.sno === b);
+            return indexA - indexB;
+         });
+
+         sortedSelected.forEach(sno => {
+            handleSingleLevelChange(sno, level);
+         });
+
+         setSelectedRow(new Set());
+      };
+
       const clearLevel = () => {
+         if (selectedRow.size === 0) {
+            setConfirmModal({
+               show: true,
+               type: 'level',
+               message: "Are you sure you want to clear levels for all the BOQs?"
+            });
+            return;
+         }
+
          setLevelMap(prev => {
+            const updated = { ...prev };
+            selectedRow.forEach(sno => delete updated[sno]);
+            return updated;
+         });
+         setParentMap(prev => {
             const updated = { ...prev };
             selectedRow.forEach(sno => delete updated[sno]);
             return updated;
@@ -655,7 +1079,12 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          setExcelData(prev =>
             prev.map(item =>
                selectedRow.has(item.sno)
-                  ? { ...item, level: 0, lastLevel: false }
+                  ? {
+                     ...item,
+                     level: 0,
+                     parentSno: 0,
+                     lastLevel: isLastLevelRow(item)
+                  }
                   : item
             )
          );
@@ -679,91 +1108,68 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
          );
          setSelectedRow(new Set());
       };
-      const levelDisplay = (level, lastLevel) => {
-         if (lastLevel) {
-            return (
-               <span
-                  className="badge px-2 py-1"
-                  style={{ backgroundColor: "#2BA95A", color: "#ffffff" }}
-               >
-                  Last Level
-               </span>
-            );
-         }
-         const levelStyles = {
-            1: "#9333EA",
-            2: "#2563EB",
-            3: "#CA8A04",
-         };
-         if (levelStyles[level]) {
-            return (
-               <span
-                  className="badge px-2 py-1"
-                  style={{ backgroundColor: levelStyles[level], color: "#ffffff" }}
-               >
-                  Level {level}
-               </span>
-            );
-         }
-         return <span>-</span>;
-      };
-      const startParentSelection = () => {
+
+      const assignParent = () => {
          if (selectedRow.size === 0) {
-            toast.error("Please select at least one BOQ item.");
+            toast.error("Please select the rows you want to assign to a parent first.");
             return;
          }
-         const isnoLevelItems = excelData.filter(item =>  item.level !== 0);
-         if (isnoLevelItems.length === 0) {
-            toast.error("Level 0 items cannot be assigned as parent. Assign a level first.");
-            return;
-         }
-         const selectedItems = [...selectedRow].map(sno =>
-            excelData.find(item => item.sno === sno)
-         );
-         const nonLastLevelItems = selectedItems.filter(item => !item?.lastLevel);
-         let childLevel;
-         if (nonLastLevelItems.length === 0) {
-            childLevel = 999;
-         } else {
-            const levels = nonLastLevelItems.map(item => item?.level || 0);
-            const uniqueLevels = [...new Set(levels)];
-
-            if (uniqueLevels.length > 1) {
-               toast.error("Please select BOQs with the SAME level (Last level items ignored).");
-               return;
-            }
-            childLevel = uniqueLevels[0];
-            if (childLevel === 0) {
-               toast.error("Level 0 items cannot have a parent. Assign a level first.");
-               return;
-            }
-         }
-         setSelectedChildLevel(childLevel);
-         setIsParentSelecting(true);
+         setIsAssigningParent(true);
+         toast.info("Click on a row in the table to set it as the parent.");
       };
 
-      const handleParentAssign = (parentSno) => {
-         const updated = { ...parentMap };
-         selectedRow.forEach(childSno => {
-            if (childSno !== parentSno) {
-               updated[childSno] = parentSno;
-            }
+      const handleParentSelect = (pSno) => {
+         if (!isAssigningParent) return;
+
+         const parentRow = excelData.find(item => item.sno === pSno);
+         if (!parentRow) return;
+
+         if (selectedRow.has(pSno)) {
+            toast.error("Cannot assign a row as its own parent.");
+            setIsAssigningParent(false);
+            return;
+         }
+
+         setParentMap(prev => {
+            const updated = { ...prev };
+            selectedRow.forEach(sno => {
+               updated[sno] = pSno;
+            });
+            return updated;
          });
-         setParentMap(updated);
-         setIsParentSelecting(false);
          setExcelData(prev =>
-            prev.map(item => ({
-               ...item,
-               parentSno: updated[item.sno] ?? item.parentSno
-            }))
+            prev.map(item =>
+               selectedRow.has(item.sno)
+                  ? { ...item, parentSno: pSno }
+                  : item
+            )
          );
-         setSelectedRow(new Set());
-      };
-      const clearParent = () => {
-         const updated = { ...parentMap };
-         selectedRow.forEach(sno => delete updated[sno]);
-         setParentMap(updated);
 
+         setExpandedRows(prev => {
+            const updated = new Set(prev);
+            updated.add(pSno);
+            return updated;
+         });
+
+         setSelectedRow(new Set());
+         setIsAssigningParent(false);
+         toast.success(`Assigned selected items to parent S.No: ${pSno}`);
+      };
+
+      const removeParent = () => {
+         if (selectedRow.size === 0) {
+            setConfirmModal({
+               show: true,
+               type: 'parent',
+               message: "Are you sure you want to remove parents for all the BOQs?"
+            });
+            return;
+         }
+         setParentMap(prev => {
+            const updated = { ...prev };
+            selectedRow.forEach(sno => delete updated[sno]);
+            return updated;
+         });
          setExcelData(prev =>
             prev.map(item =>
                selectedRow.has(item.sno)
@@ -772,207 +1178,226 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
             )
          );
          setSelectedRow(new Set());
+         toast.success("Removed parents from selected rows.");
+      };
+
+      const isRowVisible = (item) => {
+         if (!item.parentSno) return true;
+         let currentParent = item.parentSno;
+         while (currentParent) {
+            if (!expandedRows.has(currentParent)) return false;
+            const parent = excelData.find(i => i.sno === currentParent);
+            currentParent = parent?.parentSno || 0;
+         }
+         return true;
+      };
+
+      const expandAll = () => {
+         const allSnos = excelData.map(item => item.sno);
+         setExpandedRows(new Set(allSnos));
+      };
+
+      const collapseAll = () => {
+         setExpandedRows(new Set());
       };
 
       return (
          <>
+            {isAssigningParent && (
+               <div className="alert alert-info alert-dismissible fade show mb-0 rounded-0 border-0" style={{ position: 'sticky', top: 0, zIndex: 1050, backgroundColor: '#f0f9ff', color: '#0369a1' }}>
+                  <div className="d-flex align-items-center justify-content-between px-3">
+                     <div className="d-flex align-items-center">
+                        <Link size={18} className="me-2" />
+                        <span><strong>Manual Parent Assignment:</strong> Click on a row in the table to set it as the parent for the selected items.</span>
+                     </div>
+                     <button type="button" className="btn btn-sm btn-outline-info" onClick={() => setIsAssigningParent(false)}>
+                        Cancel
+                     </button>
+                  </div>
+               </div>
+            )}
+
             <div className='row g-3 ms-1 me-2 mt-4'>
-               <div className='col-lg-9 col-md-8 col-sm-12 p-2'>
+               <div className='col-12 p-2'>
                   <div className='bg-white rounded-3 h-100' style={{ border: '1px solid #0051973D' }}>
-                     <div className='row g-2 p-3 align-items-end'>
-                        <div className='col-lg-8 col-md-8 col-sm-8'>
+                     <div className='row g-2 p-3 align-items-center justify-content-between'>
+                        <div className='col-lg-4 col-md-5 col-sm-12'>
                            <label className="text-start d-block">Search BOQ</label>
-                           <input
-                              type="text"
-                              className="form-search-input w-100"
-                              placeholder="Search by BOQ Code or Description..."
-                              value={searchTerm}
-                              onChange={(e) => setSearchTerm(e.target.value)}
-                           />
-                        </div>
-                        {excelData.length > 0 && (
-                           <div className='col-lg-4 col-md-4 col-sm-4 text-end'>
-                              <div className='d-flex justify-content-around align-items-center'>
-                                 <span className="text-muted small">
-                                    {((currentPage) * pageSize) + 1} - {Math.min((currentPage + 1) * pageSize, totalItems)} of {totalItems.toLocaleString()} items
-                                 </span>
-                                 <div className='d-flex align-items-center'>
-                                    <button
-                                       className="btn pagination btn-sm border-none me-2"
-                                       onClick={goToPreviousPage}
-                                       disabled={currentPage === 0}
-                                    >
-                                       <ChevronLeft size={18} />
-                                    </button>
-                                    <button
-                                       className="btn pagination btn-sm border-none"
-                                       onClick={goToNextPage}
-                                       disabled={currentPage >= totalPages - 1}
-                                    >
-                                       <ChevronRight size={18} />
-                                    </button>
-                                 </div>
-                              </div>
+                           <div className="position-relative" style={{ width: '100%' }}>
+                              <Search
+                                 className="position-absolute"
+                                 style={{ right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#6B7280', zIndex: 1 }}
+                                 size={18}
+                              />
+                              <input
+                                 type="text"
+                                 className="form-input w-100"
+                                 placeholder="Search by BOQ Code or Description..."
+                                 value={searchTerm}
+                                 onChange={(e) => setSearchTerm(e.target.value)}
+                                 style={{ paddingRight: '30px' }}
+                              />
                            </div>
-                        )}
+                        </div>
+                        <div className='col-lg-8 col-md-7 col-sm-12 d-flex justify-content-end align-items-end pt-4'>
+                           {excelData.length > 0 && (!BOQfile || !BOQfile.name.toLowerCase().endsWith('.pdf')) && (excelData.every(row => row.lastLevel) || excelData.every(row => !row.lastLevel)) && (
+                              <div className="form-check d-flex align-items-center me-3 mb-2">
+                                 <input
+                                    type="checkbox"
+                                    className="form-check-input me-2 mt-0"
+                                    id="autoIncrease"
+                                    checked={autoIncreaseLevel}
+                                    onChange={(e) => setAutoIncreaseLevel(e.target.checked)}
+                                    style={{ cursor: 'pointer' }}
+                                 />
+                                 <label className="form-check-label text-nowrap" htmlFor="autoIncrease" style={{ fontSize: '13px', cursor: 'pointer', color: '#005197', fontWeight: '500' }}>Auto-increase levels</label>
+                              </div>
+                           )}
+                           <button className='btn cancel rounded-2 p-2 me-2' style={{ fontSize: '13px' }} onClick={expandAll}>
+                              <ExpandIcon width={20} height={20} /><span className='ms-1'>Expand All</span>
+                           </button>
+                           <button className='btn cancel rounded-2 p-2 me-2' style={{ fontSize: '13px' }} onClick={collapseAll}>
+                              <CollapseIcon width={20} height={20} /><span className='ms-1'>Collapse All</span>
+                           </button>
+                           <button className='btn cancel rounded-2 p-2 me-2' style={{ fontSize: '13px' }} onClick={clearLevel}>
+                              <X size={20} /><span className='ms-1'>Clear Level</span>
+                           </button>
+                        </div>
                      </div>
                      <div className='p-3'>
                         {excelData.length > 0 ? (
-                           <div className="boq-data table-responsive">
-                              <table className="table align-middle">
+                           <div className="boq-data table-responsive" style={{ maxHeight: '140vh', overflowY: 'auto' }}>
+                              <table className="table align-middle boq-config-table">
                                  <thead className="text-white">
                                     <tr>
-                                       <th></th>
-                                       <th className="text-center text-nowrap" style={{ width: '80px' }}>S.No</th>
+                                       <th style={{ width: '30px' }}></th>
+                                       <th className="text-center text-nowrap" style={{ width: '60px' }}>Level</th>
                                        <th style={{ width: '100px' }} className='text-nowrap'>BOQ Code</th>
-                                       <th className='text-nowrap'>BOQ Description</th>
+                                       <th className='text-nowrap text-start'>BOQ Description</th>
+                                       <th className="text-center text-nowrap" style={{ width: '100px' }}>Division</th>
                                        <th className="text-center text-nowrap" style={{ width: '100px' }}>Unit</th>
-                                       <th className="text-end text-nowrap" style={{ width: '80px' }}>Quantity</th>
-                                       <th className="text-center text-nowrap" style={{ width: '140px' }}>Level</th>
-                                       <th className="text-center text-nowrap" style={{ width: '100px' }}>Parent</th>
+                                       <th className="text-center text-nowrap" style={{ width: '140px' }}>Quantity</th>
+                                       <th className="text-center text-nowrap" style={{ width: '100px' }}>Rate Only</th>
+                                       <th className="text-center text-nowrap" style={{ width: '100px' }}>Provisional Sum</th>
+                                       <th className="text-center text-nowrap" style={{ width: '100px' }}>Not Quoted BOQ</th>
+                                    
                                     </tr>
                                  </thead>
                                  <tbody>
-                                    {excelData.map((item) => (
-                                       <tr
-                                          key={item.sno}
-                                          className={
-                                             `${item.lastLevel ? "last-level " : ""}` +
-                                             (isParentSelecting &&
-                                                (
-                                                   item.lastLevel || item.level === 0 ||
-                                                   (selectedChildLevel !== 999 &&
-                                                      item.level !== selectedChildLevel - 1) ||
-                                                   item.sno === [...selectedRow][0]
-                                                )
-                                                ? " disabled-parent-row"
-                                                : ""
-                                             ) +
-                                             (isParentSelecting &&
-                                                (
-                                                   !item.lastLevel &&
-                                                   (
-                                                      selectedChildLevel === 999
-                                                         ? (item.level > 0)
-                                                         : (item.level === selectedChildLevel - 1)
-                                                   )
-                                                )
-                                                ? " parent-selectable-row"
-                                                : ""
-                                             )
-                                          }
+                                    {excelData.filter(isRowVisible).map((item, index) => (
+                                       <tr key={item.sno}
+                                          className={`${item.level > 0 ? `level-bg-${((item.level - 1) % 10) + 1}` : ''} ${selectedRow.has(item.sno) ? 'selected-row' : ''} ${isAssigningParent ? 'assign-parent-mode' : ''}`}
                                           onClick={() => {
-                                             if (!isParentSelecting) return;
-                                             if (!item.lastLevel && item.level < selectedChildLevel) {
-                                                handleParentAssign(item.sno);
+                                             if (isAssigningParent) {
+                                                handleParentSelect(item.sno);
+                                             } else {
+                                                toggleSelection(item.sno);
                                              }
                                           }}
+
+                                          style={{ cursor: 'pointer' }}
                                        >
-                                          <td>{isParentSelecting && !item.lastLevel && item.level !== 0 && item.level < selectedChildLevel ? (<span></span>) : (<input
-                                             type="checkbox"
-                                             className="form-check-input"
-                                             style={{ borderColor: '#005197' }}
-                                             checked={selectedRow.has(item.sno)}
-                                             onChange={() => toggleSelection(item.sno)}
-                                          />)}
+                                          <td className="text-center" style={{ width: '30px' }}>
+                                             {!isLastLevelRow(item) && item.level > 0 && (
+                                                <span
+                                                   onClick={(e) => { e.stopPropagation(); toggleExpand(item.sno); }}
+                                                   style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                >
+                                                   {expandedRows.has(item.sno) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                                </span>
+                                             )}
                                           </td>
-                                          <td className="text-center text-nowrap">{item.sno}</td>
+                                          <td className="text-center text-nowrap">
+                                             <input
+                                                type="number"
+                                                className="form-control form-control-sm mx-auto"
+                                                style={{
+                                                   width: '50px',
+                                                   fontSize: '12px',
+                                                   padding: '2px 4px',
+                                                   borderRadius: '4px',
+                                                   border: '1px solid #0051973D'
+                                                }}
+                                                min="0"
+                                                value={item.level || ''}
+                                                onClick={(e) => e.stopPropagation()}
+                                                onWheel={(e) => e.target.blur()}
+                                                onChange={(e) => handleSingleLevelChange(item.sno, parseInt(e.target.value))}
+                                             />
+                                          </td>
                                           <td className='text-nowrap' title={item.boqCode}>
                                              {boqNameDisplay(item.boqCode, 9)}
                                           </td>
-                                          <td className='text-nowrap' title={item.boqName}>
-                                             {boqNameDisplay(item.boqName, 15)}
+                                          <td className="text-start" title="Click to view the full description" onClick={(e) => { e.stopPropagation(); setSelectedBoqForModal(item); }} style={{ cursor: 'pointer', whiteSpace: 'normal', wordBreak: 'break-word', minWidth: '400px' }}>
+                                             <div>
+                                                {item.boqName}
+                                             </div>
                                           </td>
+                                          <td className="text-center text-nowrap">{item.division || '-'}</td>
                                           <td className="text-center text-nowrap">{item.uom || '-'}</td>
-                                          <td className="text-end text-nowrap">
+                                          <td className="text-center text-nowrap">
                                              {item.quantity && item.quantity !== 0 ? item.quantity.toFixed(3) : "-"}
                                           </td>
-                                          <td className="text-center text-nowrap">{levelDisplay(item.level, item.lastLevel)}</td>
-                                          <td className="text-center text-muted small text-nowrap">
-                                             {item.parentSno > 0 ? item.parentSno : 'Not Assigned'}
+                                          <td className="text-center text-nowrap">
+                                             {item.rateOnly == null ? '-' : item.rateOnly ? 'Yes' : 'No'}
+                                          </td>
+                                          <td className="text-center text-nowrap">
+                                             {item.provisionalSum == null ? '-' : item.provisionalSum ? 'Yes' : 'No'}
+                                          </td>
+                                          <td className="text-center text-nowrap">
+                                             {item.notQuotedBoq == null ? '-' : item.notQuotedBoq ? 'Yes' : 'No'}
                                           </td>
                                        </tr>
                                     ))}
                                  </tbody>
                               </table>
-                              <div className='d-flex justify-content-between align-items-center mt-3'>
-                                 <button
-                                    className="btn pagination-bottom btn-sm border-none me-2"
-                                    onClick={goToPreviousPage}
-                                    disabled={currentPage === 0}
-                                 >
-                                    <ChevronLeft size={20} /> Previous
-                                 </button>
-                                 <span className='text-muted' style={{ fontSize: '13px' }}>{currentPage + 1 + " of " + totalPages + " Pages "}</span>
-                                 <button
-                                    className="btn pagination-bottom btn-sm border-none"
-                                    onClick={goToNextPage}
-                                    disabled={currentPage >= totalPages - 1}
-                                 >
-                                    Next <ChevronRight size={20} />
-                                 </button>
-                              </div>
+
                            </div>
                         ) : (
                            <div className="text-center py-5 text-muted">
                               <h5>No BOQ items extracted</h5>
-                              <p>Please upload an Excel file and map the columns.</p>
+                              <p>{fileType === 'pdf'
+                                 ? 'No BOQ items were extracted from the selected PDF pages. Check the PDF table headers and column mapping.'
+                                 : 'Please upload an Excel file and map the columns.'}</p>
                            </div>
                         )}
                      </div>
                   </div>
                </div>
-               <div className='col-lg-3 col-md-4 col-sm-12 p-2'>
-                  <div className='bg-white p-2 rounded-2 pt-3 h-100' style={{ border: '1px solid #0051973D' }}>
-                     <div className='ms-2' style={{ borderBottom: '1px solid #0051973D' }}>
-                        <div className='text-start fw-bold'>Assign Levels</div>
-                        <div className='text-start text-muted pb-1 pt-1' style={{ fontSize: '13px' }}>Assign selected rows to a level</div>
-                     </div>
-                     <div className='d-flex ms-2 flex-column mt-3 align-items-around' style={{ borderBottom: '1px solid #0051973D' }}>
-                        <button className='btn level1 rounded-2 p-2 mb-3' disabled={selectedRow.length < 0} onClick={() => assignLevel(1)}>
-                           <span className=''></span>Level 1
-                        </button>
-                        <button className='btn level2 rounded-2 p-2 mb-3' disabled={selectedRow.length < 0} onClick={() => assignLevel(2)}>
-                           Level 2
-                        </button>
-                        <button className='btn level3 rounded-2 p-2 mb-3' disabled={selectedRow.length < 0} onClick={() => assignLevel(3)}>
-                           Level 3
-                        </button>
-                        <button className='btn lastLevel rounded-2 p-2 mb-3' disabled={selectedRow.length < 0} onClick={() => assignLastLevel()}>
-                           Last Level
-                        </button>
-                        <button className='btn cancel rounded-2 p-2 mb-3' disabled={selectedRow.length < 0} onClick={clearLevel}>
-                           <X size={16} /><span className='ms-2'>Clear Level</span>
-                        </button>
 
-                     </div>
-                     <div className='ms-2 mt-3' style={{ borderBottom: '1px solid #0051973D' }}>
-                        <div className='text-start fw-bold mb-3'>Parent Mapping</div>
-                        <button className='btn parent rounded-2 p-2 mb-3 w-100' disabled={isParentSelecting} onClick={startParentSelection}>
-                           <Link size={16} /><span className='ms-2'>Assign Parent</span>
-                        </button>
-                        <button className='btn cancel rounded-2 p-2 mb-3 w-100' disabled={selectedRow.length < 0} onClick={clearParent}>
-                           <X size={16} /><span className='ms-2'>Remove Parent</span>
-                        </button>
-                     </div>
-                     <div className='ms-2 mt-3'>
-                        <div className='text-start fw-bold mb-3'>Live Structure Preview</div>
-                        <div className="structure-preview">
-                           {!excelData ? (
-                              <div className="text-muted small">No structure assigned.</div>
-                           ) : (
-                              <div className="text-start">{treeData.map(node => renderNode(node))}</div>
-                           )}
+            </div>
+            <div className='d-flex justify-content-end mt-4'>
+               <button className='btn cancel-button mt-2 me-4' onClick={removeFile}>Cancel</button>
+               <button className='btn action-button mt-2 fs-6' onClick={saveMappedBOQ} disabled={loading || excelData.length === 0}>{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : (<span>Import BOQ Data</span>)}</button>
+            </div>
+            {selectedBoqForModal && (
+               <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1070 }}>
+                  <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                     <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
+                        <div className="modal-header border-0 pb-0">
+                           <h5 className="modal-title fw-bold" style={{ color: '#005197' }}>BOQ Description : {selectedBoqForModal.boqCode}</h5>
+                           <button type="button" className="btn-close" onClick={() => setSelectedBoqForModal(null)}></button>
+                        </div>
+                        <div className="modal-body py-4 text-start">
+                           <p className="mb-0 text-muted" style={{ fontSize: '15px', whiteSpace: 'pre-wrap' }}>
+                              {selectedBoqForModal.boqName}
+                           </p>
+                        </div>
+                        <div className="modal-footer border-0 pt-0">
+                           <button
+                              type="button"
+                              className="btn action-button px-4"
+                              onClick={() => setSelectedBoqForModal(null)}
+                           >
+                              Close
+                           </button>
                         </div>
                      </div>
                   </div>
                </div>
-            </div>
-            <div className='d-flex justify-content-end mt-4'>
-               <button className='btn cancel-button mt-2 me-4' onClick={removeFile}>Cancel</button>
-               <button className='btn action-button mt-2 fs-6' onClick={saveMappedBOQ}>{loading ? (<span className="spinner-border spinner-border-sm text-white"></span>) : (<span>Import BOQ Data</span>)}</button>
-            </div>
+            )}
          </>
+
       );
 
    }
@@ -999,21 +1424,25 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                            loadTemplate(templateValue);
                         } else {
                            setInternalFields(prev =>
-                              prev.map(f => ({ ...f, mappingFields: '' }))
+                              prev.map(f => ({ ...f, mappingFields: [] }))
                            );
                         }
                      }}
                   />
                </div>
             </div>
-            {(selectedSheet || columns) && (<div className='mt-5'>
+            {(selectedSheet || (Array.isArray(columns) && columns.length > 0)) && (<div className='mt-5'>
                <div className='mb-4 text-start fw-bold'>Map the Fields</div>
                <div className='row d-flex justify-content-between'>
                   <div className='col-lg-6 col-md-6 col-sm-12'>
-                     <ColumnIcon /><span className='fw-bold fs-6 ms-2'>Excel Feilds</span>
+                     <ColumnIcon /><span className='fw-bold fs-6 ms-2'>{fileType === 'pdf' ? 'PDF Table Headers' : 'Excel Fields'}</span>
                      <div className='mt-1 rounded-3 p-2'>
-                        {columns
-                           .filter(col => !internalFields.some(f => f.mappingFields === col))
+                        {columnLoading ? (
+                           [...Array(5)].map((_, index) => (
+                              <div key={index} className="excel-column-container me-2 p-3 rounded-3 mt-3 mb-3 skeleton-loader" style={{ height: '54px', border: 'none' }}></div>
+                           ))
+                        ) : (Array.isArray(columns) ? columns : [])
+                           .filter(col => !internalFields.some(f => Array.isArray(f.mappingFields) && f.mappingFields.includes(col)))
                            .map((col, index) => (
                               <div className={`excel-column-container me-2 p-3 rounded-3 mt-3 mb-3 d-flex justify-content-between align-items-center`} key={index} draggable={true}
                                  onDragStart={(e) =>
@@ -1024,43 +1453,55 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                                  <span><Drag /></span>
                               </div>
                            ))}
+                        {!columnLoading && columns.length === 0 && (
+                           <p className="text-muted mt-3">
+                              No table headers were detected in the selected page range.
+                           </p>
+                        )}
                      </div>
                   </div>
                   <div className='col-lg-6 col-md-6 col-sm-12'>
-                     <InternalIcon /><span className='fw-bold fs-6 ms-2'>Internal Feilds</span>
+                     <InternalIcon /><span className='fw-bold fs-6 ms-2'>Internal Fields</span>
                      <div className='mt-1 rounded-3 p-2'>
                         {internalFields.map((col, index) => (
                            <div key={index}>
-                              <div className={`internal-column-container ${col.mappingFields ? 'mapped ' : ' '} me-2 p-3 rounded-3 mt-3 mb-3 d-flex flex-column justify-content-between text-start`}
+                              <div className={`internal-column-container ${col.mappingFields.length > 0 ? 'mapped ' : ' '} me-2 p-3 rounded-3 mt-3 mb-3 d-flex flex-column justify-content-between text-start`}
                                  onDragOver={(e) => e.preventDefault()}
                                  onDrop={() => {
                                     if (draggedColumn) {
                                        const updated = [...internalFields];
-                                       updated[index].mappingFields = draggedColumn;
-                                       setInternalFields(updated);
+                                       const currentMappings = [...updated[index].mappingFields];
+                                       if (!currentMappings.includes(draggedColumn)) {
+                                          currentMappings.push(draggedColumn);
+                                          updated[index].mappingFields = currentMappings;
+                                          setInternalFields(updated);
+                                       }
                                        setDraggedColumn(null);
                                     }
                                  }}>
                                  <div className='d-flex justify-content-between'>
                                     <span className='mb-1'>{col.label}</span>
-                                    <span className={`mapping-condition ${!col.mappingFields ? (col.importance === 'Required' ? 'required' : 'optional') : 'mapped'}`}>
-                                       {col.mappingFields ? 'Mapped' : col.importance}
+                                    <span className={`mapping-condition ${col.mappingFields.length === 0 ? (col.importance === 'Required' ? 'required' : 'optional') : 'mapped'}`}>
+                                       {col.mappingFields.length > 0 ? 'Mapped' : col.importance}
                                     </span>
                                  </div>
-                                 {col?.mappingFields &&
-                                    <div className='d-flex justify-content-between bg-white w-100 rounded'>
-                                       <div>
-                                          <span className='ms-2'><Mapping /></span>
-                                          <span className='ms-2'>{col.mappingFields}</span>
+                                 {col.mappingFields.length > 0 &&
+                                    col.mappingFields.map((mappedCol, chipIndex) => (
+                                       <div key={chipIndex} className='d-flex justify-content-between bg-white w-100 rounded mt-1'>
+                                          <div>
+                                             <span className='ms-2'><Mapping /></span>
+                                             <span className='ms-2'>{mappedCol}</span>
+                                          </div>
+                                          <span className='me-2' style={{ cursor: 'pointer' }}>
+                                             <X color='#C33D1B' size={14} onClick={() => {
+                                                const updated = [...internalFields];
+                                                updated[index].mappingFields = updated[index].mappingFields.filter((_, i) => i !== chipIndex);
+                                                setInternalFields(updated);
+                                             }} />
+                                          </span>
                                        </div>
-                                       <span className='me-2' style={{ cursor: 'pointer' }}>
-                                          <X color='#C33D1B' size={14} onClick={() => {
-                                             const updated = [...internalFields];
-                                             updated[index].mappingFields = '';
-                                             setInternalFields(updated);
-                                          }} />
-                                       </span>
-                                    </div>}
+                                    ))
+                                 }
                               </div>
                            </div>
                         ))}
@@ -1110,7 +1551,18 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                </div>
             )}
             <div className='d-flex justify-content-end mt-4'>
-               <button className='btn action-button mt-2 fs-6' onClick={() => fetchExcelData(currentPage, pageSize)}><ArrowRight size={18} /> <span className='ms-1'>Next</span></button>
+               <button
+                  className='btn action-button mt-2 fs-6'
+                  onClick={() => setPageBreakModal(true)}
+                  disabled={loading}
+               >
+                  {loading ? (
+                     <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  ) : (
+                     <ArrowRight size={18} />
+                  )}
+                  <span className='ms-1'>{loading ? 'Loading...' : 'Next'}</span>
+               </button>
             </div>
          </div>
       )
@@ -1129,7 +1581,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
       return (
          <>
             <div className='rounded-3 bg-white p-3 ms-3 me-3' style={{ border: '0.5px solid #0051973D' }}>
-               <div className='d-flex justify-content-between mt-1'>
+               <div className='d-flex justify-content-between mt-1 gap-2'>
                   <div className='col-lg-6 col-md-6 col-sm-12'>
                      <div className='file-preview d-flex align-items-center justify-content-between mb-2'>
                         <div>
@@ -1139,27 +1591,98 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                         <span className='me-2' style={{ cursor: 'pointer' }}><X color='#C33D1B' size={20} onClick={removeFile} /></span>
                      </div>
                   </div>
-                  <div className='col-lg-6 col-md-6 col-sm-12'>
-                     <label className="projectform-select text-start d-block">
-                        Excel Sheet
-                     </label>
-                     <Select placeholder="Select Excel Sheet"
-                        options={sheetOption}
-                        className="w-100"
-                        classNamePrefix="select"
-                        value={sheetOption.find(option => option.value === selectedSheet)}
-                        isClearable
-                        menuPlacement='auto'
-                        onChange={(option) => {
-                           const sheetValue = option?.value ?? null;
-                           setSelectedSheet(sheetValue);
-                           if (sheetValue) {
-                              loadSheetColumn(sheetValue);
+                  {fileType === 'pdf' ? (
+                     <div className='col-lg-6 col-md-6 col-sm-12 row g-2'>
+                        <div className='col-6'>
+                           <label className="projectform-select text-start d-block">Start Page</label>
+                           <Select
+                              placeholder="Select Start Page"
+                              options={selectedEndPage
+                                 ? sheetOption.filter(option => Number(option.value) <= Number(selectedEndPage))
+                                 : sheetOption}
+                              className="w-100"
+                              classNamePrefix="select"
+                              value={sheetOption.find(option => option.value === selectedSheet)}
+                              isClearable
+                              menuPlacement='auto'
+                              onChange={(option) => {
+                                 const startPage = option?.value ?? null;
+                                 setSelectedSheet(startPage);
+                                 setColumns([]);
+                                 if (startPage && selectedEndPage) {
+                                    loadSheetColumn(startPage, selectedEndPage);
+                                 }
+                              }}
+                           />
+                        </div>
+                        <div className='col-6'>
+                           <label className="projectform-select text-start d-block">End Page</label>
+                           <Select
+                              placeholder="Select End Page"
+                              options={selectedSheet
+                                 ? sheetOption.filter(option => Number(option.value) >= Number(selectedSheet))
+                                 : sheetOption}
+                              className="w-100"
+                              classNamePrefix="select"
+                              value={sheetOption.find(option => option.value === selectedEndPage)}
+                              isClearable
+                              menuPlacement='auto'
+                              onChange={(option) => {
+                                 const endPage = option?.value ?? null;
+                                 setSelectedEndPage(endPage);
+                                 setColumns([]);
+                                 if (selectedSheet && endPage) {
+                                    loadSheetColumn(selectedSheet, endPage);
+                                 }
+                              }}
+                           />
+                        </div>
+                     </div>
+                  ) : (
+                     <div className='col-lg-6 col-md-6 col-sm-12'>
+                        <label className="projectform-select text-start d-block">Excel Sheet</label>
+                        <Select
+                           placeholder="Select Excel Sheet(s)"
+                           options={sheetOption}
+                           className="w-100"
+                           classNamePrefix="select"
+                           isMulti
+                           value={
+                              selectedSheet === '__ALL__'
+                                 ? sheetOption.filter(opt => opt.value === '__ALL__')
+                                 : (selectedSheet ? selectedSheet.split(',').map(val => sheetOption.find(opt => opt.value === val)).filter(Boolean) : [])
                            }
-                        }}
-                        isDisabled={fileType === 'pdf'}
-                     />
-                  </div>
+                           isClearable
+                           menuPlacement='auto'
+                           onChange={(selected) => {
+                              if (!selected || selected.length === 0) {
+                                 setSelectedSheet('');
+                                 setColumns([]);
+                                 return;
+                              }
+                              const wasAll = selectedSheet === '__ALL__';
+                              const hasAll = selected.some(opt => opt.value === '__ALL__');
+                              if (hasAll && !wasAll) {
+                                 setSelectedSheet('__ALL__');
+                                 loadSheetColumn('__ALL__');
+                              } else if (wasAll && selected.length > 1) {
+                                 const specific = selected.filter(opt => opt.value !== '__ALL__');
+                                 const sheetValues = specific.map(opt => opt.value).join(',');
+                                 setSelectedSheet(sheetValues);
+                                 loadSheetColumn(sheetValues);
+                              } else if (hasAll) {
+                                 setSelectedSheet('__ALL__');
+                                 loadSheetColumn('__ALL__');
+                              } else {
+                                 const sheetValues = selected.map(opt => opt.value).join(',');
+                                 setSelectedSheet(sheetValues);
+                                 loadSheetColumn(sheetValues);
+                              }
+                           }}
+                           isDisabled={false}
+                        />
+                     </div>
+                  )}
                </div>
             </div>
             <div className="d-flex ms-3 mt-5">
@@ -1169,7 +1692,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                </button>
                <button className={`btn ${section === 'levelMapping' ? 'activeView' : 'bg-white'} px-3 py-2 border border-start-0 rounded-end rounded-0`} onClick={() => { setSection('levelMapping'); }}>
                   <SlidersHorizontal size={20} color={`${section === 'levelMapping' ? '#FFFFFF' : '#005197'}`} />
-                  <span className="ms-2 fs-6">Level Configuraton</span>
+                  <span className="ms-2 fs-6">Level Configuration</span>
                </button>
             </div>
             {renderSection(section)}
@@ -1189,18 +1712,397 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    return (
       <div className='container-fluid p-2 min-vh-100'>
          <div className="text-start fw-bold ms-1 mt-2 mb-4">
-            <ArrowLeft size={20} onClick={() => setUploadScreen(false)} /><span className='ms-2'>BOQ Definition</span>
+            <ArrowLeft size={20} onClick={() => {
+               if (isExternalAccess) {
+                  navigate(`/external/boq-overview/${effectiveProjectId}/${token}${location.search}`);
+               } else {
+                  setUploadScreen(false);
+               }
+            }} /><span className='ms-2'>BOQ Definition</span>
          </div>
          {!BOQfile && (
             <div className='ms-2 mt-3 rounded-3 bg-white' style={{ border: '0.5px solid #0051973D' }}>
                <div className='tab-info col-12 h-100'>Upload BOQ File</div>
                <div className='text-start p-3 ms-4 mt-2 me-4'>
-                  <p className='fw-bold'>{projectName}</p>
+                  <p className='fw-bold'>{displayProjectName}</p>
                   {renderContent('fileUpload')}
                </div>
             </div>
          )}
          {BOQfile && (renderContent('mappingConfig'))}
+         {confirmModal.show && (
+            <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+               <div className="modal-dialog modal-dialog-centered">
+                  <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
+                     <div className="modal-header border-0 pb-0">
+                        <h5 className="modal-title fw-bold" style={{ color: '#005197' }}>Confirm Action</h5>
+                        <button type="button" className="btn-close" onClick={() => setConfirmModal({ show: false, type: '', message: '' })}></button>
+                     </div>
+                     <div className="modal-body py-4">
+                        <p className="mb-0 text-muted" style={{ fontSize: '15px' }}>{confirmModal.message}</p>
+                     </div>
+                     <div className="modal-footer border-0 pt-0">
+                        <button
+                           type="button"
+                           className="btn cancel-button px-4"
+                           onClick={() => setConfirmModal({ show: false, type: '', message: '' })}
+                        >
+                           Cancel
+                        </button>
+                        <button
+                           type="button"
+                           className="btn action-button px-4"
+                           onClick={handleBulkClear}
+                        >
+                           Confirm
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
+         {pageBreakModal && (
+            <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+               <div className="modal-dialog modal-dialog-centered">
+                  <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
+                     <div className="modal-header border-0 pb-0">
+                        <h5 className="modal-title fw-bold" style={{ color: '#005197' }}>Page Break Configuration</h5>
+                        <button type="button" className="btn-close" onClick={() => setPageBreakModal(false)}></button>
+                     </div>
+                     <div className="modal-body py-4">
+                        <label className="projectform-select text-start d-block mb-2">
+                           Page Break Word
+                        </label>
+                        <input type="text" className="form-input w-100" placeholder="e.g. PTO, carried to summary" value={pageBreakWord} onChange={(e) => setPageBreakWord(e.target.value)} />
+                     </div>
+                     <div className="modal-footer border-0 pt-0">
+                        <button
+                           type="button"
+                           className="btn cancel-button px-4"
+                           onClick={() => {
+                              setPageBreakWord('');
+                              setPageBreakModal(false);
+                              fetchExcelData();
+                           }}
+                        >
+                           Continue without page
+                        </button>
+                        <button
+                           type="button"
+                           className="btn action-button px-4"
+                           onClick={() => {
+                              setPageBreakModal(false);
+                              fetchExcelData();
+                           }}
+                           disabled={!pageBreakWord.trim()}
+                        >
+                           Proceed
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
+         {emptyBoqModal.show && (
+            <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+               <div className="modal-dialog modal-dialog-centered modal-xl">
+                  <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
+                     <div className="modal-header border-0 pb-0">
+                        <h5 className="modal-title fw-bold" style={{ color: '#005197' }}>Missing BOQ Data</h5>
+                        <button type="button" className="btn-close" onClick={() => setEmptyBoqModal({ ...emptyBoqModal, show: false })}></button>
+                     </div>
+                     <div className="modal-body py-4">
+                        <p className="mb-2 text-muted" style={{ fontSize: '15px' }}>
+                           Found <strong>{emptyBoqModal.count}</strong> last-level BOQ item(s) missing a BOQ Name or BOQ Code.
+                        </p>
+                        <div className="table-responsive" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                           <table className="table table-bordered table-sm text-center">
+                              <thead className="table-light sticky-top">
+                                 <tr>
+                                    <th>Sno</th>
+                                    <th>BOQ Code</th>
+                                    <th>BOQ Name</th>
+                                    <th>UOM</th>
+                                    <th>Quantity</th>
+                                 </tr>
+                              </thead>
+                              <tbody>
+                                 {emptyBoqModal.items?.map(item => (
+                                    <tr key={item.sno}>
+                                       <td>{item.sno}</td>
+                                       <td>{item.boqCode ? item.boqCode : <span className="text-danger">Missing</span>}</td>
+                                       <td>{item.boqName ? item.boqName : <span className="text-danger">Missing</span>}</td>
+                                       <td>{item.uom || '-'}</td>
+                                       <td>{item.quantity || 0}</td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     </div>
+                     <div className="modal-footer border-0 pt-0">
+                        <button
+                           type="button"
+                           className="btn cancel-button px-4"
+                           onClick={() => {
+                              setEmptyBoqModal({ ...emptyBoqModal, show: false });
+                              saveMappedBOQ({ ignoreEmpty: true });
+                           }}
+                        >
+                           Ignore
+                        </button>
+                        <button
+                           type="button"
+                           className="btn action-button px-4"
+                           onClick={() => {
+                              setEmptyBoqModal({ ...emptyBoqModal, show: false });
+                              saveMappedBOQ({ ignoreEmpty: false });
+                           }}
+                        >
+                           Import
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
+
+         {duplicateModal.show && (
+            <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+               <div className="modal-dialog modal-dialog-centered modal-lg">
+                  <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
+                     <div className="modal-header border-0 pb-0">
+                        <h5 className="modal-title fw-bold" style={{ color: '#005197' }}>Duplicate BOQs Found</h5>
+                        <button type="button" className="btn-close" onClick={() => setDuplicateModal({ show: false, duplicates: [] })}></button>
+                     </div>
+                     <div className="modal-body py-4">
+                        <p className="mb-2 text-muted" style={{ fontSize: '15px' }}>
+                           The following BOQs already exist with different values. Please choose how to proceed for these duplicates.
+                        </p>
+                        <div className="table-responsive" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                           <table className="table table-bordered table-sm text-center">
+                              <thead className="table-light sticky-top">
+                                 <tr>
+                                    <th>BOQ Code</th>
+                                    <th>BOQ Name</th>
+                                    <th>Field</th>
+                                    <th>Existing Value</th>
+                                    <th>New Value</th>
+                                 </tr>
+                              </thead>
+                              <tbody>
+                                 {duplicateModal.duplicates?.map((item, idx) => {
+                                    const changes = [];
+                                    if (item.oldData?.boqCode !== undefined) changes.push({ field: 'BOQ Code', old: item.oldData.boqCode, new: item.boqCode || '' });
+                                    if (item.oldData?.boqName !== undefined) changes.push({ field: 'BOQ Name', old: item.oldData.boqName, new: item.boqName || '' });
+                                    if (item.oldData?.quantity !== undefined) changes.push({ field: 'Quantity', old: item.oldData.quantity, new: item.quantity || 0 });
+                                    if (item.oldData?.uom !== undefined) changes.push({ field: 'UOM', old: item.oldData.uom, new: item.uom || '' });
+                                    if (item.oldData?.division !== undefined) changes.push({ field: 'Division', old: item.oldData.division, new: item.division || '' });
+                                    if (item.oldData?.rateOnly !== undefined) changes.push({ field: 'Rate Only', old: item.oldData.rateOnly ? 'Yes' : 'No', new: item.rateOnly ? 'Yes' : 'No' });
+                                    if (item.oldData?.provisionalSum !== undefined) changes.push({ field: 'Provisional Sum', old: item.oldData.provisionalSum ? 'Yes' : 'No', new: item.provisionalSum ? 'Yes' : 'No' });
+                                    if (item.oldData?.notQuotedBoq !== undefined) changes.push({ field: 'Not Quoted BOQ', old: item.oldData.notQuotedBoq ? 'Yes' : 'No', new: item.notQuotedBoq ? 'Yes' : 'No' });
+                                    if (item.oldData?.pageNo !== undefined) changes.push({ field: 'Page No', old: item.oldData.pageNo, new: item.pageNo || 0 });
+
+                                    return changes.map((change, cIdx) => (
+                                       <tr key={`${idx}-${cIdx}`}>
+                                          {cIdx === 0 && <td rowSpan={changes.length} className="align-middle">{item.boqCode || 'Missing'}</td>}
+                                          {cIdx === 0 && <td rowSpan={changes.length} className="align-middle text-truncate" style={{ maxWidth: '150px' }} title={item.boqName}>{item.boqName || 'Missing'}</td>}
+                                          <td>{change.field}</td>
+                                          <td className="text-danger">{change.old}</td>
+                                          <td className="text-success">{change.new}</td>
+                                       </tr>
+                                    ));
+                                 })}
+                              </tbody>
+                           </table>
+                        </div>
+                     </div>
+                     <div className="modal-footer border-0 pt-0">
+                        <button
+                           type="button"
+                           className="btn cancel-button px-4"
+                           onClick={() => {
+                              setDuplicateModal({ show: false, duplicates: [] });
+                           }}
+                        >
+                           Cancel
+                        </button>
+                        <button
+                           type="button"
+                           className="btn action-button px-4 me-2"
+                           onClick={() => {
+                              // Save as New
+                              const saveAsNewList = duplicateModal.duplicates.map(d => d.sno);
+                              setDuplicateModal({ show: false, duplicates: [] });
+                              saveMappedBOQ({ duplicateHandled: true, saveAsNewList, uomMapResolved: true });
+                           }}
+                        >
+                           Save as New
+                        </button>
+                        <button
+                           type="button"
+                           className="btn action-button px-4"
+                           onClick={() => {
+                              // Overwrite
+                              setDuplicateModal({ show: false, duplicates: [] });
+                              saveMappedBOQ({ duplicateHandled: true, saveAsNewList: [], uomMapResolved: true });
+                           }}
+                        >
+                           Overwrite
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
+
+         {uomModal.show && (
+            <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+               <div className="modal-dialog modal-dialog-centered modal-lg">
+                  <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
+                     <div className="modal-header border-0 pb-0">
+                        <h5 className="modal-title fw-bold" style={{ color: '#005197' }}>UOM Mapping Required</h5>
+                        {isExternalAccess && (
+                           <button
+                              className="btn btn-sm action-button position-absolute" style={{ right: '50px' }}
+                              title={`Add a master UOM for ${activeClientUom || uomModal.unmatched[0] || 'the selected client UOM'}`}
+                              onClick={() => setNewUomForm({
+                                 show: true,
+                                 code: '',
+                                 name: '',
+                                 forClientUom: uomModal.unmatched.includes(activeClientUom) ? activeClientUom : (uomModal.unmatched[0] || '')
+                              })}
+                           >
+                              + Add New
+                           </button>
+                        )}
+                        <button type="button" className="btn-close" onClick={() => setUomModal({ show: false, unmatched: [], mapping: {}, pendingSaveOptions: null })}></button>
+                     </div>
+                     <div className="modal-body py-4">
+                        <p className="mb-2 text-muted" style={{ fontSize: '15px' }}>
+                           The following UOMs from the uploaded file were not found in the Master UOM list. Please map them or add them as new Master UOMs.
+                        </p>
+                        <div className="table-responsive" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                           <table className="table table-bordered table-sm text-center align-middle">
+                              <thead className="table-light sticky-top">
+                                 <tr>
+                                    <th style={{ width: '40%' }}>Client UOM (from file)</th>
+                                    <th style={{ width: '60%' }}>Master UOM Mapping</th>
+                                 </tr>
+                              </thead>
+                              <tbody>
+                                 {uomModal.unmatched.map((unmatchedUom, idx) => (
+                                    <tr key={idx}>
+                                       <td className="fw-bold">{unmatchedUom}</td>
+                                       <td>
+                                          <Select
+                                             options={masterUoms.map(m => ({ value: m.uomCode, label: `${m.uomCode} - ${m.uomName}` }))}
+                                             value={uomModal.mapping[unmatchedUom] ? { value: uomModal.mapping[unmatchedUom], label: masterUoms.find(m => m.uomCode === uomModal.mapping[unmatchedUom])?.uomCode + ' - ' + masterUoms.find(m => m.uomCode === uomModal.mapping[unmatchedUom])?.uomName } : null}
+                                             onFocus={() => setActiveClientUom(unmatchedUom)}
+                                             onChange={(selected) => setUomModal(prev => ({
+                                                ...prev,
+                                                mapping: selected
+                                                   ? { ...prev.mapping, [unmatchedUom]: selected.value }
+                                                   : Object.fromEntries(Object.entries(prev.mapping).filter(([clientUom]) => clientUom !== unmatchedUom))
+                                             }))}
+                                             placeholder="Select Master UOM..."
+                                             menuPortalTarget={document.body}
+                                             styles={{ menuPortal: base => ({ ...base, zIndex: 9999 }) }}
+                                          />
+                                       </td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     </div>
+                     <div className="modal-footer border-0 pt-0">
+                        <button
+                           type="button"
+                           className="btn cancel-button px-4"
+                           onClick={() => setUomModal({ show: false, unmatched: [], mapping: {}, pendingSaveOptions: null })}
+                        >
+                           Cancel
+                        </button>
+                        <button
+                           type="button"
+                           className="btn action-button px-4"
+                           disabled={uomModal.unmatched.length !== Object.keys(uomModal.mapping).length}
+                           onClick={() => {
+                              const pending = uomModal.pendingSaveOptions;
+                              setUomModal(prev => ({ ...prev, show: false }));
+                              saveMappedBOQ({ ...pending, uomMapResolved: true });
+                           }}
+                        >
+                           Confirm Mapping & Import
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
+
+         {isExternalAccess && newUomForm.show && (
+            <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1070 }}>
+               <div className="modal-dialog modal-dialog-centered modal-sm">
+                  <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '12px' }}>
+                     <div className="modal-header border-0 pb-0">
+                        <h6 className="modal-title fw-bold" style={{ color: '#005197' }}>Add New UOM</h6>
+                        <button type="button" className="btn-close" onClick={() => setNewUomForm({ show: false, code: '', name: '', forClientUom: '' })}></button>
+                     </div>
+                     <div className="modal-body py-3">
+                        <div className="mb-2">
+                           <label className="form-label" style={{ fontSize: '13px' }}>UOM Code <span className="text-danger">*</span></label>
+                           <input type="text" className="form-control form-control-sm" value={newUomForm.code} onChange={(e) => setNewUomForm(prev => ({ ...prev, code: e.target.value }))} />
+                        </div>
+                        <div className="mb-2">
+                           <label className="form-label" style={{ fontSize: '13px' }}>UOM Name <span className="text-danger">*</span></label>
+                           <input type="text" className="form-control form-control-sm" value={newUomForm.name} onChange={(e) => setNewUomForm(prev => ({ ...prev, name: e.target.value }))} />
+                        </div>
+                     </div>
+                     <div className="modal-footer border-0 pt-0">
+                        <button
+                           type="button"
+                           className="btn cancel-button btn-sm px-3"
+                           onClick={() => setNewUomForm({ show: false, code: '', name: '', forClientUom: '' })}
+                        >
+                           Cancel
+                        </button>
+                        <button
+                           type="button"
+                           className="btn action-button btn-sm px-3"
+                           onClick={async () => {
+                              if (!newUomForm.code.trim() || !newUomForm.name.trim()) {
+                                 toast.error("Code and Name are required");
+                                 return;
+                              }
+                              try {
+                                 const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/addUom`, {
+                                    uomCode: newUomForm.code,
+                                    uomName: newUomForm.name,
+                                    active: true
+                                 }, {
+                                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                                 });
+                                 if (res.status === 200) {
+                                    toast.success("UOM added successfully");
+                                    const newUomObj = { uomCode: newUomForm.code, uomName: newUomForm.name };
+                                    setLocalAddedUoms(prev => [...prev, newUomObj]);
+                                    setUomModal(prev => ({ ...prev, mapping: { ...prev.mapping, [newUomForm.forClientUom]: newUomForm.code } }));
+                                    setNewUomForm({ show: false, code: '', name: '', forClientUom: '' });
+                                 }
+                              } catch (err) {
+                                 toast.error(typeof err.response?.data === 'string' ? err.response?.data : (err.response?.data?.message || "Error adding UOM"));
+                              }
+                           }}
+                        >
+                           Add
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
       </div>
    );
 }
