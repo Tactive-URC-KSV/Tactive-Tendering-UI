@@ -155,11 +155,12 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
    }, [effectiveProjectId, navigate, isExternalAccess]);
 
    const isLastLevelRow = (row) => {
-      return (
-         row.lastLevel ||
-         (typeof row.uom === 'string' && row.uom.trim() !== '') ||
-         (row.quantity !== null && row.quantity !== undefined && row.quantity !== '')
-      );
+      const quantityMissing = row.quantity === null || row.quantity === undefined || row.quantity === '';
+      if (!quantityMissing) {
+         const quantity = Number(row.quantity);
+         return !Number.isNaN(quantity) && quantity !== 0;
+      }
+      return typeof row.uom === 'string' && row.uom.trim() !== '';
    };
 
    const findParentSno = (currentIndex, level) => {
@@ -933,7 +934,7 @@ function BOQUpload({ projectId, projectName, setUploadScreen }) {
                ...item,
                level: 0,
                parentSno: 0,
-               lastLevel: (item.uom || (item.quantity && item.quantity !== 0)) ? true : false
+               lastLevel: isLastLevelRow(item)
             }))
          );
          toast.success("All levels and structure cleared successfully.");
